@@ -1,0 +1,35 @@
+{
+  "network": "arb-sepolia",
+  "chainId": 421614,
+  "deployer": "0xEf13D578777B1CAeF1b27edC743AB175230450Ec",
+  "deployedAt": "2026-04-27T15:41:07.986Z",
+  "mode": "demo",
+  "timing": {
+    "vaultRotationDelay": "90",
+    "executorRotationDelay": "90",
+    "minDeadlineOffset": "5",
+    "maxDeadlineOffset": "300",
+    "defaultStaleThreshold": "86400"
+  },
+  "contracts": {
+    "StrategyRegistry": "0x43e66E2153AeB460a5e1C9E8aca1E27270baaF29",
+    "StrategyVault": "0xeA3f6032F6Bf72C7FAAa546D78005dCa613295eb",
+    "LendingPool": "0x225799A4B2272f8e062f2960374f9248722350Be",
+    "SwapRouter": "0x92747133b448767eE94d1B3b19fD1258c1C49d5c",
+    "PriceOracle": "0xd1f834681E5C32485DF421FE2672d31707cF0ebb",
+    "FheForgeComposer": "0x05A7612870c409FfE68e7aC2F572BEe51bF05Dd8"
+  },
+  "deploymentTxs": {
+    "StrategyRegistry": "0xa1cfd33385db95e98d84f1e93e991d3a08e5a5ad3fa842ae90a94f021fcf4117",
+    "StrategyVault": "0xf7bcf28168fe3a33a3685ac68bedbbfe081d270be548cd97a7a7c8c51b56d27c",
+    "LendingPool": "0x024dfee1c9827299ad869eee5cd38f2460a5d96461b67b217faca37a61e0844d",
+    "SwapRouter": "0x8a687b81195a1a9c8092cc1a3810196943374b391a6dd394b604f9f5fb6845f0",
+    "PriceOracle": "0x0ded15a4b5aa5ff1742b8a3161945ee99c6eaf2cdab914ef46659ba29c4a8d28",
+    "FheForgeComposer": "0x7de0a9b7cb6275a27dba77d8b1f28319f65b01750d0dd7de88a2221648a631b2",
+    "setVault": "0x566de1807bd677bbcbed54d1ac08fdb9c5be6304dcfb1fa7f41d4d49ce1a7ef4",
+    "setOracle": "0x1b24a09b727956307d98cdf5ecc435c97d1640fab2caa4bace83aa1532e50ae8",
+    "setWeth": "0x524f3efc4fd341f609bf43a6ef62ff45e7224759cb88a27c6f3ffd235668e22d"
+  },
+  "swapExecutor": "0xEf13D578777B1CAeF1b27edC743AB175230450Ec",
+  "weth": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73"
+}

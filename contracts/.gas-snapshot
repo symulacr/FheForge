@@ -1,0 +1,8 @@
+NonFheConstructorTest:test_StrategyVaultConstructorRevertsOnZeroAddress() (gas: 59603)
+NonFheConstructorTest:test_SwapRouterAcceptsDemoTimings() (gas: 975348)
+NonFheConstructorTest:test_SwapRouterConstructorRevertsOnZeroAddress() (gas: 36981)
+NonFheConstructorTest:test_SwapRouterDeadlineImmutablesAreSane() (gas: 975371)
+NonFheConstructorTest:test_SwapRouterRejectsSameTokenIntent() (gas: 974203)
+NonFheConstructorTest:test_SwapRouterRevertsOnInvalidMaxLessThanMin() (gas: 37098)
+NonFheConstructorTest:test_SwapRouterRevertsOnZeroMinDeadline() (gas: 37025)
+NonFheConstructorTest:test_SwapRouterStoresExecutor() (gas: 974986)

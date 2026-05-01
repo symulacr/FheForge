@@ -1,0 +1,56 @@
+{
+  "network": "arb-sepolia",
+  "chainId": 421614,
+  "deployer": "0xEf13D578777B1CAeF1b27edC743AB175230450Ec",
+  "deployedAt": "2026-04-28T04:01:53.030Z",
+  "mode": "demo",
+  "timing": {
+    "vaultRotationDelay": "90",
+    "executorRotationDelay": "90",
+    "minDeadlineOffset": "5",
+    "maxDeadlineOffset": "300",
+    "defaultStaleThreshold": "86400"
+  },
+  "contracts": {
+    "StrategyRegistry": "0x0540d924C377f4FC93c80A8073b1b206aF9E62d8",
+    "StrategyVault": "0x1BF1E351481D072488f9f17C0e3B2669701fd0a9",
+    "LendingPool": "0x1c2875ffaAbC927A8E0b7DE76f9bdDd83DdC01eB",
+    "SwapRouter": "0xc3b002fa8Fc67E7F767f09353e70D97f8eCb1026",
+    "PriceOracle": "0x004956c455fe8DCcc859A67fb1aD73dADdA3C6DE",
+    "FheForgeComposer": "0x66Caa1B2316219A9bAC728624d7917954DC7826B"
+  },
+  "deploymentTxs": {
+    "StrategyRegistry": "0x47c329ee2fee8dca78ec9e8c84c75e14b421c0e11636166214020f8ec2fce361",
+    "StrategyVault": "0xe67bd27df0e0e15e74d09495991e789ddc77e0b01b410fa14477f3540f9a070d",
+    "LendingPool": "0x81f47ca51cce91e0e12b5397c6ccf1c2ea60b40c7b5339d40eb012f6a8161239",
+    "SwapRouter": "0x68e4f4c9690b97aaa71b4870c56d930cc011c6b26f3e84b3758cf2342e4b24c7",
+    "PriceOracle": "0x7ea791708fd07ab7173ebdc5ce49a38fb64d9040283113c2f8475e9e2ed84d70",
+    "FheForgeComposer": "0x79ee6688c644daa50edd47bb460a756ad9e3b0af8534fba1c58a6995977f5ce0",
+    "setVault": "0xbf8ff099247c51574dde5a436adfec417b435870d7d5ff0675d350ff9916a524",
+    "setOracle": "0x180bad55fb2d323fa45fe0350d04dd7bdfb9d93b3770676eff5d0ca8b417c445",
+    "setWeth": "0x588c0105b3ed79b4811ff2f1c0a954f1a0818833db1786220a098c572163af2e"
+  },
+  "swapExecutor": "0xEf13D578777B1CAeF1b27edC743AB175230450Ec",
+  "weth": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
+  "verification": {
+    "etherscan": {
+      "StrategyRegistry": "https://sepolia.arbiscan.io/address/0x0540d924C377f4FC93c80A8073b1b206aF9E62d8#code",
+      "StrategyVault": "https://sepolia.arbiscan.io/address/0x1BF1E351481D072488f9f17C0e3B2669701fd0a9#code",
+      "LendingPool": "https://sepolia.arbiscan.io/address/0x1c2875ffaAbC927A8E0b7DE76f9bdDd83DdC01eB#code",
+      "SwapRouter": "https://sepolia.arbiscan.io/address/0xc3b002fa8Fc67E7F767f09353e70D97f8eCb1026#code",
+      "PriceOracle": "https://sepolia.arbiscan.io/address/0x004956c455fe8DCcc859A67fb1aD73dADdA3C6DE#code",
+      "FheForgeComposer": "https://sepolia.arbiscan.io/address/0x66Caa1B2316219A9bAC728624d7917954DC7826B#code"
+    },
+    "sourcify": {
+      "StrategyRegistry": "https://repo.sourcify.dev/contracts/full_match/421614/0x0540d924C377f4FC93c80A8073b1b206aF9E62d8/",
+      "StrategyVault": "https://repo.sourcify.dev/contracts/full_match/421614/0x1BF1E351481D072488f9f17C0e3B2669701fd0a9/",
+      "LendingPool": "https://repo.sourcify.dev/contracts/full_match/421614/0x1c2875ffaAbC927A8E0b7DE76f9bdDd83DdC01eB/",
+      "SwapRouter": "https://repo.sourcify.dev/contracts/full_match/421614/0xc3b002fa8Fc67E7F767f09353e70D97f8eCb1026/",
+      "PriceOracle": "https://repo.sourcify.dev/contracts/full_match/421614/0x004956c455fe8DCcc859A67fb1aD73dADdA3C6DE/",
+      "FheForgeComposer": "https://repo.sourcify.dev/contracts/full_match/421614/0x66Caa1B2316219A9bAC728624d7917954DC7826B/"
+    },
+    "verifiedAt": "2026-04-28T05:00Z",
+    "sourcifyMatch": "perfect",
+    "etherscanV2": true
+  }
+}

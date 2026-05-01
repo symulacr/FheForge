@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "typeRoots": ["./types", "./node_modules/@types", "../node_modules/@types"],
+    "outDir": "./dist",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "paths": {
+      "@/core": ["../node_modules/.bun/@cofhe+sdk@0.5.1+d77193ada486e617/node_modules/@cofhe/sdk/dist/core.d.ts"],
+      "@cofhe/sdk/node": ["../node_modules/.bun/@cofhe+sdk@0.5.1+d77193ada486e617/node_modules/@cofhe/sdk/dist/node.d.ts"],
+      "@cofhe/sdk/chains": ["../node_modules/.bun/@cofhe+sdk@0.5.1+d77193ada486e617/node_modules/@cofhe/sdk/dist/chains.d.ts"]
+    }
+  },
+  "include": ["./scripts/**/*.ts", "./test/**/*.ts", "./types/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "../node_modules",
+    "**/node_modules"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "network": "arb-sepolia",
+  "chainId": 421614,
+  "deployer": "0xEf13D578777B1CAeF1b27edC743AB175230450Ec",
+  "deployedAt": "2026-04-26T16:53:10.691Z",
+  "contracts": {
+    "StrategyRegistry": "0x6349c9491A77b62cAA5d4378E8d3AB71E4cBb38e",
+    "StrategyVault": "0x8Da64Ab416fA26BCCb5c014782cb72D9B66981Ab",
+    "LendingPool": "0x59bF6bb2DA5Bf1caf3b0e439482217451CA8e85C",
+    "SwapRouter": "0xA40176f92618D78a8259F9000c8B4CA78136771d"
+  },
+  "deploymentTxs": {
+    "StrategyRegistry": "0x1eced28d1c14c8b069e2cefc3823877da8d9d7698b4e7fb5bb09ee1121d50b18",
+    "StrategyVault": "0x81cb81e3cd63fa5c3b07d76de811dfe32d8264f4d6618b98e0251f0b4e20e55c",
+    "LendingPool": "0x8d0c95f5d23017f3c85b256d0e4a51eeb446964fee587fd315877dbe36fe38c5",
+    "SwapRouter": "0x32e002068a0193beacbd9df09e6961329c45b1e1fdf1b3eeb5f7cb7d6039056b",
+    "setVault": "0xf4b74734229b7bbaf76f9c971698979ea85fbca303eee41882327931519953c1"
+  },
+  "swapExecutor": "0xEf13D578777B1CAeF1b27edC743AB175230450Ec"
+}

@@ -1,0 +1,104 @@
+# Alertmanager Configuration for FheForge
+
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: "smtp.gmail.com:587"
+  smtp_from: "alerts@fheforge.xyz"
+  smtp_auth_username: "alerts@fheforge.xyz"
+  smtp_auth_password: ${SMTP_AUTH_PASSWORD}
+  slack_api_url: ${SLACK_API_URL}
+
+# Route configuration
+route:
+  group_by: ["alertname", "cluster", "service"]
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: "default-receiver"
+
+  # Critical alerts go to critical receiver
+  routes:
+    - match:
+        severity: critical
+      receiver: "critical-receiver"
+      continue: false
+
+    # Warning alerts go to warning receiver
+    - match:
+        severity: warning
+      receiver: "warning-receiver"
+      continue: false
+
+    # Info alerts go to info receiver
+    - match:
+        severity: info
+      receiver: "info-receiver"
+      continue: false
+
+# Receivers configuration
+receivers:
+  # Default receiver
+  - name: "default-receiver"
+    email_configs:
+      - to: "team@fheforge.xyz"
+        headers:
+          Subject: "[FheForge] {{ .GroupLabels.alertname }}"
+    slack_configs:
+      - channel: "#alerts"
+        title: "[FheForge] {{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+
+  # Critical receiver
+  - name: "critical-receiver"
+    email_configs:
+      - to: "oncall@fheforge.xyz"
+        headers:
+          Subject: "[CRITICAL] FheForge Alert: {{ .GroupLabels.alertname }}"
+    slack_configs:
+      - channel: "#critical-alerts"
+        title: "[CRITICAL] FheForge Alert: {{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+        color: "danger"
+    pagerduty_configs:
+      - service_key: ${PAGERDUTY_SERVICE_KEY}
+        description: "{{ .GroupLabels.alertname }}"
+
+  # Warning receiver
+  - name: "warning-receiver"
+    email_configs:
+      - to: "dev-team@fheforge.xyz"
+        headers:
+          Subject: "[WARNING] FheForge Alert: {{ .GroupLabels.alertname }}"
+    slack_configs:
+      - channel: "#warnings"
+        title: "[WARNING] FheForge Alert: {{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+        color: "warning"
+
+  # Info receiver
+  - name: "info-receiver"
+    slack_configs:
+      - channel: "#info"
+        title: "[INFO] FheForge Alert: {{ .GroupLabels.alertname }}"
+        text: "{{ range .Alerts }}{{ .Annotations.description }}{{ end }}"
+        color: "good"
+
+# Inhibition rules
+inhibit_rules:
+  # Inhibit warning alerts if critical alert is firing
+  - source_match:
+      severity: "critical"
+    target_match:
+      severity: "warning"
+    equal: ["alertname", "cluster"]
+
+  # Inhibit info alerts if warning alert is firing
+  - source_match:
+      severity: "warning"
+    target_match:
+      severity: "info"
+    equal: ["alertname", "cluster"]
+
+# Templates
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"

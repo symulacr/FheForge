@@ -1,0 +1,19 @@
+node_modules/
+artifacts/
+cache/
+typechain-types/
+typechain/
+coverage/
+coverage.json
+.env
+.env.local
+.env.*.local
+scripts/__pycache__/
+.env.deploy
+# deployments/<chainId>.json contains real on-chain deployment evidence
+# (addresses + txhashes); track those, but ignore any local artifacts inside.
+deployments/*.local.json
+out/
+report.md
+lib/*
+!lib/forge-std/

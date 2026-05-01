@@ -1,0 +1,36 @@
+{
+  "name": "fheforge",
+  "private": true,
+  "workspaces": [
+    "ui",
+    "backend/apps",
+    "contracts"
+  ],
+  "scripts": {
+    "dev:ui": "bun run --cwd ui dev",
+    "dev:backend": "bun run --cwd backend/apps start:dev",
+    "build:contracts": "cd contracts && npx hardhat compile",
+    "build:ui": "bun run --cwd ui build",
+    "build:backend": "bun run --cwd backend/apps build",
+    "build": "bun run build:contracts && bun run build:backend && bun run build:ui",
+    "test:contracts": "cd contracts && npx hardhat test",
+    "test:ui": "bun run --cwd ui test",
+    "test:backend": "bun run --cwd backend/apps test",
+    "type-check:contracts": "cd contracts && ./node_modules/.bin/tsc --noEmit -p tsconfig.json",
+    "type-check:backend": "cd backend/apps && ./node_modules/.bin/tsc --noEmit -p tsconfig.json",
+    "type-check:ui": "cd ui && ./node_modules/.bin/tsc --noEmit -p tsconfig.json",
+    "type-check": "bun run type-check:contracts && bun run type-check:backend && bun run type-check:ui",
+    "lint:contracts": "cd contracts && bun run lint",
+    "lint:backend": "cd backend/apps && npx eslint 'src/**/*.ts'",
+    "lint:ui": "cd ui && bunx --bun next lint -d .",
+    "lint": "bun run lint:contracts && bun run lint:backend && bun run lint:ui",
+    "format:check": "npx prettier --check '**/*.{ts,tsx,js,md,json,yml,yaml}' --ignore-path .gitignore",
+    "format:write": "npx prettier --write '**/*.{ts,tsx,js,md,json,yml,yaml}' --ignore-path .gitignore",
+    "deploy:contracts": "cd contracts && npx hardhat run scripts/deploy.ts --network arb-sepolia",
+    "sync:abis": "cd contracts && npx hardhat run scripts/sync-abis.ts"
+  },
+  "devDependencies": {
+    "@reineira-os/sdk": "0.2.0",
+    "cofhejs": "0.3.1"
+  }
+}

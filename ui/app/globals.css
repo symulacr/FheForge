@@ -1,0 +1,254 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #e0e0e0;
+
+  --card: #111111;
+  --card-foreground: #e0e0e0;
+
+  --primary: #ffffff;
+  --primary-foreground: #0a0a0a;
+
+  --secondary: #1a1a1a;
+  --muted: #555555;
+
+  --accent: #3b82f6; /* blue — links, active, highlights */
+  --accent-light: #60a5fa;
+
+  --success: #22c55e; /* green — ok states */
+  --warning: #eab308; /* yellow — warnings */
+  --destructive: #ef4444; /* red — errors, danger */
+  --destructive-foreground: #ffffff;
+
+  --border: #2a2a2a;
+  --input: #111111;
+  --ring: #3b82f6;
+
+  --radius: 0; /* no rounded corners */
+
+  --popover: #111111;
+  --popover-foreground: #e0e0e0;
+
+  --chart-1: #3b82f6;
+  --chart-2: #22c55e;
+  --chart-3: #eab308;
+  --chart-4: #ef4444;
+  --chart-5: #888888;
+
+  --sidebar: #0d0d0d;
+  --sidebar-foreground: #e0e0e0;
+  --sidebar-primary: #3b82f6;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #e0e0e0;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #3b82f6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --radius-md: 0;
+  --radius-lg: 0;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    border-radius: 0 !important;
+    font-family:
+      "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  }
+
+  body {
+    min-height: 100vh;
+    color: var(--foreground);
+    background-color: var(--background);
+  }
+}
+
+/* Terminal card */
+.forge-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s ease;
+}
+.forge-card:hover {
+  border-color: var(--accent);
+}
+
+/* Terminal button base */
+.terminal-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
+}
+.terminal-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.terminal-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.terminal-btn.primary {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.terminal-btn.primary:hover {
+  background: var(--accent);
+  color: #000;
+}
+.terminal-btn.danger {
+  border-color: var(--destructive);
+  color: var(--destructive);
+}
+.terminal-btn.success {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+/* Glass → flat terminal panel */
+.glass {
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.glass:hover {
+  border-color: var(--accent);
+}
+
+/* DeFi builder buttons */
+.defi-btn-glass {
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--foreground);
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+.defi-btn-glass:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.defi-btn-glass:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.defi-create-btn {
+  position: absolute;
+  right: 24px;
+  bottom: 110px;
+  width: 132px;
+  z-index: 20;
+}
+
+/* Minimap */
+.defi-minimap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 6px;
+}
+.defi-minimap .react-flow__minimap {
+  background: transparent !important;
+}
+.defi-minimap .react-flow__minimap-mask {
+  fill: transparent !important;
+}
+.defi-minimap .react-flow__minimap-viewport {
+  fill: rgba(59, 130, 246, 0.1) !important;
+  stroke: var(--accent) !important;
+  stroke-width: 1px !important;
+}
+.defi-minimap .react-flow__minimap-node rect {
+  fill: rgba(255, 255, 255, 0.2) !important;
+  stroke: rgba(255, 255, 255, 0.4) !important;
+  stroke-width: 1px !important;
+}
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* Scrollbar */
+.custom-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: #333;
+}
+
+/* Spinner input */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Status colors */
+.text-success {
+  color: var(--success);
+}
+.text-warning {
+  color: var(--warning);
+}
+.text-danger {
+  color: var(--destructive);
+}
+.text-info {
+  color: var(--accent);
+}
+
+/* Blinking cursor */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+.cursor::after {
+  content: "_";
+  animation: blink 1s step-end infinite;
+  color: var(--accent);
+}

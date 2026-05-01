@@ -1,0 +1,88 @@
+# Loki Configuration for FheForge
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+query_range:
+  results_cache:
+    cache:
+      embedded_cache:
+        enabled: true
+        max_size_mb: 100
+
+schema_config:
+  configs:
+    - from: 2025-04-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+      chunks:
+        prefix: chunk_
+        period: 24h
+
+ruler:
+  alertmanager_url: http://alertmanager:9093
+
+# By default, Loki will not send logs, but we can configure a local distributor.
+distributor:
+  ring:
+    kvstore:
+      store: inmemory
+
+# Configure the ingester
+ingester:
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+    final_sleep: 0s
+  chunk_idle_period: 1h
+  chunk_target_size: 1048576
+  max_chunk_age: 24h
+  chunk_block_size: 262144
+
+# Configure the server
+limits_config:
+  enforce_metric_name: false
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+  max_entries_limit_per_query: 5000
+  split_queries_by_interval:
+    enabled: true
+    interval: 15m
+
+# Compactor configuration
+compactor:
+  working_directory: /loki/compactor
+  shared_store: filesystem
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  delete_request_cancel_period: 24h
+  retention_delete_worker_count: 150
+
+# Storage configuration
+storage_config:
+  boltdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/cache
+    shared_store: filesystem
+
+  filesystem:
+    directory: /loki/chunks

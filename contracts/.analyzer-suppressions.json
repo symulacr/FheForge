@@ -1,0 +1,41 @@
+{
+  "$comment": "Findings the analyzer keeps flagging that we have decided NOT to act on. Each entry is a documented decision, not a hidden bug. New entries require a paired commit explaining the rationale.",
+  "schema_version": "1.0",
+  "suppressions": [
+    {
+      "id": "F-04",
+      "category": "euint128 \u2192 euint64 storage promotion",
+      "location_regex": "StrategyRegistry\\.sol:\\d+ \u2014 `encryptedTvls`",
+      "status": "deferred",
+      "rationale": "Per OPTIMIZATION_HANDOFF.md \u00a7Phase F: defer storage promotion. encryptedTvls is a strategy-level aggregate; in DeFi-scale lending pools the TVL of a popular strategy can easily exceed 2^63 wei (18.4 ETH at 18 decimals). The 25% gas saving is not worth the silent-overflow risk. Re-open if a runtime bound check `require(amount < (1 << 63))` is acceptable in the privacy model."
+    },
+    {
+      "id": "F-05",
+      "category": "euint128 \u2192 euint64 storage promotion",
+      "location_regex": "LendingPool\\.sol:\\d+ \u2014 `supplyBalances`",
+      "status": "deferred",
+      "rationale": "Per OPTIMIZATION_HANDOFF.md \u00a7Phase F: defer. supplyBalances stores per-user balances across all supported tokens. WETH at 18 decimals overflows euint64 above 18.4 ETH \u2014 a hard ceiling that would silently break for any non-trivial whale user. Real-chain risk dominates the 25% gas saving."
+    },
+    {
+      "id": "F-06",
+      "category": "euint128 \u2192 euint64 storage promotion",
+      "location_regex": "LendingPool\\.sol:\\d+ \u2014 `borrowBalances`",
+      "status": "deferred",
+      "rationale": "Per OPTIMIZATION_HANDOFF.md \u00a7Phase F: defer. Same overflow profile as F-05 \u2014 borrowBalances is per-user and shares the 18.4-ETH ceiling for 18-decimal tokens. Implementation would require a per-token decimal-aware storage strategy, deferred until product gives a concrete answer on the supported-token roadmap."
+    },
+    {
+      "id": "F-28",
+      "category": "Function standardization \u2014 unfactored duplication",
+      "location_regex": "LendingPool\\.sol::getBorrowBalance & LendingPool\\.sol::getSupplyBalance",
+      "status": "wontfix",
+      "rationale": "Per OPTIMIZATION_HANDOFF.md \u00a7Phase C: getBorrowBalance and getSupplyBalance read different mappings. A `mapping(address=>euint128) storage` parameter helper IS technically possible but the savings are ~64 bytes deployment-only and adding a function call to a hot read path risks losing internal-function inlining for a measurable runtime regression. Net trade is not worth the structural change."
+    },
+    {
+      "id": "F-29",
+      "category": "Full-flow gas breakdown (informational)",
+      "location_regex": "INTEROP_REPORT \\(informational\\)",
+      "status": "informational",
+      "rationale": "Not a fix \u2014 this finding is the analyzer's structural map of `composer.openLeveragedStrategy` sub-step costs and exists to guide priority of OTHER findings. It cannot be \"closed\" by code changes. Its rendered table updates automatically as the code evolves; suppression here just declutters the open-findings list."
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+# Prometheus Configuration for FheForge
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: "fheforge-production"
+    environment: "production"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Backend API Metrics
+  - job_name: "backend-api"
+    static_configs:
+      - targets: ["backend:3001"]
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Frontend Metrics (if exposed)
+  - job_name: "frontend"
+    static_configs:
+      - targets: ["frontend:3000"]
+    metrics_path: "/api/metrics"
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Node Exporter (System Metrics)
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # cAdvisor (Container Metrics)
+  - job_name: "cadvisor"
+    static_configs:
+      - targets: ["cadvisor:8080"]
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Custom Application Metrics
+  - job_name: "custom-metrics"
+    static_configs:
+      - targets: ["backend:3001"]
+    metrics_path: "/api/custom-metrics"
+    scrape_interval: 15s
+    scrape_timeout: 10s

@@ -1,0 +1,113 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: foundry-rs/foundry-toolchain@v1
+        with: { version: "nightly" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            contracts/node_modules
+            ~/.cache/bun
+            ~/.foundry/cache
+          key: contracts-${{ runner.os }}-bun-${{ hashFiles('contracts/bun.lock') }}-foundry-${{ hashFiles('contracts/foundry.toml') }}
+          restore-keys: |
+            contracts-${{ runner.os }}-bun-
+      - name: Install
+        run: bun install
+        working-directory: contracts
+      - name: Lint (solhint)
+        run: bun run lint
+        working-directory: contracts
+      - name: Compile
+        run: HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat compile
+        working-directory: contracts
+      - name: Type-check
+        run: bunx tsc --noEmit -p tsconfig.json
+        working-directory: contracts
+      - name: Test (Hardhat)
+        run: HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat test
+        working-directory: contracts
+      - name: Test (Forge)
+        run: forge test -vvv
+        working-directory: contracts
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            backend/apps/node_modules
+            ~/.cache/bun
+          key: backend-${{ runner.os }}-bun-${{ hashFiles('backend/apps/bun.lock') }}
+          restore-keys: |
+            backend-${{ runner.os }}-bun-
+      - name: Install
+        run: bun install
+        working-directory: backend/apps
+      - name: Type-check
+        run: bunx tsc --noEmit -p tsconfig.json
+        working-directory: backend/apps
+      - name: Lint
+        run: bunx eslint 'src/**/*.ts'
+        working-directory: backend/apps
+      - name: Build
+        run: bun run build
+        working-directory: backend/apps
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ui/node_modules
+            ~/.cache/bun
+            ui/.next/cache
+          key: frontend-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
+          restore-keys: |
+            frontend-${{ runner.os }}-bun-
+      - name: Install (root for workspace links)
+        run: bun install
+      - name: Type-check
+        run: bunx tsc --noEmit -p tsconfig.json
+        working-directory: ui
+      - name: Lint
+        run: bunx --bun next lint -d .
+        working-directory: ui
+      - name: Build
+        run: bun run build
+        working-directory: ui
+
+  prettier:
+    name: Prettier
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - run: bun install
+        working-directory: backend/apps
+      - run: bunx prettier --check '**/*.{ts,tsx,js,md,json,yml,yaml}' --ignore-path .gitignore
+        working-directory: backend/apps
