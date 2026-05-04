@@ -37,7 +37,7 @@ export class DefiTokenRepositoryImpl implements DefiTokenRepository {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return null; // Not found
+        return null; 
       }
       throw new Error(`Failed to find DefiToken by id: ${error.message}`);
     }
@@ -56,7 +56,7 @@ export class DefiTokenRepositoryImpl implements DefiTokenRepository {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return null; // Not found
+        return null; 
       }
       throw new Error(`Failed to find DefiToken by asset_id: ${error.message}`);
     }

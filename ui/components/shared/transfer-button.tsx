@@ -8,7 +8,7 @@ import { useCofheClient } from "@/providers/fhenix-provider";
 import { useToast } from "@/hooks/use-toast";
 import { validateEuint128 } from "@/utils/addresses";
 
-// Minimal ERC20 ABI for wagmi writeContract
+
 const ERC20_ABI = [
   {
     constant: false,
@@ -48,13 +48,13 @@ export async function performTransfer(params: {
   } = params;
   if (!token?.token_address) throw new Error("Invalid token address");
 
-  // Normalize amount to smallest unit
+  
   const amt = parseUnits(amount, decimals);
   validateEuint128(amt);
 
   if (!cofheClient) throw new Error("CoFHE not ready");
 
-  // Perform ERC-20 transfer (plaintext amount) — standard ERC-20 expects uint256
+  
   const tx = await writeContractAsync({
     address: token.token_address as `0x${string}`,
     abi: ERC20_ABI,

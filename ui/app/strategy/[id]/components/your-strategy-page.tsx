@@ -75,7 +75,7 @@ export default function StrategyTable() {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 px-4 py-8">
-      {/* --- HEADER --- */}
+      
       <div className="flex items-center justify-between px-1">
         <div className="flex flex-col items-start gap-1">
           <h1 className="text-2xl font-bold text-primary flex items-center gap-2 tracking-tight drop-shadow-[0_0_15px_rgba(0,255,255,0.3)]">
@@ -109,7 +109,7 @@ export default function StrategyTable() {
         </Link>
       </div>
 
-      {/* --- CONTENT AREA --- */}
+      
       <div className="glass overflow-hidden border border-border shadow-2xl min-h-[400px] flex flex-col">
         {loading ? (
           <div className="flex-1 flex items-center justify-center animate-pulse">
@@ -202,7 +202,7 @@ export default function StrategyTable() {
                       key={strategy.id}
                       className="group hover:bg-white/[0.01] transition-all duration-300"
                     >
-                      {/* STRATEGY NAME */}
+                      
                       <td className="px-4 py-5 align-top">
                         <div className="flex flex-col gap-1.5 max-w-[200px]">
                           <span
@@ -233,7 +233,7 @@ export default function StrategyTable() {
 
                               return (
                                 <>
-                                  {/*  Workflow Capsules  */}
+                                  
                                   <div className="flex items-center flex-wrap gap-1.5 min-h-[24px]">
                                     {visibleSteps.map((s, index: number) => (
                                       <div
@@ -269,7 +269,7 @@ export default function StrategyTable() {
                                     )}
                                   </div>
 
-                                  {/* Token Flow */}
+                                  
                                   <div className="flex items-center flex-wrap gap-y-2 gap-x-1.5 p-2.5 bg-white/[0.03] border border-white/10 w-fit max-w-full">
                                     {(() => {
                                       const sequence = [
@@ -294,7 +294,7 @@ export default function StrategyTable() {
                                             key={idx}
                                             className="flex items-center gap-1.5"
                                           >
-                                            {/* Token Badge */}
+                                            
                                             <div className="flex items-center gap-1.5 bg-neutral-900/50 pl-0.5 pr-2 py-0.5 border border-white/20 shadow-inner group/token">
                                               <div className="w-5 h-5 overflow-hidden border border-white/40 bg-black flex-shrink-0">
                                                 {assetIcons[symbol] ? (
@@ -316,7 +316,7 @@ export default function StrategyTable() {
                                               </span>
                                             </div>
 
-                                            {/* Arrow Connector */}
+                                            
                                             {idx <
                                               uniqueSequence.length - 1 && (
                                               <div className="flex items-center px-0.5">
@@ -347,7 +347,7 @@ export default function StrategyTable() {
                         </div>
                       </td>
 
-                      {/* ASSETS ICONS */}
+                      
                       <td className="px-4 py-5 align-top">
                         <div className="flex items-center justify-center -space-x-2 group-hover:space-x-1 transition-all duration-500">
                           {tokens.map((symbol, i) => (
@@ -377,7 +377,7 @@ export default function StrategyTable() {
                         </div>
                       </td>
 
-                      {/* ACTIONS */}
+                      
                       <td className="px-4 py-5 align-top text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
@@ -408,7 +408,7 @@ export default function StrategyTable() {
         )}
       </div>
 
-      {/* --- MODALS --- */}
+      
       <ConfirmModal
         open={openConfirm}
         title="Delete Strategy"

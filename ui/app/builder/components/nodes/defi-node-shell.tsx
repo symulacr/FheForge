@@ -35,7 +35,7 @@ export default function DefiNodeShell({
         ${selected ? "border-accent" : "border-border"}
       `}
     >
-      {/* Top Handle */}
+      
       <Handle
         type="target"
         position={Position.Top}
@@ -43,7 +43,7 @@ export default function DefiNodeShell({
         className="!w-4 !h-4 !bg-accent !border-2 !border-border"
       />
 
-      {/* Delete */}
+      
       {onDelete && (
         <button
           onClick={(e) => {
@@ -56,7 +56,7 @@ export default function DefiNodeShell({
         </button>
       )}
 
-      {/* Header */}
+      
       <div className="px-5 pt-4 pb-3">
         <div className="flex items-start justify-between pr-8">
           <div>
@@ -88,10 +88,10 @@ export default function DefiNodeShell({
         <div className="mt-4 h-px bg-border" />
       </div>
 
-      {/* Body */}
+      
       <div className="px-5 pb-4">{children}</div>
 
-      {/* Bottom Handle */}
+      
       <Handle
         type="source"
         position={Position.Bottom}

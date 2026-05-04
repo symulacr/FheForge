@@ -8,21 +8,21 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/**
- * Service responsible for validating DeFi strategy steps.
- *
- * This service performs comprehensive validation including:
- * 1. Step structure validation
- * 2. Token pair compatibility validation
- * 3. Business rule sequence validation
- * 4. Overall strategy coherence validation
- *
- * Business Rules for Step Sequences:
- * - SWAP → SUPPLY, SWAP, JOIN_STRATEGY
- * - JOIN_STRATEGY → SWAP, BORROW
- * - SUPPLY → BORROW
- * - BORROW → SWAP, JOIN_STRATEGY, SUPPLY
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @Injectable()
 export class StrategyValidatorService {
   private readonly logger = new Logger(StrategyValidatorService.name);
@@ -32,12 +32,12 @@ export class StrategyValidatorService {
     private readonly defiTokenService: DefiTokenService,
   ) {}
 
-  /**
-   * Validates a complete strategy with all its steps.
-   *
-   * @param steps - Array of strategy steps to validate
-   * @returns Validation result with errors and warnings
-   */
+  
+
+
+
+
+
   async validateSteps(steps: StrategyStepResponseDto[]): Promise<{
     isValid: boolean;
     errors: string[];
@@ -53,19 +53,19 @@ export class StrategyValidatorService {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
 
-      // Validate step structure
+      
       if (!step.type || !step.agent) {
         errors.push(`Step ${i + 1}: Missing required fields (type, agent)`);
         continue;
       }
 
-      // Validate operation type
+      
       if (!this.isValidOperationType(step.type)) {
         errors.push(`Step ${i + 1}: Invalid operation type '${step.type}'`);
         continue;
       }
 
-      // Validate token pairs for operations that need them
+      
       if (this.requiresTokenValidation(step.type)) {
         const pairValidation = await this.validateTokenPair(step);
         if (!pairValidation.isValid) {
@@ -73,7 +73,7 @@ export class StrategyValidatorService {
         }
       }
 
-      // Check for sequential logic issues
+      
       if (i > 0) {
         const sequenceValidation = this.validateSequence(steps[i - 1], step);
         if (!sequenceValidation.isValid) {
@@ -81,7 +81,7 @@ export class StrategyValidatorService {
         }
       }
 
-      // Validate amounts
+      
       if (step.tokenIn?.amount && step.tokenIn.amount <= 0) {
         errors.push(`Step ${i + 1}: Invalid tokenIn amount (must be > 0)`);
       }
@@ -90,7 +90,7 @@ export class StrategyValidatorService {
       }
     }
 
-    // Validate overall strategy
+    
     const strategyValidation = this.validateOverallStrategy(steps);
     const flowValidation = this.validateStrategyFlow(steps);
 
@@ -139,7 +139,7 @@ export class StrategyValidatorService {
     step: StrategyStepResponseDto,
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      // Map step type to OperationType enum
+      
       let operationType: OperationType;
       switch (step.type) {
         case 'SWAP':
@@ -155,23 +155,23 @@ export class StrategyValidatorService {
           operationType = OperationType.JOIN_STRATEGY;
           break;
         default:
-          return { isValid: true }; // Skip validation for other types
+          return { isValid: true }; 
       }
 
-      // For SWAP and JOIN_STRATEGY, validate both tokenIn and tokenOut
+      
       if (
         (operationType === OperationType.SWAP ||
           operationType === OperationType.JOIN_STRATEGY) &&
         step.tokenIn &&
         step.tokenOut
       ) {
-        // Convert assetId to entity id
+        
         const [tokenInEntity, tokenOutEntity] = await Promise.all([
           this.getTokenIdByAssetId(step.tokenIn.assetId),
           this.getTokenIdByAssetId(step.tokenOut.assetId),
         ]);
 
-        // Check if this pair is supported by estimating it
+        
         const estimate = await this.defiPairsService.estimateDefiPair({
           operation_type: operationType,
           token_in_id: tokenInEntity,
@@ -187,9 +187,9 @@ export class StrategyValidatorService {
         }
       }
 
-      // For SUPPLY, validate tokenIn
+      
       if (operationType === OperationType.SUPPLY && step.tokenIn) {
-        // Convert assetId to entity id
+        
         const tokenInEntity = await this.getTokenIdByAssetId(
           step.tokenIn.assetId,
         );
@@ -208,10 +208,10 @@ export class StrategyValidatorService {
         }
       }
 
-      // For BORROW, validate tokenOut
+      
       if (operationType === OperationType.BORROW && step.tokenOut) {
-        // Borrow needs collateral context from previous steps
-        // For now, we'll do a basic validation
+        
+        
         return { isValid: true };
       }
 
@@ -239,7 +239,7 @@ export class StrategyValidatorService {
     prevStep: StrategyStepResponseDto,
     currentStep: StrategyStepResponseDto,
   ): { isValid: boolean; warning?: string } {
-    // Check if output of previous step matches input of current step
+    
     if (prevStep.tokenOut && currentStep.tokenIn) {
       if (prevStep.tokenOut.symbol !== currentStep.tokenIn.symbol) {
         return {
@@ -248,7 +248,7 @@ export class StrategyValidatorService {
         };
       }
 
-      // Check if amounts are reasonable (output should roughly match input)
+      
       const amountDiff = Math.abs(
         prevStep.tokenOut.amount - currentStep.tokenIn.amount,
       );
@@ -260,7 +260,7 @@ export class StrategyValidatorService {
       }
     }
 
-    // Validate business rules for step sequences
+    
     const sequenceValidation = this.validateStepSequenceRules(
       prevStep.type,
       currentStep.type,
@@ -272,24 +272,24 @@ export class StrategyValidatorService {
     return { isValid: true };
   }
 
-  /**
-   * Validates business rules for step sequences.
-   *
-   * Business Rules:
-   * - SWAP can be followed by: SUPPLY, SWAP, JOIN_STRATEGY
-   * - JOIN_STRATEGY can be followed by: SWAP, BORROW
-   * - SUPPLY can be followed by: BORROW
-   * - BORROW can be followed by: SWAP, JOIN_STRATEGY, SUPPLY
-   *
-   * @param prevStepType - Previous step type
-   * @param currentStepType - Current step type
-   * @returns Validation result
-   */
+  
+
+
+
+
+
+
+
+
+
+
+
+
   private validateStepSequenceRules(
     prevStepType: string,
     currentStepType: string,
   ): { isValid: boolean; warning?: string } {
-    // Skip validation for ENABLE_E_MODE as it can appear anywhere
+    
     if (
       prevStepType === 'ENABLE_E_MODE' ||
       currentStepType === 'ENABLE_E_MODE'
@@ -297,7 +297,7 @@ export class StrategyValidatorService {
       return { isValid: true };
     }
 
-    // Define allowed next steps for each operation type
+    
     const allowedNextSteps: Record<string, string[]> = {
       SWAP: ['SUPPLY', 'SWAP', 'JOIN_STRATEGY'],
       JOIN_STRATEGY: ['SWAP', 'BORROW'],
@@ -307,12 +307,12 @@ export class StrategyValidatorService {
 
     const allowedNext = allowedNextSteps[prevStepType];
 
-    // If no rules defined for previous step type, allow any next step
+    
     if (!allowedNext) {
       return { isValid: true };
     }
 
-    // Check if current step type is allowed after previous step type
+    
     if (!allowedNext.includes(currentStepType)) {
       return {
         isValid: false,
@@ -330,7 +330,7 @@ export class StrategyValidatorService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Check for E-Mode if there are borrow operations
+    
     const hasBorrow = steps.some((s) => s.type === 'BORROW');
     const hasEMode = steps.some((s) => s.type === 'ENABLE_E_MODE');
 
@@ -340,7 +340,7 @@ export class StrategyValidatorService {
       );
     }
 
-    // Check for excessive looping
+    
     const loopCount = steps.filter((s) => s.type === 'BORROW').length;
     if (loopCount > 10) {
       warnings.push(
@@ -348,7 +348,7 @@ export class StrategyValidatorService {
       );
     }
 
-    // Check for supply before borrow
+    
     const firstBorrowIndex = steps.findIndex((s) => s.type === 'BORROW');
     const firstSupplyIndex = steps.findIndex(
       (s) => s.type === 'SUPPLY' || s.type === 'JOIN_STRATEGY',
@@ -362,7 +362,7 @@ export class StrategyValidatorService {
       errors.push('Must SUPPLY collateral before BORROW');
     }
 
-    // Check for minimum steps
+    
     if (steps.length === 0) {
       errors.push('Strategy must have at least one step');
     }
@@ -370,15 +370,15 @@ export class StrategyValidatorService {
     return { errors, warnings };
   }
 
-  /**
-   * Validates the entire strategy flow for business rule compliance.
-   *
-   * This method checks if the complete sequence of operations makes sense
-   * from a DeFi strategy perspective.
-   *
-   * @param steps - Complete strategy steps
-   * @returns Validation result with detailed feedback
-   */
+  
+
+
+
+
+
+
+
+
   private validateStrategyFlow(steps: StrategyStepResponseDto[]): {
     errors: string[];
     warnings: string[];
@@ -386,7 +386,7 @@ export class StrategyValidatorService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Check for proper strategy initialization
+    
     const nonEModeSteps = steps.filter((step) => step.type !== 'ENABLE_E_MODE');
     if (nonEModeSteps.length === 0) {
       errors.push(
@@ -395,10 +395,10 @@ export class StrategyValidatorService {
       return { errors, warnings };
     }
 
-    // Validate strategy patterns
+    
     const stepTypes = nonEModeSteps.map((step) => step.type);
 
-    // Check for orphaned operations
+    
     const hasSupply =
       stepTypes.includes('SUPPLY') || stepTypes.includes('JOIN_STRATEGY');
     const hasBorrow = stepTypes.includes('BORROW');
@@ -409,7 +409,7 @@ export class StrategyValidatorService {
       );
     }
 
-    // Check for incomplete loops
+    
     const borrowCount = stepTypes.filter((type) => type === 'BORROW').length;
     const supplyCount = stepTypes.filter((type) => type === 'SUPPLY').length;
     const joinCount = stepTypes.filter(
@@ -422,14 +422,14 @@ export class StrategyValidatorService {
       );
     }
 
-    // Check for excessive complexity
+    
     if (stepTypes.length > 20) {
       warnings.push(
         'Strategy is very complex with many steps - consider simplifying for better execution',
       );
     }
 
-    // Validate business rule sequences for the entire flow
+    
     for (let i = 1; i < nonEModeSteps.length; i++) {
       const prevStep = nonEModeSteps[i - 1];
       const currentStep = nonEModeSteps[i];
@@ -446,11 +446,11 @@ export class StrategyValidatorService {
     return { errors, warnings };
   }
 
-  /**
-   * Gets the business rules for strategy step sequences.
-   *
-   * @returns Object mapping each step type to its allowed next steps
-   */
+  
+
+
+
+
   getBusinessRules(): Record<string, string[]> {
     return {
       SWAP: ['SUPPLY', 'SWAP', 'JOIN_STRATEGY'],
@@ -460,19 +460,19 @@ export class StrategyValidatorService {
     };
   }
 
-  /**
-   * Checks if a step sequence is valid according to business rules.
-   *
-   * @param fromStep - Previous step type
-   * @param toStep - Next step type
-   * @returns Whether the sequence is valid
-   */
+  
+
+
+
+
+
+
   isValidSequence(fromStep: string, toStep: string): boolean {
     const rules = this.getBusinessRules();
     const allowedNext = rules[fromStep];
 
     if (!allowedNext) {
-      return true; // No restrictions if no rules defined
+      return true; 
     }
 
     return allowedNext.includes(toStep);

@@ -1,26 +1,26 @@
-/**
- * FheForge POST-FIX validation — Stage 9 of remediation protocol.
- *
- * For every gap closed in Stage 5/6/7 on the v2 deployment, exercise the new
- * code path and confirm the fix produces the expected on-chain behaviour. This
- * is the inverse of `test-stress.ts`: that script is designed to find bugs,
- * this one is designed to *prove the fixes hold* on the live deployment.
- *
- * Run (idempotent — pre-cleans state, can be invoked multiple times):
- *   set -a && source .env && set +a
- *   npx hardhat run scripts/test-postfix.ts --network arb-sepolia
- *
- * Output:
- *   contracts/deployments/421614.postfix-evidence.json — append-only ledger
- *   contracts/POSTFIX_FINDINGS_RUN_01.md … POSTFIX_FINDINGS_RUN_NN.md
- *   contracts/POSTFIX_CONTRACT_AUDIT_FINDINGS.md (consolidated)
- *
- * Severity legend (matches Stage 0/3 stress test):
- *   PASS  — the fix is in place and the expected behaviour observed
- *   FAIL  — the fix is supposed to be there but isn't
- *   WARN  — fix is partial / behaviour is more permissive than ideal
- *   INFO  — observation, no judgement
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import { ethers } from "hardhat";
 import hre from "hardhat";
@@ -34,7 +34,7 @@ type Severity = "PASS" | "WARN" | "FAIL" | "INFO";
 const SYM: Record<Severity, string> = { PASS: "✓", WARN: "⚠", FAIL: "✗", INFO: "·" };
 
 interface Finding {
-    gap: string; // original gap id from STRESS_FINDINGS.md
+    gap: string;
     severity: Severity;
     label: string;
     observation: string;
@@ -176,7 +176,7 @@ async function main() {
     const router = await ethers.getContractAt("SwapRouter", dep.contracts.SwapRouter, tester);
     const composer = await ethers.getContractAt("FheForgeComposer", dep.contracts.FheForgeComposer, tester);
 
-    // Approvals
+
     if ((await usdc.allowance(tester.address, dep.contracts.StrategyVault)) < ethers.MaxUint256 / 2n) {
         await (await usdc.approve(dep.contracts.StrategyVault, ethers.MaxUint256)).wait();
     }
@@ -187,7 +187,7 @@ async function main() {
         await (await usdc.approve(dep.contracts.FheForgeComposer, ethers.MaxUint256)).wait();
     }
 
-    // CoFHE
+
     const cofhe = await (async () => {
         const c = createCofheClient(createCofheConfig({ environment: "node", supportedChains: [arbSepolia] }));
         const { publicClient, walletClient } = await hre.cofhe.hardhatSignerAdapter(tester);
@@ -196,7 +196,7 @@ async function main() {
         return c;
     })();
 
-    // Pre-clean
+
     if ((await vault.hasPosition(tester.address)) as boolean) {
         const dep0 = (await vault.getDepositedAmount()) as bigint;
         const enc = await cofhe.encryptInputs([Encryptable.uint128(dep0)]).execute();
@@ -215,10 +215,10 @@ async function main() {
 
     const ts = Date.now().toString();
 
-    // ── Group 1: Registry hardening (B.5, B.6, Q.3, Q.4, Q.6, S.2, C.3) ──
+
     console.log("── Registry hardening ──");
 
-    // B.5 — empty name now reverts
+
     try {
         await registry.registerStrategy.staticCall("", ethers.zeroPadValue("0x01", 32));
         record("B.5", "FAIL", "Registry empty name still accepted", "expected EmptyName revert");
@@ -226,7 +226,7 @@ async function main() {
         const msg = decodeRevert(e);
         record("B.5", msg.includes("EmptyName") ? "PASS" : "WARN", "Registry empty name reverts", msg);
     }
-    // B.6 — name > 256 bytes reverts
+
     try {
         await registry.registerStrategy.staticCall("x".repeat(257), ethers.zeroPadValue("0x01", 32));
         record("B.6", "FAIL", "Registry oversize name accepted", "expected NameTooLong");
@@ -234,7 +234,7 @@ async function main() {
         const msg = decodeRevert(e);
         record("B.6", msg.includes("NameTooLong") ? "PASS" : "WARN", "Registry name>256B reverts", msg);
     }
-    // Q.3 — ZeroHash reverts
+
     try {
         await registry.registerStrategy.staticCall(`Z-${ts}`, ethers.ZeroHash);
         record("Q.3", "FAIL", "Registry ZeroHash accepted", "expected ZeroWorkflowHash");
@@ -242,7 +242,7 @@ async function main() {
         const msg = decodeRevert(e);
         record("Q.3", msg.includes("ZeroWorkflowHash") ? "PASS" : "WARN", "Registry ZeroHash workflow reverts", msg);
     }
-    // Q.4 / Q.6 — duplicate (creator,name) reverts
+
     {
         const name = `dup-${ts}`;
         const tx1 = await registry.registerStrategy(name, ethers.zeroPadValue("0x01", 32));
@@ -262,7 +262,7 @@ async function main() {
             );
         }
     }
-    // S.2 / C.3 — setActive flips the flag
+
     {
         const sCount = (await registry.strategyCount()) as bigint;
         const txOff = await registry.setActive(sCount, false);
@@ -275,20 +275,20 @@ async function main() {
             `meta.active=${meta[4]}`,
             { tx: txOff.hash },
         );
-        // restore
+
         const txOn = await registry.setActive(sCount, true);
         await txOn.wait();
     }
-    // C.4 / X.7 — proposeVault timelock proposal works
+
     try {
-        // Read the configured timelock from the contract so this works in both
-        // production (48h) and demo (90s) deployments.
+
+
         const vaultDelay = (await registry.VAULT_ROTATION_DELAY()) as bigint;
         const txProp = await (registry.connect(deployer) as typeof registry).proposeVault(deployer.address);
         const r = await txProp.wait();
         const earliest = (await registry.pendingVaultEarliest()) as bigint;
         const nowSec = BigInt(Math.floor(Date.now() / 1000));
-        // Allow +/- 60s clock skew on the lower bound.
+
         const expectedEarliest = nowSec + vaultDelay - 60n;
         record(
             "C.4-X.7",
@@ -297,7 +297,7 @@ async function main() {
             `pendingEarliest=${earliest} delay=${vaultDelay}s`,
             { tx: txProp.hash, gas: r!.gasUsed.toString() },
         );
-        // Try acceptVault before timelock — should revert
+
         try {
             await registry.acceptVault.staticCall();
             record("C.4-acceptEarly", "FAIL", "acceptVault before timelock", "expected TimelockNotElapsed");
@@ -314,15 +314,15 @@ async function main() {
         record("C.4-X.7", "WARN", "proposeVault setup", decodeRevert(e));
     }
 
-    // ── Group 2: Vault partial close (A.3 / F.4 / AA.6) ──
+
     console.log("\n── Vault partial close ──");
 
-    // Open 2 USDC, partial-close 0.5, then full-close remainder
+
     const sIdForClose = (await registry.strategyCount()) as bigint;
     const collateral = 2_000_000n;
     {
-        // F-03: openPosition takes only collateral + debt encrypted (apy/loop
-        // moved to plaintext on the registry's Strategy struct).
+
+
         const enc = await cofhe.encryptInputs([
             Encryptable.uint128(collateral),
             Encryptable.uint128(0n),
@@ -331,7 +331,7 @@ async function main() {
         const r = await tx.wait();
         record("A.3-setup", "PASS", "openPosition 2 USDC for partial close", `block=${r!.blockNumber}`, { tx: tx.hash, gas: r!.gasUsed.toString() });
     }
-    // partial close 0.5 USDC
+
     {
         const closeAmt = 500_000n;
         const enc = await cofhe.encryptInputs([Encryptable.uint128(closeAmt)]).execute();
@@ -348,7 +348,7 @@ async function main() {
             { tx: tx.hash, gas: r!.gasUsed.toString() },
         );
     }
-    // full close
+
     {
         const remaining = (await vault.getDepositedAmount()) as bigint;
         const enc = await cofhe.encryptInputs([Encryptable.uint128(remaining)]).execute();
@@ -358,9 +358,9 @@ async function main() {
         record("A.3-full", has ? "FAIL" : "PASS", "full close clears state", `hasPosition=${has}`, { tx: tx.hash });
     }
 
-    // A.4 — TokenMismatch error (vs ZeroAddress for wrong-token addCollateral)
+
     {
-        // Open a fresh position first (F-03: 2 ciphertexts, not 4)
+
         const enc = await cofhe.encryptInputs([
             Encryptable.uint128(1_000_000n),
             Encryptable.uint128(0n),
@@ -384,10 +384,10 @@ async function main() {
         await (await vault.closePosition(dAmt, cleanEnc[0])).wait();
     }
 
-    // ── Group 3: Pool reserve gate (A.5b2 / A.5c / F.6 / Q.5) ──
+
     console.log("\n── Pool reserve gate ──");
 
-    // Supply 2 USDC, borrow 1 USDC, then attempt to withdraw 2 USDC — should now revert
+
     {
         const supAmt = 2_000_000n;
         const borAmt = 1_000_000n;
@@ -405,7 +405,7 @@ async function main() {
             `liquidReserve=${reserveBefore} totalPlainBorrow=${totalBorrow}`,
         );
 
-        // Try to withdraw the FULL supply — should revert with InsufficientReserve OR UnhealthyAfterWithdraw
+
         try {
             const e3 = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
             await pool.withdraw.staticCall(USDC, supAmt, e3[0]);
@@ -416,14 +416,14 @@ async function main() {
             record("A.5c-F.6-Q.5", closes ? "PASS" : "WARN", "Withdraw with active borrow now reverts", msg);
         }
 
-        // Cleanup: repay + withdraw
+
         const eRep = await cofhe.encryptInputs([Encryptable.uint128(borAmt)]).execute();
         await (await pool.repay(USDC, borAmt, eRep[0])).wait();
         const eWd = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
         await (await pool.withdraw(USDC, supAmt, eWd[0])).wait();
     }
 
-    // AA.1 — ltvNum=0 explicit revert
+
     try {
         const e = await cofhe.encryptInputs([Encryptable.uint128(1n)]).execute();
         await pool.checkLtvAndBorrow.staticCall(USDC, USDC, 1n, e[0], 0, 100);
@@ -433,7 +433,7 @@ async function main() {
         record("AA.1", msg.includes("LtvNumeratorZero") ? "PASS" : "WARN", "ltvNum=0 reverts", msg);
     }
 
-    // ── Group 4: Pool oracle path (Y.1 / Y.2 / Y.3 / F.5 partial) ──
+
     console.log("\n── Pool oracle path ──");
 
     {
@@ -442,7 +442,7 @@ async function main() {
         const e1 = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
         await (await pool.supply(USDC, supAmt, e1[0])).wait();
 
-        // Borrow with oracle-gated LTV (no caller-supplied ltvNum/ltvDen)
+
         try {
             const e2 = await cofhe.encryptInputs([Encryptable.uint128(borAmt)]).execute();
             const tx = await pool.borrowWithOracle(USDC, USDC, borAmt, e2[0]);
@@ -458,7 +458,7 @@ async function main() {
             record("Y.1-Y.2-Y.3", "WARN", "borrowWithOracle", decodeRevert(e));
         }
 
-        // Cleanup
+
         const repayBal = (await pool.getPlainBorrowBalance(USDC)) as bigint;
         if (repayBal > 0n) {
             const eRep = await cofhe.encryptInputs([Encryptable.uint128(repayBal)]).execute();
@@ -471,10 +471,10 @@ async function main() {
         }
     }
 
-    // ── Group 5: Native ETH (F.3 / H.1-H.3) ──
+
     console.log("\n── Native ETH ──");
     {
-        const ethAmt = 1_000_000_000_000_000n; // 0.001 ETH
+        const ethAmt = 1_000_000_000_000_000n;
         try {
             const enc = await cofhe.encryptInputs([Encryptable.uint128(ethAmt)]).execute();
             const txS = await pool.supplyEth(enc[0], { value: ethAmt });
@@ -496,7 +496,7 @@ async function main() {
         }
     }
 
-    // ── Group 6: Pause / unpause (X.1 / X.2 / X.3 / X.4) ──
+
     console.log("\n── Pause / unpause ──");
 
     for (const [name, contract] of [
@@ -516,10 +516,10 @@ async function main() {
         }
     }
 
-    // ── Group 7: SwapRouter deadline + executor rotation (B.7a / B.8 / C.5 / X.7) ──
+
     console.log("\n── SwapRouter ──");
 
-    // B.7a — deadlineOffset < MIN reverts
+
     try {
         const e = await cofhe.encryptInputs([Encryptable.uint128(1n), Encryptable.uint128(1n)]).execute();
         await router.submitSwapIntent.staticCall(USDC, WETH, e[0], e[1], 0n);
@@ -528,7 +528,7 @@ async function main() {
         const msg = decodeRevert(e);
         record("B.7a", msg.includes("DeadlineTooShort") ? "PASS" : "WARN", "deadlineOffset<MIN reverts", msg);
     }
-    // B.8 — deadlineOffset > MAX reverts
+
     try {
         const e = await cofhe.encryptInputs([Encryptable.uint128(1n), Encryptable.uint128(1n)]).execute();
         await router.submitSwapIntent.staticCall(USDC, WETH, e[0], e[1], 8n * 24n * 3600n);
@@ -538,10 +538,10 @@ async function main() {
         record("B.8", msg.includes("DeadlineTooLong") ? "PASS" : "WARN", "deadlineOffset>MAX reverts", msg);
     }
 
-    // C.5 / X.7 — executor rotation timelock proposal
+
     try {
-        // Read the configured timelock from the contract so this works in both
-        // production (48h) and demo (90s) deployments.
+
+
         const execDelay = (await router.EXECUTOR_ROTATION_DELAY()) as bigint;
         const newExec = "0x000000000000000000000000000000000000dEaD";
         const txP = await (router.connect(deployer) as typeof router).proposeExecutor(newExec);
@@ -556,13 +556,13 @@ async function main() {
             `pendingEarliest=${earliest} delay=${execDelay}s`,
             { tx: txP.hash },
         );
-        // Reset pending executor to deployer (zero out pending state by proposing the existing executor)
-        // Actually, proposeExecutor overwrites — we'd need a separate "rescind" function. Just leave it pending; the test still validates the lock.
+
+
     } catch (e) {
         record("C.5-X.7", "WARN", "Router.proposeExecutor", decodeRevert(e));
     }
 
-    // ── Group 8: Composer (F.1 / F.2 plaintext path) ──
+
     console.log("\n── Composer ──");
     {
         const tsLc = Date.now().toString();
@@ -604,7 +604,7 @@ async function main() {
             record("F.1-F.2", "WARN", "Composer plaintext-only register", decodeRevert(e));
         }
 
-        // FHE-bound path — should revert with InvalidSigner (CoFHE limit, documented)
+
         try {
             const enc2 = await cofhe.encryptInputs([
                 Encryptable.uint128(1_000_000n),
@@ -652,7 +652,7 @@ async function main() {
         }
     }
 
-    // ── Wallet snapshot ──
+
     const endEth = await provider.getBalance(tester.address);
     const endUsdc = (await usdc.balanceOf(tester.address)) as bigint;
     record(
@@ -681,7 +681,7 @@ function writeReport(startedAt: number) {
             const parsed = JSON.parse(fs.readFileSync(out, "utf8"));
             if (Array.isArray(parsed)) runs = parsed;
         } catch {
-            /* nope */
+
         }
     }
     const runIndex = runs.length + 1;

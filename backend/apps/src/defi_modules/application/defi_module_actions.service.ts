@@ -15,7 +15,7 @@ export class DefiModuleActionsService {
   async createAction(
     data: CreateDefiModuleActionDto,
   ): Promise<DefiModuleAction> {
-    // Throw 404 if the module does not exist
+    
     await this.defiModulesService.getById(data.module_id);
 
     return this.defiModuleActionsRepository.save(

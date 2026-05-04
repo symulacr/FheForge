@@ -5,7 +5,7 @@ export interface StrategyTemplate {
   id: string;
   name: string;
   description: string;
-  apy: number; // Annual Percentage Yield
+  apy: number; 
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   loopCount: number;
   steps: StrategyStepResponseDto[];
@@ -256,7 +256,7 @@ export class StrategyTemplatesService {
       return null;
     }
 
-    // Sort by APY descending and return the highest
+    
     return filteredTemplates.sort((a, b) => b.apy - a.apy)[0];
   }
 

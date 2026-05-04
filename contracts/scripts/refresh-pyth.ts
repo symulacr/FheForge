@@ -1,13 +1,13 @@
-/**
- * Refresh the on-chain Pyth cache for the price feeds wired into the deployed
- * PriceOracle. Pulls signed VAA bytes from the public Hermes endpoint
- * (https://hermes.pyth.network) and submits them via PriceOracle.updatePriceFeeds,
- * paying the native fee Pyth quotes via getUpdateFee.
- *
- * Usage:
- *   set -a && source .env && set +a
- *   npx hardhat run scripts/refresh-pyth.ts --network arb-sepolia
- */
+
+
+
+
+
+
+
+
+
+
 
 import { ethers } from "hardhat";
 import * as hardhat from "hardhat";
@@ -73,7 +73,7 @@ async function main() {
     console.log(`  tx: ${tx.hash}`);
     await tx.wait();
 
-    // Live readback
+
     const USDC = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
     const WETH = "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73";
     const [usdcPrice, usdcAt] = await oracle.getPriceUsd(USDC);

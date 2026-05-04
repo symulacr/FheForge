@@ -136,7 +136,7 @@ export function ExecutionModal({
   activityId: initialActivityId = null,
   onStatusChange,
 }: ExecutionModalProps) {
-  // The parent passes key={...} to force remount when open/strategy/startFromStep change.
+  
   const initialSteps = useMemo(() => {
     const steps = buildExecutionSteps(strategy);
     return steps.map((step, idx) => ({
@@ -327,7 +327,7 @@ export function ExecutionModal({
 
       const params: OpenStrategyParams = {
         strategyName: strategyId,
-        workflowHash: "", // TODO: wire to strategy registry hash
+        workflowHash: "", 
         collateralToken: collateralTokenInfo.address,
         collateralAmount,
         poolSupplyAmount: supplyAmount,
@@ -339,14 +339,14 @@ export function ExecutionModal({
         swapTokenOut: swapOutTokenInfo.address,
         swapDeadlineOffset: BigInt(SWAP_DEADLINE_OFFSET),
         strategyId: BigInt(strategyId),
-        apyTarget: 0, // TODO: wire to strategy config
+        apyTarget: 0, 
         loopCount: strategy.loops ?? 1,
         collateralPermit: {
           amount: 0n,
           deadline: 0n,
           nonce: 0n,
           signature: "0x",
-        }, // TODO: wire Permit2 authorization
+        }, 
       };
 
       const encrypted: OpenStrategyEncrypted = {
@@ -401,7 +401,7 @@ export function ExecutionModal({
                   break;
                 }
               } catch {
-                // ignore errors and retry
+                
               }
               await new Promise((r) => setTimeout(r, TX_POLLING_INTERVAL));
             }

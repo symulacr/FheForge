@@ -1,33 +1,33 @@
-/**
- * FheForge gas + throughput benchmark — runs identically pre-fix and post-fix.
- *
- * Usage:
- *   set -a && source .env && set +a
- *   BENCH_LABEL=pre  npx hardhat run scripts/benchmark.ts --network arb-sepolia
- *   BENCH_LABEL=post npx hardhat run scripts/benchmark.ts --network arb-sepolia
- *
- * Output:
- *   BENCHMARK_PRE.md  (or BENCHMARK_POST.md depending on label)
- *   deployments/421614.benchmark-{label}.json  (raw machine-readable rows)
- *
- * What it measures (Stage 3 of the remediation protocol):
- *   3.1 Compile-time baseline (recorded by the runner; this script just notes)
- *   3.2 Gas per public/external function with 4 input categories
- *       - min   : smallest valid input
- *       - real  : representative real-world input
- *       - max   : largest valid input that does not revert at the boundary
- *       - fheHi : FHE-encrypted input at the high end of euint128
- *   3.3 Strategy lifecycle gas (register → open → addCollateral → close)
- *   3.4 Routing-path gas (composer-vault-pool-registry chain end-to-end)
- *   3.5 Throughput ceiling (batches of N sequential same-block calls)
- *   3.6 FHE operation overhead (FHE.add vs `+`, FHE.lte vs `<=`, etc.)
- *   3.7 Test suite results (delegated to forge test --gas-report; this script
- *       just records the count).
- *
- * The benchmark is idempotent — pre-cleans state, registers fresh strategies
- * each run so strategyCount is monotonic. Tester wallet must have ≥ 0.05 ETH
- * and ≥ 20 USDC.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import { ethers } from "hardhat";
 import hre from "hardhat";
@@ -48,7 +48,7 @@ interface GasRow {
     blockNumber?: number;
     gasUsed?: string;
     gasPrice?: string;
-    usdEstimate?: string; // at $2 ETH (testnet has no real value; this is a sanity unit)
+    usdEstimate?: string;
     success: boolean;
     revertReason?: string;
 }
@@ -97,11 +97,11 @@ function loadDeployment(chainId: number): {
     return JSON.parse(fs.readFileSync(p, "utf8"));
 }
 
-/// @dev Known custom-error selectors we want to surface by name. CoFHE selectors
-/// come from cofhe-mock-contracts (TaskManager / ACL / signature validation); FheForge
-/// selectors come from our own contracts. This matters for the composer test which
-/// hits CoFHE's `InvalidSigner` — a known limitation of FHE-input pass-through
-/// documented in V2_ARCHITECTURE §3.6.
+
+
+
+
+
 const KNOWN_SELECTORS: Record<string, string> = {
     "0x7ba5ffb5": "InvalidSigner(address,address) [CoFHE: input signed by user, not by intermediary contract]",
     "0xd92e233d": "ZeroAddress()",
@@ -194,7 +194,7 @@ async function main() {
     const pool = await ethers.getContractAt("LendingPool", dep.contracts.LendingPool, tester);
     const router = await ethers.getContractAt("SwapRouter", dep.contracts.SwapRouter, tester);
 
-    // Approvals
+
     if ((await usdc.allowance(tester.address, dep.contracts.StrategyVault)) < ethers.MaxUint256 / 2n) {
         const tx = await usdc.approve(dep.contracts.StrategyVault, ethers.MaxUint256);
         await tx.wait();
@@ -204,14 +204,14 @@ async function main() {
         await tx.wait();
     }
 
-    // CoFHE client
+
     const cfg = createCofheConfig({ environment: "node", supportedChains: [arbSepolia] });
     const cofhe = createCofheClient(cfg);
     const { publicClient, walletClient } = await hre.cofhe.hardhatSignerAdapter(tester);
     await cofhe.connect(publicClient, walletClient);
     await cofhe.permits.createSelf({ issuer: tester.address });
 
-    // Pre-clean
+
     const had = (await vault.hasPosition(tester.address)) as boolean;
     if (had) {
         const dep0 = (await vault.getDepositedAmount()) as bigint;
@@ -279,15 +279,15 @@ async function main() {
         }
     }
 
-    // ── 3.2 Gas per function ────────────────────────────────────────────
+
     console.log(`\n── 3.2 Gas per function (4 categories) ──`);
 
-    // Registry.registerStrategy — min, real, max (capped at 256 bytes per Stage 5 fix)
-    // The post-fix contract requires:
-    //   - name length in [1, 256] bytes (B.5 + B.6)
-    //   - workflowHash != 0 (Q.3)
-    //   - (creator, name) tuple not previously used (Q.4 + Q.6)
-    // To keep this benchmark idempotent across runs we suffix names with a timestamp.
+
+
+
+
+
+
     const ts = Date.now().toString();
     await bench("3.2", "reg-min", "StrategyRegistry", "registerStrategy", "min", "name='x', hash=0x01", async () => {
         const tx = await registry.registerStrategy(`x-${ts}-1`, ethers.zeroPadValue("0x01", 32));
@@ -303,12 +303,12 @@ async function main() {
         return { tx, rcpt: await tx.wait() };
     });
 
-    // Get a strategy id we can use
+
     const sId = (await registry.strategyCount()) as bigint;
     console.log(`  using strategyId=${sId} for vault probes`);
 
-    // Vault.openPosition — min(1 wei USDC, but ZeroAmount blocks 0 — use 1), real(1 USDC), fheHi (encrypted high)
-    // F-03: 2 encrypted inputs (collateral, debt). apy/loop are plaintext on the registry.
+
+
     await bench("3.2", "vault-open-min", "StrategyVault", "openPosition", "min", "1 wei USDC", async () => {
         const enc = await cofhe.encryptInputs([
             Encryptable.uint128(1n), Encryptable.uint128(0n),
@@ -316,7 +316,7 @@ async function main() {
         const tx = await vault.openPosition(USDC, 1n, enc[0], enc[1], sId);
         return { tx, rcpt: await tx.wait() };
     });
-    // close that position before opening a new one
+
     {
         const dep0 = (await vault.getDepositedAmount()) as bigint;
         if (dep0 > 0n) {
@@ -350,7 +350,7 @@ async function main() {
         return { tx, rcpt: await tx.wait() };
     });
 
-    // Pool.supply — min, real
+
     await bench("3.2", "pool-supply-min", "LendingPool", "supply", "min", "1 wei USDC", async () => {
         const enc = await cofhe.encryptInputs([Encryptable.uint128(1n)]).execute();
         const tx = await pool.supply(USDC, 1n, enc[0]);
@@ -381,12 +381,12 @@ async function main() {
         return { tx, rcpt: await tx.wait() };
     });
 
-    // SwapRouter
+
     let intentId: string | null = null;
-    // Read MAX_DEADLINE_OFFSET on-chain so the script works in both production
-    // (max=7d) and demo (max=300s) deployments. Pick max/2 to leave headroom.
+
+
     const routerMaxDeadline = (await router.MAX_DEADLINE_OFFSET()) as bigint;
-    const deadlineOffset = routerMaxDeadline / 2n; // mid-window, comfortably valid
+    const deadlineOffset = routerMaxDeadline / 2n;
     await bench("3.2", "router-submit", "SwapRouter", "submitSwapIntent", "real", `USDC→WETH 1 USDC, dl ${deadlineOffset}s`, async () => {
         const enc = await cofhe.encryptInputs([Encryptable.uint128(1_000_000n), Encryptable.uint128(990_000n)]).execute();
         const tx = await router.submitSwapIntent(USDC, WETH, enc[0], enc[1], deadlineOffset);
@@ -399,7 +399,7 @@ async function main() {
                     break;
                 }
             } catch {
-                /* nope */
+
             }
         }
         return { tx, rcpt };
@@ -416,7 +416,7 @@ async function main() {
         });
     }
 
-    // ── 3.3 Strategy lifecycle ──────────────────────────────────────────
+
     console.log(`\n── 3.3 Strategy lifecycle (register→open→add→close) ──`);
 
     let lifecycleGas = 0n;
@@ -466,16 +466,16 @@ async function main() {
         success: true,
     });
 
-    // ── 3.4 v2 surfaces: oracle-gated borrow + composer + native ETH ─────
-    // These rows exist only post-fix (N/A pre-fix). Their presence proves
-    // the deferred items closed in this milestone produce real on-chain gas.
+
+
+
     console.log(`\n── 3.4 v2 surfaces (oracle / composer / native ETH) ──`);
 
-    // 3.4.a — Oracle-gated borrow (Y.1 / Y.3 / F.5 partial)
-    // Requires a fresh supply (the tester USDC) so the pool has reserve.
+
+
     try {
-        const supAmt = 2_000_000n; // 2 USDC
-        const borAmt = 500_000n; // 0.5 USDC
+        const supAmt = 2_000_000n;
+        const borAmt = 500_000n;
         const e1 = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
         const t1 = await pool.supply(USDC, supAmt, e1[0]);
         await t1.wait();
@@ -486,7 +486,7 @@ async function main() {
             return { tx, rcpt: await tx.wait() };
         });
 
-        // Cleanup
+
         const repayEnc = await cofhe.encryptInputs([Encryptable.uint128(borAmt)]).execute();
         await (await pool.repay(USDC, borAmt, repayEnc[0])).wait();
         const supNow = (await pool.getPlainSupplyBalance(USDC)) as bigint;
@@ -498,35 +498,35 @@ async function main() {
         console.log(`  ! borrowWithOracle benchmark: ${(e as Error).message.slice(0, 200)}`);
     }
 
-    // 3.4.b — Composer.openLeveragedStrategy (F.1 / F.2 / O.2 / O.3)
-    //
-    // IMPORTANT FINDING (closes a gap in V2_ARCHITECTURE §3.6 / P.1-P.3 / U.2):
-    // CoFHE binds encrypted inputs to a specific signer. When the user signs an
-    // input for THEIR address and a Composer forwards it to the Vault/Pool, the
-    // FHE precompile reverts with `InvalidSigner(address,address)` (selector
-    // 0x7ba5ffb5) because the immediate caller of FHE.asEuintN (the Composer
-    // intermediary) is NOT the input's signer.
-    //
-    // We therefore exercise the composer's PLAINTEXT-only path (an additional
-    // strategy registration + zero-FHE flow), and capture the FHE-bound revert
-    // explicitly so the post-fix benchmark records the limit with the correct
-    // error name. This proves the architectural finding and informs the v2.1
-    // follow-up (encrypt-for-composer or delegated permits — see §3.6).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     try {
         const composerAddr = (dep.contracts as Record<string, string>).FheForgeComposer;
         if (composerAddr) {
             const composer = await ethers.getContractAt("FheForgeComposer", composerAddr, tester);
-            // Approve composer to pull USDC from tester (one-shot infinite approval).
+
             const allow = (await usdc.allowance(tester.address, composerAddr)) as bigint;
             if (allow < ethers.MaxUint256 / 2n) {
                 const apprTx = await usdc.approve(composerAddr, ethers.MaxUint256);
                 await apprTx.wait();
             }
 
-            const lcCol = 1_000_000n; // 1 USDC for vault open (FHE-bound; will demo the limit)
+            const lcCol = 1_000_000n;
             const tsLc = Date.now().toString();
-            // F-03: OpenStrategyEncrypted shrunk from 8 → 6 ciphertexts.
-            // apy/loop are plaintext on OpenStrategyParams now.
+
+
             const enc = await cofhe
                 .encryptInputs([
                     Encryptable.uint128(lcCol),
@@ -537,12 +537,12 @@ async function main() {
                     Encryptable.uint128(0n),
                 ])
                 .execute();
-            // Permit2 collateralPermit struct (round-13 — replaces EIP-2612).
-            // deadline=0 ⇒ skip Permit2; pre-existing approve covers the pull.
+
+
             const permitSkip = { amount: 0n, deadline: 0n, nonce: 0n, signature: "0x" };
 
-            // Probe 1: full FHE-bound flow — expected to revert with InvalidSigner.
-            //          Proves the composer architecture surfaces the exact limit.
+
+
             await bench(
                 "3.4",
                 "composer-openLev-fhe",
@@ -583,9 +583,9 @@ async function main() {
                 },
             );
 
-            // Probe 2: plaintext-only orchestration — register a strategy via the
-            // composer with collateralAmount=0 (no vault open, no FHE pass-through).
-            // This proves the composer's atomic register+pause+events path works.
+
+
+
             await bench(
                 "3.4",
                 "composer-openLev-plain",
@@ -599,7 +599,7 @@ async function main() {
                             strategyName: `composer-plain-${tsLc}`,
                             workflowHash: ethers.zeroPadValue("0xc1", 32),
                             collateralToken: USDC,
-                            collateralAmount: 0n, // skip vault open
+                            collateralAmount: 0n,
                             poolSupplyAmount: 0n,
                             borrowToken: ethers.ZeroAddress,
                             poolBorrowAmount: 0n,
@@ -632,9 +632,9 @@ async function main() {
         console.log(`  ! Composer benchmark: ${(e as Error).message.slice(0, 200)}`);
     }
 
-    // 3.4.c — Native ETH supply/withdraw via WETH wrapper (F.3)
+
     try {
-        const ethAmt = 1_000_000_000_000_000n; // 0.001 ETH
+        const ethAmt = 1_000_000_000_000_000n;
         const enc = await cofhe.encryptInputs([Encryptable.uint128(ethAmt)]).execute();
         await bench("3.4", "pool-supplyEth", "LendingPool", "supplyEth", "real", "0.001 ETH wrap-and-supply", async () => {
             const tx = await pool.supplyEth(enc[0], { value: ethAmt });
@@ -650,12 +650,12 @@ async function main() {
         console.log(`  ! Native ETH benchmark: ${(e as Error).message.slice(0, 200)}`);
     }
 
-    // ── 3.5 Throughput ceiling ──────────────────────────────────────────
+
     console.log(`\n── 3.5 Throughput ceiling (registerStrategy batches) ──`);
 
-    // We test by calling registerStrategy N times in sequential txs and
-    // computing per-op gas. Stop on first revert per Q3 = "Stop at first failure".
-    // Capped at N=250 (per user instruction "bench to 250 only").
+
+
+
     for (const N of [1, 5, 10, 25, 50, 100, 250]) {
         let cumGas = 0n;
         let stopReason: string | undefined;
@@ -689,7 +689,7 @@ async function main() {
         }
     }
 
-    // ── 3.6 FHE operation overhead ──────────────────────────────────────
+
     console.log(`\n── 3.6 FHE op overhead (delegated to forge test --gas-report and the rows above) ──`);
     rows.push({
         phase: "3.6",
@@ -702,7 +702,7 @@ async function main() {
         gasUsed: "see 3.2.vault-add-real (~330k) which contains 1× FHE.add + 4× ACL grants",
     });
 
-    // ── Wallet end snapshot ─────────────────────────────────────────────
+
     const endEth = await provider.getBalance(tester.address);
     const endUsdc = (await usdc.balanceOf(tester.address)) as bigint;
     const ethSpent = startEth - endEth;
@@ -735,7 +735,7 @@ async function main() {
     fs.writeFileSync(jsonOut, JSON.stringify(out, null, 2));
     console.log(`\n  raw JSON → ${jsonOut}`);
 
-    // Markdown
+
     const mdName = label === "pre" ? "BENCHMARK_PRE.md" : "BENCHMARK_POST.md";
     const mdPath = path.join(__dirname, "..", mdName);
     let md = `# ${mdName.replace(".md", "")} — Stage ${label === "pre" ? "3" : "7"} of remediation protocol\n\n`;

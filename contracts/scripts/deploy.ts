@@ -19,14 +19,14 @@ const CONTRACTS = [
   "FheForgeComposer",
 ] as const;
 
-// Production-mode L1/L2 chain IDs that MUST never accept demo-mode parameters.
+
 const PRODUCTION_CHAIN_IDS = new Set<number>([
-  1, // Ethereum mainnet
-  42161, // Arbitrum One
-  10, // Optimism
-  137, // Polygon
-  8453, // Base
-  43114, // Avalanche C
+  1,
+  42161,
+  10,
+  137,
+  8453,
+  43114,
 ]);
 
 interface TimingParams {
@@ -47,22 +47,22 @@ function selectTimingParams(chainId: number): TimingParams {
     );
   }
   if (demoEnabled) {
-    // 5-min demo budget: longest cycle (rotation + accept) ≈ 100 s.
+
     return {
       vaultRotationDelay: 90n,
       minDeadlineOffset: 5n,
       maxDeadlineOffset: 300n,
       executorRotationDelay: 90n,
-      defaultStaleThreshold: 86400n, // KEEP 1 day — Chainlink USDC heartbeat
+      defaultStaleThreshold: 86400n,
       modeLabel: "demo",
     };
   }
   return {
-    vaultRotationDelay: 172800n, // 48 h
+    vaultRotationDelay: 172800n,
     minDeadlineOffset: 30n,
-    maxDeadlineOffset: 604800n, // 7 days
+    maxDeadlineOffset: 604800n,
     executorRotationDelay: 172800n,
-    defaultStaleThreshold: 86400n, // 1 day
+    defaultStaleThreshold: 86400n,
     modeLabel: "production",
   };
 }
@@ -130,9 +130,9 @@ async function main() {
     `SwapRouter:       ${routerAddr} (tx: ${routerDeployTx?.hash ?? "n/a"}) (executor: ${executor})`,
   );
 
-  // Pyth Network contract — chain → address.
-  // arb-sepolia (421614): 0x4374e5a8b9C22271E9EB878A2AA31DE97DF15DAF (per Pyth docs).
-  // base-sepolia (84532): 0xA2aa501b19aff244D90cc15a4Cf739D2725B5729.
+
+
+
   const PYTH_BY_CHAIN: Record<number, string> = {
     421614: "0x4374e5a8b9C22271E9EB878A2AA31DE97DF15DAF",
     84532: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
@@ -159,14 +159,14 @@ async function main() {
   const composerAddr = await composer.getAddress();
   console.log(`FheForgeComposer: ${composerAddr} (tx: ${composerDeployTx?.hash ?? "n/a"})`);
 
-  // Wire oracle + WETH into the pool. Tokens + Chainlink feeds are configured by
-  // a follow-up admin script (configure-oracle.ts) so deploys are idempotent and
-  // re-deployable without baking testnet addresses into the deployer logic.
+
+
+
   const setOracleTx = await pool.setOracle(oracleAddr);
   await setOracleTx.wait();
   console.log(`Pool.setOracle:   ${oracleAddr} (tx: ${setOracleTx.hash})`);
 
-  const wethAddr = process.env.WETH_ADDRESS ?? "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73"; // arb-sepolia WETH
+  const wethAddr = process.env.WETH_ADDRESS ?? "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73";
   const setWethTx = await pool.setWeth(wethAddr);
   await setWethTx.wait();
   console.log(`Pool.setWeth:     ${wethAddr} (tx: ${setWethTx.hash})`);
@@ -233,9 +233,9 @@ async function main() {
   console.log(`NEXT_PUBLIC_ORACLE_ADDRESS=${oracleAddr}`);
   console.log(`NEXT_PUBLIC_COMPOSER_ADDRESS=${composerAddr}`);
 
-  // Optional: auto-forward 25% of remaining deployer balance to the tester
-  // wallet so end-to-end hardhat scripts can run as the tester. Disabled by
-  // default; enable with AUTO_FUND_TESTER=1 + TESTER_ADDRESS=0x...
+
+
+
   if (process.env.AUTO_FUND_TESTER === "1") {
     const testerAddress = process.env.TESTER_ADDRESS;
     if (testerAddress && ethers.isAddress(testerAddress)) {

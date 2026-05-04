@@ -1,12 +1,12 @@
-/**
- * Manual cleanup of tester wallet state on arb-sepolia.
- *
- * Use when prior failed stress runs left dangling vault positions, pool supplies,
- * or pool borrows that the per-run pre-run cleanup can't drain (e.g. after a
- * CoFHE SDK upgrade invalidates stored ciphertext handles).
- *
- * Run: npx hardhat run scripts/clean-tester-state.ts --network arb-sepolia
- */
+
+
+
+
+
+
+
+
+
 
 import { ethers } from "hardhat";
 import hre from "hardhat";
@@ -25,14 +25,14 @@ async function main(): Promise<void> {
   const tester = signers[1];
   console.log(`Cleanup wallet: ${tester.address}`);
 
-  // CoFHE init (needed for encrypted close handle).
+
   const config = createCofheConfig({ environment: "node", supportedChains: [arbSepolia] });
   const client = createCofheClient(config);
   const { publicClient, walletClient } = await hre.cofhe.hardhatSignerAdapter(tester);
   await client.connect(publicClient, walletClient);
   await client.permits.createSelf({ issuer: tester.address });
 
-  // 1. Vault position.
+
   const vault = await ethers.getContractAt("StrategyVault", dep.contracts.StrategyVault, tester);
   const has = (await vault.hasPosition(tester.address)) as boolean;
   if (has) {
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
     console.log("✓ no vault position");
   }
 
-  // 2. Pool supply / borrow plain balances.
+
   const pool = await ethers.getContractAt("LendingPool", dep.contracts.LendingPool, tester);
   const USDC = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
   const supply = (await pool.getPlainSupplyBalance(USDC)) as bigint;

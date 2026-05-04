@@ -45,7 +45,7 @@ export function Preloader() {
           <span className="text-accent">$</span> init fheforge...
         </div>
 
-        {/* Progress bar */}
+        
         <div className="h-px bg-border w-full overflow-hidden">
           <div
             ref={barRef}

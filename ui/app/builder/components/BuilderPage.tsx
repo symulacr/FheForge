@@ -20,7 +20,7 @@ import {
   validateConnection,
 } from "@/lib/defi-connection-rules";
 
-// Dynamic ReactFlow components to enable code-splitting on /builder route
+
 const ReactFlow = dynamic(
   () => import("reactflow").then((mod) => mod.ReactFlow),
   { ssr: false, loading: () => <div>Loading builder...</div> },
@@ -41,9 +41,9 @@ const MiniMap = dynamic(() => import("reactflow").then((mod) => mod.MiniMap), {
   ssr: false,
   loading: () => null,
 });
-// Lightweight addEdge shim since we no longer statically import from reactflow
+
 const addEdge = (params: Edge | Connection, edges: Edge[]) => {
-  // basic edge adder compatible with existing usage
+  
   const id = (params as Edge).id ?? `e${edges.length + 1}`;
   if (
     edges.find((e) => e.source === params.source && e.target === params.target)
@@ -182,12 +182,12 @@ function Builder() {
 
   return (
     <div className="flex flex-1 text-white px-6 pb-6 pt-4 min-h-0 gap-6">
-      {/* Sidebar */}
+      
       <div className="w-80 custom-scroll pr-2">
         <Sidebar modules={modules} onSelect={handleAddNode} />
       </div>
 
-      {/* Canvas */}
+      
       <div
         className="
           flex-1
@@ -209,7 +209,7 @@ function Builder() {
           onNodeClick={(_, node) => setSelectedNode(node)}
           fitView
         >
-          {/* CREATE BUTTON */}
+          
           <button
             onClick={() => {
               if (!validateWorkflow()) return;
@@ -239,7 +239,7 @@ function Builder() {
         </ReactFlow>
       </div>
 
-      {/* CONFIG PANEL */}
+      
       {selectedNode && (
         <ConfigPanel
           node={selectedNode}

@@ -167,16 +167,16 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
   const requiresTokenOut = isSwap || isBorrow || isJoinStrategy;
 
-  /**
-   * Pairs from API -> fallback node data
-   */
+  
+
+
   const pairs = useMemo<DefiPair[]>(() => {
     return fallbackPairs;
   }, [fallbackPairs]);
 
-  /**
-   * Unique token in options
-   */
+  
+
+
   const tokenInOptions = useMemo(() => {
     const map = new Map<string, NonNullable<DefiPair["token_in"]>>();
     pairs.forEach((p: DefiPair) => {
@@ -188,9 +188,9 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
     return Array.from(map.values());
   }, [pairs]);
 
-  /**
-   * Token out options by tokenIn
-   */
+  
+
+
   const tokenOutOptions = useMemo(() => {
     const map = new Map<string, NonNullable<DefiPair["token_out"]>>();
     pairs
@@ -666,13 +666,13 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
           {pairs.length > 0 && (
             <>
-              {/* --- TOKEN IN SECTION --- */}
+              
               <div className="space-y-3">
                 <label className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold ml-1">
                   Token In
                 </label>
 
-                {/* CUSTOM DROPDOWN CHO TOKEN IN */}
+                
                 <div className="relative">
                   <button
                     type="button"
@@ -731,7 +731,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
                     </div>
                   </button>
 
-                  {/* Menu List */}
+                  
                   {isTokenInOpen && !incomingEdge && (
                     <>
                       <div
@@ -810,7 +810,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
                 )}
               </div>
 
-              {/* --- TOKEN OUT SECTION --- */}
+              
               {requiresTokenOut && (
                 <div className="space-y-3 pt-2">
                   <label className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold ml-1">

@@ -76,7 +76,7 @@ export function SearchBar({
   return (
     <div className="space-y-4">
       <div className="flex gap-3">
-        {/* Search input */}
+        
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -87,7 +87,7 @@ export function SearchBar({
           />
         </div>
 
-        {/* Tags filter dropdown */}
+        
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -137,7 +137,7 @@ export function SearchBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Clear all filters button */}
+        
         {hasActiveFilters && (
           <Button
             variant="default"
@@ -150,7 +150,7 @@ export function SearchBar({
         )}
       </div>
 
-      {/* Tags badges */}
+      
       <div className="flex gap-2 flex-wrap">
         {availableTags.map((tag) => (
           <Badge

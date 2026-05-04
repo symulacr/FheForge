@@ -22,7 +22,7 @@ export function SupplyRightLabel({ apy }: { apy?: number }) {
 export default function DefiNodeSupply({ data }: Props) {
   return (
     <div className="pt-2">
-      {/* Middle amount */}
+      
       <div className="flex min-h-[88px] items-center justify-center">
         <div className="flex items-center gap-3">
           <div className="text-[30px] font-semibold leading-none text-white">

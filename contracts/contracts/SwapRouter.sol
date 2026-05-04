@@ -6,12 +6,12 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
-/// @title  SwapRouter
-/// @notice Confidential swap-intent router. Users submit intents with
-///         encrypted amounts; a trusted off-chain executor decrypts via FHE
-///         permits, performs the swap off-chain, and settles the output
-///         on-chain. The executor is fully trusted — the contract cannot
-///         enforce that it honours the encrypted minAmountOut.
+
+
+
+
+
+
 contract SwapRouter is Pausable {
     using SafeERC20 for IERC20;
 
@@ -34,7 +34,7 @@ contract SwapRouter is Pausable {
     address public executor;
     address public immutable OWNER;
     address public pendingExecutor;
-    /// @notice Earliest `block.timestamp` at which `acceptExecutor` may be called.
+
     uint256 public pendingExecutorEarliest;
 
     error SameToken();
@@ -94,7 +94,7 @@ contract SwapRouter is Pausable {
         OWNER = msg.sender;
     }
 
-    /// @notice Propose a new executor. Starts the rotation timelock.
+
     function proposeExecutor(address newExecutor) external onlyOwner {
         if (newExecutor == address(0)) revert ZeroAddress();
         pendingExecutor = newExecutor;
@@ -102,7 +102,7 @@ contract SwapRouter is Pausable {
         emit ExecutorProposed(newExecutor, pendingExecutorEarliest);
     }
 
-    /// @notice Finalise an executor rotation after the timelock has elapsed.
+
     function acceptExecutor() external {
         if (pendingExecutor == address(0)) revert NoPendingExecutor();
         if (block.timestamp < pendingExecutorEarliest) revert TimelockNotElapsed();
@@ -123,8 +123,8 @@ contract SwapRouter is Pausable {
         emit Unpaused();
     }
 
-    /// @notice Submit a new swap intent with encrypted amounts.
-    /// @return intentId Deterministic id derived from (chainid, this, user, nonce).
+
+
     function submitSwapIntent(
         address tokenIn,
         address tokenOut,
@@ -161,10 +161,10 @@ contract SwapRouter is Pausable {
         emit IntentSubmitted(intentId, msg.sender, tokenIn, tokenOut, deadline);
     }
 
-    /// @return tokenIn  Input token.
-    /// @return tokenOut Output token.
-    /// @return user     Intent creator.
-    /// @return deadline Expiry timestamp.
+
+
+
+
     function getIntentMeta(
         bytes32 intentId
     ) external view returns (address tokenIn, address tokenOut, address user, uint256 deadline) {
@@ -172,7 +172,7 @@ contract SwapRouter is Pausable {
         return (i.tokenIn, i.tokenOut, i.user, i.deadline);
     }
 
-    /// @notice Return the encrypted input amount; caller must be the creator.
+
     function getAmountIn(bytes32 intentId) external returns (euint128) {
         SwapIntent storage i = intents[intentId];
         if (i.user != msg.sender) revert NotCreator();
@@ -181,16 +181,16 @@ contract SwapRouter is Pausable {
         return i.amountIn;
     }
 
-    /// @notice Cancel a pending intent; only the original creator may call.
+
     function cancelIntent(bytes32 intentId) external {
         if (intents[intentId].user != msg.sender) revert NotCreator();
         delete intents[intentId];
         emit IntentCancelled(intentId, msg.sender);
     }
 
-    /// @notice Execute an intent and forward `outputAmount` of `tokenOut` from
-    ///         the executor (msg.sender) to the user. Only the current
-    ///         executor may call.
+
+
+
     function executeIntent(bytes32 intentId, uint256 outputAmount) external whenNotPaused {
         if (msg.sender != executor) revert NotExecutor();
         SwapIntent storage i = intents[intentId];

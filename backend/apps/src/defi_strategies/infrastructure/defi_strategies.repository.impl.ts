@@ -116,7 +116,7 @@ export class DefiStrategiesRepositoryImplement implements DefiStrategiesReposito
   }
 
   public async delete(id: string): Promise<void> {
-    // First delete all strategy versions (cascade)
+    
     const { error: versionError } = await this.supabase
       .getClient()
       .from('defi_strategy_versions')
@@ -129,7 +129,7 @@ export class DefiStrategiesRepositoryImplement implements DefiStrategiesReposito
       );
     }
 
-    // Then delete the strategy itself
+    
     const { error } = await this.supabase
       .getClient()
       .from('defi_strategies')

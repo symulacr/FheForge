@@ -69,7 +69,7 @@ export function StrategyTabs({ strategy, simulateData }: StrategyTabsProps) {
         })}
       </TabsList>
 
-      {/* === Tab Contents === */}
+      
       <TabsContent value="overview">
         <StrategyOverview strategy={strategy} simulateData={simulateData} />
       </TabsContent>

@@ -83,24 +83,24 @@ export default function PromptPage() {
   return (
     <div className="flex flex-1 min-h-[calc(100vh-120px)] items-center justify-center px-6 py-5 text-white">
       <div className="flex w-full max-w-7xl items-start justify-center gap-6">
-        {/* LEFT FORM */}
+        
         <div className="flex w-full max-w-[820px] flex-col relative overflow-hidden bg-card text-card-foreground border border-border p-6 shadow-lg transition-colors duration-300 hover:border-accent/50">
           <div className="space-y-5">
-            {/* Page Title */}
+            
             <div className="space-y-1">
               <h1 className="text-2xl font-semibold tracking-tight text-white">
                 Create Prompt Strategy
               </h1>
             </div>
 
-            {/* Starting Token & Amount */}
+            
             <section className="space-y-2">
               <h2 className="text-sm font-medium text-white">
                 Starting Token & Amount
               </h2>
 
               <div className="flex gap-3">
-                {/* Amount Input */}
+                
                 <div className="relative w-32">
                   <input
                     type="number"
@@ -130,7 +130,7 @@ export default function PromptPage() {
                   />
                 </div>
 
-                {/* Token Dropdown */}
+                
                 <div className="relative flex-1 token-dropdown">
                   <div
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -180,7 +180,7 @@ export default function PromptPage() {
                     />
                   </div>
 
-                  {/* Dropdown Options */}
+                  
                   {isDropdownOpen && (
                     <>
                       <div
@@ -219,7 +219,7 @@ export default function PromptPage() {
               </div>
             </section>
 
-            {/* Strategy Prompt */}
+            
             <section className="space-y-2">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-sm font-medium text-white">
@@ -250,7 +250,7 @@ export default function PromptPage() {
             </section>
           </div>
 
-          {/* ACTIONS */}
+          
           <div className="mt-5 flex items-center justify-end gap-3">
             <button
               onClick={onCancel}
@@ -284,29 +284,29 @@ export default function PromptPage() {
           </div>
         </div>
 
-        {/* RIGHT GUIDE PANEL */}
+        
         <div className="w-[320px] shrink-0">
           {submitting ? (
-            /* Strategy Generation Skeleton */
+            
             <StrategyFlowSkeleton />
           ) : strategyResult ? (
-            /* Strategy Flow Preview */
+            
             <StrategyFlowPreview
               strategy={strategyResult}
               selectedToken={selectedToken}
               onRunStrategy={handleRunStrategyClick}
             />
           ) : (
-            /* Strategy Guide */
+            
             <div className="relative overflow-hidden  bg-card text-card-foreground  border border-border p-5 shadow-lg  transition-all duration-300 hover:border-accent/50  ">
               <div className="space-y-5">
-                {/* Header */}
+                
                 <div className="flex items-center gap-2 text-yellow-400">
                   <Lightbulb className="h-4 w-4" />
                   <span className="text-sm font-semibold">Strategy Guide</span>
                 </div>
 
-                {/* Guide Tips */}
+                
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <h3 className="text-xs font-medium text-muted">

@@ -1,6 +1,6 @@
-/// Database row types and Supabase Database schema for typed clients.
-/// snake_case column names match the PostgreSQL schema; camelCase handles
-/// happen at the domain mapping layer.
+
+
+
 
 export interface UserRow {
   id: string;

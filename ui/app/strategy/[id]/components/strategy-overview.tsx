@@ -29,10 +29,10 @@ export function StrategyOverview({
 
   return (
     <div className="space-y-6">
-      {/* === STRATEGY HEADER === */}
+      
       <StrategyHeader strategy={strategy ?? {}} simulateData={simulateData} />
 
-      {/* === DESCRIPTION SECTION === */}
+      
       <div className="glass p-6 space-y-5">
         <div className="flex items-center gap-3 ">
           <div className="h-1 w-1 bg-accent"></div>
@@ -57,7 +57,7 @@ export function StrategyOverview({
           </div>
         )}
 
-        {/* Agents */}
+        
         {safeAgents.length > 0 && (
           <div className="pt-4 border-t border-border/50">
             <div className="flex items-center gap-2 mb-3">

@@ -37,7 +37,7 @@ export default function StepStack({
     if (!node) cancelAnimationFrame(rafRef.current);
   }, []);
 
-  // Trigger scroll animation when currentStep changes
+  
   if (currentStep !== lastScrolledStepRef.current) {
     lastScrolledStepRef.current = currentStep;
     cancelAnimationFrame(rafRef.current);
@@ -101,17 +101,17 @@ export default function StepStack({
 
               let yPosition = index * CARD_OFFSET;
 
-              // Add extra spacing after active step
+              
               if (index > currentStep) {
                 yPosition += 50;
               }
 
               if (hoveredCard !== null) {
                 if (index < hoveredCard) {
-                  // Cards above hovered card move up
+                  
                   yPosition -= 50;
                 } else if (index > hoveredCard) {
-                  // Cards below hovered card move down
+                  
                   yPosition += 50;
                 }
               }

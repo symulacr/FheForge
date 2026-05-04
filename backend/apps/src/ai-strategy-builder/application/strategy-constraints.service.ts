@@ -130,7 +130,7 @@ export class StrategyConstraintsService {
         await this.defiPairsService.getAvailablePairsForToken(tokenId);
       const operations: AvailableOperation[] = [];
 
-      // Process pairs where this token is input
+      
       for (const pair of asInput) {
         const tokenOut = this.getTokenById(pair.token_out_id!);
 
@@ -149,7 +149,7 @@ export class StrategyConstraintsService {
         });
       }
 
-      // Process pairs where this token is output
+      
       for (const pair of asOutput) {
         const tokenIn = this.getTokenById(pair.token_in_id!);
 
@@ -161,14 +161,14 @@ export class StrategyConstraintsService {
         });
       }
 
-      // Add SUPPLY operation (token can always be supplied)
+      
       operations.push({
         type: OperationType.SUPPLY,
         tokenIn: this.getTokenById(tokenId),
         supported: true,
       });
 
-      // Add ENABLE_E_MODE (always available)
+      
       operations.push({
         type: OperationType.ENABLE_E_MODE,
         supported: true,
@@ -245,10 +245,10 @@ export class StrategyConstraintsService {
     const intent = userIntent.toLowerCase();
     const context = additionalContext?.toLowerCase() || '';
 
-    let maxLeverage = 3; // Default
+    let maxLeverage = 3; 
     let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'MEDIUM';
 
-    // Analyze risk tolerance
+    
     if (
       intent.includes('conservative') ||
       intent.includes('safe') ||
@@ -268,7 +268,7 @@ export class StrategyConstraintsService {
       riskLevel = 'MEDIUM';
     }
 
-    // Override based on specific constraints
+    
     if (context.includes('max') && context.includes('leverage')) {
       const leverageMatch = context.match(/max(?:imum)?\s*(\d+)x?\s*leverage/);
       if (leverageMatch) {
@@ -278,7 +278,7 @@ export class StrategyConstraintsService {
 
     return {
       maxLeverage,
-      supportedPairs: [], // Will be populated based on available pairs
+      supportedPairs: [], 
       riskLevel,
     };
   }
@@ -316,7 +316,7 @@ export class StrategyConstraintsService {
         }
 
         case OperationType.ENABLE_E_MODE:
-          return true; // Always supported
+          return true; 
 
         default:
           return false;

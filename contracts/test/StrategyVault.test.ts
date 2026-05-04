@@ -9,7 +9,7 @@ describe("StrategyVault", () => {
     const [, user, user2] = await ethers.getSigners();
 
     const Registry = await ethers.getContractFactory("StrategyRegistry");
-    // Production-mode timelock for hardhat tests (48h). Demo-mode would pass 90.
+
     const registry = await Registry.deploy(48n * 3600n);
     await registry.waitForDeployment();
 
@@ -18,8 +18,8 @@ describe("StrategyVault", () => {
     await vault.waitForDeployment();
 
     await registry.setVault(await vault.getAddress());
-    // Strategy registration: workflowHash must be non-zero (Q.3 fix); use a
-    // deterministic placeholder so tests are reproducible.
+
+
     await registry.registerStrategy(
       "Test Strategy",
       ethers.zeroPadValue("0xdeadbeef", 32),
@@ -44,8 +44,8 @@ describe("StrategyVault", () => {
     collateralWei: bigint,
     debtWei: bigint,
   ) {
-    // Post F-03: only collateral + debt remain encrypted on the position.
-    // apyTarget + loopCount are plaintext on the Strategy struct.
+
+
     const [eCollateral, eDebt] = await userClient
       .encryptInputs([
         Encryptable.uint128(collateralWei),

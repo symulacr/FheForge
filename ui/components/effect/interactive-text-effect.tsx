@@ -237,7 +237,7 @@ const ParticleTextEffect: React.FC<ParticleTextEffectProps> = ({
     const canvas = canvasRef.current;
     if (!ctx || !canvas) return;
 
-    timeRef.current += 1; // increment time for floating animation
+    timeRef.current += 1; 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particlesRef.current.forEach((p) =>
       p.move(
@@ -304,8 +304,8 @@ const ParticleTextEffect: React.FC<ParticleTextEffectProps> = ({
     initializeRef.current();
   }, []);
 
-  // On first render prevDepsRef is empty — initialization is handled by the
-  // canvas ref callback. On subsequent renders where deps changed, schedule
+  
+  
   const depsKey = `${text}|${colors.join(",")}|${animationForce}|${particleDensity}`;
   if (prevDepsRef.current !== "" && prevDepsRef.current !== depsKey) {
     if (animationIdRef.current) {

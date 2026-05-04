@@ -38,8 +38,8 @@ const config = {
       allowUnlimitedContractSize: true,
     },
   },
-  // Etherscan v2 API: single key works for all supported chains.
-  // https://docs.etherscan.io/etherscan-v2
+
+
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY || "",
     customChains: [

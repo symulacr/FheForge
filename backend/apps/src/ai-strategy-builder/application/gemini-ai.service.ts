@@ -49,12 +49,12 @@ export class GeminiAiService {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
       model: 'gemini-3-flash-preview',
-      // generationConfig: {
-      //   temperature: 0.1,
-      //   topK: 1,
-      //   topP: 0.8,
-      //   maxOutputTokens: 2048,
-      // },
+      
+      
+      
+      
+      
+      
     });
   }
 
@@ -97,7 +97,7 @@ export class GeminiAiService {
       needsEMode,
     );
 
-    // Retry logic with exponential backoff
+    
     const maxRetries = 3;
     let retryCount = 0;
     let lastError: unknown;
@@ -112,7 +112,7 @@ export class GeminiAiService {
           throw new Error('Gemini returned empty response');
         }
 
-        // Parse JSON response from Gemini
+        
         let steps: StrategyStepResponseDto[];
         const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
         if (jsonMatch) {
@@ -139,10 +139,10 @@ export class GeminiAiService {
           );
         }
 
-        // Post-processing: Remove ENABLE_E_MODE from simple supply/borrow strategies
+        
         steps = this.filterInvalidEnableEMode(steps, userIntent);
 
-        // Post-processing: Add initial SWAP step if needed
+        
         steps = this.addInitialSwapIfNeeded(
           steps,
           userIntent,
@@ -157,14 +157,14 @@ export class GeminiAiService {
         );
         lastError = error;
 
-        // Check if it's a rate limit error
+        
         const isRateLimit =
           getErrorStatus(error) === 429 ||
           getErrorMessage(error).includes('429') ||
           getErrorMessage(error).includes('Too Many Requests');
 
         if (isRateLimit && retryCount < maxRetries) {
-          // Exponential backoff: 2^retryCount seconds
+          
           const delaySeconds = Math.pow(2, retryCount);
 
           await new Promise((resolve) =>
@@ -174,15 +174,15 @@ export class GeminiAiService {
           continue;
         }
 
-        // If not rate limit or max retries reached, break and throw
+        
         break;
       }
     }
 
-    // If we get here, all retries failed
+    
     const error = lastError;
 
-    // Log full error details for debugging (server-side only)
+    
     const errorStatus = getErrorProperty(error, 'status');
     const errorStatusText = getErrorProperty(error, 'statusText');
     const errorMessage = getErrorMessage(error);
@@ -194,7 +194,7 @@ export class GeminiAiService {
       errorDetails: errorDetails,
     });
 
-    // Throw concise exceptions for client
+    
     if (
       errorStatus === 429 ||
       errorMessage?.includes('429') ||
@@ -229,11 +229,11 @@ export class GeminiAiService {
     inputToken: string;
     defaultAmount: number;
   } {
-    // Extract token and amount from patterns
+    
     const amountMatch = input.match(/(\d+(?:\.\d+)?)\s*(WETH|USDT|USDC)/i);
     const tokenMatch = input.match(/(WETH|USDT|USDC)/i);
 
-    // Check for explicit initial token specification
+    
     const initialTokenMatch = input.match(
       /initial\s+token\s+is\s+(WETH|USDT|USDC)/i,
     );
@@ -241,14 +241,14 @@ export class GeminiAiService {
       /with\s+(\d+(?:\.\d+)?)\s*(WETH|USDT|USDC)/i,
     );
 
-    let inputToken = 'WETH'; // Default token
-    let defaultAmount = 10; // Default amount
+    let inputToken = 'WETH'; 
+    let defaultAmount = 10; 
 
-    // Priority 1: Explicit initial token specification
+    
     if (initialTokenMatch) {
       inputToken = initialTokenMatch[1].toUpperCase();
     }
-    // Priority 2: Amount with token specification
+    
     else if (withTokenMatch) {
       defaultAmount = parseFloat(withTokenMatch[1]);
       inputToken = withTokenMatch[2].toUpperCase();
@@ -256,9 +256,9 @@ export class GeminiAiService {
       defaultAmount = parseFloat(amountMatch[1]);
       inputToken = amountMatch[2].toUpperCase();
     }
-    // Priority 3: For looping strategies, determine the correct input token
+    
     else if (tokenMatch) {
-      // If only token is mentioned, use it
+      
       inputToken = tokenMatch[1].toUpperCase();
     }
 
@@ -266,19 +266,19 @@ export class GeminiAiService {
   }
 
   private extractLoopCount(input: string): number {
-    // Extract iterations from patterns like "3 times", "5 loops", "1 loop", "iterate 4"
+    
     const iterMatch = input.match(/(\d+)\s*(times?|loops?|iterations?)/i);
     if (iterMatch) return parseInt(iterMatch[1]);
 
-    // Check for "3x", "5x" pattern
+    
     const xMatch = input.match(/(\d+)x/i);
     if (xMatch) return parseInt(xMatch[1]);
 
-    // Check for "with 3 loop" pattern
+    
     const withLoopMatch = input.match(/with\s+(\d+)\s+loops?/i);
     if (withLoopMatch) return parseInt(withLoopMatch[1]);
 
-    return 3; // Default 3 iterations
+    return 3; 
   }
 
   private extractInitialTokenFromContext(
@@ -293,16 +293,16 @@ export class GeminiAiService {
   }
 
   private shouldAddEnableEMode(userIntent: string): boolean {
-    // Check if user explicitly mentions enable e mode
+    
     const explicitEMode = /enable\s+e\s*mode/i.test(userIntent);
 
-    // Check if strategy explicitly mentions JOIN_STRATEGY operations (liquid staking)
+    
     const hasJoinStrategy =
       /join.*(?:weth|usdc|usdt).*strategy|(?:weth|usdc|usdt).*strategy|join.*strategy.*(?:weth|usdc|usdt)/i.test(
         userIntent,
       );
 
-    // Check if it's a simple supply/borrow strategy (should NOT have ENABLE_E_MODE)
+    
     const isSimpleSupplyBorrow =
       /^\s*(?:\d+\.\s*)?(?:supply|lend).*(?:borrow|loan)/i.test(
         userIntent.trim(),
@@ -310,7 +310,7 @@ export class GeminiAiService {
       !hasJoinStrategy &&
       !explicitEMode;
 
-    // ENABLE_E_MODE is FORBIDDEN for simple supply/borrow strategies
+    
     if (isSimpleSupplyBorrow) {
       return false;
     }
@@ -325,8 +325,8 @@ export class GeminiAiService {
     const initialToken = this.extractInitialTokenFromContext(additionalContext);
     if (!initialToken) return { needsSwap: false, fromToken: '', toToken: '' };
 
-    // Extract the first token mentioned in the strategy steps
-    // Handle both structured format (1. Supply USDC) and natural language (Supply USDC and borrow WETH)
+    
+    
     const firstStepMatch = userIntent.match(
       /(?:1\.\s*)?(?:supply|lend|swap|borrow|join)\s+(\w+)/i,
     );
@@ -335,7 +335,7 @@ export class GeminiAiService {
 
     const firstStepToken = firstStepMatch[1].toUpperCase();
 
-    // Check if initial token is different from first step token
+    
     const needsSwap = initialToken.toUpperCase() !== firstStepToken;
 
     return {
@@ -349,17 +349,17 @@ export class GeminiAiService {
     steps: StrategyStepResponseDto[],
     userIntent: string,
   ): StrategyStepResponseDto[] {
-    // Check if strategy has JOIN_STRATEGY operations or explicit ENABLE_E_MODE request
+    
     const hasJoinStrategy = steps.some((step) => step.type === 'JOIN_STRATEGY');
     const explicitEMode = /enable\s+e\s*mode/i.test(userIntent);
 
-    // If no JOIN_STRATEGY and no explicit request, remove ENABLE_E_MODE
+    
     if (!hasJoinStrategy && !explicitEMode) {
       const filteredSteps = steps.filter(
         (step) => step.type !== 'ENABLE_E_MODE',
       );
 
-      // Renumber steps after filtering
+      
       return filteredSteps.map((step, index) => ({
         ...step,
         step: index + 1,
@@ -379,7 +379,7 @@ export class GeminiAiService {
       return steps;
     }
 
-    // Find the first step that has tokenIn (skip ENABLE_E_MODE)
+    
     const firstStepWithToken = steps.find(
       (step) => step.type !== 'ENABLE_E_MODE' && step.tokenIn?.symbol,
     );
@@ -395,7 +395,7 @@ export class GeminiAiService {
       return steps;
     }
 
-    // Check if SWAP step already exists at the beginning (after ENABLE_E_MODE if present)
+    
     const enableEModeIndex = steps.findIndex(
       (step) => step.type === 'ENABLE_E_MODE',
     );
@@ -411,14 +411,14 @@ export class GeminiAiService {
       return steps;
     }
 
-    // Get asset IDs for the tokens
+    
     const fromAssetId = this.getAssetIdBySymbol(initialToken);
     const toAssetId = this.getAssetIdBySymbol(firstStepToken);
 
-    // Estimate swap amount (use the amount from first step if available)
+    
     const firstStepAmount = firstStepWithToken.tokenIn.amount || 10;
 
-    // Create SWAP step
+    
     const swapStep: StrategyStepResponseDto = {
       step: expectedSwapIndex + 1,
       type: 'SWAP',
@@ -431,15 +431,15 @@ export class GeminiAiService {
       tokenOut: {
         assetId: toAssetId,
         symbol: firstStepToken,
-        amount: firstStepAmount * 0.98, // Assume 2% slippage
+        amount: firstStepAmount * 0.98, 
       },
     };
 
-    // Insert SWAP step at the correct position and renumber all subsequent steps
+    
     const updatedSteps = [...steps];
     updatedSteps.splice(expectedSwapIndex, 0, swapStep);
 
-    // Renumber all steps
+    
     return updatedSteps.map((step, index) => ({
       ...step,
       step: index + 1,
@@ -453,7 +453,7 @@ export class GeminiAiService {
       USDT: process.env.TOKEN_USDT || '',
     };
 
-    return assetMap[symbol.toUpperCase()] || ''; // Default empty (EVM address from env)
+    return assetMap[symbol.toUpperCase()] || ''; 
   }
 
   private isMaximizeYieldRequest(userIntent: string): boolean {
@@ -471,13 +471,13 @@ export class GeminiAiService {
     additionalContext?: string,
     tokenAmount?: number,
   ): Promise<StrategyStepResponseDto[]> {
-    // Extract input token and amount
+    
     const { inputToken, defaultAmount } =
       this.extractInputTokenFromIntent(userIntent);
     const finalAmount = tokenAmount || defaultAmount;
     const initialToken = this.extractInitialTokenFromContext(additionalContext);
 
-    // Determine risk level from user intent
+    
     const riskLevel = this.extractRiskLevel(userIntent);
     const maxLoops = this.templatesService.getMaxLoopsForRisk(riskLevel);
 
@@ -490,7 +490,7 @@ export class GeminiAiService {
       return this.generateRegularStrategy(userIntent, additionalContext);
     }
 
-    // Adapt the template to the input token
+    
     const tokenToUse = initialToken || inputToken;
     let adaptedSteps = this.templatesService.adaptTemplateToToken(
       bestTemplate,
@@ -498,7 +498,7 @@ export class GeminiAiService {
       finalAmount,
     );
 
-    // Add initial SWAP step if needed
+    
     adaptedSteps = this.addInitialSwapIfNeeded(
       adaptedSteps,
       userIntent,
@@ -531,7 +531,7 @@ export class GeminiAiService {
       return 'MEDIUM';
     }
 
-    // Default to MEDIUM if no risk level specified
+    
     return 'MEDIUM';
   }
 
@@ -540,7 +540,7 @@ export class GeminiAiService {
     additionalContext?: string,
     tokenAmount?: number,
   ): Promise<StrategyStepResponseDto[]> {
-    // This is the original logic for non-maximize-yield requests
+    
     const { inputToken, defaultAmount } =
       this.extractInputTokenFromIntent(userIntent);
     const finalAmount = tokenAmount || defaultAmount;
@@ -613,7 +613,7 @@ export class GeminiAiService {
       .map((token) => `- ${token.symbol} (assetId: "${token.assetId}")`)
       .join('\n');
 
-    // Check if input is structured steps format
+    
     const isStructuredSteps = /^\s*\d+\.\s*\w+/m.test(userIntent);
 
     if (isStructuredSteps) {

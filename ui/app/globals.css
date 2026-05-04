@@ -16,19 +16,19 @@
   --secondary: #1a1a1a;
   --muted: #555555;
 
-  --accent: #3b82f6; /* blue — links, active, highlights */
+  --accent: #3b82f6; 
   --accent-light: #60a5fa;
 
-  --success: #22c55e; /* green — ok states */
-  --warning: #eab308; /* yellow — warnings */
-  --destructive: #ef4444; /* red — errors, danger */
+  --success: #22c55e; 
+  --warning: #eab308; 
+  --destructive: #ef4444; 
   --destructive-foreground: #ffffff;
 
   --border: #2a2a2a;
   --input: #111111;
   --ring: #3b82f6;
 
-  --radius: 0; /* no rounded corners */
+  --radius: 0; 
 
   --popover: #111111;
   --popover-foreground: #e0e0e0;
@@ -87,7 +87,7 @@
   }
 }
 
-/* Terminal card */
+
 .forge-card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -97,7 +97,7 @@
   border-color: var(--accent);
 }
 
-/* Terminal button base */
+
 .terminal-btn {
   display: inline-flex;
   align-items: center;
@@ -140,7 +140,7 @@
   color: var(--success);
 }
 
-/* Glass → flat terminal panel */
+
 .glass {
   background: var(--card);
   border: 1px solid var(--border);
@@ -149,7 +149,7 @@
   border-color: var(--accent);
 }
 
-/* DeFi builder buttons */
+
 .defi-btn-glass {
   padding: 8px 0;
   font-size: 13px;
@@ -179,7 +179,7 @@
   z-index: 20;
 }
 
-/* Minimap */
+
 .defi-minimap {
   background: var(--card);
   border: 1px solid var(--border);
@@ -205,7 +205,7 @@
   display: none !important;
 }
 
-/* Scrollbar */
+
 .custom-scroll::-webkit-scrollbar {
   width: 4px;
 }
@@ -216,14 +216,14 @@
   background-color: #333;
 }
 
-/* Spinner input */
+
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-/* Status colors */
+
 .text-success {
   color: var(--success);
 }
@@ -237,7 +237,7 @@ input::-webkit-inner-spin-button {
   color: var(--accent);
 }
 
-/* Blinking cursor */
+
 @keyframes blink {
   0%,
   100% {

@@ -12,7 +12,7 @@ export class DefiStrategyExecutionService {
   ) {}
 
   async create(data: Partial<DefiStrategyExecution>) {
-    // ensure strategy version exists
+    
     const version = await this.versionService.getById(
       data.strategy_version_id as string,
     );

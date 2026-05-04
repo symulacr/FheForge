@@ -1,21 +1,21 @@
-/**
- * post-deploy-test.js
- * Runs against the live testnet deployment recorded in deployments/<chainId>.json.
- * Calls every public read function on each contract; records txhashes for state-changing
- * calls into post-deploy-evidence.json.
- *
- * Coverage:
- *   StrategyRegistry: OWNER, vaultAddress, strategyCount, registerStrategy, getStrategyMeta
- *   StrategyVault:    REGISTRY, hasPosition, getDepositedAmount
- *   LendingPool:      getPlainSupplyBalance, getPlainBorrowBalance
- *   SwapRouter:       EXECUTOR
- *   Native ETH:       deployer & tester balances
- *   USDC ERC-20:      tester balance, approve(vault), approve(pool)
- *
- * FHE-mutating calls (openPosition, supply, repay, etc.) require the off-chain
- * Encryptable SDK and the cofhe coprocessor; covered separately by the
- * hardhat suite under test/StrategyVault.test.ts (mock-FHE).
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
@@ -60,7 +60,7 @@ async function main() {
     evidence.fail.push({ label, info });
   };
 
-  // ── 1. StrategyRegistry reads ──────────────────────────────────────────
+
   console.log("── 1. StrategyRegistry ──");
   const regAbi = [
     "function OWNER() view returns (address)",
@@ -97,7 +97,7 @@ async function main() {
     fail("Registry reads", e.message);
   }
 
-  // Register a strategy
+
   try {
     const tx = await registry.registerStrategy(
       "FheForge Live Test Strategy",
@@ -122,7 +122,7 @@ async function main() {
     fail("Registry.registerStrategy", e.message);
   }
 
-  // ── 2. StrategyVault reads ─────────────────────────────────────────────
+
   console.log("\n── 2. StrategyVault ──");
   const vaultAbi = [
     "function REGISTRY() view returns (address)",
@@ -152,7 +152,7 @@ async function main() {
     fail("Vault reads", e.message);
   }
 
-  // ── 3. LendingPool reads ───────────────────────────────────────────────
+
   console.log("\n── 3. LendingPool ──");
   const poolAbi = [
     "function getPlainSupplyBalance(address) view returns (uint256)",
@@ -176,7 +176,7 @@ async function main() {
     fail("Pool reads", e.message);
   }
 
-  // ── 4. SwapRouter reads ────────────────────────────────────────────────
+
   console.log("\n── 4. SwapRouter ──");
   const routerAbi = ["function EXECUTOR() view returns (address)"];
   const router = new hre.ethers.Contract(SwapRouter, routerAbi, tester);
@@ -192,7 +192,7 @@ async function main() {
     fail("Router reads", e.message);
   }
 
-  // ── 5. ERC-20 USDC approvals from tester to vault + pool ───────────────
+
   console.log("\n── 5. USDC approvals from tester ──");
   const erc20Abi = [
     "function balanceOf(address) view returns (uint256)",
@@ -227,7 +227,7 @@ async function main() {
     fail("USDC tester approvals", e.message);
   }
 
-  // ── 6. Final balance snapshot ──────────────────────────────────────────
+
   console.log("\n── 6. Final balances ──");
   const ethDep = await provider.getBalance(deployer.address);
   const ethTest = await provider.getBalance(tester.address);
@@ -238,7 +238,7 @@ async function main() {
   console.log(`  Deployer ETH: ${hre.ethers.formatEther(ethDep)}`);
   console.log(`  Tester   ETH: ${hre.ethers.formatEther(ethTest)}`);
 
-  // Write evidence
+
   const evidencePath = path.join(
     __dirname,
     "..",

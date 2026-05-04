@@ -6,7 +6,7 @@ async function main() {
   const deployer = process.env.DEPLOYER_ADDRESS;
   const tester = process.env.TESTER_ADDRESS;
 
-  // Arbitrum Sepolia native USDC (Circle)
+
   const USDC = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
   const erc20Abi = [
     "function balanceOf(address) view returns (uint256)",

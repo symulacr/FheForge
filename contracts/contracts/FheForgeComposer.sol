@@ -31,11 +31,11 @@ interface IPermit2 {
 }
 
 interface IRegistry {
-    /// @dev Composer always uses the F-03 4-arg overload so the registered
-    ///      strategy carries plaintext apyTarget + loopCount that previously
-    ///      lived encrypted on the position. The 2-arg overload still exists
-    ///      on the contract for legacy/maintenance scripts but is unused
-    ///      from the composer.
+
+
+
+
+
     function registerStrategy(
         string calldata name,
         bytes32 workflowHash,
@@ -103,10 +103,10 @@ interface ISwapRouter {
     ) external returns (bytes32 intentId);
 }
 
-/// @title  FheForgeComposer
-/// @notice Single user-facing entry point that batches register + openPosition
-///         + supply + borrow + optional swap-intent into one tx; and
-///         addCollateral + repay + new-borrow into one rebalance tx.
+
+
+
+
 contract FheForgeComposer is ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
@@ -116,7 +116,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     ISwapRouter public immutable ROUTER;
     address public immutable OWNER;
 
-    /// @notice Uniswap Permit2 canonical singleton.
+
     address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     error ZeroAddress();
@@ -147,8 +147,8 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         if (msg.sender != OWNER) revert NotOwner();
     }
 
-    /// @notice Initialize the composer with the underlying contract addresses
-    ///         and an optional ERC-2771 trusted forwarder (or address(0)).
+
+
     constructor(address registry_, address vault_, address pool_, address router_) {
         if (
             registry_ == address(0) ||
@@ -160,8 +160,8 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         VAULT = IStrategyVault(vault_);
         POOL = ILendingPool(pool_);
         ROUTER = ISwapRouter(router_);
-        // Owner stays bound to the original deployer — admin functions are
-        // intentionally not meta-tx-able through the forwarder.
+
+
         OWNER = msg.sender;
     }
 
@@ -175,8 +175,8 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         emit Unpaused();
     }
 
-    /// @notice Permit2 authorisation payload. `deadline == 0` ⇒ no Permit2;
-    ///         use a pre-existing `IERC20.approve(composer, ...)` allowance.
+
+
     struct Permit2Authorization {
         uint256 amount;
         uint256 deadline;
@@ -184,13 +184,13 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         bytes signature;
     }
 
-    /// @notice Inputs for `openLeveragedStrategy`. `strategyId == 0` registers
-    ///         a new strategy; otherwise the id must already exist.
-    ///         `collateralPermit` covers BOTH the vault-open transferFrom and
-    ///         the optional pool-supply transferFrom (same `collateralToken`).
-    /// @dev    `apyTarget` + `loopCount` are plaintext post F-03 — they
-    ///         describe the strategy itself (set once at registration),
-    ///         not per-user-private state. Ignored if `strategyId != 0`.
+
+
+
+
+
+
+
     struct OpenStrategyParams {
         string strategyName;
         bytes32 workflowHash;
@@ -219,17 +219,17 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         InEuint128 swapMinOut;
     }
 
-    /// @notice Atomic register → openPosition → supply → borrow → swap-intent.
-    /// @return strategyId  Strategy id touched.
-    /// @return intentId    Swap-intent id (zero if no intent submitted).
+
+
+
     function openLeveragedStrategy(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e
     ) external nonReentrant whenNotPaused returns (uint256 strategyId, bytes32 intentId) {
         uint256 pulled = _pullViaPermit2(p.collateralToken, p.collateralPermit);
         strategyId = _resolveStrategyId(p);
-        // Ordering: vault gets first dibs on Permit2-pulled funds, pool supply
-        // claims the remainder.
+
+
         uint256 vaultCovered = pulled > p.collateralAmount ? p.collateralAmount : pulled;
         _openVaultPosition(p, e, strategyId, vaultCovered);
         _supplyToPool(p, e, pulled - vaultCovered);
@@ -247,8 +247,8 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
 
     function _resolveStrategyId(OpenStrategyParams calldata p) internal returns (uint256) {
         if (p.strategyId == 0) {
-            // F-03: register with plaintext apyTarget + loopCount stored on
-            // the Strategy struct rather than encrypted on each Position.
+
+
             return
                 REGISTRY.registerStrategy(p.strategyName, p.workflowHash, p.apyTarget, p.loopCount);
         }
@@ -308,7 +308,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
                 p.ltvDen
             );
         }
-        // Grant the user persistent off-chain decryption rights on their debt.
+
         FHE.allow(debtHandle, msg.sender);
         uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
         if (received > 0) {
@@ -331,7 +331,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
             );
     }
 
-    /// @notice Inputs for `rebalance`. Each amount with value 0 is skipped.
+
     struct RebalanceParams {
         address collateralToken;
         uint256 addCollateralAmount;
@@ -352,7 +352,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         InEuint128 newBorrowEnc;
     }
 
-    /// @notice Atomic addCollateral + repay + new-borrow.
+
     function rebalance(
         RebalanceParams calldata p,
         RebalanceEncrypted calldata e
@@ -420,8 +420,8 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         );
     }
 
-    /// @dev Consumes an optional Permit2 authorisation. Returns the amount
-    ///      pulled into this contract (0 if `auth.deadline == 0`).
+
+
     function _pullViaPermit2(
         address token,
         Permit2Authorization calldata auth
@@ -440,7 +440,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         return auth.amount;
     }
 
-    /// @dev Ensure this contract has approved `spender` for at least `amount`.
+
     function sweepToken(address token, address to) external onlyOwner {
         if (token == address(0) || to == address(0)) revert ZeroAddress();
         uint256 bal = IERC20(token).balanceOf(address(this));
@@ -452,7 +452,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     function _ensureApproval(address token, address spender, uint256 amount) internal {
         uint256 current = IERC20(token).allowance(address(this), spender);
         if (current < amount) {
-            // Reset to zero first for tokens that require it (USDT-style).
+
             IERC20(token).forceApprove(spender, 0);
             IERC20(token).forceApprove(spender, type(uint256).max);
         }

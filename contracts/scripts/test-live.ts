@@ -1,31 +1,31 @@
-/**
- * FheForge live "breaker" test on Arbitrum Sepolia.
- *
- * Exercises every public function on every deployed contract against the real
- * on-chain deployment recorded in deployments/<chainId>.json. Uses the tester
- * wallet for user-level calls and the deployer wallet for executor / admin
- * calls. No mocks; every state transition produces a real tx hash.
- *
- * Run:
- *   set -a && source .env && set +a
- *   npx hardhat run scripts/test-live.ts --network arb-sepolia
- *
- * Coverage map:
- *   StrategyRegistry — registerStrategy, getStrategyMeta, OWNER, vaultAddress,
- *                      strategyCount, setVault (revert paths), incrementTvl
- *                      (revert path), decrementTvl (revert path)
- *   StrategyVault    — REGISTRY, hasPosition, getDepositedAmount,
- *                      getPositionMeta, openPosition, addCollateral,
- *                      getCollateral, closePosition + revert paths
- *   LendingPool      — supply, getSupplyBalance, getPlainSupplyBalance,
- *                      checkLtvAndBorrow, getBorrowBalance,
- *                      getPlainBorrowBalance, repay, withdraw + revert paths
- *   SwapRouter       — submitSwapIntent, getIntentMeta, getAmountIn,
- *                      cancelIntent, executeIntent, EXECUTOR + revert paths
- *
- * FHE: encryption uses @cofhe/sdk + the tester wallet (HardhatEthersSigner
- * sourced from the tester key in hardhat.config.ts accounts[1]).
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import { ethers } from "hardhat";
 import hre from "hardhat";
@@ -94,7 +94,7 @@ async function main() {
   evidence.chainId = chainId;
   evidence.contracts = { ...dep.contracts };
 
-  // hardhat.config.ts accounts: [PRIVATE_KEY (deployer), TESTER_PRIVATE_KEY (tester)]
+
   const signers = await ethers.getSigners();
   const deployer = signers[0];
   const tester = signers[1] ?? signers[0];
@@ -110,7 +110,7 @@ async function main() {
   console.log(`Pool:      ${dep.contracts.LendingPool}`);
   console.log(`Router:    ${dep.contracts.SwapRouter}\n`);
 
-  // Load typed contracts via auto-generated ABIs
+
   const registry = await ethers.getContractAt(
     "StrategyRegistry",
     dep.contracts.StrategyRegistry,
@@ -146,7 +146,7 @@ async function main() {
     tester,
   );
 
-  // ── 1. Read-only state ───────────────────────────────────────────────
+
   console.log("── 1. Read-only state ──");
   try {
     const [owner, vAddr, sCount, registryAtVault, executor] = await Promise.all([
@@ -182,7 +182,7 @@ async function main() {
     fail("Read-only state", (e as Error).message);
   }
 
-  // ── 2. Registry: register a strategy from tester ─────────────────────
+
   console.log("\n── 2. Registry.registerStrategy (tester) ──");
   let strategyId: bigint;
   try {
@@ -213,10 +213,10 @@ async function main() {
     return;
   }
 
-  // ── 3. Revert paths on Registry ──────────────────────────────────────
+
   console.log("\n── 3. Registry revert paths ──");
-  // Try parsing the custom error from low-level call data; ethers v6 sometimes
-  // returns the bare "execution reverted" string, but the data has the selector.
+
+
   function decodeRegistryError(e: unknown): string {
     const err = e as { data?: string; message?: string };
     if (err.data && typeof err.data === "string") {
@@ -224,7 +224,7 @@ async function main() {
         const parsed = registry.interface.parseError(err.data);
         if (parsed) return parsed.name;
       } catch {
-        /* not a registry error */
+
       }
     }
     return err.message ?? String(e);
@@ -254,8 +254,8 @@ async function main() {
     else fail("Registry.setVault non-owner", msg);
   }
   try {
-    // euint128 is bytes32 underlying. Vault check fires FIRST so OnlyVault
-    // should revert regardless of FHE permission state.
+
+
     await registry.incrementTvl.staticCall(strategyId, ethers.ZeroHash);
     fail("Registry.incrementTvl(non-vault)", "expected revert OnlyVault");
   } catch (e: unknown) {
@@ -274,7 +274,7 @@ async function main() {
     else fail("Registry.decrementTvl non-vault", msg);
   }
 
-  // ── 4. Connect CoFHE client (testnet flow) ───────────────────────────
+
   console.log("\n── 4. CoFHE client (tester signer, testnet) ──");
   let cofheClient: CofheClient | null = null;
   try {
@@ -300,9 +300,9 @@ async function main() {
     return;
   }
 
-  // ── 5. Vault.openPosition ─────────────────────────────────────────────
+
   console.log("\n── 5. Vault.openPosition (tester USDC) ──");
-  const collateral = 5_000_000n; // 5 USDC (6 decimals)
+  const collateral = 5_000_000n;
   const debt = 2_000_000n;
   const apy = 650n;
   const loop = 2n;
@@ -329,8 +329,8 @@ async function main() {
       pass("Vault.closePosition (cleanup)", `withdrew ${dep0}`, tx0.hash);
     }
 
-    // F-03: only collateral + debt are encrypted on the position. apy/loop
-    // moved to plaintext on the registry's Strategy struct.
+
+
     const enc = await cofheClient
       .encryptInputs([
         Encryptable.uint128(collateral),
@@ -370,7 +370,7 @@ async function main() {
     fail("Vault.openPosition", (e as Error).message);
   }
 
-  // ── 6. Vault.openPosition revert path (already exists) ───────────────
+
   console.log("\n── 6. Vault revert paths ──");
   function decodeVaultError(e: unknown): string {
     const err = e as { data?: string; message?: string };
@@ -379,7 +379,7 @@ async function main() {
         const parsed = vault.interface.parseError(err.data);
         if (parsed) return parsed.name;
       } catch {
-        /* not a vault error */
+
       }
     }
     return err.message ?? String(e);
@@ -419,9 +419,9 @@ async function main() {
     else fail("Vault.closePosition(0)", msg);
   }
 
-  // ── 7. Vault.addCollateral ──────────────────────────────────────────
+
   console.log("\n── 7. Vault.addCollateral ──");
-  const addAmount = 2_000_000n; // 2 USDC
+  const addAmount = 2_000_000n;
   try {
     const enc = await cofheClient
       .encryptInputs([Encryptable.uint128(addAmount)])
@@ -444,7 +444,7 @@ async function main() {
     fail("Vault.addCollateral", (e as Error).message);
   }
 
-  // ── 8. Vault.getCollateral (returns euint128 handle) ────────────────
+
   console.log("\n── 8. Vault.getCollateral ──");
   try {
     const ctHash = await vault.getCollateral.staticCall();
@@ -453,7 +453,7 @@ async function main() {
     fail("Vault.getCollateral.staticCall", (e as Error).message);
   }
 
-  // ── 9. Vault.closePosition ──────────────────────────────────────────
+
   console.log("\n── 9. Vault.closePosition ──");
   try {
     const total = collateral + addAmount;
@@ -477,9 +477,9 @@ async function main() {
     fail("Vault.closePosition", (e as Error).message);
   }
 
-  // ── 10. LendingPool.supply ──────────────────────────────────────────
+
   console.log("\n── 10. LendingPool.supply ──");
-  const supplyAmount = 5_000_000n; // 5 USDC
+  const supplyAmount = 5_000_000n;
   try {
     const allowance = await erc20.allowance(tester.address, dep.contracts.LendingPool);
     if (allowance < supplyAmount) {
@@ -510,9 +510,9 @@ async function main() {
     fail("Pool.supply", (e as Error).message);
   }
 
-  // ── 11. LendingPool.checkLtvAndBorrow ───────────────────────────────
+
   console.log("\n── 11. LendingPool.checkLtvAndBorrow ──");
-  const borrowAmount = 1_000_000n; // 1 USDC against 5 USDC collateral
+  const borrowAmount = 1_000_000n;
   try {
     const enc = await cofheClient
       .encryptInputs([Encryptable.uint128(borrowAmount)])
@@ -544,7 +544,7 @@ async function main() {
     fail("Pool.checkLtvAndBorrow", (e as Error).message);
   }
 
-  // ── 12. LendingPool.repay ──────────────────────────────────────────
+
   console.log("\n── 12. LendingPool.repay ──");
   try {
     const enc = await cofheClient
@@ -561,7 +561,7 @@ async function main() {
     fail("Pool.repay", (e as Error).message);
   }
 
-  // ── 13. LendingPool.withdraw ────────────────────────────────────────
+
   console.log("\n── 13. LendingPool.withdraw ──");
   try {
     const enc = await cofheClient
@@ -582,7 +582,7 @@ async function main() {
     fail("Pool.withdraw", (e as Error).message);
   }
 
-  // ── 14. SwapRouter intent flow ──────────────────────────────────────
+
   console.log("\n── 14. SwapRouter (tester submits, tester cancels) ──");
   try {
     const amountIn = 1_000_000n;
@@ -593,7 +593,7 @@ async function main() {
 
     const tx = await router.submitSwapIntent(
       USDC,
-      "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73", // WETH on arb-sep
+      "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
       enc[0],
       enc[1],
       3600n,
@@ -609,7 +609,7 @@ async function main() {
             break;
           }
         } catch {
-          /* not from router */
+
         }
       }
     }
@@ -635,7 +635,7 @@ async function main() {
     await cancelTx.wait();
     pass("Router.cancelIntent", `cancelled`, cancelTx.hash);
 
-    // After cancel, intent should be unknown
+
     const metaAfter = await router.getIntentMeta(intentId);
     if (metaAfter[2] !== ethers.ZeroAddress)
       fail("Router.getIntentMeta after cancel", `expected zero address user`);
@@ -644,7 +644,7 @@ async function main() {
     fail("Router intent flow", (e as Error).message);
   }
 
-  // ── 15. SwapRouter revert paths ─────────────────────────────────────
+
   console.log("\n── 15. SwapRouter revert paths ──");
   function decodeRouterError(e: unknown): string {
     const err = e as { data?: string; message?: string };
@@ -653,7 +653,7 @@ async function main() {
         const parsed = router.interface.parseError(err.data);
         if (parsed) return parsed.name;
       } catch {
-        /* not a router error */
+
       }
     }
     return err.message ?? String(e);

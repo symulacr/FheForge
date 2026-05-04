@@ -1,26 +1,26 @@
-/**
- * Reineira-OS SDK live integration demo (Track C scaffolding).
- *
- * Proves that `@reineira-os/sdk@0.2.0` works against the live Arbitrum Sepolia
- * deployment using FheForge's existing tester wallet.
- *
- * What it does:
- *   1. Initialise the Reineira SDK with the tester signer.
- *   2. Snapshot tester balances (plain USDC, confidential USDC handle, ETH,
- *      Reineira governance token).
- *   3. (optional, env REINEIRA_DEMO_ESCROW=1) create a small 0.5-USDC escrow
- *      to demonstrate the escrow API works end-to-end. Since cancel/settle of
- *      a freshly-created un-funded escrow is permissionless, this leaves no
- *      USDC stranded in Reineira.
- *
- * Usage:
- *   set -a && source .env && set +a
- *   npx hardhat run scripts/reineira-demo.ts --network arb-sepolia
- *   REINEIRA_DEMO_ESCROW=1 npx hardhat run scripts/reineira-demo.ts --network arb-sepolia
- *
- * Output: prints balances + (optionally) creates an escrow and prints its id.
- *         Records every interaction to deployments/reineira-demo-evidence.json.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import { ethers } from "hardhat";
 import { ReineiraSDK, TESTNET_ADDRESSES, formatUsdc } from "@reineira-os/sdk";
@@ -67,7 +67,7 @@ async function main() {
     console.log(`Tester:  ${tester.address}`);
     console.log(`Chain:   arb-sepolia (${chainId})\n`);
 
-    // 1. Initialise SDK (Reineira uses ethers signer directly; no separate provider needed)
+
     const sdk = ReineiraSDK.create({
         network: "testnet",
         signer: tester,
@@ -78,7 +78,7 @@ async function main() {
         console.log(`  ${k.padEnd(28, " ")} ${v}`);
     }
 
-    // 2. Read balances
+
     const erc20Abi = [
         "function balanceOf(address) view returns (uint256)",
         "function decimals() view returns (uint8)",
@@ -125,7 +125,7 @@ async function main() {
         },
     };
 
-    // 3. Optional escrow demo
+
     if (process.env.REINEIRA_DEMO_ESCROW === "1") {
         evidence.escrowDemo = { attempted: true };
         try {

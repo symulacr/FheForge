@@ -1,4 +1,4 @@
-// Hardcoded seed strategies shown when DB is empty
+
 export const SEED_STRATEGIES = [
   {
     id: "seed-1",

@@ -39,9 +39,9 @@ interface IPermit2 {
     ) external;
 }
 
-/// @title  LendingPool
-/// @notice Confidential supply / borrow / repay / withdraw with FHE-encrypted
-///         per-user balances mirrored by plaintext balances for transfer gating.
+
+
+
 contract LendingPool is ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -57,15 +57,15 @@ contract LendingPool is ReentrancyGuard, Pausable {
     address public immutable OWNER;
 
     uint256 public constant BPS_DEN = 1e4;
-    /// @notice Liquidation bonus paid to liquidators (5% of seized collateral).
+
     uint16 public constant LIQUIDATION_BONUS_BPS = 500;
-    /// @notice Max fraction of a borrow that can be liquidated in one call (50%).
+
     uint16 public constant LIQUIDATION_CLOSE_FACTOR_BPS = 5000;
 
     PriceOracle public oracle;
     IWETH9 public weth;
 
-    /// @notice Uniswap Permit2 canonical singleton.
+
     address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     error LtvNumeratorZero();
@@ -127,7 +127,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _ZERO = z;
     }
 
-    /// @notice Supply tokens; caller must have approved this contract.
+
     function supply(
         address token,
         uint256 amount,
@@ -136,8 +136,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _pullAndSupply(token, amount, encAmount);
     }
 
-    /// @notice Supply via Permit2 — caller signs an EIP-712 PermitTransferFrom
-    ///         off-chain after a one-time `IERC20.approve(PERMIT2, MAX)`.
+
+
     function supplyWithPermit2(
         address token,
         uint256 amount,
@@ -149,8 +149,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _finalizeSupply(token, amount, encAmount);
     }
 
-    /// @dev Shared Permit2 pull — extracted to deduplicate `supplyWithPermit2`
-    ///      and `repayWithPermit2` (their pre-call paths were 94% identical).
+
+
     function _doPermit2Pull(
         address token,
         uint256 amount,
@@ -177,10 +177,10 @@ contract LendingPool is ReentrancyGuard, Pausable {
         plainSupplyBalances[token][msg.sender] += amount;
         liquidReserve[token] += amount;
 
-        // Lazy-init: when the user has never supplied this token, the slot
-        // is uninitialized and `FHE.add(uninit, incoming)` costs ~50k gas
-        // for an add-with-zero. Skip the add and store the incoming handle
-        // directly. ~200g cost per repeat user vs ~49.8k saved on first.
+
+
+
+
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 stored = supplyBalances[token][msg.sender];
         euint128 newBalance = FHE.isInitialized(stored) ? FHE.add(stored, incoming) : incoming;
@@ -198,9 +198,9 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _finalizeSupply(token, amount, encAmount);
     }
 
-    /// @notice Borrow `borrowAmount` of `borrowToken` against supplied
-    ///         `collateralToken` if `borrowAmount * ltvDen <= supply * ltvNum`.
-    /// @return actual Encrypted handle of the amount actually borrowed.
+
+
+
     function checkLtvAndBorrow(
         address collateralToken,
         address borrowToken,
@@ -238,7 +238,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _pullAndRepay(token, amount, encAmount);
     }
 
-    /// @notice Repay via Permit2.
+
     function repayWithPermit2(
         address token,
         uint256 amount,
@@ -274,10 +274,10 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _finalizeRepay(token, amount, encAmount);
     }
 
-    /// @notice Withdraw supplied tokens; reverts if the post-withdraw reserve
-    ///         can no longer cover all outstanding borrows, or if the caller
-    ///         has an outstanding borrow in this token that would become
-    ///         under-collateralised.
+
+
+
+
     function withdraw(
         address token,
         uint256 amount,
@@ -289,14 +289,14 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit Withdrawn(msg.sender, token, amount);
     }
 
-    /// @dev Shared core for `withdraw` and `withdrawEth` — extracted to
-    ///      deduplicate the 21-line plain-mirror + reserve + FHE update
-    ///      sequence (76% similarity in pre-refactor analyzer). Caller is
-    ///      responsible for the post-withdrawal token / ETH transfer and
-    ///      `Withdrawn` event emission.
+
+
+
+
+
     function _withdrawCore(address token, uint256 amount, InEuint128 calldata encAmount) internal {
         if (amount == 0) revert ZeroAmount();
-        // Cache hot mapping reads once — saves repeated keccak256(key, slot).
+
         mapping(address => uint256) storage plainSupply = plainSupplyBalances[token];
         uint256 currentSupply = plainSupply[msg.sender];
         if (amount > currentSupply) revert ExceedsSupplyBalance();
@@ -322,14 +322,14 @@ contract LendingPool is ReentrancyGuard, Pausable {
         FHE.allowSender(newBalance);
     }
 
-    /// @notice When paused, callers may pull their full plaintext supply
-    ///         without touching encrypted state — for FHE-backend outages.
+
+
     function emergencyWithdraw(address token) external nonReentrant whenPaused {
         if (token == address(0)) revert ZeroAddress();
         uint256 amount = plainSupplyBalances[token][msg.sender];
         if (amount == 0) revert ZeroAmount();
 
-        // Cache `liquidReserve[token]` once — saves 2 keccak hashes per call.
+
         uint256 reserve = liquidReserve[token];
         if (reserve < amount || reserve - amount < totalPlainBorrow[token]) {
             revert InsufficientReserve();
@@ -357,8 +357,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit OracleSet(newOracle);
     }
 
-    /// @notice Disable oracle-gated paths. Distinct from `setOracle(0)` which
-    ///         is a hazard guard; this is the explicit kill-switch.
+
+
     function disableOracle() external onlyOwner {
         oracle = PriceOracle(address(0));
         emit OracleDisabled();
@@ -375,7 +375,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit WethDisabled();
     }
 
-    /// @notice Supply native ETH; the pool wraps it to WETH internally.
+
     function supplyEth(InEuint128 calldata encAmount) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         if (msg.value == 0) revert ZeroAmount();
@@ -384,8 +384,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         plainSupplyBalances[tokenAddr][msg.sender] += msg.value;
         liquidReserve[tokenAddr] += msg.value;
 
-        // Lazy-init — see `_finalizeSupply`. Same first-call savings apply
-        // here because supplyEth and supply share the encrypted slot.
+
+
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 stored = supplyBalances[tokenAddr][msg.sender];
         euint128 newBalance = FHE.isInitialized(stored) ? FHE.add(stored, incoming) : incoming;
@@ -398,7 +398,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit Supplied(msg.sender, tokenAddr, msg.value);
     }
 
-    /// @notice Withdraw supplied tokens as native ETH; pool unwraps WETH.
+
     function withdrawEth(
         uint256 amount,
         InEuint128 calldata encAmount
@@ -414,14 +414,14 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit Withdrawn(msg.sender, tokenAddr, amount);
     }
 
-    /// @dev Only accept ETH from the configured WETH contract during withdraw.
+
     receive() external payable {
         if (msg.sender != address(weth)) revert ZeroAddress();
     }
 
-    /// @notice Borrow gated by the oracle's per-token collateral factor in
-    ///         USD-normalised units. Recommended path; `checkLtvAndBorrow`
-    ///         remains for callers who want to specify an explicit ratio.
+
+
+
     function borrowWithOracle(
         address collateralToken,
         address borrowToken,
@@ -446,13 +446,13 @@ contract LendingPool is ReentrancyGuard, Pausable {
             );
     }
 
-    /// @dev Shared post-LTV-check finalization for `checkLtvAndBorrow` and
-    ///      `borrowWithOracle` (72% similar, 18 lines shared in the
-    ///      pre-refactor analyzer). Caller is responsible for token /
-    ///      amount input validation, the supplied>0 check, and the
-    ///      LTV gate (caller-supplied ratio vs oracle USD-debt). Both
-    ///      callers cache `existingBorrow` once and pass it in to avoid
-    ///      a second SLOAD inside the helper.
+
+
+
+
+
+
+
     function _finalizeBorrow(
         address collateralToken,
         address borrowToken,
@@ -466,10 +466,10 @@ contract LendingPool is ReentrancyGuard, Pausable {
         totalPlainBorrow[borrowToken] += borrowAmount;
         liquidReserve[borrowToken] -= borrowAmount;
 
-        // Lazy-init — first-time borrowers of this token have an
-        // uninitialized `borrowBalances` slot; `FHE.add(uninit, x)` costs
-        // ~50k. Skip the add and store the requested handle directly.
-        // ~200g cost per repeat user vs ~49.8k saved on first.
+
+
+
+
         euint128 requested = FHE.asEuint128(encBorrowAmount);
         actual = requested;
         euint128 storedBorrow = borrowBalances[borrowToken][msg.sender];
@@ -498,21 +498,21 @@ contract LendingPool is ReentrancyGuard, Pausable {
             collateralToken,
             plainSupplyBalances[collateralToken][msg.sender]
         );
-        // Single oracle call for total debt — `convertToUsd` is linear in
-        // amount (`(amt * priceWad) / 10**dec`), so summing inputs first
-        // is equivalent up to a single floor-div remainder (≤ 1 unit of
-        // usdWad = 1e-18 USD). The bias direction is conservative: the
-        // combined value is ≥ the separate-sum, so it can only ever be
-        // MORE restrictive on the LTV gate, never less. Saves ~5,400 gas
-        // per call (one fewer Pyth fetch + STATICCALL).
+
+
+
+
+
+
+
         uint256 totalDebtUsd = oracle.convertToUsd(borrowToken, borrowAmount + existingBorrow);
         if (collateralUsd * ltvBps < totalDebtUsd * BPS_DEN) revert InsufficientCollateral();
     }
 
-    /// @notice Liquidate part of an unhealthy position. The caller repays
-    ///         `debtToCover` of the user's debt and receives the equivalent
-    ///         collateral plus a `LIQUIDATION_BONUS_BPS` bonus, capped at the
-    ///         user's available supply and `LIQUIDATION_CLOSE_FACTOR_BPS`.
+
+
+
+
     function liquidate(
         address user,
         address collateralToken,
@@ -599,7 +599,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     }
 
     function getSupplyBalance(address token) external nonReentrant returns (euint128) {
-        // Cache the storage handle to save 2 keccak256(key, slot) hashes.
+
         euint128 stored = supplyBalances[token][msg.sender];
         if (FHE.isInitialized(stored)) {
             FHE.allowSender(stored);
@@ -609,7 +609,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     }
 
     function getBorrowBalance(address token) external nonReentrant returns (euint128) {
-        // Cache the storage handle to save 2 keccak256(key, slot) hashes.
+
         euint128 stored = borrowBalances[token][msg.sender];
         if (FHE.isInitialized(stored)) {
             FHE.allowSender(stored);

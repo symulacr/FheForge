@@ -19,7 +19,7 @@ export function StrategyClientWrapper({
 
   return (
     <div className="flex h-[calc(100vh-60px)] overflow-hidden bg-[--background] text-[--foreground]">
-      {/* SIDEBAR */}
+      
       <div
         className={`flex flex-col  transition-all duration-300 ease-in-out
           ${isCollapsed ? "w-[60px]" : "w-1/4"}
@@ -43,7 +43,7 @@ export function StrategyClientWrapper({
           </div>
         )}
       </div>
-      {/* MAIN CONTENT */}
+      
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ease-in-out
           ${isCollapsed ? "w-[calc(100%-60px)]" : "w-[75%]"}

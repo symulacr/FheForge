@@ -1,46 +1,46 @@
-/* eslint-disable max-lines */
-/**
- * FheForge v3 stress test — Arbitrum Sepolia (chain 421614).
- *
- * Authority: REMEDIATION_ROUND_11_SUMMARY.md + STRESS_CRITIQUE.md.
- * Mode: read-only contract addresses; sends real on-chain transactions for
- *       every scenario; appends evidence to a never-overwritten ledger.
- *
- * CLI:
- *   # Dry-run validation (no transactions; CoFHE init skipped):
- *   npx ts-node scripts/test-stress.ts --dry-run [flags]
- *
- *   # Full run (FHE scenarios require hardhat context for the CoFHE 0.5.1 SDK):
- *   set -a && source .env && set +a
- *   npx hardhat run scripts/test-stress.ts --network arb-sepolia
- *   # ...with flags via env-vars (hardhat run does not forward CLI args):
- *   STRESS_SEED=42 STRESS_RANDOM_COUNT=25 STRESS_VERBOSE=1 \
- *     npx hardhat run scripts/test-stress.ts --network arb-sepolia
- *
- * Flags supported via CLI args (ts-node) or env vars (hardhat run):
- *   --seed <N>          / STRESS_SEED=N
- *   --random-count <N>  / STRESS_RANDOM_COUNT=N
- *   --dry-run           / STRESS_DRY_RUN=1
- *   --scenario <ID>     / STRESS_SCENARIO=ID
- *   --verbose           / STRESS_VERBOSE=1
- *
- * Outputs:
- *   - contracts/deployments/421614.stress-evidence.json (append-only)
- *   - contracts/STRESS_REPORT.md (overwritten per run)
- *
- * Exit:
- *   0 — clean run (no UNEXPECTED_REVERT, no STATE_MISMATCH, no UNKNOWN_PATTERN)
- *   1 — findings produced (CI fails, evidence written)
- *   2 — setup failure (e.g., RPC unreachable, wallet balance too low)
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 import * as fs from "fs";
 import * as path from "path";
 import { ethers } from "ethers";
 
-// ────────────────────────────────────────────────────────────────────────
-// CLI argument parsing (handcrafted; no external deps)
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 interface CliArgs {
   seed: number;
@@ -58,14 +58,14 @@ function parseCli(argv: string[]): CliArgs {
     scenarioFilter: null,
     verbose: false,
   };
-  // Env-var fallbacks (for `hardhat run` which doesn't forward CLI args).
+
   if (process.env.STRESS_SEED) args.seed = parseInt(process.env.STRESS_SEED, 10);
   if (process.env.STRESS_RANDOM_COUNT)
     args.randomCount = parseInt(process.env.STRESS_RANDOM_COUNT, 10);
   if (process.env.STRESS_DRY_RUN === "1") args.dryRun = true;
   if (process.env.STRESS_SCENARIO) args.scenarioFilter = process.env.STRESS_SCENARIO;
   if (process.env.STRESS_VERBOSE === "1") args.verbose = true;
-  // CLI args override env vars.
+
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--dry-run") args.dryRun = true;
@@ -83,9 +83,9 @@ function parseCli(argv: string[]): CliArgs {
   return args;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Mulberry32 PRNG — deterministic, seeded
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 function mulberry32(seed: number): () => number {
   let s = seed >>> 0;
@@ -98,9 +98,9 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Types
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 type ResultKind =
   | "SUCCESS"
@@ -127,8 +127,8 @@ interface OperationLog {
   totalLatencyMs: number | null;
   status: "ok" | "revert" | "skipped" | "static-ok";
   revert: { raw: string; decoded: string; selector: string | null } | null;
-  /// Per-phase timing breakdown (set by the instrumented submitTx/staticCall paths).
-  /// The keys map to the global Profiler `Phase` enum.
+
+
   phaseMs: Partial<Record<Phase, number>>;
 }
 
@@ -191,32 +191,32 @@ interface RunRecord {
   benchmarkBaseline: Record<string, number>;
   scenarios: ScenarioEvidence[];
   findings: Finding[];
-  /// Phase-level profiling aggregates. Populated from the global PHASE_AGGREGATE
-  /// at end-of-run; serialized into the evidence ledger so successive runs can
-  /// be diffed for "where is the time going?".
+
+
+
   profile: {
     aggregate: Record<string, { count: number; totalMs: number; minMs: number; maxMs: number }>;
-    /// Top-N slowest individual phase samples (label + ms). Useful for spot
-    /// checks; the full sample stream is kept in stress-evidence.json.
+
+
     slowest: Array<{ phase: string; label: string; ms: number; ts: number }>;
   };
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Constants from the deployment record + benchmark baseline
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const DEPLOY_PATH = path.join(REPO_ROOT, "deployments", "421614.json");
 const EVIDENCE_PATH = path.join(REPO_ROOT, "deployments", "421614.stress-evidence.json");
 const REPORT_PATH = path.join(REPO_ROOT, "STRESS_REPORT.md");
-const EVIDENCE_MAX_BYTES = 10 * 1024 * 1024; // 10 MB cap before archive rollover
+const EVIDENCE_MAX_BYTES = 10 * 1024 * 1024;
 
 const USDC = "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d";
 const WETH = "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73";
 
-// Per BENCHMARK_POST_v3.md §3.2 — function: gas baseline
-// Findings emit GAS_REGRESSION when an observed gas exceeds baseline by > 2%.
+
+
 const GAS_BASELINE_V3: Record<string, number> = {
   "StrategyRegistry.registerStrategy.real": 193_897,
   "StrategyRegistry.registerStrategy.max": 331_953,
@@ -246,10 +246,10 @@ const ERC20_ABI = [
   "function DOMAIN_SEPARATOR() view returns (bytes32)",
 ];
 
-// Custom error selectors not always parseable from a single iface — collected
-// from OZ v5, ERC-20 standard errors, Pausable, ReentrancyGuard, Pyth, and the
-// FHE precompile InvalidSigner check (surfaces when an InEuint128 handle was
-// signed by a key the precompile doesn't recognise).
+
+
+
+
 const KNOWN_SELECTORS: Record<string, string> = {
   "0x5274afe7": "SafeERC20FailedOperation",
   "0x96d5cd09": "AddressEmptyCode",
@@ -266,7 +266,7 @@ const KNOWN_SELECTORS: Record<string, string> = {
   "0xb6db987a": "InvalidArgument",
   "0xa6802b3c": "InvalidUpdateData",
   "0x025b14a8": "PriceFeedNotFoundWithinRange",
-  // CoFHE precompile / EIP-712 signer-mismatch family
+
   "0x7ba5ffb5": "InvalidSigner(address,address)",
   "0xa94a4aad": "EIP2612InvalidSignature(address,address)",
   "0x57fdbed3": "ERC20PermitInvalidSigner(address,address)",
@@ -274,9 +274,9 @@ const KNOWN_SELECTORS: Record<string, string> = {
   "0xfce698f7": "ECDSAInvalidSignatureLength(uint256)",
 };
 
-// ────────────────────────────────────────────────────────────────────────
-// Logging helpers
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 let VERBOSE = false;
 function log(msg: string): void {
@@ -290,13 +290,13 @@ function fmtMs(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Profiler — phase-level instrumentation
-//
-// Every async operation (encrypt / estimateGas / preSubmit / broadcast /
-// wait / staticCall / stateRead / permitSign / signTx) is timed and
-// aggregated globally so the report can answer "where did the time go?".
-// ────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
 
 type Phase =
   | "cofheEncrypt"
@@ -356,9 +356,9 @@ async function profile<T>(phase: Phase, label: string, fn: () => Promise<T>): Pr
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Error decoder
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 interface AnyErr {
   data?: string;
@@ -398,7 +398,7 @@ function decodeRevert(
     };
   }
   const selector = data.slice(0, 10).toLowerCase();
-  // Error(string)
+
   if (selector === "0x08c379a0") {
     try {
       const inner = ethers.AbiCoder.defaultAbiCoder().decode(
@@ -410,7 +410,7 @@ function decodeRevert(
       return { raw: data, decoded: "Error(string) decode failed", selector };
     }
   }
-  // Panic(uint256)
+
   if (selector === "0x4e487b71") {
     try {
       const code = ethers.AbiCoder.defaultAbiCoder().decode(
@@ -422,7 +422,7 @@ function decodeRevert(
       return { raw: data, decoded: "Panic decode failed", selector };
     }
   }
-  // Try every loaded interface
+
   for (const [name, iface] of Object.entries(ifaces)) {
     try {
       const parsed = iface.parseError(data);
@@ -437,7 +437,7 @@ function decodeRevert(
         };
       }
     } catch {
-      /* not from this iface */
+
     }
   }
   if (KNOWN_SELECTORS[selector]) {
@@ -446,15 +446,15 @@ function decodeRevert(
   return { raw: data, decoded: `unknown-selector ${selector}`, selector };
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// CoFHE SDK loader — uses hardhat's hardhatSignerAdapter (SDK 0.5.1 API)
-//
-// SDK 0.5.1 requires viem-style publicClient + walletClient. The cleanest path
-// is to delegate to `hre.cofhe.hardhatSignerAdapter(signer)` which the
-// @cofhe/hardhat-plugin already wires up. The script must therefore be invoked
-// via `hardhat run` (env var `HARDHAT_NETWORK` set). When running standalone
-// (ts-node, dry-run), we return null and FHE-bound scenarios skip cleanly.
-// ────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
 
 interface CofheClientLite {
   encryptInputs(inputs: unknown[]): { execute(): Promise<EncryptedHandle[]> };
@@ -487,7 +487,7 @@ async function loadCofhe(testerAddress: string): Promise<CofheNamespace | null> 
     return null;
   }
   try {
-    /* eslint-disable @typescript-eslint/no-require-imports */
+
     const sdk = require("@cofhe/sdk") as Record<string, unknown>;
     const sdkNode = require("@cofhe/sdk/node") as Record<string, unknown>;
     const sdkChains = require("@cofhe/sdk/chains") as Record<string, unknown>;
@@ -495,7 +495,7 @@ async function loadCofhe(testerAddress: string): Promise<CofheNamespace | null> 
       cofhe: { hardhatSignerAdapter: (signer: unknown) => Promise<{ publicClient: unknown; walletClient: unknown }> };
       ethers: { getSigners: () => Promise<unknown[]> };
     };
-    /* eslint-enable @typescript-eslint/no-require-imports */
+
 
     const Encryptable = sdk.Encryptable as CofheNamespace["Encryptable"];
     const createCofheConfig = sdkNode.createCofheConfig as (cfg: unknown) => unknown;
@@ -508,7 +508,7 @@ async function loadCofhe(testerAddress: string): Promise<CofheNamespace | null> 
     });
     const client = createCofheClient(config);
 
-    // hardhat.config.ts accounts[1] is the tester key. signers[1] therefore.
+
     const signers = (await hre.ethers.getSigners()) as Array<{ address: string }>;
     const tester = signers.find(
       (s) => s.address.toLowerCase() === testerAddress.toLowerCase(),
@@ -520,7 +520,7 @@ async function loadCofhe(testerAddress: string): Promise<CofheNamespace | null> 
       try {
         await client.permits.createSelf({ issuer: testerAddress });
       } catch {
-        /* permit may already exist */
+
       }
     }
 
@@ -531,9 +531,9 @@ async function loadCofhe(testerAddress: string): Promise<CofheNamespace | null> 
   }
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Section 0 — cold-start initialization (NOT timed)
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 interface RuntimeContext {
   cli: CliArgs;
@@ -576,12 +576,12 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
   }
 
   const provider = new ethers.JsonRpcProvider(rpcUrl, undefined, { staticNetwork: true });
-  // Faster polling — arb-sepolia produces blocks every ~250ms but ethers default
-  // poll is 4s. Drop to 500ms to slash confirmation latency on each tx.
+
+
   provider.pollingInterval = 500;
   const tester = new ethers.Wallet(testerKey, provider);
 
-  // Confirm bytecode at every v3 address.
+
   log("  Verifying v3 contract bytecode…");
   for (const [name, addr] of Object.entries(dep.contracts)) {
     const code = await provider.getCode(addr);
@@ -591,7 +591,7 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
     vlog(`  ${name} ${addr} ${(code.length / 2 - 1).toString()} bytes`);
   }
 
-  // Tester wallet snapshot.
+
   const usdcContract = new ethers.Contract(USDC, ERC20_ABI, tester);
   const wethContract = new ethers.Contract(WETH, ERC20_ABI, tester);
   const ethBal = await provider.getBalance(tester.address);
@@ -609,7 +609,7 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
     throw new Error(`Tester USDC balance ${ethers.formatUnits(usdcBal, 6)} < 5 — fund tester first.`);
   }
 
-  // Load contract ABIs from artifacts.
+
   const artifactsDir = path.join(REPO_ROOT, "artifacts", "contracts");
   const contracts: Record<string, ethers.Contract> = {};
   const ifaces: Record<string, ethers.Interface> = {};
@@ -637,7 +637,7 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
     "error AddressEmptyCode(address)",
   ]);
 
-  // Pyth oracle freshness probe.
+
   const oracle = contracts.PriceOracle;
   let usdcUsd = 0n;
   let wethUsd = 0n;
@@ -653,7 +653,7 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
     log(`  [warn] Pyth read failed: ${(e as Error).message}; oracle-gated scenarios will be SETUP_FAILURE.`);
   }
 
-  // CoFHE SDK init (gracefully tolerated if it fails — many scenarios still run).
+
   log("  Initialising CoFHE SDK 0.5.1…");
   const cofhe = await loadCofhe(tester.address);
   if (!cofhe) {
@@ -662,7 +662,7 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
     log("  CoFHE SDK 0.5.1 ready.");
   }
 
-  // Approvals (idempotent — only sent if missing).
+
   log("  Ensuring approvals (vault + pool + composer ↦ MaxUint256)…");
   for (const spender of [
     dep.contracts.StrategyVault,
@@ -677,11 +677,11 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
     }
   }
 
-  // Pre-run position cleanup — defensive guard against leftover state from a
-  // previous failed run. If the tester wallet has an open vault position, we
-  // close it before starting the timed scenarios. Cold-start cleanup is
-  // OUTSIDE the timed window; this is per STRESS_CRITIQUE §1 (cold-start init
-  // must not contaminate timing).
+
+
+
+
+
   log("  Pre-run cleanup: scanning for leftover state from earlier runs…");
   try {
     const vault = new ethers.Contract(
@@ -701,8 +701,8 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
         const enc = await cofhe.client
           .encryptInputs([cofhe.Encryptable.uint128(dep0)])
           .execute();
-        // Skip estimateGas (it can falsely revert with stale on-chain handles
-        // from a prior CoFHE SDK version). Use a generous gas limit instead.
+
+
         const tx = await vault.closePosition(dep0, enc[0], { gasLimit: 800_000n });
         await tx.wait();
         log(`  [cleanup] closed leftover position tx=${tx.hash.slice(0, 12)}…`);
@@ -714,9 +714,9 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
     log(`  [cleanup-warn] ${(e as Error).message}`);
   }
 
-  // Round-13 — Permit2 onboarding. Verify the Permit2 singleton has bytecode
-  // at the canonical address and ensure the tester has approved Permit2 to
-  // spend the test tokens (one-time setup per token; idempotent).
+
+
+
   log("  Verifying Permit2 singleton + ensuring Permit2 spending approvals…");
   const permit2Code = await provider.getCode(PERMIT2_ADDRESS);
   if (permit2Code === "0x" || permit2Code.length < 4) {
@@ -757,9 +757,9 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
   };
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Operation execution helpers
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 function emptyOp(): OperationLog {
   return {
@@ -781,25 +781,25 @@ function emptyOp(): OperationLog {
   };
 }
 
-/**
- * Submit a transaction with detailed phase-level instrumentation.
- *
- * Phase breakdown (each timed independently and pushed to the global profiler):
- *   1. estimateGas   — `contract.fn.estimateGas(args)` (RPC roundtrip).
- *   2. preSubmit     — `contract.fn.populateTransaction(args)` + nonce + fee
- *                      assembly inside ethers (local + parallel RPC). The
- *                      time from the start of the wallet's send call until the
- *                      tx hash returns reflects ~1× RPC roundtrip for nonce,
- *                      ~1× for feeData, and ~1× for eth_sendRawTransaction.
- *   3. broadcast     — captured implicitly inside `preSubmit` (ethers does not
- *                      expose them separately when going through Contract.fn).
- *                      The mempool latency = preSubmit timer.
- *   4. waitConfirm   — `tx.wait()` polling time; depends on poll interval and
- *                      block time. On arb-sepolia with poll=500 ms expect
- *                      0.5–4 s for 1-block confirmation.
- *
- * The combined `txTotal` phase is also recorded for the whole submission.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 async function submitTx(
   ctx: RuntimeContext,
   contractName: string,
@@ -827,20 +827,20 @@ async function submitTx(
 
   op.submittedAtMs = Date.now();
   const txStartMs = op.submittedAtMs;
-  // Strip our extension fields before passing the rest to ethers.
+
   const {
     skipEstimateGas = false,
     gasLimitOverride,
     ...rawTxOpts
   } = txOptions;
   try {
-    // 1. Estimate gas first (separate RPC) — surfaces precompile rejections
-    //    cheaply (no real gas spent) and gives us a useful tx-shape latency.
-    //    Some scenarios (e.g. closePosition right after openPosition) need to
-    //    skip estimateGas because arb-sepolia simulates against the latest
-    //    mined block — which may still be the open's block — and the
-    //    INV-2-005 same-block-close guard would falsely fire even though the
-    //    tx will actually be sequenced into a later block.
+
+
+
+
+
+
+
     let gasEst = gasLimitOverride ?? 0n;
     if (!skipEstimateGas && gasLimitOverride === undefined) {
       try {
@@ -851,12 +851,12 @@ async function submitTx(
         op.phaseMs.estimateGas = estMs;
         recordPhase("estimateGas", label, estMs);
       } catch (estErr) {
-        // Some calls (e.g., contracts that depend on prior tx state) may fail
-        // estimateGas; we proceed with a generous default and let the actual
-        // submission produce the authoritative revert.
+
+
+
         op.phaseMs.estimateGas = Date.now() - txStartMs;
         const decoded = decodeRevert(estErr, ctx.ifaces);
-        // If estimateGas reverts cleanly, that's our answer — no need to submit.
+
         op.confirmedAtMs = Date.now();
         op.totalLatencyMs = op.confirmedAtMs - txStartMs;
         op.status = "revert";
@@ -867,15 +867,15 @@ async function submitTx(
       }
     }
 
-    // 2. preSubmit — nonce/fee assembly + signing + eth_sendRawTransaction.
+
     const preStart = Date.now();
     const fnRef = contract[fn] as (
       ...a: unknown[]
     ) => Promise<ethers.ContractTransactionResponse>;
-    // gasLimit: 1.2× estimate; or hardcoded override; or fallback for skip path.
+
     const gasLimit =
       gasLimitOverride ??
-      (gasEst > 0n ? (gasEst * 12n) / 10n : 1_500_000n /* generous default */);
+      (gasEst > 0n ? (gasEst * 12n) / 10n : 1_500_000n );
     const tx = await fnRef(...args, { ...rawTxOpts, gasLimit });
     op.mempooledAtMs = Date.now();
     op.txHash = tx.hash;
@@ -885,7 +885,7 @@ async function submitTx(
     recordPhase("preSubmit", label, op.submissionLatencyMs);
     recordPhase("broadcast", label, op.submissionLatencyMs);
 
-    // 3. waitConfirm — block confirmation polling.
+
     const waitStart = Date.now();
     const rcpt = await tx.wait();
     op.confirmedAtMs = Date.now();
@@ -893,7 +893,7 @@ async function submitTx(
     op.phaseMs.waitConfirm = op.confirmationLatencyMs;
     recordPhase("waitConfirm", label, op.confirmationLatencyMs);
 
-    // 4. txTotal — full submission window.
+
     op.totalLatencyMs = op.confirmedAtMs - txStartMs;
     op.phaseMs.txTotal = op.totalLatencyMs;
     recordPhase("txTotal", label, op.totalLatencyMs);
@@ -911,10 +911,10 @@ async function submitTx(
     recordPhase("txTotal", label, op.totalLatencyMs);
     op.status = "revert";
     op.revert = decodeRevert(e, ctx.ifaces);
-    // Fallback: if the error didn't carry decoded data (just the generic
-    // "transaction execution reverted" wrapping ethers produces when a tx
-    // reverts after submission), re-simulate via provider.call against the
-    // failed-tx block to extract the actual revert data.
+
+
+
+
     if (
       op.txHash &&
       (op.revert.decoded === "transaction execution reverted" ||
@@ -946,10 +946,10 @@ async function submitTx(
   return op;
 }
 
-/**
- * Static (eth_call) probe with phase instrumentation. Records under the
- * `staticCall` phase (no chain mutation, no gas, no confirmation wait).
- */
+
+
+
+
 async function staticCall(
   ctx: RuntimeContext,
   contractName: string,
@@ -990,9 +990,9 @@ async function staticCall(
   return op;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// State verification helpers
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 async function readPlainSupply(ctx: RuntimeContext, token: string): Promise<bigint> {
   return profile("stateRead", "LendingPool.getPlainSupplyBalance", async () =>
@@ -1103,9 +1103,9 @@ function diffState(
   return checks;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Encryption helpers
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 async function encryptUint128(ctx: RuntimeContext, v: bigint): Promise<EncryptedHandle> {
   if (!ctx.cofhe) throw new Error("CoFHE SDK unavailable");
@@ -1122,9 +1122,9 @@ async function encryptOpenInputs(
   collateral: bigint,
   debt: bigint,
 ): Promise<EncryptedHandle[]> {
-  // F-03: openPosition no longer takes encrypted apyTarget / loopCount.
-  // Strategy-level params live as plaintext on the registry's `Strategy`
-  // struct now, so the position only needs (collateral, debt) ciphertexts.
+
+
+
   if (!ctx.cofhe) throw new Error("CoFHE SDK unavailable");
   return profile("cofheEncrypt", "openInputs(2)", () =>
     ctx.cofhe!.client
@@ -1136,24 +1136,24 @@ async function encryptOpenInputs(
   );
 }
 
-/**
- * Wait until the chain head advances past `openBlock` by at least
- * `marginBlocks` (default 2). Required after StrategyVault.openPosition
- * before any close attempt (INV-2-005: SameBlockClose() reverts if
- * `positionOpenedAtBlock + 1 > block.number`).
- *
- * Empirically arb-sepolia's eth_estimateGas can simulate against a "pending"
- * block whose `block.number` lags the latest-mined head when the sequencer
- * batches multiple tx into one L2 block. Polling for `head > openBlock + 1`
- * gives the simulation a definitively-fresh block.number to work with.
- */
+
+
+
+
+
+
+
+
+
+
+
 async function waitNextBlockAfter(
   ctx: RuntimeContext,
   openBlock: number,
   marginBlocks = 2,
 ): Promise<void> {
   if (openBlock === 0) {
-    // Open failed; nothing to wait for.
+
     return;
   }
   const target = openBlock + marginBlocks;
@@ -1164,18 +1164,18 @@ async function waitNextBlockAfter(
   }
 }
 
-/**
- * Batch encrypt N uint128 values in a single CoFHE roundtrip.
- *
- * The instrumentation revealed CoFHE encryption averages ~7.8 s per call
- * (network roundtrip to the Fhenix backend), regardless of payload size.
- * Batching N values into one call therefore costs ~7.8 s once instead of
- * N×7.8 s. Scenarios that need encrypted handles for multiple sequential
- * operations should call `encryptUint128Batch` once at the top instead of
- * doing per-step encryption.
- *
- * Returns N handles in the same order as the input values.
- */
+
+
+
+
+
+
+
+
+
+
+
+
 async function encryptUint128Batch(
   ctx: RuntimeContext,
   values: bigint[],
@@ -1189,34 +1189,34 @@ async function encryptUint128Batch(
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Permit2 (Uniswap canonical singleton)
-//
-// Round-13 unified all token authorisation paths on Permit2. The legacy
-// EIP-2612 helpers (`probePermitSupport`, `signPermit2612`,
-// `Eip2612Signature`, `PermitSupport`) were REMOVED — no fallback, no
-// redundant alternative. Permit2 is universally compatible (works for any
-// ERC-20, including tokens that lack their own `permit()` function), uses a
-// cross-protocol nonce space, and the singleton at `PERMIT2_ADDRESS` is
-// verified deployed on every chain we target (arb-sepolia: 18,306 bytes of
-// bytecode at the canonical address).
-//
-// User-side onboarding: one-time `IERC20(token).approve(PERMIT2, MaxUint256)`,
-// then sign EIP-712 `PermitTransferFrom` messages per transfer.
-// ────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 
 interface Permit2Sig {
-  /// The exact struct shape the on-chain `IPermit2.permitTransferFrom` expects.
+
   permit: {
     permitted: { token: string; amount: bigint };
     nonce: bigint;
     deadline: bigint;
   };
-  /// 65-byte concatenated (r || s || v) EIP-712 signature.
+
   signature: string;
-  /// Composer struct shape (Permit2Authorization) — identical fields, flatter.
+
   composerAuth: {
     amount: bigint;
     deadline: bigint;
@@ -1225,22 +1225,22 @@ interface Permit2Sig {
   };
 }
 
-/**
- * Sign a Permit2 PermitTransferFrom message. The signature is bound to
- * `(token, amount, nonce, deadline, spender)` so it cannot be re-purposed
- * for any other recipient or replayed.
- *
- * The user must have one-time approved Permit2 with
- * `IERC20(token).approve(PERMIT2_ADDRESS, MaxUint256)`. The cold-start init
- * does this automatically (see `coldStart`) so this helper assumes the
- * approval is in place.
- */
+
+
+
+
+
+
+
+
+
+
 async function signPermit2(
   ctx: RuntimeContext,
   token: string,
   amount: bigint,
   spender: string,
-  /** Default deadline: now + 30 minutes. */
+
   deadlineSecs?: number,
 ): Promise<Permit2Sig> {
   return profile(
@@ -1248,9 +1248,9 @@ async function signPermit2(
     `permit2:${token.slice(0, 10)}…→${spender.slice(0, 10)}…`,
     async () => {
       const deadline = BigInt(deadlineSecs ?? Math.floor(Date.now() / 1000) + 1800);
-      // Permit2 uses a 256-bit nonce space owned by the user. We pick a fresh
-      // 252-bit random for each signature — collision probability is
-      // astronomical even across millions of signatures per user.
+
+
+
       const nonceHex = ethers.hexlify(ethers.randomBytes(32));
       const nonce = BigInt(nonceHex) >> 4n;
       const domain = {
@@ -1286,9 +1286,9 @@ async function signPermit2(
   );
 }
 
-/// Skip-permit sentinel for the composer's `Permit2Authorization` struct —
-/// `deadline = 0` tells the composer to fall back to a pre-existing
-/// `IERC20.approve(composer, ...)` allowance instead of invoking Permit2.
+
+
+
 const COMPOSER_PERMIT_SKIP = {
   amount: 0n,
   deadline: 0n,
@@ -1296,16 +1296,16 @@ const COMPOSER_PERMIT_SKIP = {
   signature: "0x",
 };
 
-// ────────────────────────────────────────────────────────────────────────
-// SCENARIO executor — wraps a scenario function in evidence collection
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 interface ScenarioDef {
   id: string;
   type: "deterministic" | "random" | "baseline" | "ux" | "concurrency";
   description: string;
   expectedRevert?: { contract: string; errorName: string };
-  /** Run the scenario; return ops + state assertions + final result. */
+
   run: (ctx: RuntimeContext) => Promise<{
     ops: OperationLog[];
     stateChecks: StateAssertionRecord[];
@@ -1361,11 +1361,11 @@ async function runScenario(ctx: RuntimeContext, def: ScenarioDef): Promise<Scena
     });
   }
 
-  // Result classification.
+
   const reverts = ops.filter((o) => o.status === "revert");
   if (result === "SUCCESS" && def.expectedRevert && reverts.length === 0) {
-    // Scenario expected a revert but none occurred — that itself is a finding
-    // (the contract didn't enforce the invariant the test was probing).
+
+
     result = "UNEXPECTED_REVERT";
     findings.push({
       scenarioId: def.id,
@@ -1407,7 +1407,7 @@ async function runScenario(ctx: RuntimeContext, def: ScenarioDef): Promise<Scena
       }
     }
   }
-  // State mismatch promotion.
+
   const mismatches = stateChecks.filter((s) => !s.match);
   if (mismatches.length > 0 && result === "SUCCESS") {
     result = "STATE_MISMATCH";
@@ -1418,7 +1418,7 @@ async function runScenario(ctx: RuntimeContext, def: ScenarioDef): Promise<Scena
       details: `state mismatch: ${mismatches.map((m) => `${m.variable} expected=${m.expected} actual=${m.actual}`).join("; ")}`,
     });
   }
-  // Gas regression check.
+
   for (const o of ops) {
     if (o.status !== "ok" || !o.gasUsed) continue;
     const key = `${o.contract}.${o.op}`;
@@ -1437,7 +1437,7 @@ async function runScenario(ctx: RuntimeContext, def: ScenarioDef): Promise<Scena
     }
   }
 
-  // Aggregate gas + latency.
+
   const operationGas: Record<string, string> = {};
   const operationLatencyMs: Record<string, number> = {};
   let totalGas = 0n;
@@ -1497,9 +1497,9 @@ async function runScenario(ctx: RuntimeContext, def: ScenarioDef): Promise<Scena
   return evidence;
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// SCENARIO_DEFINITIONS — 25 deterministic scenarios
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   {
@@ -1508,8 +1508,8 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "registry.registerStrategy(min name) — minimal valid registration",
     run: async (ctx) => {
       const pre = await snapState(ctx);
-      // Use a per-run unique name+hash so re-runs don't collide on
-      // StrategyAlreadyExists (round-11 INV-3-001 added content-hash dedup).
+
+
       const uniq = `${Date.now()}-${Math.floor(ctx.rng() * 1e6)}`;
       const op = await submitTx(ctx, "StrategyRegistry", "registerStrategy", [
         `s1-${uniq}`,
@@ -1565,7 +1565,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "vault open + close (full) — 0.05 USDC; verifies INV-2-005 close-fhe-skip",
     run: async (ctx) => {
       const collateral = 50_000n;
-      // Need fresh strategy
+
       const reg = await submitTx(ctx, "StrategyRegistry", "registerStrategy", [
         `S-003-${Date.now()}`,
         ethers.keccak256(ethers.toUtf8Bytes(`stress-${Date.now()}-${Math.floor(Math.random()*1e9)}`)),
@@ -1580,8 +1580,8 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         sId,
       ]);
       const post1 = await snapState(ctx);
-      // INV-2-005: SameBlockClose() reverts if block.number == openBlock.
-      // Encrypt FRESH handle for close: openPosition already consumed enc[0].
+
+
       await waitNextBlockAfter(ctx, open.blockNumber ?? 0);
       const closeEnc = await encryptUint128(ctx, collateral);
       const close = await submitTx(ctx, "StrategyVault", "closePosition", [collateral, closeEnc], { skipEstimateGas: true, gasLimitOverride: 800_000n });
@@ -1639,7 +1639,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       const add = await submitTx(ctx, "StrategyVault", "addCollateral", [USDC, add0, enc2]);
       const total = open0 + add0;
       const deposited = await readDeposited(ctx);
-      // INV-2-005: ensure close is in a strictly later block than open.
+
       await waitNextBlockAfter(ctx, open.blockNumber ?? 0);
       const enc3 = await encryptUint128(ctx, total);
       const close = await submitTx(ctx, "StrategyVault", "closePosition", [total, enc3], { skipEstimateGas: true, gasLimitOverride: 800_000n });
@@ -1661,7 +1661,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     run: async (ctx) => {
       const amt = 100_000n;
       const pre = await snapState(ctx);
-      // Batch the 2 encryptions into 1 CoFHE roundtrip (~50% encryption cost cut).
+
       const [encSupply, encWithdraw] = await encryptUint128Batch(ctx, [amt, amt]);
       const supply = await submitTx(ctx, "LendingPool", "supply", [USDC, amt, encSupply]);
       const mid = await snapState(ctx);
@@ -1696,9 +1696,9 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "pool: supply → checkLtvAndBorrow → repay → withdraw — verify all 4 paths",
     run: async (ctx) => {
       const supplyAmt = 200_000n;
-      const borrowAmt = 100_000n; // 50% LTV against own supply
+      const borrowAmt = 100_000n;
       const pre = await snapState(ctx);
-      // Batch all 4 encryptions into 1 CoFHE roundtrip (~75% encryption cost cut).
+
       const [encSupply, encBorrow, encRepay, encWithdraw] = await encryptUint128Batch(ctx, [
         supplyAmt,
         borrowAmt,
@@ -1733,7 +1733,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       const supplyAmt = 200_000n;
       const borrowAmt = 50_000n;
       const pre = await snapState(ctx);
-      // Batch all 4 encryptions into 1 CoFHE roundtrip (~75% encryption cost cut).
+
       const [encSupply, encBorrow, encRepay, encWithdraw] = await encryptUint128Batch(ctx, [
         supplyAmt,
         borrowAmt,
@@ -1764,8 +1764,8 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "composer.openLeveragedStrategy — plaintext-only register (collateralAmount=0)",
     run: async (ctx) => {
       if (!ctx.cofhe) return { ops: [], stateChecks: [], overrideResult: "SETUP_FAILURE" };
-      // F-03: OpenStrategyEncrypted shrunk from 8 → 6 ciphertexts. apy/loop
-      // moved to plaintext on OpenStrategyParams.
+
+
       const enc = await ctx.cofhe.client
         .encryptInputs([
           ctx.cofhe.Encryptable.uint128(0n),
@@ -1853,14 +1853,14 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         ),
       ]);
       const sId = (await ctx.contracts.StrategyRegistry.strategyCount()) as bigint;
-      // Encrypt both inputs in one batch.
-      // F-03: only collateral + debt are encrypted on the position.
+
+
       const [collEnc, debtEnc] = await encryptOpenInputs(ctx, collateral, 0n);
       const closeEnc = await encryptUint128(ctx, collateral);
-      // Read pending nonce; submit open and close in PARALLEL with sequential
-      // nonces so they land in adjacent slots — open at N, close at N+1.
-      // The sequencer typically batches both into the same L2 block, which
-      // triggers INV-2-003's SameBlockClose() guard.
+
+
+
+
       const baseNonce = await ctx.provider.getTransactionCount(ctx.tester.address, "pending");
       const [open, close] = await Promise.all([
         submitTx(
@@ -1878,8 +1878,8 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
           { nonce: baseNonce + 1, skipEstimateGas: true, gasLimitOverride: 800_000n },
         ),
       ]);
-      // Cleanup: wait for next block, then close again (this one should succeed
-      // because we're past the open's block).
+
+
       await waitNextBlockAfter(ctx, open.blockNumber ?? 0);
       const cleanupEnc = await encryptUint128(ctx, collateral);
       const cleanup = await submitTx(
@@ -1905,7 +1905,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       const overBorrow = await staticCall(ctx, "LendingPool", "checkLtvAndBorrow", [
         USDC,
         USDC,
-        supplyAmt + 1n, // > supply at 90/100
+        supplyAmt + 1n,
         enc2,
         90n,
         100n,
@@ -2048,7 +2048,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         enc[1],
         60n,
       ]);
-      // Parse intent id from logs
+
       let intentId = "0x0000000000000000000000000000000000000000000000000000000000000000";
       if (submit.txHash) {
         const rcpt = await ctx.provider.getTransactionReceipt(submit.txHash);
@@ -2061,7 +2061,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
                 break;
               }
             } catch {
-              /* not from router */
+
             }
           }
         }
@@ -2099,12 +2099,12 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     type: "deterministic",
     description: "PriceOracle convertToUsd / convertFromUsd round-trip — small drift only",
     run: async (ctx) => {
-      const usdAmt = ethers.parseUnits("100", 18); // $100 in WAD
+      const usdAmt = ethers.parseUnits("100", 18);
       const op1 = await staticCall(ctx, "PriceOracle", "convertFromUsd", [USDC, usdAmt]);
       const usdcAmt = (await ctx.contracts.PriceOracle.convertFromUsd(USDC, usdAmt)) as bigint;
       const op2 = await staticCall(ctx, "PriceOracle", "convertToUsd", [USDC, usdcAmt]);
       const back = (await ctx.contracts.PriceOracle.convertToUsd(USDC, usdcAmt)) as bigint;
-      // allow up to 1% drift
+
       const drift = back > usdAmt ? back - usdAmt : usdAmt - back;
       const tolerance = usdAmt / 100n;
       const checks: StateAssertionRecord[] = [
@@ -2174,13 +2174,13 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "Composer 1-to-1 strategyId reuse (composer.openLeveragedStrategy with strategyId>0)",
     run: async (ctx) => {
       if (!ctx.cofhe) return { ops: [], stateChecks: [], overrideResult: "SETUP_FAILURE" };
-      // Register a strategy first
+
       const reg = await submitTx(ctx, "StrategyRegistry", "registerStrategy", [
         `S-025-${Date.now()}`,
         ethers.keccak256(ethers.toUtf8Bytes(`stress-${Date.now()}-${Math.floor(Math.random()*1e9)}`)),
       ]);
       const sId = (await ctx.contracts.StrategyRegistry.strategyCount()) as bigint;
-      // F-03: 6 ciphertexts (was 8 — apy/loop now plaintext on params).
+
       const enc = await ctx.cofhe.client
         .encryptInputs([
           ctx.cofhe.Encryptable.uint128(0n),
@@ -2232,9 +2232,9 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     run: async (ctx) => {
       if (!ctx.cofhe) return { ops: [], stateChecks: [], overrideResult: "SETUP_FAILURE" };
       const amt = 100_000n;
-      // Drop the pool's direct allowance so this scenario can ONLY succeed
-      // via the Permit2 path. Restore MaxUint256 at the end so downstream
-      // scenarios that use plain `supply()` still work.
+
+
+
       const [encSupply, encWithdraw] = await encryptUint128Batch(ctx, [amt, amt]);
       const drop = await submitTx(ctx, "USDC", "approve", [ctx.v3.LendingPool, 0n]);
       const sig = await signPermit2(ctx, USDC, amt, ctx.v3.LendingPool);
@@ -2287,7 +2287,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         70n,
         100n,
       ]);
-      // Drop pool allowance so the repay must use Permit2.
+
       const drop = await submitTx(ctx, "USDC", "approve", [ctx.v3.LendingPool, 0n]);
       const sig = await signPermit2(ctx, USDC, borrowAmt, ctx.v3.LendingPool);
       const repay = await submitTx(ctx, "LendingPool", "repayWithPermit2", [
@@ -2323,14 +2323,14 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     run: async (ctx) => {
       if (!ctx.cofhe) return { ops: [], stateChecks: [], overrideResult: "SETUP_FAILURE" };
       const collateralAmount = 50_000n;
-      // Drop direct allowance so the composer must use Permit2.
+
       const drop = await submitTx(ctx, "USDC", "approve", [ctx.v3.FheForgeComposer, 0n]);
-      // Sign Permit2 over (USDC, collateralAmount, nonce, deadline, spender=composer)
+
       const sig = await signPermit2(ctx, USDC, collateralAmount, ctx.v3.FheForgeComposer);
-      // Encrypt FHE handles for the COMPOSER (not the user wallet) so the
-      // precompile's `verifyInput(input, msg.sender = COMPOSER)` matches the
-      // SDK's ZK-proof metadata `accountAddr = composer`.
-      // F-03: 6 ciphertexts (was 8 — apy/loop now plaintext on params).
+
+
+
+
       const builder = ctx.cofhe.client.encryptInputs([
         ctx.cofhe.Encryptable.uint128(collateralAmount),
         ctx.cofhe.Encryptable.uint128(0n),
@@ -2363,7 +2363,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         strategyId: 0n,
         apyTarget: 0,
         loopCount: 0,
-        // Composer Permit2Authorization struct (round-13 — replaces EIP-2612 PermitData).
+
         collateralPermit: sig.composerAuth,
       };
       const encParams = {
@@ -2378,7 +2378,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         params,
         encParams,
       ]);
-      // Cleanup the position one block after open (INV-2-005 same-block close).
+
       let close: OperationLog | null = null;
       if (open.status === "ok") {
         await waitNextBlockAfter(ctx, open.blockNumber ?? 0);
@@ -2410,9 +2410,9 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
   },
 ];
 
-// ────────────────────────────────────────────────────────────────────────
-// Section 3 — random scenario generator
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 type RandomOp =
   | "SUPPLY"
@@ -2429,15 +2429,15 @@ interface GeneratedScenarioOp {
 }
 
 function buildRandomScenario(idx: number, rng: () => number): ScenarioDef {
-  const opCount = 2 + Math.floor(rng() * 5); // 2..6
+  const opCount = 2 + Math.floor(rng() * 5);
   const opSet: RandomOp[] = ["SUPPLY", "WITHDRAW", "REGISTER_STRATEGY", "VIEW_PRICE", "VIEW_STATE"];
-  // Build a safe sequence — supplies before withdraws, paired sums.
+
   let supplied = 0n;
   const ops: GeneratedScenarioOp[] = [];
   for (let i = 0; i < opCount; i++) {
     const choice = opSet[Math.floor(rng() * opSet.length)];
     if (choice === "SUPPLY") {
-      const amt = BigInt(20_000 + Math.floor(rng() * 80_000)); // 0.02..0.1 USDC
+      const amt = BigInt(20_000 + Math.floor(rng() * 80_000));
       supplied += amt;
       ops.push({ kind: "SUPPLY", amount: amt, token: USDC });
     } else if (choice === "WITHDRAW") {
@@ -2460,7 +2460,7 @@ function buildRandomScenario(idx: number, rng: () => number): ScenarioDef {
       ops.push({ kind: "VIEW_STATE" });
     }
   }
-  // Force a final withdraw to drain any lingering supply
+
   if (supplied > 0n) {
     ops.push({ kind: "WITHDRAW", amount: supplied, token: USDC });
   }
@@ -2502,9 +2502,9 @@ function buildRandomScenario(idx: number, rng: () => number): ScenarioDef {
   };
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Section 4 — UX simulation
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 const UX_SCENARIO: ScenarioDef = {
   id: "UX-001",
@@ -2517,11 +2517,11 @@ const UX_SCENARIO: ScenarioDef = {
     const enc = await encryptUint128(ctx, amt);
     const supply = await submitTx(ctx, "LendingPool", "supply", [USDC, amt, enc]);
     ops.push(supply);
-    // CoFHE processing observation: try unseal of the supply handle (may not be available)
+
     const tDecryptStart = Date.now();
     let decrypted = "n/a";
     try {
-      // Read the user's encrypted balance handle
+
       const handleHex = await ctx.contracts.LendingPool.getSupplyBalance.staticCall(USDC);
       if (ctx.cofhe.client.unseal && typeof handleHex === "string") {
         const v = await ctx.cofhe.client.unseal(handleHex);
@@ -2549,9 +2549,9 @@ const UX_SCENARIO: ScenarioDef = {
   },
 };
 
-// ────────────────────────────────────────────────────────────────────────
-// Section 5 — block-level concurrency probe
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 const CONCURRENCY_SCENARIO: ScenarioDef = {
   id: "CONC-001",
@@ -2561,11 +2561,11 @@ const CONCURRENCY_SCENARIO: ScenarioDef = {
   run: async (ctx) => {
     const ops: OperationLog[] = [];
     const checks: StateAssertionRecord[] = [];
-    // When firing N txs from a single wallet via Promise.all, ethers' default
-    // nonce manager assigns the SAME nonce to all of them (it caches the
-    // pending nonce until each tx is fully sent). The result is nonce-collision
-    // reverts on N-1 of them. We assign sequential nonces explicitly so all N
-    // txs are valid and land in adjacent blocks.
+
+
+
+
+
     let baseNonce = await ctx.provider.getTransactionCount(ctx.tester.address, "pending");
     for (const batch of [1, 3, 5]) {
       const promises: Promise<OperationLog>[] = [];
@@ -2590,8 +2590,8 @@ const CONCURRENCY_SCENARIO: ScenarioDef = {
           ),
         );
       }
-      // Submit them in parallel — ethers serialises actual sending, but the
-      // explicit nonces mean each lands in a valid sequence.
+
+
       const results = await Promise.all(promises);
       ops.push(...results);
       baseNonce += batch;
@@ -2607,9 +2607,9 @@ const CONCURRENCY_SCENARIO: ScenarioDef = {
   },
 };
 
-// ────────────────────────────────────────────────────────────────────────
-// Section 1 — baseline probe (per-function single-tx baseline)
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 const BASELINE_SCENARIO: ScenarioDef = {
   id: "BASE-001",
@@ -2617,33 +2617,33 @@ const BASELINE_SCENARIO: ScenarioDef = {
   description: "Section 1 baseline: single-tx probe per state-changing function",
   run: async (ctx) => {
     const ops: OperationLog[] = [];
-    // registerStrategy (1 sample)
+
     const reg = await submitTx(ctx, "StrategyRegistry", "registerStrategy", [
       `BASE-${Date.now()}`,
       ethers.keccak256(ethers.toUtf8Bytes(`stress-${Date.now()}-${Math.floor(Math.random()*1e9)}`)),
     ]);
     ops.push(reg);
-    // pool.supply + pool.withdraw round-trip
+
     const enc1 = await encryptUint128(ctx, 50_000n);
     const supply = await submitTx(ctx, "LendingPool", "supply", [USDC, 50_000n, enc1]);
     ops.push(supply);
     const enc2 = await encryptUint128(ctx, 50_000n);
     const wd = await submitTx(ctx, "LendingPool", "withdraw", [USDC, 50_000n, enc2]);
     ops.push(wd);
-    // staticCall reads (no gas, no state mutation)
+
     ops.push(await staticCall(ctx, "PriceOracle", "getPriceUsd", [USDC]));
     ops.push(await staticCall(ctx, "PriceOracle", "getPriceUsd", [WETH]));
     return { ops, stateChecks: [] };
   },
 };
 
-// ────────────────────────────────────────────────────────────────────────
-// Evidence appender + STRESS_REPORT generator
-// ────────────────────────────────────────────────────────────────────────
 
-/// JSON.stringify replacer that converts BigInt → decimal string. Needed
-/// because operation args may contain BigInt-valued fields nested in struct
-/// payloads (e.g. composer.openLeveragedStrategy params.collateralAmount).
+
+
+
+
+
+
 function bigintReplacer(_key: string, value: unknown): unknown {
   return typeof value === "bigint" ? value.toString() : value;
 }
@@ -2724,7 +2724,7 @@ function writeReport(record: RunRecord): void {
   lines.push("");
   lines.push("| Function | Min | Avg | Max | Baseline | Δ% |");
   lines.push("|---|---:|---:|---:|---:|---:|");
-  // Aggregate gas across all scenarios.
+
   const fnGas: Record<string, number[]> = {};
   for (const sc of record.scenarios) {
     for (const [key, gasStr] of Object.entries(sc.operationGas)) {
@@ -2793,7 +2793,7 @@ function writeReport(record: RunRecord): void {
     if (agg.count === 0) continue;
     phaseRows.push([phase, agg.count, agg.totalMs, agg.minMs, agg.maxMs]);
   }
-  // Sort by totalMs descending (biggest time-eater first).
+
   phaseRows.sort((a, b) => b[2] - a[2]);
   for (const [phase, count, total, min, max] of phaseRows) {
     const avg = Math.round(total / count);
@@ -2840,9 +2840,9 @@ function writeReport(record: RunRecord): void {
   log(`  Report: ${REPORT_PATH}`);
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Main
-// ────────────────────────────────────────────────────────────────────────
+
+
+
 
 async function main(): Promise<void> {
   const cli = parseCli(process.argv);
@@ -2890,12 +2890,12 @@ async function main(): Promise<void> {
     evidences.push(await runScenario(ctx, CONCURRENCY_SCENARIO));
   }
 
-  // Final wallet snapshot.
+
   const ethEnd = await ctx.provider.getBalance(ctx.tester.address);
   const usdcEnd = (await ctx.contracts.USDC.balanceOf(ctx.tester.address)) as bigint;
   const wethEnd = (await ctx.contracts.WETH.balanceOf(ctx.tester.address)) as bigint;
 
-  // Aggregate.
+
   const totals = {
     scenarioCount: evidences.length,
     succeeded: evidences.filter((e) => e.result === "SUCCESS").length,
@@ -2975,7 +2975,7 @@ async function main(): Promise<void> {
     `  scenarios=${totals.scenarioCount} success=${totals.succeeded} expectedRev=${totals.expectedRevert} unexpectedRev=${totals.unexpectedRevert} stateMismatch=${totals.stateMismatch} setupFail=${totals.setupFailure}`,
   );
   log(`  duration=${fmtMs(endedAt - startedAt)}  totalGas=${fmtBigGas(totals.gasTotal)}`);
-  // Phase profiling — quick console summary; full breakdown is in STRESS_REPORT.md.
+
   log("");
   log("  ┌─ Phase profiling ────────────────────────────────────────┐");
   const sortedPhases = Object.entries(PHASE_AGGREGATE)

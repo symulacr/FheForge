@@ -1,8 +1,8 @@
-/**
- * fund-tester.js
- * Sends all of deployer's USDC + 0.15 ETH to the tester wallet on Arbitrum Sepolia.
- * Idempotent: if deployer USDC == 0, USDC step is skipped; same for ETH if balance below threshold.
- */
+
+
+
+
+
 const hre = require("hardhat");
 
 async function main() {
@@ -28,7 +28,7 @@ async function main() {
   console.log(`Deployer USDC: ${hre.ethers.formatUnits(usdcBefore, decimals)}`);
   console.log(`Tester:        ${testerAddress}\n`);
 
-  // 1. Move all USDC to tester
+
   if (usdcBefore > 0n) {
     console.log(`→ Sending ${hre.ethers.formatUnits(usdcBefore, decimals)} USDC to tester...`);
     const usdcTx = await usdc.transfer(testerAddress, usdcBefore);
@@ -39,7 +39,7 @@ async function main() {
     console.log("→ Deployer has 0 USDC; skipping USDC transfer.");
   }
 
-  // 2. Forward 0.15 ETH to tester
+
   const ethToSend = hre.ethers.parseEther("0.15");
   const ethBalNow = await provider.getBalance(deployer.address);
   if (ethBalNow > ethToSend + hre.ethers.parseEther("0.05")) {
@@ -55,7 +55,7 @@ async function main() {
     console.log("\n→ Insufficient deployer ETH (need >0.20 to maintain deploy buffer); skipping.");
   }
 
-  // 3. Final balances
+
   const ethAfterDep = await provider.getBalance(deployer.address);
   const usdcAfterDep = await usdc.balanceOf(deployer.address);
   const ethAfterTest = await provider.getBalance(testerAddress);
