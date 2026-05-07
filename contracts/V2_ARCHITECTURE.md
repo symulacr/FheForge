@@ -1,3 +1,5 @@
+⚠️ PRELIMINARY — The features described below are aspirational and NOT YET IMPLEMENTED.
+
 # FheForge v2 — Refactor Architecture (Vault + Composer / Mesh, Batched-Sync Pool, Permissionless Registry, FHE-Composable Core)
 
 **Status:** design specification, no `.sol` edits yet.
@@ -7,6 +9,8 @@
 ---
 
 ## 1  North-star architecture diagram
+
+**Status:** Planned — not implemented
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -51,6 +55,8 @@ The composer is the only EOA-callable surface. Every other layer is permissioned
 
 ## 2  Design principles (in order of priority)
 
+**Status:** Planned — not implemented
+
 1. **Users never touch storage of multiple contracts.** One signature → one tx → one composer entrypoint → all internal hops are atomic. Closes 4-tx front-running window (gap O.3).
 2. **Plain ↔ encrypted is one input, never two.** Either pass an encrypted-only input and let the contract decrypt+compare, or pass plain only and let the contract re-encrypt. Closes the P.1–P.3 skew gaps.
 3. **Reserve invariant is the lend-pool's first-class check.** `reserve(token) ≥ Σ plainSupply(user, token) − Σ plainBorrow(user, token)`. Closes A.5b2/A.5c/F.6/Q.5.
@@ -65,6 +71,8 @@ The composer is the only EOA-callable surface. Every other layer is permissioned
 ## 3  Layer-by-layer design
 
 ### 3.1 Registry — permissionless, lifecycle-aware, cross-chain
+
+**Status:** Planned — not implemented
 
 **v1 gaps closed:** B.5, B.6 (LIMIT), C.3, C.4, F.7, M.3, Q.3, Q.4, Q.6, S.2, X.4, Z.3, Z.4, Z.5
 
@@ -128,6 +136,8 @@ interface IFheForgeRegistry {
 ---
 
 ### 3.2 LendingPool — reserve-gated, batched-sync, oracle-aware, payable
+
+**Status:** Planned — not implemented
 
 **v1 gaps closed:** A.5b2, A.5c, F.3, F.5, F.6, H.1–H.3, P.3, Q.5, W.5, X.2, Y.1–Y.5, AA.3
 
@@ -213,6 +223,8 @@ struct EncryptedAmount {
 
 ### 3.3 StrategyVault — ERC-4626 share token, partial-aware, FHE-delegate
 
+**Status:** Planned — not implemented
+
 **v1 gaps closed:** A.3, A.4, F.2, F.4, P.1, P.2, S.3, U.2, W.2, X.1, AA.2, AA.6
 
 **Why:** v1's vault stores per-user positions but the position is non-fungible, non-tokenized, and cannot be partially closed. v2 mints an ERC-4626 share token per strategy, supports partial unwinds, and delegates FHE ACL to whoever the user authorises (e.g. a strategy manager / rebalancer).
@@ -290,6 +302,8 @@ interface IFheForgeVault is IERC4626 {
 
 ### 3.4 Composer / Mesh — single user-facing entry point
 
+**Status:** Planned — not implemented
+
 **v1 gaps closed:** F.1, F.2, F.7, F.9, M.3, O.2, O.3, W.1, W.6
 
 **Why:** v1 forces users to sequence approve → openPosition → approve → supply → borrow. v2 collapses these to a single Composer call signed once.
@@ -357,6 +371,8 @@ interface IFheForgeComposer {
 
 ### 3.5 SwapRouter — batched intents, ZK min-out, fee, multi-executor
 
+**Status:** Planned — not implemented
+
 **v1 gaps closed:** B.7a, B.8, C.5, F.8, J.6, J.7, W.6, X.3
 
 **Why:** v1's router takes single intents from a single immutable executor and trusts the executor's `outputAmount` blindly. v2 needs batched submission, executor rotation, on-chain min-out enforcement, and a fee/payment mechanism.
@@ -405,6 +421,8 @@ interface IFheForgeRouter {
 
 ### 3.6 FHE / Privara / Reineira core — composable confidential primitives
 
+> **Status:** Partially implemented — CoFHE SDK active in v1; batched precompile & ZK proofs planned
+
 **v1 gaps closed:** M.3, P.1, P.2, P.3, U.2, AA.4, AA.5
 
 **Why:** the user's brief identifies "Fhenix and Privara and Reineira at core" as the foundation for "fully composable liquidity". v1 uses Fhenix CoFHE primitives (`FHE.asEuint128`, `FHE.add`, `FHE.allowSender`, `FHE.allowTransient`) but does not expose them as a composable library. v2 must provide:
@@ -446,6 +464,8 @@ interface IFhePermitRegistry {
 
 ### 3.7 Oracle adapter — Chainlink + Pyth + TWAP fallback
 
+**Status:** Planned — not implemented
+
 **v1 gaps closed:** Y.1, Y.2, Y.3, Y.4, Y.5
 
 **Why:** v1's pool LTV is a raw-units comparison. Without prices, cross-asset positions are meaningless and aggregated TVL is incoherent.
@@ -469,6 +489,8 @@ Per-token configuration: stablecoins use Chainlink; long-tail use Uniswap V3 TWA
 
 ### 3.8 Governance + Tokenomics + Cross-chain mesh
 
+**Status:** Planned — not implemented
+
 **v1 gaps closed:** Z.1, Z.2, Z.3, Z.5
 
 **Why:** v1's OWNER is the immutable deployer. v2 must support DAO-controlled parameters, an incentive token (even if minted later), and cross-chain reach.
@@ -485,6 +507,8 @@ Per-token configuration: stablecoins use Chainlink; long-tail use Uniswap V3 TWA
 
 ### 3.9 Safety & upgradability
 
+> **Status:** Partially implemented — Pausable + reentrancy guards exist in v1; proxy upgrades planned
+
 **v1 gaps closed:** X.1–X.6, X.7, X.8
 
 | Concern | Solution |
@@ -500,6 +524,8 @@ Per-token configuration: stablecoins use Chainlink; long-tail use Uniswap V3 TWA
 
 ### 3.10 Performance / packing
 
+**Status:** Planned — not implemented
+
 **v1 gaps closed:** AA.2, AA.3, AA.4, AA.5, AA.6
 
 | Layer | v1 storage cost | v2 target |
@@ -513,6 +539,8 @@ Per-token configuration: stablecoins use Chainlink; long-tail use Uniswap V3 TWA
 ---
 
 ## 4  Deployment phasing & migration
+
+**Status:** Planned — not implemented
 
 | Phase | Contracts deployed | Gates |
 |---|---|---|
@@ -528,6 +556,8 @@ Migration is opt-in: v1 contracts remain deployed and verified for users who wan
 
 ## 5  Trade-offs summary (one place per layer)
 
+**Status:** Planned — not implemented
+
 | Layer | Win | Cost |
 |---|---|---|
 | Composer | Single tx, single signature, MEV-protected | New trusted contract; UUPS proxy + Timelock mitigate |
@@ -541,6 +571,8 @@ Migration is opt-in: v1 contracts remain deployed and verified for users who wan
 ---
 
 ## 6  Cross-reference — every gap to its v2 fix
+
+> **Status:** Reference — maps v1 gaps to planned v2 fixes
 
 (Copy of the table at the end of `STRESS_FINDINGS.md` for completeness.)
 
@@ -565,6 +597,8 @@ Migration is opt-in: v1 contracts remain deployed and verified for users who wan
 
 ## 7  References (production patterns this design draws from)
 
+> **Status:** Reference — production pattern sources
+
 | Pattern | Source |
 |---|---|
 | Singleton Vault + Composer/Router | Uniswap V4 PoolManager — https://docs.uniswap.org/contracts/v4/concepts/PoolManager |
@@ -582,6 +616,8 @@ Migration is opt-in: v1 contracts remain deployed and verified for users who wan
 ---
 
 ## 8  What this document does NOT do
+
+> **Status:** Current — accurately reflects document scope
 
 * It does not modify any `.sol` file. v1 contracts remain deployed and verified.
 * It does not write the v2 contracts. That is the next phase, gated on user approval of this design.

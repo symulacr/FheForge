@@ -1,715 +1,715 @@
 [
   {
+    "type": "constructor",
     "inputs": [
       {
-        "internalType": "uint256",
         "name": "vaultRotationDelay_",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [],
-    "name": "EmptyName",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "EnforcedPause",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ExpectedPause",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "FhePermissionDenied",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "got",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "expected",
-        "type": "uint8"
-      }
-    ],
-    "name": "InvalidEncryptedInput",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidStrategyId",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "NameTooLong",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "NoPendingVault",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "OnlyCreator",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "OnlyOwner",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "OnlyVault",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ReentrancyGuardReentrantCall",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "int32",
-        "name": "value",
-        "type": "int32"
-      }
-    ],
-    "name": "SecurityZoneOutOfBounds",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "StrategyAlreadyExists",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "StrategyInactive",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "TimelockNotElapsed",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "VaultAlreadySet",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ZeroAddress",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ZeroWorkflowHash",
-    "type": "error"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "account",
-        "type": "address"
-      }
-    ],
-    "name": "Paused",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [],
-    "name": "Paused",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "bool",
-        "name": "active",
-        "type": "bool"
-      }
-    ],
-    "name": "StrategyActiveSet",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "creator",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      }
-    ],
-    "name": "StrategyRegistered",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "strategyId",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "caller",
-        "type": "address"
-      }
-    ],
-    "name": "TvlDecreased",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "strategyId",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "caller",
-        "type": "address"
-      }
-    ],
-    "name": "TvlIncreased",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "account",
-        "type": "address"
-      }
-    ],
-    "name": "Unpaused",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [],
-    "name": "Unpaused",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "newVault",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "earliest",
-        "type": "uint256"
-      }
-    ],
-    "name": "VaultProposed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "vault",
-        "type": "address"
-      }
-    ],
-    "name": "VaultSet",
-    "type": "event"
-  },
-  {
-    "inputs": [],
+    "type": "function",
     "name": "MAX_NAME_LENGTH",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "MIN_NAME_LENGTH",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "OWNER",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "address",
         "name": "",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "VAULT_ROTATION_DELAY",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "acceptVault",
+    "inputs": [],
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
+    "name": "decrementTvl",
     "inputs": [
       {
-        "internalType": "uint256",
         "name": "strategyId",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "internalType": "euint128",
         "name": "amount",
-        "type": "bytes32"
+        "type": "bytes32",
+        "internalType": "euint128"
       }
     ],
-    "name": "decrementTvl",
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
+    "name": "decrementTvl",
     "inputs": [
       {
-        "internalType": "uint256",
         "name": "strategyId",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
+        "name": "encAmount",
+        "type": "tuple",
+        "internalType": "struct InEuint128",
         "components": [
           {
-            "internalType": "uint256",
             "name": "ctHash",
-            "type": "uint256"
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
-            "internalType": "uint8",
             "name": "securityZone",
-            "type": "uint8"
+            "type": "uint8",
+            "internalType": "uint8"
           },
           {
-            "internalType": "uint8",
             "name": "utype",
-            "type": "uint8"
+            "type": "uint8",
+            "internalType": "uint8"
           },
           {
-            "internalType": "bytes",
             "name": "signature",
-            "type": "bytes"
+            "type": "bytes",
+            "internalType": "bytes"
           }
-        ],
-        "internalType": "struct InEuint128",
-        "name": "encAmount",
-        "type": "tuple"
+        ]
       }
     ],
-    "name": "decrementTvl",
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "strategyId",
-        "type": "uint256"
-      }
-    ],
+    "type": "function",
     "name": "getStrategyMeta",
+    "inputs": [
+      {
+        "name": "strategyId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "outputs": [
       {
-        "internalType": "string",
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "internalType": "string"
       },
       {
-        "internalType": "bytes32",
         "name": "workflowHash",
-        "type": "bytes32"
+        "type": "bytes32",
+        "internalType": "bytes32"
       },
       {
-        "internalType": "address",
         "name": "creator",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       },
       {
-        "internalType": "uint256",
         "name": "createdAt",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "internalType": "bool",
         "name": "active",
-        "type": "bool"
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "strategyId",
-        "type": "uint256"
-      }
-    ],
+    "type": "function",
     "name": "getStrategyParams",
+    "inputs": [
+      {
+        "name": "strategyId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "outputs": [
       {
-        "internalType": "uint16",
         "name": "apyTarget",
-        "type": "uint16"
+        "type": "uint16",
+        "internalType": "uint16"
       },
       {
-        "internalType": "uint8",
         "name": "loopCount",
-        "type": "uint8"
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
+    "type": "function",
+    "name": "idByContentHash",
     "inputs": [
       {
-        "internalType": "bytes32",
         "name": "",
-        "type": "bytes32"
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
-    "name": "idByContentHash",
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "strategyId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "euint128",
-        "name": "amount",
-        "type": "bytes32"
-      }
-    ],
+    "type": "function",
     "name": "incrementTvl",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
-        "internalType": "uint256",
         "name": "strategyId",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
+        "name": "amount",
+        "type": "bytes32",
+        "internalType": "euint128"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "incrementTvl",
+    "inputs": [
+      {
+        "name": "strategyId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "encAmount",
+        "type": "tuple",
+        "internalType": "struct InEuint128",
         "components": [
           {
-            "internalType": "uint256",
             "name": "ctHash",
-            "type": "uint256"
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
-            "internalType": "uint8",
             "name": "securityZone",
-            "type": "uint8"
+            "type": "uint8",
+            "internalType": "uint8"
           },
           {
-            "internalType": "uint8",
             "name": "utype",
-            "type": "uint8"
+            "type": "uint8",
+            "internalType": "uint8"
           },
           {
-            "internalType": "bytes",
             "name": "signature",
-            "type": "bytes"
+            "type": "bytes",
+            "internalType": "bytes"
           }
-        ],
-        "internalType": "struct InEuint128",
-        "name": "encAmount",
-        "type": "tuple"
+        ]
       }
     ],
-    "name": "incrementTvl",
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "pause",
+    "inputs": [],
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "paused",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "bool",
         "name": "",
-        "type": "bool"
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "pendingVault",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "address",
         "name": "",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "pendingVaultEarliest",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "newVault",
-        "type": "address"
-      }
-    ],
+    "type": "function",
     "name": "proposeVault",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
-        "internalType": "string",
+        "name": "newVault",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "registerStrategy",
+    "inputs": [
+      {
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "internalType": "string"
       },
       {
-        "internalType": "bytes32",
         "name": "workflowHash",
-        "type": "bytes32"
+        "type": "bytes32",
+        "internalType": "bytes32"
       },
       {
-        "internalType": "uint16",
         "name": "apyTarget",
-        "type": "uint16"
+        "type": "uint16",
+        "internalType": "uint16"
       },
       {
-        "internalType": "uint8",
         "name": "loopCount",
-        "type": "uint8"
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
-    "name": "registerStrategy",
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "id",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
+    "name": "registerStrategy",
     "inputs": [
       {
-        "internalType": "string",
         "name": "name",
-        "type": "string"
+        "type": "string",
+        "internalType": "string"
       },
       {
-        "internalType": "bytes32",
         "name": "workflowHash",
-        "type": "bytes32"
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
-    "name": "registerStrategy",
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "id",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
+    "name": "setActive",
     "inputs": [
       {
-        "internalType": "uint256",
         "name": "strategyId",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "internalType": "bool",
         "name": "active",
-        "type": "bool"
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
-    "name": "setActive",
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
+    "name": "setVault",
     "inputs": [
       {
-        "internalType": "address",
         "name": "v",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "name": "setVault",
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "strategyCount",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "uint256",
         "name": "",
-        "type": "uint256"
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "unpause",
+    "inputs": [],
     "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    "stateMutability": "nonpayable"
   },
   {
-    "inputs": [],
+    "type": "function",
     "name": "vaultAddress",
+    "inputs": [],
     "outputs": [
       {
-        "internalType": "address",
         "name": "",
-        "type": "address"
+        "type": "address",
+        "internalType": "address"
       }
     ],
-    "stateMutability": "view",
-    "type": "function"
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "Paused",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Paused",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StrategyActiveSet",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "active",
+        "type": "bool",
+        "indexed": true,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "StrategyRegistered",
+    "inputs": [
+      {
+        "name": "id",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TvlDecreased",
+    "inputs": [
+      {
+        "name": "strategyId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "caller",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TvlIncreased",
+    "inputs": [
+      {
+        "name": "strategyId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "caller",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Unpaused",
+    "inputs": [],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Unpaused",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "VaultProposed",
+    "inputs": [
+      {
+        "name": "newVault",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "earliest",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "VaultSet",
+    "inputs": [
+      {
+        "name": "vault",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "EmptyName",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EnforcedPause",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ExpectedPause",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FhePermissionDenied",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidEncryptedInput",
+    "inputs": [
+      {
+        "name": "got",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "expected",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidStrategyId",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NameTooLong",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPendingVault",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnlyCreator",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnlyOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnlyVault",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SecurityZoneOutOfBounds",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "int32",
+        "internalType": "int32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "StrategyAlreadyExists",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "StrategyInactive",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TimelockNotElapsed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "VaultAlreadySet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroWorkflowHash",
+    "inputs": []
   }
 ]

@@ -40,6 +40,17 @@ jobs:
       - name: Test (Forge)
         run: forge test -vvv
         working-directory: contracts
+      - name: Coverage (Forge)
+        run: forge coverage --report lcov
+        working-directory: contracts
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-coverage
+          path: contracts/lcov.info
+      - name: Gas snapshot (Forge)
+        run: forge snapshot --check || echo "WARNING - Gas snapshot differs. Run 'forge snapshot' locally and commit .gas-snapshot."
+        working-directory: contracts
 
   backend:
     name: Backend

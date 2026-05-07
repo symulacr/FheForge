@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { FHE, ebool, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
-import { IStrategyRegistry } from "./IStrategyRegistry.sol";
-
-
-
-
+import {FHE, ebool, euint128, InEuint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {IStrategyRegistry} from "./IStrategyRegistry.sol";
 
 contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     uint256 public constant MIN_NAME_LENGTH = 1;
     uint256 public constant MAX_NAME_LENGTH = 256;
-
-
 
     uint256 public immutable VAULT_ROTATION_DELAY;
 
@@ -24,8 +18,6 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         bool active;
         uint64 createdAt;
         string name;
-
-
 
         uint16 apyTarget;
         uint8 loopCount;
@@ -46,14 +38,11 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     error NoPendingVault();
     error TimelockNotElapsed();
 
-
     mapping(uint256 => Strategy) private strategies;
     mapping(uint256 => euint128) private encryptedTvls;
 
-
     mapping(bytes32 => uint256) public idByContentHash;
     uint256 public strategyCount;
-
 
     address public vaultAddress;
     address public immutable OWNER;
@@ -99,8 +88,6 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         _ZERO = z;
     }
 
-
-
     function setVault(address v) external onlyOwner {
         if (v == address(0)) revert ZeroAddress();
         if (vaultAddress != address(0)) revert VaultAlreadySet();
@@ -108,14 +95,12 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         emit VaultSet(v);
     }
 
-
     function proposeVault(address newVault) external onlyOwner {
         if (newVault == address(0)) revert ZeroAddress();
         pendingVault = newVault;
         pendingVaultEarliest = block.timestamp + VAULT_ROTATION_DELAY;
         emit VaultProposed(newVault, pendingVaultEarliest);
     }
-
 
     function acceptVault() external {
         if (pendingVault == address(0)) revert NoPendingVault();
@@ -128,56 +113,33 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
 
     function pause() external onlyOwner {
         _pause();
-        emit Paused();
+        // emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        emit Unpaused();
+        // emit Unpaused();
     }
 
-
-
-
-
-
-
-
-
-
-    function registerStrategy(
-        string calldata name,
-        bytes32 workflowHash
-    ) external whenNotPaused returns (uint256 id) {
+    function registerStrategy(string calldata name, bytes32 workflowHash) external whenNotPaused returns (uint256 id) {
         return _registerStrategy(name, workflowHash, 0, 0);
     }
 
-
-
-
-    function registerStrategy(
-        string calldata name,
-        bytes32 workflowHash,
-        uint16 apyTarget,
-        uint8 loopCount
-    ) external whenNotPaused returns (uint256 id) {
+    function registerStrategy(string calldata name, bytes32 workflowHash, uint16 apyTarget, uint8 loopCount)
+        external
+        whenNotPaused
+        returns (uint256 id)
+    {
         return _registerStrategy(name, workflowHash, apyTarget, loopCount);
     }
 
-
-
-
-
-    function _registerStrategy(
-        string calldata name,
-        bytes32 workflowHash,
-        uint16 apyTarget,
-        uint8 loopCount
-    ) internal returns (uint256 id) {
+    function _registerStrategy(string calldata name, bytes32 workflowHash, uint16 apyTarget, uint8 loopCount)
+        internal
+        returns (uint256 id)
+    {
         if (bytes(name).length < MIN_NAME_LENGTH) revert EmptyName();
         if (bytes(name).length > MAX_NAME_LENGTH) revert NameTooLong();
         if (workflowHash == bytes32(0)) revert ZeroWorkflowHash();
-
 
         bytes32 contentHash;
         assembly {
@@ -204,7 +166,6 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         emit StrategyRegistered(id, msg.sender, name);
     }
 
-
     function setActive(uint256 strategyId, bool active) external whenNotPaused {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
         if (strategies[strategyId].creator != _msgSender()) revert OnlyCreator();
@@ -212,42 +173,21 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         emit StrategyActiveSet(strategyId, active);
     }
 
-
-    function incrementTvl(
-        uint256 strategyId,
-        euint128 amount
-    ) external override nonReentrant onlyVault {
+    function incrementTvl(uint256 strategyId, euint128 amount) external override nonReentrant onlyVault {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
         if (!strategies[strategyId].active) revert StrategyInactive();
         _modifyTvl(strategyId, amount, true);
         emit TvlIncreased(strategyId, msg.sender);
     }
 
-
-
-
-    function decrementTvl(
-        uint256 strategyId,
-        euint128 amount
-    ) external override nonReentrant onlyVault {
+    function decrementTvl(uint256 strategyId, euint128 amount) external override nonReentrant onlyVault {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
         if (!strategies[strategyId].active) revert StrategyInactive();
         _modifyTvl(strategyId, amount, false);
         emit TvlDecreased(strategyId, msg.sender);
     }
 
-
-
-
-
-
-
-
-
-    function incrementTvl(
-        uint256 strategyId,
-        InEuint128 calldata encAmount
-    ) external nonReentrant onlyVault {
+    function incrementTvl(uint256 strategyId, InEuint128 calldata encAmount) external nonReentrant onlyVault {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
         if (!strategies[strategyId].active) revert StrategyInactive();
         InEuint128 memory m = encAmount;
@@ -256,10 +196,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         emit TvlIncreased(strategyId, msg.sender);
     }
 
-    function decrementTvl(
-        uint256 strategyId,
-        InEuint128 calldata encAmount
-    ) external nonReentrant onlyVault {
+    function decrementTvl(uint256 strategyId, InEuint128 calldata encAmount) external nonReentrant onlyVault {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
         if (!strategies[strategyId].active) revert StrategyInactive();
         InEuint128 memory m = encAmount;
@@ -268,11 +205,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         emit TvlDecreased(strategyId, msg.sender);
     }
 
-    function _modifyTvlZeroCopy(
-        uint256 strategyId,
-        euint128 amount,
-        bool isIncrement
-    ) internal {
+    function _modifyTvlZeroCopy(uint256 strategyId, euint128 amount, bool isIncrement) internal {
         euint128 prev = encryptedTvls[strategyId];
         FHE.allowThis(prev);
         euint128 result;
@@ -301,36 +234,16 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         FHE.allowThis(result);
     }
 
-
-
-
-
-
-
-
-
-    function getStrategyMeta(
-        uint256 strategyId
-    )
+    function getStrategyMeta(uint256 strategyId)
         external
         view
-        returns (
-            string memory name,
-            bytes32 workflowHash,
-            address creator,
-            uint256 createdAt,
-            bool active
-        )
+        returns (string memory name, bytes32 workflowHash, address creator, uint256 createdAt, bool active)
     {
         Strategy storage s = strategies[strategyId];
         return (s.name, s.workflowHash, s.creator, s.createdAt, s.active);
     }
 
-
-
-    function getStrategyParams(
-        uint256 strategyId
-    ) external view returns (uint16 apyTarget, uint8 loopCount) {
+    function getStrategyParams(uint256 strategyId) external view returns (uint16 apyTarget, uint8 loopCount) {
         Strategy storage s = strategies[strategyId];
         return (s.apyTarget, s.loopCount);
     }

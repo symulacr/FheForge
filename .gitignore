@@ -117,3 +117,4 @@ contracts/REINEIRA_INTEGRATION.md
 contracts/*MANIFEST*
 contracts/*INTEGRATION*
 *.tgz
+*.old
