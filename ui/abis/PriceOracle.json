@@ -17,6 +17,11 @@
   },
   {
     "inputs": [],
+    "name": "EthTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidBps",
     "type": "error"
   },

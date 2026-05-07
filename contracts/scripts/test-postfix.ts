@@ -199,17 +199,17 @@ async function main() {
 
     if ((await vault.hasPosition(tester.address)) as boolean) {
         const dep0 = (await vault.getDepositedAmount()) as bigint;
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(dep0)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(dep0)]).execute();
         await (await vault.closePosition(dep0, enc[0])).wait();
     }
     const sup = (await pool.getPlainSupplyBalance(USDC)) as bigint;
     const bor = (await pool.getPlainBorrowBalance(USDC)) as bigint;
     if (bor > 0n) {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(bor)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(bor)]).execute();
         await (await pool.repay(USDC, bor, enc[0])).wait();
     }
     if (sup > 0n) {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(sup)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(sup)]).execute();
         await (await pool.withdraw(USDC, sup, enc[0])).wait();
     }
 
@@ -318,23 +318,21 @@ async function main() {
     console.log("\n── Vault partial close ──");
 
 
-    const sIdForClose = (await registry.strategyCount()) as bigint;
     const collateral = 2_000_000n;
     {
 
 
         const enc = await cofhe.encryptInputs([
-            Encryptable.uint128(collateral),
-            Encryptable.uint128(0n),
+            Encryptable.uint64(collateral),
         ]).execute();
-        const tx = await vault.openPosition(USDC, collateral, enc[0], enc[1], sIdForClose);
+        const tx = await vault.openPosition(USDC, collateral, enc[0], 1n, tester.address);
         const r = await tx.wait();
         record("A.3-setup", "PASS", "openPosition 2 USDC for partial close", `block=${r!.blockNumber}`, { tx: tx.hash, gas: r!.gasUsed.toString() });
     }
 
     {
         const closeAmt = 500_000n;
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(closeAmt)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(closeAmt)]).execute();
         const tx = await vault.closePosition(closeAmt, enc[0]);
         const r = await tx.wait();
         const remaining = (await vault.getDepositedAmount()) as bigint;
@@ -351,7 +349,7 @@ async function main() {
 
     {
         const remaining = (await vault.getDepositedAmount()) as bigint;
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(remaining)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(remaining)]).execute();
         const tx = await vault.closePosition(remaining, enc[0]);
         await tx.wait();
         const has = (await vault.hasPosition(tester.address)) as boolean;
@@ -362,13 +360,12 @@ async function main() {
     {
 
         const enc = await cofhe.encryptInputs([
-            Encryptable.uint128(1_000_000n),
-            Encryptable.uint128(0n),
+            Encryptable.uint64(1_000_000n),
         ]).execute();
-        await (await vault.openPosition(USDC, 1_000_000n, enc[0], enc[1], sIdForClose)).wait();
+        await (await vault.openPosition(USDC, 1_000_000n, enc[0], 1n, tester.address)).wait();
         try {
-            const wrongEnc = await cofhe.encryptInputs([Encryptable.uint128(1n)]).execute();
-            await vault.addCollateral.staticCall(WETH, 1n, wrongEnc[0]);
+            const wrongEnc = await cofhe.encryptInputs([Encryptable.uint64(1n)]).execute();
+            await vault.addCollateral.staticCall(WETH, 1n, wrongEnc[0], tester.address);
             record("A.4", "FAIL", "addCollateral wrong-token still ZeroAddress", "expected TokenMismatch");
         } catch (e) {
             const msg = decodeRevert(e);
@@ -380,7 +377,7 @@ async function main() {
             );
         }
         const dAmt = (await vault.getDepositedAmount()) as bigint;
-        const cleanEnc = await cofhe.encryptInputs([Encryptable.uint128(dAmt)]).execute();
+        const cleanEnc = await cofhe.encryptInputs([Encryptable.uint64(dAmt)]).execute();
         await (await vault.closePosition(dAmt, cleanEnc[0])).wait();
     }
 
@@ -391,9 +388,9 @@ async function main() {
     {
         const supAmt = 2_000_000n;
         const borAmt = 1_000_000n;
-        const e1 = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
+        const e1 = await cofhe.encryptInputs([Encryptable.uint64(supAmt)]).execute();
         await (await pool.supply(USDC, supAmt, e1[0])).wait();
-        const e2 = await cofhe.encryptInputs([Encryptable.uint128(borAmt)]).execute();
+        const e2 = await cofhe.encryptInputs([Encryptable.uint64(borAmt)]).execute();
         await (await pool.checkLtvAndBorrow(USDC, USDC, borAmt, e2[0], 70, 100)).wait();
 
         const reserveBefore = (await pool.liquidReserve(USDC)) as bigint;
@@ -407,7 +404,7 @@ async function main() {
 
 
         try {
-            const e3 = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
+            const e3 = await cofhe.encryptInputs([Encryptable.uint64(supAmt)]).execute();
             await pool.withdraw.staticCall(USDC, supAmt, e3[0]);
             record("A.5c-F.6-Q.5", "FAIL", "Withdraw with active borrow not gated", "drained successfully");
         } catch (e) {
@@ -417,15 +414,15 @@ async function main() {
         }
 
 
-        const eRep = await cofhe.encryptInputs([Encryptable.uint128(borAmt)]).execute();
+        const eRep = await cofhe.encryptInputs([Encryptable.uint64(borAmt)]).execute();
         await (await pool.repay(USDC, borAmt, eRep[0])).wait();
-        const eWd = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
+        const eWd = await cofhe.encryptInputs([Encryptable.uint64(supAmt)]).execute();
         await (await pool.withdraw(USDC, supAmt, eWd[0])).wait();
     }
 
 
     try {
-        const e = await cofhe.encryptInputs([Encryptable.uint128(1n)]).execute();
+        const e = await cofhe.encryptInputs([Encryptable.uint64(1n)]).execute();
         await pool.checkLtvAndBorrow.staticCall(USDC, USDC, 1n, e[0], 0, 100);
         record("AA.1", "FAIL", "ltvNum=0 accepted", "expected LtvNumeratorZero");
     } catch (e) {
@@ -439,12 +436,12 @@ async function main() {
     {
         const supAmt = 1_000_000n;
         const borAmt = 500_000n;
-        const e1 = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
+        const e1 = await cofhe.encryptInputs([Encryptable.uint64(supAmt)]).execute();
         await (await pool.supply(USDC, supAmt, e1[0])).wait();
 
 
         try {
-            const e2 = await cofhe.encryptInputs([Encryptable.uint128(borAmt)]).execute();
+            const e2 = await cofhe.encryptInputs([Encryptable.uint64(borAmt)]).execute();
             const tx = await pool.borrowWithOracle(USDC, USDC, borAmt, e2[0]);
             const r = await tx.wait();
             record(
@@ -461,12 +458,12 @@ async function main() {
 
         const repayBal = (await pool.getPlainBorrowBalance(USDC)) as bigint;
         if (repayBal > 0n) {
-            const eRep = await cofhe.encryptInputs([Encryptable.uint128(repayBal)]).execute();
+            const eRep = await cofhe.encryptInputs([Encryptable.uint64(repayBal)]).execute();
             await (await pool.repay(USDC, repayBal, eRep[0])).wait();
         }
         const supBal = (await pool.getPlainSupplyBalance(USDC)) as bigint;
         if (supBal > 0n) {
-            const eWd = await cofhe.encryptInputs([Encryptable.uint128(supBal)]).execute();
+            const eWd = await cofhe.encryptInputs([Encryptable.uint64(supBal)]).execute();
             await (await pool.withdraw(USDC, supBal, eWd[0])).wait();
         }
     }
@@ -476,7 +473,7 @@ async function main() {
     {
         const ethAmt = 1_000_000_000_000_000n;
         try {
-            const enc = await cofhe.encryptInputs([Encryptable.uint128(ethAmt)]).execute();
+            const enc = await cofhe.encryptInputs([Encryptable.uint64(ethAmt)]).execute();
             const txS = await pool.supplyEth(enc[0], { value: ethAmt });
             const rS = await txS.wait();
             record("F.3-supply", "PASS", "supplyEth wraps to WETH internally", `${ethAmt} wei`, {
@@ -484,7 +481,7 @@ async function main() {
                 gas: rS!.gasUsed.toString(),
             });
 
-            const enc2 = await cofhe.encryptInputs([Encryptable.uint128(ethAmt)]).execute();
+            const enc2 = await cofhe.encryptInputs([Encryptable.uint64(ethAmt)]).execute();
             const txW = await pool.withdrawEth(ethAmt, enc2[0]);
             const rW = await txW.wait();
             record("F.3-withdraw", "PASS", "withdrawEth unwraps WETH and forwards", `${ethAmt} wei`, {
@@ -521,8 +518,7 @@ async function main() {
 
 
     try {
-        const e = await cofhe.encryptInputs([Encryptable.uint128(1n), Encryptable.uint128(1n)]).execute();
-        await router.submitSwapIntent.staticCall(USDC, WETH, e[0], e[1], 0n);
+        await router.submitSwapIntent.staticCall(USDC, WETH, 1n, 1n, 0n);
         record("B.7a", "FAIL", "Router accepts deadlineOffset=0", "expected DeadlineTooShort");
     } catch (e) {
         const msg = decodeRevert(e);
@@ -530,8 +526,7 @@ async function main() {
     }
 
     try {
-        const e = await cofhe.encryptInputs([Encryptable.uint128(1n), Encryptable.uint128(1n)]).execute();
-        await router.submitSwapIntent.staticCall(USDC, WETH, e[0], e[1], 8n * 24n * 3600n);
+        await router.submitSwapIntent.staticCall(USDC, WETH, 1n, 1n, 8n * 24n * 3600n);
         record("B.8", "FAIL", "Router accepts huge deadlineOffset", "expected DeadlineTooLong");
     } catch (e) {
         const msg = decodeRevert(e);
@@ -567,8 +562,8 @@ async function main() {
     {
         const tsLc = Date.now().toString();
         const enc = await cofhe.encryptInputs([
-            Encryptable.uint128(0n), Encryptable.uint128(0n), Encryptable.uint16(0n), Encryptable.uint8(0n),
-            Encryptable.uint128(0n), Encryptable.uint128(0n), Encryptable.uint128(0n), Encryptable.uint128(0n),
+            Encryptable.uint64(0n), Encryptable.uint64(0n), Encryptable.uint16(0n), Encryptable.uint8(0n),
+            Encryptable.uint64(0n), Encryptable.uint64(0n), Encryptable.uint64(0n), Encryptable.uint64(0n),
         ]).execute();
 
         try {
@@ -607,14 +602,14 @@ async function main() {
 
         try {
             const enc2 = await cofhe.encryptInputs([
-                Encryptable.uint128(1_000_000n),
-                Encryptable.uint128(0n),
+                Encryptable.uint64(1_000_000n),
+                Encryptable.uint64(0n),
                 Encryptable.uint16(0n),
                 Encryptable.uint8(0n),
-                Encryptable.uint128(0n),
-                Encryptable.uint128(0n),
-                Encryptable.uint128(0n),
-                Encryptable.uint128(0n),
+                Encryptable.uint64(0n),
+                Encryptable.uint64(0n),
+                Encryptable.uint64(0n),
+                Encryptable.uint64(0n),
             ]).execute();
             await composer.openLeveragedStrategy.staticCall(
                 {

@@ -319,9 +319,42 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
         "name": "encAmount",
         "type": "tuple"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "addCollateral",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "collateralToken",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "euint128",
+        "name": "encAmount",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
       }
     ],
     "name": "addCollateral",
@@ -443,12 +476,12 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "collateralToken",
+        "name": "token",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "collateralAmount",
+        "name": "amount",
         "type": "uint256"
       },
       {
@@ -475,40 +508,41 @@
           }
         ],
         "internalType": "struct InEuint128",
-        "name": "collateral",
+        "name": "encAmount",
         "type": "tuple"
       },
       {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "ctHash",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "securityZone",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "utype",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bytes",
-            "name": "signature",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct InEuint128",
-        "name": "debt",
-        "type": "tuple"
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "openPosition",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "strategyId",
+        "name": "amount",
         "type": "uint256"
+      },
+      {
+        "internalType": "euint128",
+        "name": "encAmount",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
       }
     ],
     "name": "openPosition",

@@ -116,3 +116,4 @@ contracts/FIX_MANIFEST.md
 contracts/REINEIRA_INTEGRATION.md
 contracts/*MANIFEST*
 contracts/*INTEGRATION*
+*.tgz

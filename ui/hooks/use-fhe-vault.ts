@@ -1,4 +1,4 @@
-import { useWriteContract, useChainId } from "wagmi";
+import { useWriteContract, useChainId, useAccount } from "wagmi";
 import { Encryptable, FheTypes } from "@cofhe/sdk";
 import { parseUnits, formatUnits, type Hash } from "viem";
 import { useMemo, useRef, useState } from "react";
@@ -9,9 +9,6 @@ import RouterABI from "@/abis/SwapRouter.json";
 import { getContractAddresses, validateEuint128 } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { SLIPPAGE_TOLERANCE } from "@/lib/constants";
-
-const DEFAULT_LTV_NUM = 70n;
-const DEFAULT_LTV_DEN = 100n;
 
 interface EncryptedHandle {
   ctHash: bigint;
@@ -27,6 +24,7 @@ export function useFheVault() {
   const cofheState = useCofheState();
   const { writeContractAsync, isPending } = useWriteContract();
   const chainId = useChainId();
+  const { address: userAddress } = useAccount();
   const addresses = useMemo(() => {
     try {
       return getContractAddresses(chainId);
@@ -48,7 +46,7 @@ export function useFheVault() {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");
     const handles = (await cofheClient
-      .encryptInputs([Encryptable.uint128(value)])
+      .encryptInputs([Encryptable.uint64(value)])
       .execute()) as EncryptedHandle[];
     if (!handles[0]) throw new Error("CoFHE returned empty handle list");
     return handles[0];
@@ -86,36 +84,23 @@ export function useFheVault() {
     return decryptForView(encryptedAmount);
   };
 
-  // F-03: openPosition no longer takes encrypted apy/loop. Strategy-level
-  // params (apyTarget bps, loopCount) live as plaintext on the registry's
-  // Strategy struct — set once at `registerStrategy` time. The wrapper
-  // signature now takes only the per-position-private inputs. Callers that
-  // previously passed apyBps/loopCount should drop them; if they need to
-  // register a strategy with explicit params, they should call the
-  // registry's 4-arg `registerStrategy(name, hash, apyTarget, loopCount)`
-  // overload directly (or use the composer's atomic register+open flow).
   const openPosition = async (
     collateralToken: string,
     collateralAmount: string,
     collateralEth: string,
-    debtEth: string,
-    strategyId: number,
   ) => {
     const { vault } = requireAddresses();
     const collateral = parseUnits(collateralEth, 18);
-    const debt = parseUnits(debtEth, 18);
     const amountWei = parseUnits(collateralAmount, 18);
     validateEuint128(collateral);
-    validateEuint128(debt);
+
+    const userAddr = userAddress;
+    if (!userAddr) throw new Error("Wallet not connected");
 
     setIsEncrypting(true);
     try {
-      const [encColl, encDebt] = await Promise.all([
-        encrypt128(collateral),
-        encrypt128(debt),
-      ]);
+      const encColl = await encrypt128(collateral);
       lastEncryptedSupply.current = encColl;
-      lastEncryptedBorrow.current = encDebt;
       return writeContractAsync({
         address: vault as `0x${string}`,
         abi: VaultABI,
@@ -124,8 +109,7 @@ export function useFheVault() {
           collateralToken,
           amountWei,
           encColl,
-          encDebt,
-          BigInt(strategyId),
+          userAddr,
         ],
       });
     } finally {
@@ -141,14 +125,18 @@ export function useFheVault() {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
     validateEuint128(amt);
+
+    const userAddr = userAddress;
+    if (!userAddr) throw new Error("Wallet not connected");
+
     setIsEncrypting(true);
     try {
       const enc = await encrypt128(amt);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
-        functionName: "supply",
-        args: [token, amt, enc],
+        functionName: "supplyToLending",
+        args: [token, amt, enc, userAddr],
       });
     } finally {
       setIsEncrypting(false);
@@ -156,24 +144,25 @@ export function useFheVault() {
   };
 
   const borrowFromLending = async (
-    collateralToken: string,
-    borrowToken: string,
+    token: string,
     borrowAmount: string,
     decimals = 18,
-    ltvNum: bigint = DEFAULT_LTV_NUM,
-    ltvDen: bigint = DEFAULT_LTV_DEN,
   ) => {
     const { pool } = requireAddresses();
     const amt = parseUnits(borrowAmount, decimals);
     validateEuint128(amt);
+
+    const userAddr = userAddress;
+    if (!userAddr) throw new Error("Wallet not connected");
+
     setIsEncrypting(true);
     try {
       const enc = await encrypt128(amt);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
-        functionName: "checkLtvAndBorrow",
-        args: [collateralToken, borrowToken, amt, enc, ltvNum, ltvDen],
+        functionName: "borrowFromLending",
+        args: [token, amt, enc, userAddr],
       });
     } finally {
       setIsEncrypting(false);
@@ -233,23 +222,13 @@ export function useFheVault() {
       (parseUnits(minOutEth, 18) *
         BigInt(Math.round((1 - SLIPPAGE_TOLERANCE) * 10000))) /
       10000n;
-    validateEuint128(amountIn);
-    validateEuint128(minOut);
-    setIsEncrypting(true);
-    try {
-      const [encIn, encMin] = await Promise.all([
-        encrypt128(amountIn),
-        encrypt128(minOut),
-      ]);
-      return writeContractAsync({
-        address: router as `0x${string}`,
-        abi: RouterABI,
-        functionName: "submitSwapIntent",
-        args: [tokenIn, tokenOut, encIn, encMin, BigInt(deadlineOffset)],
-      });
-    } finally {
-      setIsEncrypting(false);
-    }
+
+    return writeContractAsync({
+      address: router as `0x${string}`,
+      abi: RouterABI,
+      functionName: "submitSwapIntent",
+      args: [tokenIn, tokenOut, amountIn, minOut, BigInt(deadlineOffset)],
+    });
   };
 
   const closePosition = async (
@@ -268,7 +247,7 @@ export function useFheVault() {
   // TODO: Wire to vault `repay` once the ABI exposes a repay function.
   // The current StrategyVault ABI does not include a standalone repay;
   // repayment goes through the LendingPool via `repayBorrow` above.
-  const repay = async (amount: bigint): Promise<Hash> => {
+  const repay = async (token: string, amount: bigint): Promise<Hash> => {
     const { pool } = requireAddresses();
     validateEuint128(amount);
     setIsEncrypting(true);
@@ -278,7 +257,7 @@ export function useFheVault() {
         address: pool as `0x${string}`,
         abi: PoolABI,
         functionName: "repay",
-        args: [amount, enc] as unknown as [bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
+        args: [token, amount, enc] as unknown as [string, bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
       });
     } finally {
       setIsEncrypting(false);
@@ -288,7 +267,7 @@ export function useFheVault() {
   // TODO: Wire to vault `withdraw` once the ABI exposes a withdraw function.
   // The current StrategyVault ABI does not include a standalone withdraw;
   // withdrawal goes through the LendingPool via `withdrawSupply` above.
-  const withdraw = async (amount: bigint): Promise<Hash> => {
+  const withdraw = async (token: string, amount: bigint): Promise<Hash> => {
     const { pool } = requireAddresses();
     validateEuint128(amount);
     setIsEncrypting(true);
@@ -298,7 +277,7 @@ export function useFheVault() {
         address: pool as `0x${string}`,
         abi: PoolABI,
         functionName: "withdraw",
-        args: [amount, enc] as unknown as [bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
+        args: [token, amount, enc] as unknown as [string, bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
       });
     } finally {
       setIsEncrypting(false);

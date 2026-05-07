@@ -11,6 +11,11 @@
   },
   {
     "inputs": [],
+    "name": "EthTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ExceedsBorrowBalance",
     "type": "error"
   },
@@ -472,6 +477,84 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint64",
+        "name": "encAmount",
+        "type": "tuple"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "borrowFromLending",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "euint64",
+        "name": "encAmount",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "borrowFromLending",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "collateralToken",
         "type": "address"
       },
@@ -508,7 +591,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
         "name": "encBorrowAmount",
         "type": "tuple"
       }
@@ -516,7 +599,7 @@
     "name": "borrowWithOracle",
     "outputs": [
       {
-        "internalType": "euint128",
+        "internalType": "euint64",
         "name": "actual",
         "type": "bytes32"
       }
@@ -564,7 +647,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
         "name": "encBorrowAmount",
         "type": "tuple"
       },
@@ -582,7 +665,7 @@
     "name": "checkLtvAndBorrow",
     "outputs": [
       {
-        "internalType": "euint128",
+        "internalType": "euint64",
         "name": "actual",
         "type": "bytes32"
       }
@@ -628,7 +711,7 @@
     "name": "getBorrowBalance",
     "outputs": [
       {
-        "internalType": "euint128",
+        "internalType": "euint64",
         "name": "",
         "type": "bytes32"
       }
@@ -685,7 +768,7 @@
     "name": "getSupplyBalance",
     "outputs": [
       {
-        "internalType": "euint128",
+        "internalType": "euint64",
         "name": "",
         "type": "bytes32"
       }
@@ -808,12 +891,40 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
         "name": "encAmount",
         "type": "tuple"
       }
     ],
     "name": "repay",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "euint64",
+        "name": "encAmount",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "repayBorrow",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -853,7 +964,57 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
+        "name": "encAmount",
+        "type": "tuple"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "repayBorrow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint64",
         "name": "encAmount",
         "type": "tuple"
       },
@@ -963,7 +1124,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
         "name": "encAmount",
         "type": "tuple"
       }
@@ -998,7 +1159,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
         "name": "encAmount",
         "type": "tuple"
       }
@@ -1043,7 +1204,85 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
+        "name": "encAmount",
+        "type": "tuple"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "supplyToLending",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "internalType": "euint64",
+        "name": "encAmount",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "supplyToLending",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint64",
         "name": "encAmount",
         "type": "tuple"
       },
@@ -1166,7 +1405,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
         "name": "encAmount",
         "type": "tuple"
       }
@@ -1206,7 +1445,7 @@
             "type": "bytes"
           }
         ],
-        "internalType": "struct InEuint128",
+        "internalType": "struct InEuint64",
         "name": "encAmount",
         "type": "tuple"
       }

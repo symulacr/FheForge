@@ -473,7 +473,7 @@ interface EncryptedHandle {
 interface CofheNamespace {
   client: CofheClientLite;
   Encryptable: {
-    uint128(v: bigint): unknown;
+    uint64(v: bigint): unknown;
     uint16(v: bigint | number): unknown;
     uint8(v: bigint | number): unknown;
   };
@@ -699,7 +699,7 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
       log(`  [cleanup] leftover position with deposited=${dep0} — closing…`);
       if (cofhe) {
         const enc = await cofhe.client
-          .encryptInputs([cofhe.Encryptable.uint128(dep0)])
+          .encryptInputs([cofhe.Encryptable.uint64(dep0)])
           .execute();
 
 
@@ -1107,15 +1107,17 @@ function diffState(
 
 
 
-async function encryptUint128(ctx: RuntimeContext, v: bigint): Promise<EncryptedHandle> {
+async function encryptUint64(ctx: RuntimeContext, v: bigint): Promise<EncryptedHandle> {
   if (!ctx.cofhe) throw new Error("CoFHE SDK unavailable");
-  return profile("cofheEncrypt", "uint128(1)", async () => {
+  return profile("cofheEncrypt", "uint64(1)", async () => {
     const out = await ctx.cofhe!.client
-      .encryptInputs([ctx.cofhe!.Encryptable.uint128(v)])
+      .encryptInputs([ctx.cofhe!.Encryptable.uint64(v)])
       .execute();
     return out[0];
   });
 }
+
+
 
 async function encryptOpenInputs(
   ctx: RuntimeContext,
@@ -1129,8 +1131,8 @@ async function encryptOpenInputs(
   return profile("cofheEncrypt", "openInputs(2)", () =>
     ctx.cofhe!.client
       .encryptInputs([
-        ctx.cofhe!.Encryptable.uint128(collateral),
-        ctx.cofhe!.Encryptable.uint128(debt),
+        ctx.cofhe!.Encryptable.uint64(collateral),
+        ctx.cofhe!.Encryptable.uint64(debt),
       ])
       .execute(),
   );
@@ -1176,15 +1178,15 @@ async function waitNextBlockAfter(
 
 
 
-async function encryptUint128Batch(
+async function encryptUint64Batch(
   ctx: RuntimeContext,
   values: bigint[],
 ): Promise<EncryptedHandle[]> {
   if (!ctx.cofhe) throw new Error("CoFHE SDK unavailable");
   if (values.length === 0) return [];
-  return profile("cofheEncrypt", `uint128Batch(${values.length})`, () =>
+  return profile("cofheEncrypt", `uint64Batch(${values.length})`, () =>
     ctx.cofhe!.client
-      .encryptInputs(values.map((v) => ctx.cofhe!.Encryptable.uint128(v)))
+      .encryptInputs(values.map((v) => ctx.cofhe!.Encryptable.uint64(v)))
       .execute(),
   );
 }
@@ -1570,20 +1572,19 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         `S-003-${Date.now()}`,
         ethers.keccak256(ethers.toUtf8Bytes(`stress-${Date.now()}-${Math.floor(Math.random()*1e9)}`)),
       ]);
-      const sId = (await ctx.contracts.StrategyRegistry.strategyCount()) as bigint;
       const enc = await encryptOpenInputs(ctx, collateral, 0n);
       const open = await submitTx(ctx, "StrategyVault", "openPosition", [
         USDC,
         collateral,
         enc[0],
-        enc[1],
-        sId,
+        1n,
+        ctx.tester.address,
       ]);
       const post1 = await snapState(ctx);
 
 
       await waitNextBlockAfter(ctx, open.blockNumber ?? 0);
-      const closeEnc = await encryptUint128(ctx, collateral);
+      const closeEnc = await encryptUint64(ctx, collateral);
       const close = await submitTx(ctx, "StrategyVault", "closePosition", [collateral, closeEnc], { skipEstimateGas: true, gasLimitOverride: 800_000n });
       const post2 = await snapState(ctx);
       const checks: StateAssertionRecord[] = [
@@ -1626,22 +1627,21 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         `S-004-${Date.now()}`,
         ethers.keccak256(ethers.toUtf8Bytes(`stress-${Date.now()}-${Math.floor(Math.random()*1e9)}`)),
       ]);
-      const sId = (await ctx.contracts.StrategyRegistry.strategyCount()) as bigint;
-      const enc1 = await encryptOpenInputs(ctx, open0, 0n);
+      const enc1 = await encryptUint64(ctx, open0);
       const open = await submitTx(ctx, "StrategyVault", "openPosition", [
         USDC,
         open0,
-        enc1[0],
-        enc1[1],
-        sId,
+        enc1,
+        1n,
+        ctx.tester.address,
       ]);
-      const enc2 = await encryptUint128(ctx, add0);
-      const add = await submitTx(ctx, "StrategyVault", "addCollateral", [USDC, add0, enc2]);
+      const enc2 = await encryptUint64(ctx, add0);
+      const add = await submitTx(ctx, "StrategyVault", "addCollateral", [USDC, add0, enc2, ctx.tester.address]);
       const total = open0 + add0;
       const deposited = await readDeposited(ctx);
 
       await waitNextBlockAfter(ctx, open.blockNumber ?? 0);
-      const enc3 = await encryptUint128(ctx, total);
+      const enc3 = await encryptUint64(ctx, total);
       const close = await submitTx(ctx, "StrategyVault", "closePosition", [total, enc3], { skipEstimateGas: true, gasLimitOverride: 800_000n });
       const checks: StateAssertionRecord[] = [
         {
@@ -1662,7 +1662,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       const amt = 100_000n;
       const pre = await snapState(ctx);
 
-      const [encSupply, encWithdraw] = await encryptUint128Batch(ctx, [amt, amt]);
+      const [encSupply, encWithdraw] = await encryptUint64Batch(ctx, [amt, amt]);
       const supply = await submitTx(ctx, "LendingPool", "supply", [USDC, amt, encSupply]);
       const mid = await snapState(ctx);
       const wd = await submitTx(ctx, "LendingPool", "withdraw", [USDC, amt, encWithdraw]);
@@ -1699,7 +1699,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       const borrowAmt = 100_000n;
       const pre = await snapState(ctx);
 
-      const [encSupply, encBorrow, encRepay, encWithdraw] = await encryptUint128Batch(ctx, [
+      const [encSupply, encBorrow, encRepay, encWithdraw] = await encryptUint64Batch(ctx, [
         supplyAmt,
         borrowAmt,
         borrowAmt,
@@ -1734,7 +1734,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       const borrowAmt = 50_000n;
       const pre = await snapState(ctx);
 
-      const [encSupply, encBorrow, encRepay, encWithdraw] = await encryptUint128Batch(ctx, [
+      const [encSupply, encBorrow, encRepay, encWithdraw] = await encryptUint64Batch(ctx, [
         supplyAmt,
         borrowAmt,
         borrowAmt,
@@ -1768,12 +1768,12 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
 
       const enc = await ctx.cofhe.client
         .encryptInputs([
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
         ])
         .execute();
       const params = {
@@ -1851,12 +1851,9 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         ethers.keccak256(
           ethers.toUtf8Bytes(`stress-${Date.now()}-${Math.floor(Math.random() * 1e9)}`),
         ),
-      ]);
-      const sId = (await ctx.contracts.StrategyRegistry.strategyCount()) as bigint;
-
-
-      const [collEnc, debtEnc] = await encryptOpenInputs(ctx, collateral, 0n);
-      const closeEnc = await encryptUint128(ctx, collateral);
+        ]);
+      const collEnc = (await encryptOpenInputs(ctx, collateral, 0n))[0];
+      const closeEnc = await encryptUint64(ctx, collateral);
 
 
 
@@ -1867,7 +1864,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
           ctx,
           "StrategyVault",
           "openPosition",
-          [USDC, collateral, collEnc, debtEnc, sId],
+          [USDC, collateral, collEnc, 1n, ctx.tester.address],
           { nonce: baseNonce, skipEstimateGas: true, gasLimitOverride: 1_000_000n },
         ),
         submitTx(
@@ -1881,7 +1878,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
 
 
       await waitNextBlockAfter(ctx, open.blockNumber ?? 0);
-      const cleanupEnc = await encryptUint128(ctx, collateral);
+      const cleanupEnc = await encryptUint64(ctx, collateral);
       const cleanup = await submitTx(
         ctx,
         "StrategyVault",
@@ -1899,9 +1896,9 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     expectedRevert: { contract: "LendingPool", errorName: "InsufficientCollateral" },
     run: async (ctx) => {
       const supplyAmt = 100_000n;
-      const enc1 = await encryptUint128(ctx, supplyAmt);
+      const enc1 = await encryptUint64(ctx, supplyAmt);
       const supply = await submitTx(ctx, "LendingPool", "supply", [USDC, supplyAmt, enc1]);
-      const enc2 = await encryptUint128(ctx, supplyAmt + 1n);
+      const enc2 = await encryptUint64(ctx, supplyAmt + 1n);
       const overBorrow = await staticCall(ctx, "LendingPool", "checkLtvAndBorrow", [
         USDC,
         USDC,
@@ -1910,7 +1907,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
         90n,
         100n,
       ]);
-      const enc3 = await encryptUint128(ctx, supplyAmt);
+      const enc3 = await encryptUint64(ctx, supplyAmt);
       const wd = await submitTx(ctx, "LendingPool", "withdraw", [USDC, supplyAmt, enc3]);
       return { ops: [supply, overBorrow, wd], stateChecks: [] };
     },
@@ -1921,7 +1918,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "Pool ltvNum=0 → expect LtvNumeratorZero",
     expectedRevert: { contract: "LendingPool", errorName: "LtvNumeratorZero" },
     run: async (ctx) => {
-      const enc = await encryptUint128(ctx, 1n);
+      const enc = await encryptUint64(ctx, 1n);
       const op = await staticCall(ctx, "LendingPool", "checkLtvAndBorrow", [
         USDC,
         USDC,
@@ -1939,7 +1936,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "Pool ltvDen=0 → expect LtvDenominatorZero",
     expectedRevert: { contract: "LendingPool", errorName: "LtvDenominatorZero" },
     run: async (ctx) => {
-      const enc = await encryptUint128(ctx, 1n);
+      const enc = await encryptUint64(ctx, 1n);
       const op = await staticCall(ctx, "LendingPool", "checkLtvAndBorrow", [
         USDC,
         USDC,
@@ -1957,7 +1954,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "Pool repay > borrow → expect ExceedsBorrowBalance",
     expectedRevert: { contract: "LendingPool", errorName: "ExceedsBorrowBalance" },
     run: async (ctx) => {
-      const enc = await encryptUint128(ctx, 999_999_999n);
+      const enc = await encryptUint64(ctx, 999_999_999n);
       const op = await staticCall(ctx, "LendingPool", "repay", [USDC, 999_999_999n, enc]);
       return { ops: [op], stateChecks: [] };
     },
@@ -1968,7 +1965,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "Pool withdraw > supply → expect ExceedsSupplyBalance",
     expectedRevert: { contract: "LendingPool", errorName: "ExceedsSupplyBalance" },
     run: async (ctx) => {
-      const enc = await encryptUint128(ctx, 999_999_999n);
+      const enc = await encryptUint64(ctx, 999_999_999n);
       const op = await staticCall(ctx, "LendingPool", "withdraw", [USDC, 999_999_999n, enc]);
       return { ops: [op], stateChecks: [] };
     },
@@ -1979,13 +1976,13 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "Vault openPosition strategyId=0 → expect InvalidStrategyId",
     expectedRevert: { contract: "StrategyVault", errorName: "InvalidStrategyId" },
     run: async (ctx) => {
-      const enc = await encryptOpenInputs(ctx, 1n, 0n);
+      const enc = await encryptUint64(ctx, 1n);
       const op = await staticCall(ctx, "StrategyVault", "openPosition", [
         USDC,
         1_000_000n,
-        enc[0],
-        enc[1],
+        enc,
         0n,
+        ctx.tester.address,
       ]);
       return { ops: [op], stateChecks: [] };
     },
@@ -1996,8 +1993,8 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "Vault addCollateral with no position → expect NoPosition",
     expectedRevert: { contract: "StrategyVault", errorName: "NoPosition" },
     run: async (ctx) => {
-      const enc = await encryptUint128(ctx, 1n);
-      const op = await staticCall(ctx, "StrategyVault", "addCollateral", [USDC, 1n, enc]);
+      const enc = await encryptUint64(ctx, 1n);
+      const op = await staticCall(ctx, "StrategyVault", "addCollateral", [USDC, 1n, enc, ctx.tester.address]);
       return { ops: [op], stateChecks: [] };
     },
   },
@@ -2007,14 +2004,13 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "Vault openPosition collateralAmount=0 → expect ZeroAmount",
     expectedRevert: { contract: "StrategyVault", errorName: "ZeroAmount" },
     run: async (ctx) => {
-      const enc = await encryptOpenInputs(ctx, 0n, 0n);
-      const sId = (await ctx.contracts.StrategyRegistry.strategyCount()) as bigint;
+      const enc = await encryptUint64(ctx, 0n);
       const op = await staticCall(ctx, "StrategyVault", "openPosition", [
         USDC,
         0n,
-        enc[0],
-        enc[1],
-        sId === 0n ? 1n : sId,
+        enc,
+        1n,
+        ctx.tester.address,
       ]);
       return { ops: [op], stateChecks: [] };
     },
@@ -2038,14 +2034,11 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
     description: "SwapRouter submitSwapIntent + cancelIntent — verify intent meta fields",
     run: async (ctx) => {
       if (!ctx.cofhe) return { ops: [], stateChecks: [], overrideResult: "SETUP_FAILURE" };
-      const enc = await ctx.cofhe.client
-        .encryptInputs([ctx.cofhe.Encryptable.uint128(1n), ctx.cofhe.Encryptable.uint128(1n)])
-        .execute();
       const submit = await submitTx(ctx, "SwapRouter", "submitSwapIntent", [
         USDC,
         WETH,
-        enc[0],
-        enc[1],
+        1n,
+        1n,
         60n,
       ]);
 
@@ -2183,12 +2176,12 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
 
       const enc = await ctx.cofhe.client
         .encryptInputs([
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
-          ctx.cofhe.Encryptable.uint128(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
+          ctx.cofhe.Encryptable.uint64(0n),
         ])
         .execute();
       const params = {
@@ -2235,7 +2228,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
 
 
 
-      const [encSupply, encWithdraw] = await encryptUint128Batch(ctx, [amt, amt]);
+      const [encSupply, encWithdraw] = await encryptUint64Batch(ctx, [amt, amt]);
       const drop = await submitTx(ctx, "USDC", "approve", [ctx.v3.LendingPool, 0n]);
       const sig = await signPermit2(ctx, USDC, amt, ctx.v3.LendingPool);
       const supply = await submitTx(ctx, "LendingPool", "supplyWithPermit2", [
@@ -2272,7 +2265,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       if (!ctx.cofhe) return { ops: [], stateChecks: [], overrideResult: "SETUP_FAILURE" };
       const supplyAmt = 200_000n;
       const borrowAmt = 100_000n;
-      const [encSupply, encBorrow, encRepay, encWithdraw] = await encryptUint128Batch(ctx, [
+      const [encSupply, encBorrow, encRepay, encWithdraw] = await encryptUint64Batch(ctx, [
         supplyAmt,
         borrowAmt,
         borrowAmt,
@@ -2332,12 +2325,12 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
 
 
       const builder = ctx.cofhe.client.encryptInputs([
-        ctx.cofhe.Encryptable.uint128(collateralAmount),
-        ctx.cofhe.Encryptable.uint128(0n),
-        ctx.cofhe.Encryptable.uint128(0n),
-        ctx.cofhe.Encryptable.uint128(0n),
-        ctx.cofhe.Encryptable.uint128(0n),
-        ctx.cofhe.Encryptable.uint128(0n),
+        ctx.cofhe.Encryptable.uint64(collateralAmount),
+        ctx.cofhe.Encryptable.uint64(0n),
+        ctx.cofhe.Encryptable.uint64(0n),
+        ctx.cofhe.Encryptable.uint64(0n),
+        ctx.cofhe.Encryptable.uint64(0n),
+        ctx.cofhe.Encryptable.uint64(0n),
       ]) as {
         setAccount(addr: string): { execute(): Promise<EncryptedHandle[]> };
         execute(): Promise<EncryptedHandle[]>;
@@ -2382,7 +2375,7 @@ const SCENARIO_DEFINITIONS: ScenarioDef[] = [
       let close: OperationLog | null = null;
       if (open.status === "ok") {
         await waitNextBlockAfter(ctx, open.blockNumber ?? 0);
-        const closeEnc = await encryptUint128(ctx, collateralAmount);
+        const closeEnc = await encryptUint64(ctx, collateralAmount);
         close = await submitTx(
           ctx,
           "StrategyVault",
@@ -2474,12 +2467,12 @@ function buildRandomScenario(idx: number, rng: () => number): ScenarioDef {
       const evidenceOps: OperationLog[] = [];
       for (const o of ops) {
         if (o.kind === "SUPPLY" && o.amount && o.token) {
-          const enc = await encryptUint128(ctx, o.amount);
+          const enc = await encryptUint64(ctx, o.amount);
           const op = await submitTx(ctx, "LendingPool", "supply", [o.token, o.amount, enc]);
           evidenceOps.push(op);
           if (op.status === "revert") break;
         } else if (o.kind === "WITHDRAW" && o.amount && o.token) {
-          const enc = await encryptUint128(ctx, o.amount);
+          const enc = await encryptUint64(ctx, o.amount);
           const op = await submitTx(ctx, "LendingPool", "withdraw", [o.token, o.amount, enc]);
           evidenceOps.push(op);
           if (op.status === "revert") break;
@@ -2514,7 +2507,7 @@ const UX_SCENARIO: ScenarioDef = {
     const ops: OperationLog[] = [];
     if (!ctx.cofhe) return { ops, stateChecks: [], overrideResult: "SETUP_FAILURE" };
     const amt = 50_000n;
-    const enc = await encryptUint128(ctx, amt);
+    const enc = await encryptUint64(ctx, amt);
     const supply = await submitTx(ctx, "LendingPool", "supply", [USDC, amt, enc]);
     ops.push(supply);
 
@@ -2532,7 +2525,7 @@ const UX_SCENARIO: ScenarioDef = {
     }
     const tDecryptEnd = Date.now();
     vlog(`  decryptForView round-trip: ${tDecryptEnd - tDecryptStart}ms (got ${decrypted})`);
-    const enc2 = await encryptUint128(ctx, amt);
+    const enc2 = await encryptUint64(ctx, amt);
     const wd = await submitTx(ctx, "LendingPool", "withdraw", [USDC, amt, enc2]);
     ops.push(wd);
     return {
@@ -2624,10 +2617,10 @@ const BASELINE_SCENARIO: ScenarioDef = {
     ]);
     ops.push(reg);
 
-    const enc1 = await encryptUint128(ctx, 50_000n);
+    const enc1 = await encryptUint64(ctx, 50_000n);
     const supply = await submitTx(ctx, "LendingPool", "supply", [USDC, 50_000n, enc1]);
     ops.push(supply);
-    const enc2 = await encryptUint128(ctx, 50_000n);
+    const enc2 = await encryptUint64(ctx, 50_000n);
     const wd = await submitTx(ctx, "LendingPool", "withdraw", [USDC, 50_000n, enc2]);
     ops.push(wd);
 

@@ -305,21 +305,15 @@ export function ExecutionModal({
 
       setIsEncrypting(true);
       let encCollateral: Awaited<ReturnType<typeof encrypt128>>;
-      let encDebt: Awaited<ReturnType<typeof encrypt128>>;
       let encSupply: Awaited<ReturnType<typeof encrypt128>>;
       let encBorrow: Awaited<ReturnType<typeof encrypt128>>;
-      let encSwapAmountIn: Awaited<ReturnType<typeof encrypt128>>;
-      let encSwapMinOut: Awaited<ReturnType<typeof encrypt128>>;
 
       try {
-        [encCollateral, encDebt, encSupply, encBorrow, encSwapAmountIn, encSwapMinOut] =
+        [encCollateral, encSupply, encBorrow] =
           await Promise.all([
             encrypt128(collateralAmount),
-            encrypt128(borrowAmount),
             encrypt128(supplyAmount),
             encrypt128(borrowAmount),
-            encrypt128(swapAmountIn),
-            encrypt128(swapMinOut),
           ]);
       } finally {
         setIsEncrypting(false);
@@ -341,6 +335,8 @@ export function ExecutionModal({
         strategyId: BigInt(strategyId),
         apyTarget: 0, 
         loopCount: strategy.loops ?? 1,
+        swapAmountIn,
+        swapMinOut,
         collateralPermit: {
           amount: 0n,
           deadline: 0n,
@@ -351,11 +347,8 @@ export function ExecutionModal({
 
       const encrypted: OpenStrategyEncrypted = {
         collateral: encCollateral,
-        debt: encDebt,
         supplyEnc: encSupply,
         borrowEnc: encBorrow,
-        swapAmountIn: encSwapAmountIn,
-        swapMinOut: encSwapMinOut,
       };
 
       const txHash = await openLeveragedStrategy(params, encrypted);

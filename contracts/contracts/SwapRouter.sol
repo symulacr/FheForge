@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { FHE, InEuint128, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
-
-
-
-
-
-
 
 contract SwapRouter is Pausable {
     using SafeERC20 for IERC20;
@@ -22,8 +15,8 @@ contract SwapRouter is Pausable {
     struct SwapIntent {
         address tokenIn;
         address tokenOut;
-        euint128 amountIn;
-        euint128 minAmountOut;
+        uint256 amountIn;
+        uint256 minAmountOut;
         address user;
         uint256 deadline;
     }
@@ -44,7 +37,6 @@ contract SwapRouter is Pausable {
     error IntentExpired();
     error ZeroOutput();
     error ZeroAddress();
-    error FhePermissionDenied();
     error DeadlineTooShort();
     error DeadlineTooLong();
     error OnlyOwner();
@@ -128,8 +120,8 @@ contract SwapRouter is Pausable {
     function submitSwapIntent(
         address tokenIn,
         address tokenOut,
-        InEuint128 calldata amountIn,
-        InEuint128 calldata minAmountOut,
+        uint256 amountIn,
+        uint256 minAmountOut,
         uint256 deadlineOffset
     ) external whenNotPaused returns (bytes32 intentId) {
         if (tokenIn == address(0) || tokenOut == address(0)) revert ZeroAddress();
@@ -137,32 +129,22 @@ contract SwapRouter is Pausable {
         if (deadlineOffset < MIN_DEADLINE_OFFSET) revert DeadlineTooShort();
         if (deadlineOffset > MAX_DEADLINE_OFFSET) revert DeadlineTooLong();
 
-        uint256 currentNonce = nonces[msg.sender];
-        nonces[msg.sender] = currentNonce + 1;
-        intentId = keccak256(abi.encode(block.chainid, address(this), msg.sender, currentNonce));
-
-        euint128 a = FHE.asEuint128(amountIn);
-        euint128 m = FHE.asEuint128(minAmountOut);
-        FHE.allowThis(a);
-        FHE.allowSender(a);
-        FHE.allowThis(m);
-        FHE.allowSender(m);
+        uint256 currentNonce = nonces[_msgSender()];
+        nonces[_msgSender()] = currentNonce + 1;
+        intentId = keccak256(abi.encode(block.chainid, address(this), _msgSender(), currentNonce));
 
         uint256 deadline = block.timestamp + deadlineOffset;
         intents[intentId] = SwapIntent({
             tokenIn: tokenIn,
             tokenOut: tokenOut,
-            amountIn: a,
-            minAmountOut: m,
-            user: msg.sender,
+            amountIn: amountIn,
+            minAmountOut: minAmountOut,
+            user: _msgSender(),
             deadline: deadline
         });
 
         emit IntentSubmitted(intentId, msg.sender, tokenIn, tokenOut, deadline);
     }
-
-
-
 
 
     function getIntentMeta(
@@ -173,22 +155,11 @@ contract SwapRouter is Pausable {
     }
 
 
-    function getAmountIn(bytes32 intentId) external returns (euint128) {
-        SwapIntent storage i = intents[intentId];
-        if (i.user != msg.sender) revert NotCreator();
-        if (!FHE.isAllowed(i.amountIn, msg.sender)) revert FhePermissionDenied();
-        FHE.allowSender(i.amountIn);
-        return i.amountIn;
-    }
-
-
     function cancelIntent(bytes32 intentId) external {
-        if (intents[intentId].user != msg.sender) revert NotCreator();
+        if (intents[intentId].user != _msgSender()) revert NotCreator();
         delete intents[intentId];
         emit IntentCancelled(intentId, msg.sender);
     }
-
-
 
 
     function executeIntent(bytes32 intentId, uint256 outputAmount) external whenNotPaused {

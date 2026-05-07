@@ -14,6 +14,9 @@ interface InEuint128 {
   signature: string;
 }
 
+// InEuint64 has identical ABI shape as InEuint128 for TypeScript purposes
+type InEuint64 = InEuint128;
+
 interface Permit2Authorization {
   amount: bigint;
   deadline: bigint;
@@ -37,16 +40,15 @@ export interface OpenStrategyParams {
   strategyId: bigint;
   apyTarget: number;
   loopCount: number;
+  swapAmountIn: bigint;
+  swapMinOut: bigint;
   collateralPermit: Permit2Authorization;
 }
 
 export interface OpenStrategyEncrypted {
   collateral: InEuint128;
-  debt: InEuint128;
-  supplyEnc: InEuint128;
-  borrowEnc: InEuint128;
-  swapAmountIn: InEuint128;
-  swapMinOut: InEuint128;
+  supplyEnc: InEuint64;
+  borrowEnc: InEuint64;
 }
 
 export function useComposer() {
@@ -68,7 +70,7 @@ export function useComposer() {
     if (!cofheState.permitReady)
       throw new Error("CoFHE permit not ready");
     const handles = (await cofheClient
-      .encryptInputs([Encryptable.uint128(value)])
+      .encryptInputs([Encryptable.uint64(value)])
       .execute()) as InEuint128[];
     if (!handles[0]) throw new Error("CoFHE returned empty handle list");
     return handles[0];

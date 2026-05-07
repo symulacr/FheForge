@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { FHE, InEuint128, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, InEuint64, InEuint128, euint128, euint64 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -48,17 +48,39 @@ interface IRegistry {
 
 interface IStrategyVault {
     function openPosition(
-        address collateralToken,
-        uint256 collateralAmount,
-        InEuint128 calldata collateral,
-        InEuint128 calldata debt,
-        uint256 strategyId
+        address token,
+        uint256 amount,
+        InEuint128 calldata encAmount,
+        uint256 strategyId,
+        address user
+    ) external;
+
+    function openPosition(
+        address token,
+        uint256 amount,
+        euint128 encAmount,
+        uint256 strategyId,
+        address user
     ) external;
 
     function addCollateral(
         address collateralToken,
         uint256 amount,
-        InEuint128 calldata encAmount
+        InEuint64 calldata encAmount
+    ) external;
+
+    function addCollateral(
+        address collateralToken,
+        uint256 amount,
+        InEuint64 calldata encAmount,
+        address user
+    ) external;
+
+    function addCollateral(
+        address collateralToken,
+        uint256 amount,
+        euint128 encAmount,
+        address user
     ) external;
 
     function closePosition(
@@ -70,35 +92,77 @@ interface IStrategyVault {
 }
 
 interface ILendingPool {
-    function supply(address token, uint256 amount, InEuint128 calldata encAmount) external;
+    function supply(address token, uint256 amount, InEuint64 calldata encAmount) external;
+
+    function supplyToLending(
+        address token,
+        uint256 amount,
+        InEuint64 calldata encAmount,
+        address user
+    ) external;
+
+    function supplyToLending(
+        address token,
+        uint256 amount,
+        euint64 encAmount,
+        address user
+    ) external;
 
     function checkLtvAndBorrow(
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
-        InEuint128 calldata encBorrowAmount,
+        InEuint64 calldata encBorrowAmount,
         uint128 ltvNum,
         uint128 ltvDen
-    ) external returns (euint128);
+    ) external returns (euint64);
 
     function borrowWithOracle(
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
-        InEuint128 calldata encBorrowAmount
-    ) external returns (euint128);
+        InEuint64 calldata encBorrowAmount
+    ) external returns (euint64);
 
-    function repay(address token, uint256 amount, InEuint128 calldata encAmount) external;
+    function borrowFromLending(
+        address token,
+        uint256 amount,
+        InEuint64 calldata encAmount,
+        address user
+    ) external;
 
-    function withdraw(address token, uint256 amount, InEuint128 calldata encAmount) external;
+    function borrowFromLending(
+        address token,
+        uint256 amount,
+        euint64 encAmount,
+        address user
+    ) external;
+
+    function repay(address token, uint256 amount, InEuint64 calldata encAmount) external;
+
+    function repayBorrow(
+        address token,
+        uint256 amount,
+        InEuint64 calldata encAmount,
+        address user
+    ) external;
+
+    function repayBorrow(
+        address token,
+        uint256 amount,
+        euint64 encAmount,
+        address user
+    ) external;
+
+    function withdraw(address token, uint256 amount, InEuint64 calldata encAmount) external;
 }
 
 interface ISwapRouter {
     function submitSwapIntent(
         address tokenIn,
         address tokenOut,
-        InEuint128 calldata amountIn,
-        InEuint128 calldata minAmountOut,
+        uint256 amountIn,
+        uint256 minAmountOut,
         uint256 deadlineOffset
     ) external returns (bytes32 intentId);
 }
@@ -207,16 +271,15 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         uint256 strategyId;
         uint16 apyTarget;
         uint8 loopCount;
+        uint256 swapAmountIn;
+        uint256 swapMinOut;
         Permit2Authorization collateralPermit;
     }
 
     struct OpenStrategyEncrypted {
         InEuint128 collateral;
-        InEuint128 debt;
-        InEuint128 supplyEnc;
-        InEuint128 borrowEnc;
-        InEuint128 swapAmountIn;
-        InEuint128 swapMinOut;
+        InEuint64 supplyEnc;
+        InEuint64 borrowEnc;
     }
 
 
@@ -231,7 +294,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
 
 
         uint256 vaultCovered = pulled > p.collateralAmount ? p.collateralAmount : pulled;
-        _openVaultPosition(p, e, strategyId, vaultCovered);
+        _openVaultPosition(p, e, vaultCovered, strategyId);
         _supplyToPool(p, e, pulled - vaultCovered);
         _borrowFromPool(p, e);
         intentId = _submitSwap(p, e);
@@ -258,16 +321,16 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     function _openVaultPosition(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e,
-        uint256 strategyId,
-        uint256 permitCovered
+        uint256 permitCovered,
+        uint256 strategyId
     ) internal {
         if (p.collateralAmount == 0) return;
         uint256 needsPull = p.collateralAmount - permitCovered;
         if (needsPull > 0) {
-            IERC20(p.collateralToken).safeTransferFrom(msg.sender, address(this), needsPull);
+            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), needsPull);
         }
         _ensureApproval(p.collateralToken, address(VAULT), p.collateralAmount);
-        VAULT.openPosition(p.collateralToken, p.collateralAmount, e.collateral, e.debt, strategyId);
+        VAULT.openPosition(p.collateralToken, p.collateralAmount, e.collateral, strategyId, _msgSender());
     }
 
     function _supplyToPool(
@@ -279,10 +342,12 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         uint256 needsPull =
             p.poolSupplyAmount > permitCovered ? p.poolSupplyAmount - permitCovered : 0;
         if (needsPull > 0) {
-            IERC20(p.collateralToken).safeTransferFrom(msg.sender, address(this), needsPull);
+            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), needsPull);
         }
         _ensureApproval(p.collateralToken, address(POOL), p.poolSupplyAmount);
-        POOL.supply(p.collateralToken, p.poolSupplyAmount, e.supplyEnc);
+        euint64 supplyHandle = FHE.asEuint64(e.supplyEnc);
+        FHE.allowThis(supplyHandle);
+        POOL.supplyToLending(p.collateralToken, p.poolSupplyAmount, supplyHandle, _msgSender());
     }
 
     function _borrowFromPool(
@@ -290,29 +355,12 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         OpenStrategyEncrypted calldata e
     ) internal {
         if (p.poolBorrowAmount == 0) return;
-        euint128 debtHandle;
-        if (p.useOracleBorrow) {
-            debtHandle = POOL.borrowWithOracle(
-                p.collateralToken,
-                p.borrowToken,
-                p.poolBorrowAmount,
-                e.borrowEnc
-            );
-        } else {
-            debtHandle = POOL.checkLtvAndBorrow(
-                p.collateralToken,
-                p.borrowToken,
-                p.poolBorrowAmount,
-                e.borrowEnc,
-                p.ltvNum,
-                p.ltvDen
-            );
-        }
-
-        FHE.allow(debtHandle, msg.sender);
+        euint64 borrowHandle = FHE.asEuint64(e.borrowEnc);
+        FHE.allowThis(borrowHandle);
+        POOL.borrowFromLending(p.borrowToken, p.poolBorrowAmount, borrowHandle, _msgSender());
         uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
         if (received > 0) {
-            IERC20(p.borrowToken).safeTransfer(msg.sender, received);
+            IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
         }
     }
 
@@ -325,8 +373,8 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
             ROUTER.submitSwapIntent(
                 p.collateralToken,
                 p.swapTokenOut,
-                e.swapAmountIn,
-                e.swapMinOut,
+                p.swapAmountIn,
+                p.swapMinOut,
                 p.swapDeadlineOffset
             );
     }
@@ -347,9 +395,9 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     }
 
     struct RebalanceEncrypted {
-        InEuint128 addCollateralEnc;
-        InEuint128 repayEnc;
-        InEuint128 newBorrowEnc;
+        InEuint64 addCollateralEnc;
+        InEuint64 repayEnc;
+        InEuint64 newBorrowEnc;
     }
 
 
@@ -371,44 +419,28 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
                     ? p.addCollateralAmount - collateralPulled
                     : 0;
             if (needsPull > 0) {
-                IERC20(p.collateralToken).safeTransferFrom(msg.sender, address(this), needsPull);
+                IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), needsPull);
             }
             _ensureApproval(p.collateralToken, address(VAULT), p.addCollateralAmount);
-            VAULT.addCollateral(p.collateralToken, p.addCollateralAmount, e.addCollateralEnc);
+            VAULT.addCollateral(p.collateralToken, p.addCollateralAmount, e.addCollateralEnc, _msgSender());
         }
 
         if (p.repayAmount > 0) {
             uint256 needsPull = p.repayAmount > repayPulled ? p.repayAmount - repayPulled : 0;
             if (needsPull > 0) {
-                IERC20(p.repayToken).safeTransferFrom(msg.sender, address(this), needsPull);
+                IERC20(p.repayToken).safeTransferFrom(_msgSender(), address(this), needsPull);
             }
             _ensureApproval(p.repayToken, address(POOL), p.repayAmount);
             POOL.repay(p.repayToken, p.repayAmount, e.repayEnc);
         }
 
         if (p.newBorrowAmount > 0) {
-            euint128 newDebt;
-            if (p.useOracleBorrow) {
-                newDebt = POOL.borrowWithOracle(
-                    p.collateralToken,
-                    p.borrowToken,
-                    p.newBorrowAmount,
-                    e.newBorrowEnc
-                );
-            } else {
-                newDebt = POOL.checkLtvAndBorrow(
-                    p.collateralToken,
-                    p.borrowToken,
-                    p.newBorrowAmount,
-                    e.newBorrowEnc,
-                    p.ltvNum,
-                    p.ltvDen
-                );
-            }
-            FHE.allow(newDebt, msg.sender);
+            euint64 borrowHandle = FHE.asEuint64(e.newBorrowEnc);
+            FHE.allowThis(borrowHandle);
+            POOL.borrowFromLending(p.borrowToken, p.newBorrowAmount, borrowHandle, _msgSender());
             uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
             if (received > 0) {
-                IERC20(p.borrowToken).safeTransfer(msg.sender, received);
+                IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
             }
         }
 
@@ -434,7 +466,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
                 deadline: auth.deadline
             }),
             IPermit2.SignatureTransferDetails({ to: address(this), requestedAmount: auth.amount }),
-            msg.sender,
+            _msgSender(),
             auth.signature
         );
         return auth.amount;

@@ -20,11 +20,6 @@
         "internalType": "address",
         "name": "router_",
         "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "trustedForwarder_",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -38,6 +33,22 @@
   {
     "inputs": [],
     "name": "ExpectedPause",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "got",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "expected",
+        "type": "uint8"
+      }
+    ],
+    "name": "InvalidEncryptedInput",
     "type": "error"
   },
   {
@@ -253,25 +264,6 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "forwarder",
-        "type": "address"
-      }
-    ],
-    "name": "isTrustedForwarder",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "components": [
           {
             "internalType": "string",
@@ -347,6 +339,16 @@
             "internalType": "uint8",
             "name": "loopCount",
             "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "swapAmountIn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "swapMinOut",
+            "type": "uint256"
           },
           {
             "components": [
@@ -432,34 +434,7 @@
                 "type": "bytes"
               }
             ],
-            "internalType": "struct InEuint128",
-            "name": "debt",
-            "type": "tuple"
-          },
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "ctHash",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint8",
-                "name": "securityZone",
-                "type": "uint8"
-              },
-              {
-                "internalType": "uint8",
-                "name": "utype",
-                "type": "uint8"
-              },
-              {
-                "internalType": "bytes",
-                "name": "signature",
-                "type": "bytes"
-              }
-            ],
-            "internalType": "struct InEuint128",
+            "internalType": "struct InEuint64",
             "name": "supplyEnc",
             "type": "tuple"
           },
@@ -486,62 +461,8 @@
                 "type": "bytes"
               }
             ],
-            "internalType": "struct InEuint128",
+            "internalType": "struct InEuint64",
             "name": "borrowEnc",
-            "type": "tuple"
-          },
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "ctHash",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint8",
-                "name": "securityZone",
-                "type": "uint8"
-              },
-              {
-                "internalType": "uint8",
-                "name": "utype",
-                "type": "uint8"
-              },
-              {
-                "internalType": "bytes",
-                "name": "signature",
-                "type": "bytes"
-              }
-            ],
-            "internalType": "struct InEuint128",
-            "name": "swapAmountIn",
-            "type": "tuple"
-          },
-          {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "ctHash",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint8",
-                "name": "securityZone",
-                "type": "uint8"
-              },
-              {
-                "internalType": "uint8",
-                "name": "utype",
-                "type": "uint8"
-              },
-              {
-                "internalType": "bytes",
-                "name": "signature",
-                "type": "bytes"
-              }
-            ],
-            "internalType": "struct InEuint128",
-            "name": "swapMinOut",
             "type": "tuple"
           }
         ],
@@ -719,7 +640,7 @@
                 "type": "bytes"
               }
             ],
-            "internalType": "struct InEuint128",
+            "internalType": "struct InEuint64",
             "name": "addCollateralEnc",
             "type": "tuple"
           },
@@ -746,7 +667,7 @@
                 "type": "bytes"
               }
             ],
-            "internalType": "struct InEuint128",
+            "internalType": "struct InEuint64",
             "name": "repayEnc",
             "type": "tuple"
           },
@@ -773,7 +694,7 @@
                 "type": "bytes"
               }
             ],
-            "internalType": "struct InEuint128",
+            "internalType": "struct InEuint64",
             "name": "newBorrowEnc",
             "type": "tuple"
           }
@@ -789,16 +710,21 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "trustedForwarder",
-    "outputs": [
+    "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
         "type": "address"
       }
     ],
-    "stateMutability": "view",
+    "name": "sweepToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

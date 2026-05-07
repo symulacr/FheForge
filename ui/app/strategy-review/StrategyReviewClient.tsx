@@ -125,14 +125,11 @@ export default function StrategyReviewClient() {
 
     setExecuting(true);
     try {
-      const [encCollateral, encDebt, encSupply, encBorrow, encSwapAmountIn, encSwapMinOut] =
+      const [encCollateral, encSupply, encBorrow] =
         await Promise.all([
           encrypt128(collateralWei),
-          encrypt128(debtWei),
           encrypt128(supplyWei),
           encrypt128(borrowWei),
-          encrypt128(borrowWei),
-          encrypt128(minOutWei),
         ]);
 
       const permit2Auth = await signPermit();
@@ -153,16 +150,15 @@ export default function StrategyReviewClient() {
         strategyId: BigInt(storedStrategyId),
         apyTarget: 0,
         loopCount: 1,
+        swapAmountIn: borrowWei,
+        swapMinOut: minOutWei,
         collateralPermit: permit2Auth,
       };
 
       const encrypted: OpenStrategyEncrypted = {
         collateral: encCollateral,
-        debt: encDebt,
         supplyEnc: encSupply,
         borrowEnc: encBorrow,
-        swapAmountIn: encSwapAmountIn,
-        swapMinOut: encSwapMinOut,
       };
 
       await openLeveragedStrategy(params, encrypted);

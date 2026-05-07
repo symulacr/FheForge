@@ -42,17 +42,15 @@ describe("StrategyVault", () => {
   async function encryptOpenPosition(
     userClient: any,
     collateralWei: bigint,
-    debtWei: bigint,
   ) {
 
 
-    const [eCollateral, eDebt] = await userClient
+    const [eCollateral] = await userClient
       .encryptInputs([
         Encryptable.uint128(collateralWei),
-        Encryptable.uint128(debtWei),
       ])
       .execute();
-    return { eCollateral, eDebt };
+    return { eCollateral };
   }
 
   it("hasPosition is false for new user", async () => {
@@ -63,15 +61,13 @@ describe("StrategyVault", () => {
   it("openPosition sets hasPosition to true", async () => {
     const { vault, token, user, userClient } = await deployAll();
     const collateralWei = ethers.parseEther("1");
-    const { eCollateral, eDebt } = await encryptOpenPosition(
+    const { eCollateral } = await encryptOpenPosition(
       userClient,
       collateralWei,
-      ethers.parseEther("0.5"),
     );
 
-    await vault
-      .connect(user)
-      .openPosition(await token.getAddress(), collateralWei, eCollateral, eDebt, 1);
+    const openPosWithInEuint = vault.connect(user)["openPosition(address,uint256,(uint256,uint8,uint8,bytes),uint256,address)"];
+    await openPosWithInEuint(await token.getAddress(), collateralWei, eCollateral, 1n, user.address);
 
     expect(await vault.hasPosition(user.address)).to.equal(true);
   });
@@ -79,15 +75,13 @@ describe("StrategyVault", () => {
   it("collateral plaintext matches via mock expectPlaintext", async () => {
     const { vault, token, user, userClient } = await deployAll();
     const collateralWei = ethers.parseEther("1");
-    const { eCollateral, eDebt } = await encryptOpenPosition(
+    const { eCollateral } = await encryptOpenPosition(
       userClient,
       collateralWei,
-      ethers.parseEther("0.5"),
     );
 
-    await vault
-      .connect(user)
-      .openPosition(await token.getAddress(), collateralWei, eCollateral, eDebt, 1);
+    const openPosWithInEuint = vault.connect(user)["openPosition(address,uint256,(uint256,uint8,uint8,bytes),uint256,address)"];
+    await openPosWithInEuint(await token.getAddress(), collateralWei, eCollateral, 1n, user.address);
 
     const ctHash = await vault.connect(user).getCollateral.staticCall();
     await hre.cofhe.mocks.expectPlaintext(BigInt(ctHash), collateralWei);
@@ -96,15 +90,13 @@ describe("StrategyVault", () => {
   it("second user cannot read first user collateral", async () => {
     const { vault, token, user, user2, userClient } = await deployAll();
     const collateralWei = ethers.parseEther("1");
-    const { eCollateral, eDebt } = await encryptOpenPosition(
+    const { eCollateral } = await encryptOpenPosition(
       userClient,
       collateralWei,
-      ethers.parseEther("0.5"),
     );
 
-    await vault
-      .connect(user)
-      .openPosition(await token.getAddress(), collateralWei, eCollateral, eDebt, 1);
+    const openPosWithInEuint = vault.connect(user)["openPosition(address,uint256,(uint256,uint8,uint8,bytes),uint256,address)"];
+    await openPosWithInEuint(await token.getAddress(), collateralWei, eCollateral, 1n, user.address);
 
     await expect(
       vault.connect(user2).getCollateral.staticCall(),

@@ -303,7 +303,6 @@ async function main() {
 
   console.log("\n── 5. Vault.openPosition (tester USDC) ──");
   const collateral = 5_000_000n;
-  const debt = 2_000_000n;
   const apy = 650n;
   const loop = 2n;
   try {
@@ -333,18 +332,17 @@ async function main() {
 
     const enc = await cofheClient
       .encryptInputs([
-        Encryptable.uint128(collateral),
-        Encryptable.uint128(debt),
+        Encryptable.uint64(collateral),
       ])
       .execute();
-    pass("CoFHE.encryptInputs", `2 ciphertexts produced`);
+    pass("CoFHE.encryptInputs", `1 ciphertext produced`);
 
     const tx = await vault.openPosition(
       USDC,
       collateral,
       enc[0],
-      enc[1],
       strategyId,
+      tester.address,
     );
     const rcpt = await tx.wait();
     pass(
@@ -388,16 +386,15 @@ async function main() {
   try {
     const dummy = await cofheClient
       .encryptInputs([
-        Encryptable.uint128(1n),
-        Encryptable.uint128(1n),
+        Encryptable.uint64(1n),
       ])
       .execute();
     await vault.openPosition.staticCall(
       USDC,
       1_000_000n,
       dummy[0],
-      dummy[1],
-      strategyId,
+      1n,
+      tester.address,
     );
     fail(
       "Vault.openPosition (already-exists)",
@@ -424,9 +421,9 @@ async function main() {
   const addAmount = 2_000_000n;
   try {
     const enc = await cofheClient
-      .encryptInputs([Encryptable.uint128(addAmount)])
+      .encryptInputs([Encryptable.uint64(addAmount)])
       .execute();
-    const tx = await vault.addCollateral(USDC, addAmount, enc[0]);
+    const tx = await vault.addCollateral(USDC, addAmount, enc[0], tester.address);
     const rcpt = await tx.wait();
     pass(
       "Vault.addCollateral",
@@ -488,12 +485,12 @@ async function main() {
       pass("USDC.approve(pool, MAX)", "fresh approval", tx.hash);
     }
     const enc = await cofheClient
-      .encryptInputs([Encryptable.uint128(supplyAmount)])
+      .encryptInputs([Encryptable.uint64(supplyAmount)])
       .execute();
-    const tx = await pool.supply(USDC, supplyAmount, enc[0]);
+    const tx = await pool.supplyToLending(USDC, supplyAmount, enc[0], tester.address);
     const rcpt = await tx.wait();
     pass(
-      "Pool.supply",
+      "Pool.supplyToLending",
       `${supplyAmount} block=${rcpt!.blockNumber}`,
       tx.hash,
     );
@@ -507,27 +504,25 @@ async function main() {
       `ctHash=${ctSupply.toString().slice(0, 24)}…`,
     );
   } catch (e: unknown) {
-    fail("Pool.supply", (e as Error).message);
+    fail("Pool.supplyToLending", (e as Error).message);
   }
 
 
-  console.log("\n── 11. LendingPool.checkLtvAndBorrow ──");
+  console.log("\n── 11. LendingPool.borrowFromLending ──");
   const borrowAmount = 1_000_000n;
   try {
     const enc = await cofheClient
-      .encryptInputs([Encryptable.uint128(borrowAmount)])
+      .encryptInputs([Encryptable.uint64(borrowAmount)])
       .execute();
-    const tx = await pool.checkLtvAndBorrow(
-      USDC,
+    const tx = await pool.borrowFromLending(
       USDC,
       borrowAmount,
       enc[0],
-      70,
-      100,
+      tester.address,
     );
     const rcpt = await tx.wait();
     pass(
-      "Pool.checkLtvAndBorrow",
+      "Pool.borrowFromLending",
       `${borrowAmount} block=${rcpt!.blockNumber}`,
       tx.hash,
     );
@@ -541,14 +536,14 @@ async function main() {
       `ctHash=${ctBorrow.toString().slice(0, 24)}…`,
     );
   } catch (e: unknown) {
-    fail("Pool.checkLtvAndBorrow", (e as Error).message);
+    fail("Pool.borrowFromLending", (e as Error).message);
   }
 
 
   console.log("\n── 12. LendingPool.repay ──");
   try {
     const enc = await cofheClient
-      .encryptInputs([Encryptable.uint128(borrowAmount)])
+      .encryptInputs([Encryptable.uint64(borrowAmount)])
       .execute();
     const tx = await pool.repay(USDC, borrowAmount, enc[0]);
     const rcpt = await tx.wait();
@@ -565,7 +560,7 @@ async function main() {
   console.log("\n── 13. LendingPool.withdraw ──");
   try {
     const enc = await cofheClient
-      .encryptInputs([Encryptable.uint128(supplyAmount)])
+      .encryptInputs([Encryptable.uint64(supplyAmount)])
       .execute();
     const tx = await pool.withdraw(USDC, supplyAmount, enc[0]);
     const rcpt = await tx.wait();
@@ -587,15 +582,12 @@ async function main() {
   try {
     const amountIn = 1_000_000n;
     const minOut = 990_000n;
-    const enc = await cofheClient
-      .encryptInputs([Encryptable.uint128(amountIn), Encryptable.uint128(minOut)])
-      .execute();
 
     const tx = await router.submitSwapIntent(
       USDC,
       "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
-      enc[0],
-      enc[1],
+      amountIn,
+      minOut,
       3600n,
     );
     const rcpt = await tx.wait();
@@ -678,17 +670,11 @@ async function main() {
     else fail("Router.cancelIntent unknown", msg);
   }
   try {
-    const enc = await cofheClient
-      .encryptInputs([
-        Encryptable.uint128(1n),
-        Encryptable.uint128(1n),
-      ])
-      .execute();
     await router.submitSwapIntent.staticCall(
       USDC,
       USDC,
-      enc[0],
-      enc[1],
+      1n,
+      1n,
       3600n,
     );
     fail("Router.submitSwapIntent(same token)", "expected revert SameToken");

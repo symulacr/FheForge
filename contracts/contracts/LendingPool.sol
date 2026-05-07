@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { FHE, InEuint128, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, InEuint64, euint128, euint64 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -46,14 +46,14 @@ contract LendingPool is ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
-    mapping(address => mapping(address => euint128)) private supplyBalances;
-    mapping(address => mapping(address => euint128)) private borrowBalances;
+    mapping(address => mapping(address => euint64)) private supplyBalances;
+    mapping(address => mapping(address => euint64)) private borrowBalances;
     mapping(address => mapping(address => uint256)) private plainSupplyBalances;
     mapping(address => mapping(address => uint256)) private plainBorrowBalances;
     mapping(address => uint256) public totalPlainBorrow;
     mapping(address => uint256) public liquidReserve;
 
-    euint128 private immutable _ZERO;
+    euint64 private immutable _ZERO;
     address public immutable OWNER;
 
     uint256 public constant BPS_DEN = 1e4;
@@ -122,16 +122,19 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
     constructor() {
         OWNER = msg.sender;
-        euint128 z = FHE.asEuint128(0);
+        euint64 z = FHE.asEuint64(0);
         FHE.allowThis(z);
         _ZERO = z;
     }
 
 
+    // ────────── User-facing supply / borrow / repay / withdraw ──────────
+
+
     function supply(
         address token,
         uint256 amount,
-        InEuint128 calldata encAmount
+        InEuint64 calldata encAmount
     ) external nonReentrant whenNotPaused {
         _pullAndSupply(token, amount, encAmount);
     }
@@ -141,7 +144,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     function supplyWithPermit2(
         address token,
         uint256 amount,
-        InEuint128 calldata encAmount,
+        InEuint64 calldata encAmount,
         IPermit2.PermitTransferFrom calldata permit,
         bytes calldata signature
     ) external nonReentrant whenNotPaused {
@@ -164,7 +167,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         IPermit2(PERMIT2).permitTransferFrom(
             permit,
             IPermit2.SignatureTransferDetails({ to: address(this), requestedAmount: amount }),
-            msg.sender,
+            _msgSender(),
             signature
         );
     }
@@ -172,29 +175,25 @@ contract LendingPool is ReentrancyGuard, Pausable {
     function _finalizeSupply(
         address token,
         uint256 amount,
-        InEuint128 calldata encAmount
+        InEuint64 calldata encAmount
     ) internal {
-        plainSupplyBalances[token][msg.sender] += amount;
+        plainSupplyBalances[token][_msgSender()] += amount;
         liquidReserve[token] += amount;
 
-
-
-
-
-        euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 stored = supplyBalances[token][msg.sender];
-        euint128 newBalance = FHE.isInitialized(stored) ? FHE.add(stored, incoming) : incoming;
-        supplyBalances[token][msg.sender] = newBalance;
+        euint64 incoming = FHE.asEuint64(encAmount);
+        euint64 stored = supplyBalances[token][_msgSender()];
+        euint64 newBalance = FHE.isInitialized(stored) ? FHE.add(stored, incoming) : incoming;
+        supplyBalances[token][_msgSender()] = newBalance;
         FHE.allowThis(newBalance);
-        FHE.allowSender(newBalance);
+        FHE.allow(newBalance, _msgSender());
 
         emit Supplied(msg.sender, token, amount);
     }
 
-    function _pullAndSupply(address token, uint256 amount, InEuint128 calldata encAmount) internal {
+    function _pullAndSupply(address token, uint256 amount, InEuint64 calldata encAmount) internal {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
         _finalizeSupply(token, amount, encAmount);
     }
 
@@ -205,21 +204,21 @@ contract LendingPool is ReentrancyGuard, Pausable {
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
-        InEuint128 calldata encBorrowAmount,
+        InEuint64 calldata encBorrowAmount,
         uint128 ltvNum,
         uint128 ltvDen
-    ) external nonReentrant whenNotPaused returns (euint128 actual) {
+    ) external nonReentrant whenNotPaused returns (euint64 actual) {
         if (collateralToken == address(0) || borrowToken == address(0)) revert ZeroAddress();
         if (borrowAmount == 0) revert ZeroAmount();
         if (ltvDen == 0) revert LtvDenominatorZero();
         if (ltvNum == 0) revert LtvNumeratorZero();
         if (ltvNum > ltvDen) revert LtvExceedsHundredPercent();
 
-        uint256 supplied = plainSupplyBalances[collateralToken][msg.sender];
+        uint256 supplied = plainSupplyBalances[collateralToken][_msgSender()];
         if (supplied == 0) revert InsufficientCollateral();
         if (borrowAmount * ltvDen > supplied * ltvNum) revert InsufficientCollateral();
 
-        uint256 existingBorrow = plainBorrowBalances[borrowToken][msg.sender];
+        uint256 existingBorrow = plainBorrowBalances[borrowToken][_msgSender()];
         return
             _finalizeBorrow(
                 collateralToken,
@@ -233,7 +232,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     function repay(
         address token,
         uint256 amount,
-        InEuint128 calldata encAmount
+        InEuint64 calldata encAmount
     ) external nonReentrant whenNotPaused {
         _pullAndRepay(token, amount, encAmount);
     }
@@ -242,7 +241,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     function repayWithPermit2(
         address token,
         uint256 amount,
-        InEuint128 calldata encAmount,
+        InEuint64 calldata encAmount,
         IPermit2.PermitTransferFrom calldata permit,
         bytes calldata signature
     ) external nonReentrant whenNotPaused {
@@ -250,27 +249,27 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _finalizeRepay(token, amount, encAmount);
     }
 
-    function _finalizeRepay(address token, uint256 amount, InEuint128 calldata encAmount) internal {
-        if (amount > plainBorrowBalances[token][msg.sender]) revert ExceedsBorrowBalance();
+    function _finalizeRepay(address token, uint256 amount, InEuint64 calldata encAmount) internal {
+        if (amount > plainBorrowBalances[token][_msgSender()]) revert ExceedsBorrowBalance();
 
-        plainBorrowBalances[token][msg.sender] -= amount;
+        plainBorrowBalances[token][_msgSender()] -= amount;
         totalPlainBorrow[token] -= amount;
         liquidReserve[token] += amount;
 
-        euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 currentBalance = borrowBalances[token][msg.sender];
-        euint128 newBalance = FHE.sub(currentBalance, FHE.min(incoming, currentBalance));
-        borrowBalances[token][msg.sender] = newBalance;
+        euint64 incoming = FHE.asEuint64(encAmount);
+        euint64 currentBalance = borrowBalances[token][_msgSender()];
+        euint64 newBalance = FHE.sub(currentBalance, FHE.min(incoming, currentBalance));
+        borrowBalances[token][_msgSender()] = newBalance;
         FHE.allowThis(newBalance);
-        FHE.allowSender(newBalance);
+        FHE.allow(newBalance, _msgSender());
 
         emit Repaid(msg.sender, token, amount);
     }
 
-    function _pullAndRepay(address token, uint256 amount, InEuint128 calldata encAmount) internal {
+    function _pullAndRepay(address token, uint256 amount, InEuint64 calldata encAmount) internal {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
         _finalizeRepay(token, amount, encAmount);
     }
 
@@ -281,11 +280,11 @@ contract LendingPool is ReentrancyGuard, Pausable {
     function withdraw(
         address token,
         uint256 amount,
-        InEuint128 calldata encAmount
+        InEuint64 calldata encAmount
     ) external nonReentrant whenNotPaused {
         if (token == address(0)) revert ZeroAddress();
         _withdrawCore(token, amount, encAmount);
-        IERC20(token).safeTransfer(msg.sender, amount);
+        IERC20(token).safeTransfer(_msgSender(), amount);
         emit Withdrawn(msg.sender, token, amount);
     }
 
@@ -294,11 +293,11 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
 
 
-    function _withdrawCore(address token, uint256 amount, InEuint128 calldata encAmount) internal {
+    function _withdrawCore(address token, uint256 amount, InEuint64 calldata encAmount) internal {
         if (amount == 0) revert ZeroAmount();
 
         mapping(address => uint256) storage plainSupply = plainSupplyBalances[token];
-        uint256 currentSupply = plainSupply[msg.sender];
+        uint256 currentSupply = plainSupply[_msgSender()];
         if (amount > currentSupply) revert ExceedsSupplyBalance();
 
         uint256 reserve = liquidReserve[token];
@@ -306,27 +305,54 @@ contract LendingPool is ReentrancyGuard, Pausable {
             revert InsufficientReserve();
         }
 
-        uint256 ownBorrow = plainBorrowBalances[token][msg.sender];
+        uint256 ownBorrow = plainBorrowBalances[token][_msgSender()];
         if (ownBorrow > 0 && currentSupply - amount < ownBorrow) {
             revert UnhealthyAfterWithdraw();
         }
 
-        plainSupply[msg.sender] = currentSupply - amount;
+        plainSupply[_msgSender()] = currentSupply - amount;
         liquidReserve[token] = reserve - amount;
 
-        euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 currentBalance = supplyBalances[token][msg.sender];
-        euint128 newBalance = FHE.sub(currentBalance, FHE.min(incoming, currentBalance));
-        supplyBalances[token][msg.sender] = newBalance;
+        euint64 incoming = FHE.asEuint64(encAmount);
+        euint64 currentBalance = supplyBalances[token][_msgSender()];
+        euint64 newBalance = FHE.sub(currentBalance, FHE.min(incoming, currentBalance));
+        supplyBalances[token][_msgSender()] = newBalance;
         FHE.allowThis(newBalance);
-        FHE.allowSender(newBalance);
+        FHE.allow(newBalance, _msgSender());
     }
 
+    function _withdrawCore(address token, uint256 amount, euint64 encAmount) internal {
+        if (amount == 0) revert ZeroAmount();
+
+        mapping(address => uint256) storage plainSupply = plainSupplyBalances[token];
+        uint256 currentSupply = plainSupply[_msgSender()];
+        if (amount > currentSupply) revert ExceedsSupplyBalance();
+
+        uint256 reserve = liquidReserve[token];
+        if (reserve < amount || reserve - amount < totalPlainBorrow[token]) {
+            revert InsufficientReserve();
+        }
+
+        uint256 ownBorrow = plainBorrowBalances[token][_msgSender()];
+        if (ownBorrow > 0 && currentSupply - amount < ownBorrow) {
+            revert UnhealthyAfterWithdraw();
+        }
+
+        plainSupply[_msgSender()] = currentSupply - amount;
+        liquidReserve[token] = reserve - amount;
+
+        euint64 incoming = encAmount;
+        euint64 currentBalance = supplyBalances[token][_msgSender()];
+        euint64 newBalance = FHE.sub(currentBalance, FHE.min(incoming, currentBalance));
+        supplyBalances[token][_msgSender()] = newBalance;
+        FHE.allowThis(newBalance);
+        FHE.allow(newBalance, _msgSender());
+    }
 
 
     function emergencyWithdraw(address token) external nonReentrant whenPaused {
         if (token == address(0)) revert ZeroAddress();
-        uint256 amount = plainSupplyBalances[token][msg.sender];
+        uint256 amount = plainSupplyBalances[token][_msgSender()];
         if (amount == 0) revert ZeroAmount();
 
 
@@ -335,9 +361,13 @@ contract LendingPool is ReentrancyGuard, Pausable {
             revert InsufficientReserve();
         }
 
-        plainSupplyBalances[token][msg.sender] = 0;
+        plainSupplyBalances[token][_msgSender()] = 0;
         liquidReserve[token] = reserve - amount;
-        IERC20(token).safeTransfer(msg.sender, amount);
+
+        supplyBalances[token][_msgSender()] = _ZERO;
+        borrowBalances[token][_msgSender()] = _ZERO;
+
+        IERC20(token).safeTransfer(_msgSender(), amount);
         emit EmergencyWithdrawn(msg.sender, token, amount);
     }
 
@@ -376,22 +406,21 @@ contract LendingPool is ReentrancyGuard, Pausable {
     }
 
 
-    function supplyEth(InEuint128 calldata encAmount) external payable nonReentrant whenNotPaused {
+    function supplyEth(InEuint64 calldata encAmount) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         if (msg.value == 0) revert ZeroAmount();
         address tokenAddr = address(weth);
 
-        plainSupplyBalances[tokenAddr][msg.sender] += msg.value;
+        plainSupplyBalances[tokenAddr][_msgSender()] += msg.value;
         liquidReserve[tokenAddr] += msg.value;
 
 
-
-        euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 stored = supplyBalances[tokenAddr][msg.sender];
-        euint128 newBalance = FHE.isInitialized(stored) ? FHE.add(stored, incoming) : incoming;
-        supplyBalances[tokenAddr][msg.sender] = newBalance;
+        euint64 incoming = FHE.asEuint64(encAmount);
+        euint64 stored = supplyBalances[tokenAddr][_msgSender()];
+        euint64 newBalance = FHE.isInitialized(stored) ? FHE.add(stored, incoming) : incoming;
+        supplyBalances[tokenAddr][_msgSender()] = newBalance;
         FHE.allowThis(newBalance);
-        FHE.allowSender(newBalance);
+        FHE.allow(newBalance, _msgSender());
 
         weth.deposit{ value: msg.value }();
 
@@ -401,14 +430,14 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
     function withdrawEth(
         uint256 amount,
-        InEuint128 calldata encAmount
+        InEuint64 calldata encAmount
     ) external nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         address tokenAddr = address(weth);
         _withdrawCore(tokenAddr, amount, encAmount);
 
         weth.withdraw(amount);
-        (bool ok, ) = msg.sender.call{ value: amount }("");
+        (bool ok, ) = _msgSender().call{ value: amount }("");
         if (!ok) revert EthTransferFailed();
 
         emit Withdrawn(msg.sender, tokenAddr, amount);
@@ -426,14 +455,14 @@ contract LendingPool is ReentrancyGuard, Pausable {
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
-        InEuint128 calldata encBorrowAmount
-    ) external nonReentrant whenNotPaused returns (euint128 actual) {
+        InEuint64 calldata encBorrowAmount
+    ) external nonReentrant whenNotPaused returns (euint64 actual) {
         if (address(oracle) == address(0)) revert OracleNotSet();
         if (collateralToken == address(0) || borrowToken == address(0)) revert ZeroAddress();
         if (borrowAmount == 0) revert ZeroAmount();
-        if (plainSupplyBalances[collateralToken][msg.sender] == 0) revert InsufficientCollateral();
+        if (plainSupplyBalances[collateralToken][_msgSender()] == 0) revert InsufficientCollateral();
 
-        uint256 existingBorrow = plainBorrowBalances[borrowToken][msg.sender];
+        uint256 existingBorrow = plainBorrowBalances[borrowToken][_msgSender()];
         _requireOracleHealthy(collateralToken, borrowToken, borrowAmount, existingBorrow);
 
         return
@@ -457,31 +486,30 @@ contract LendingPool is ReentrancyGuard, Pausable {
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
-        InEuint128 calldata encBorrowAmount,
+        InEuint64 calldata encBorrowAmount,
         uint256 existingBorrow
-    ) internal returns (euint128 actual) {
+    ) internal returns (euint64 actual) {
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
 
-        plainBorrowBalances[borrowToken][msg.sender] = existingBorrow + borrowAmount;
+        plainBorrowBalances[borrowToken][_msgSender()] = existingBorrow + borrowAmount;
         totalPlainBorrow[borrowToken] += borrowAmount;
         liquidReserve[borrowToken] -= borrowAmount;
 
 
 
 
-
-        euint128 requested = FHE.asEuint128(encBorrowAmount);
+        euint64 requested = FHE.asEuint64(encBorrowAmount);
         actual = requested;
-        euint128 storedBorrow = borrowBalances[borrowToken][msg.sender];
-        euint128 newBorrow =
+        euint64 storedBorrow = borrowBalances[borrowToken][_msgSender()];
+        euint64 newBorrow =
             FHE.isInitialized(storedBorrow) ? FHE.add(storedBorrow, requested) : requested;
-        borrowBalances[borrowToken][msg.sender] = newBorrow;
+        borrowBalances[borrowToken][_msgSender()] = newBorrow;
         FHE.allowThis(actual);
-        FHE.allowSender(actual);
+        FHE.allow(actual, _msgSender());
         FHE.allowThis(newBorrow);
-        FHE.allowSender(newBorrow);
+        FHE.allow(newBorrow, _msgSender());
 
-        IERC20(borrowToken).safeTransfer(msg.sender, borrowAmount);
+        IERC20(borrowToken).safeTransfer(_msgSender(), borrowAmount);
 
         emit Borrowed(msg.sender, collateralToken, borrowToken, borrowAmount);
     }
@@ -496,10 +524,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         if (ltvBps == 0) revert LtvNumeratorZero();
         uint256 collateralUsd = oracle.convertToUsd(
             collateralToken,
-            plainSupplyBalances[collateralToken][msg.sender]
+            plainSupplyBalances[collateralToken][_msgSender()]
         );
-
-
 
 
 
@@ -534,8 +560,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         plainSupplyBalances[collateralToken][user] -= seizeAmount;
         liquidReserve[collateralToken] -= seizeAmount;
 
-        IERC20(debtToken).safeTransferFrom(msg.sender, address(this), debtToCover);
-        IERC20(collateralToken).safeTransfer(msg.sender, seizeAmount);
+        IERC20(debtToken).safeTransferFrom(_msgSender(), address(this), debtToCover);
+        IERC20(collateralToken).safeTransfer(_msgSender(), seizeAmount);
 
         _writeLiquidationHandles(user, collateralToken, debtToken, debtToCover, seizeAmount);
 
@@ -583,46 +609,212 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 debtToCover,
         uint256 seizeAmount
     ) internal {
-        euint128 dCovEnc = FHE.asEuint128(debtToCover.toUint128());
-        euint128 prevDebt = borrowBalances[debtToken][user];
-        euint128 newBorrowEnc = FHE.sub(prevDebt, FHE.min(dCovEnc, prevDebt));
+        euint64 dCovEnc = FHE.asEuint64(debtToCover.toUint128());
+        euint64 prevDebt = borrowBalances[debtToken][user];
+        euint64 newBorrowEnc = FHE.sub(prevDebt, FHE.min(dCovEnc, prevDebt));
         borrowBalances[debtToken][user] = newBorrowEnc;
-        FHE.allowThis(newBorrowEnc);
-        FHE.allowSender(newBorrowEnc);
+        FHE.allow(newBorrowEnc, user);
+        FHE.allowTransient(newBorrowEnc, _msgSender());
 
-        euint128 sEnc = FHE.asEuint128(seizeAmount.toUint128());
-        euint128 prevSupply = supplyBalances[collateralToken][user];
-        euint128 newSupplyEnc = FHE.sub(prevSupply, FHE.min(sEnc, prevSupply));
+        euint64 sEnc = FHE.asEuint64(seizeAmount.toUint128());
+        euint64 prevSupply = supplyBalances[collateralToken][user];
+        euint64 newSupplyEnc = FHE.sub(prevSupply, FHE.min(sEnc, prevSupply));
         supplyBalances[collateralToken][user] = newSupplyEnc;
-        FHE.allowThis(newSupplyEnc);
-        FHE.allowSender(newSupplyEnc);
+        FHE.allow(newSupplyEnc, user);
+        FHE.allowTransient(newSupplyEnc, _msgSender());
     }
 
-    function getSupplyBalance(address token) external nonReentrant returns (euint128) {
 
-        euint128 stored = supplyBalances[token][msg.sender];
+    // ────────── Cross-contract: Pool-composed supply / borrow (ACL on user) ──────────
+
+
+    function supplyToLending(
+        address token,
+        uint256 amount,
+        InEuint64 calldata encAmount,
+        address user
+    ) external nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        if (user == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
+
+        plainSupplyBalances[token][user] += amount;
+        liquidReserve[token] += amount;
+
+        euint64 incoming = FHE.asEuint64(encAmount);
+        euint64 stored = supplyBalances[token][user];
+        euint64 newBalance = FHE.isInitialized(stored) ? FHE.add(stored, incoming) : incoming;
+        supplyBalances[token][user] = newBalance;
+        FHE.allowThis(newBalance);
+        FHE.allow(newBalance, user);
+
+        emit Supplied(user, token, amount);
+    }
+
+    function supplyToLending(
+        address token,
+        uint256 amount,
+        euint64 encAmount,
+        address user
+    ) external nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        if (user == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
+
+        plainSupplyBalances[token][user] += amount;
+        liquidReserve[token] += amount;
+
+        euint64 incoming = encAmount;
+        euint64 stored = supplyBalances[token][user];
+        euint64 newBalance = FHE.isInitialized(stored) ? FHE.add(stored, incoming) : incoming;
+        supplyBalances[token][user] = newBalance;
+        FHE.allowThis(newBalance);
+        FHE.allow(newBalance, user);
+
+        emit Supplied(user, token, amount);
+    }
+
+    function borrowFromLending(
+        address token,
+        uint256 amount,
+        InEuint64 calldata encAmount,
+        address user
+    ) external nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        if (user == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        if (liquidReserve[token] < amount) revert InsufficientReserve();
+
+        plainBorrowBalances[token][user] += amount;
+        totalPlainBorrow[token] += amount;
+        liquidReserve[token] -= amount;
+
+        euint64 requested = FHE.asEuint64(encAmount);
+        euint64 storedBorrow = borrowBalances[token][user];
+        euint64 newBorrow =
+            FHE.isInitialized(storedBorrow) ? FHE.add(storedBorrow, requested) : requested;
+        borrowBalances[token][user] = newBorrow;
+        FHE.allowThis(newBorrow);
+        FHE.allow(newBorrow, user);
+
+        IERC20(token).safeTransfer(_msgSender(), amount);
+
+        emit Borrowed(user, address(0), token, amount);
+    }
+
+    function borrowFromLending(
+        address token,
+        uint256 amount,
+        euint64 encAmount,
+        address user
+    ) external nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        if (user == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        if (liquidReserve[token] < amount) revert InsufficientReserve();
+
+        plainBorrowBalances[token][user] += amount;
+        totalPlainBorrow[token] += amount;
+        liquidReserve[token] -= amount;
+
+        euint64 requested = encAmount;
+        euint64 storedBorrow = borrowBalances[token][user];
+        euint64 newBorrow =
+            FHE.isInitialized(storedBorrow) ? FHE.add(storedBorrow, requested) : requested;
+        borrowBalances[token][user] = newBorrow;
+        FHE.allowThis(newBorrow);
+        FHE.allow(newBorrow, user);
+
+        IERC20(token).safeTransfer(_msgSender(), amount);
+
+        emit Borrowed(user, address(0), token, amount);
+    }
+
+    function repayBorrow(
+        address token,
+        uint256 amount,
+        InEuint64 calldata encAmount,
+        address user
+    ) external nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        if (user == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        if (amount > plainBorrowBalances[token][user]) revert ExceedsBorrowBalance();
+        IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
+
+        plainBorrowBalances[token][user] -= amount;
+        totalPlainBorrow[token] -= amount;
+        liquidReserve[token] += amount;
+
+        euint64 incoming = FHE.asEuint64(encAmount);
+        euint64 currentBalance = borrowBalances[token][user];
+        euint64 newBalance = FHE.sub(currentBalance, FHE.min(incoming, currentBalance));
+        borrowBalances[token][user] = newBalance;
+        FHE.allowThis(newBalance);
+        FHE.allow(newBalance, user);
+
+        emit Repaid(user, token, amount);
+    }
+
+    function repayBorrow(
+        address token,
+        uint256 amount,
+        euint64 encAmount,
+        address user
+    ) external nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        if (user == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        if (amount > plainBorrowBalances[token][user]) revert ExceedsBorrowBalance();
+        IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
+
+        plainBorrowBalances[token][user] -= amount;
+        totalPlainBorrow[token] -= amount;
+        liquidReserve[token] += amount;
+
+        euint64 incoming = encAmount;
+        euint64 currentBalance = borrowBalances[token][user];
+        euint64 newBalance = FHE.sub(currentBalance, FHE.min(incoming, currentBalance));
+        borrowBalances[token][user] = newBalance;
+        FHE.allowThis(newBalance);
+        FHE.allow(newBalance, user);
+
+        emit Repaid(user, token, amount);
+    }
+
+
+    // ────────── Read functions ──────────
+
+
+    function getSupplyBalance(address token) external nonReentrant returns (euint64) {
+
+        euint64 stored = supplyBalances[token][_msgSender()];
         if (FHE.isInitialized(stored)) {
-            FHE.allowSender(stored);
+            FHE.allow(stored, _msgSender());
             return stored;
         }
+        FHE.allow(_ZERO, _msgSender());
         return _ZERO;
     }
 
-    function getBorrowBalance(address token) external nonReentrant returns (euint128) {
+    function getBorrowBalance(address token) external nonReentrant returns (euint64) {
 
-        euint128 stored = borrowBalances[token][msg.sender];
+        euint64 stored = borrowBalances[token][_msgSender()];
         if (FHE.isInitialized(stored)) {
-            FHE.allowSender(stored);
+            FHE.allow(stored, _msgSender());
             return stored;
         }
+        FHE.allow(_ZERO, _msgSender());
         return _ZERO;
     }
 
     function getPlainSupplyBalance(address token) external view returns (uint256) {
-        return plainSupplyBalances[token][msg.sender];
+        return plainSupplyBalances[token][_msgSender()];
     }
 
     function getPlainBorrowBalance(address token) external view returns (uint256) {
-        return plainBorrowBalances[token][msg.sender];
+        return plainBorrowBalances[token][_msgSender()];
     }
 }

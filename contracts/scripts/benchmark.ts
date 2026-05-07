@@ -215,18 +215,18 @@ async function main() {
     const had = (await vault.hasPosition(tester.address)) as boolean;
     if (had) {
         const dep0 = (await vault.getDepositedAmount()) as bigint;
-        const cleanEnc = await cofhe.encryptInputs([Encryptable.uint128(dep0)]).execute();
+        const cleanEnc = await cofhe.encryptInputs([Encryptable.uint64(dep0)]).execute();
         const tx = await vault.closePosition(dep0, cleanEnc[0]);
         await tx.wait();
     }
     const sup = (await pool.getPlainSupplyBalance(USDC)) as bigint;
     const bor = (await pool.getPlainBorrowBalance(USDC)) as bigint;
     if (bor > 0n) {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(bor)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(bor)]).execute();
         await (await pool.repay(USDC, bor, enc[0])).wait();
     }
     if (sup > 0n) {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(sup)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(sup)]).execute();
         await (await pool.withdraw(USDC, sup, enc[0])).wait();
     }
 
@@ -304,37 +304,38 @@ async function main() {
     });
 
 
-    const sId = (await registry.strategyCount()) as bigint;
-    console.log(`  using strategyId=${sId} for vault probes`);
+    console.log(`  using latest strategy for vault probes`);
 
 
 
     await bench("3.2", "vault-open-min", "StrategyVault", "openPosition", "min", "1 wei USDC", async () => {
-        const enc = await cofhe.encryptInputs([
-            Encryptable.uint128(1n), Encryptable.uint128(0n),
-        ]).execute();
-        const tx = await vault.openPosition(USDC, 1n, enc[0], enc[1], sId);
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(1n)]).execute();
+        const tx = await vault.openPosition(USDC, 1n, enc[0], 1n, tester.address);
         return { tx, rcpt: await tx.wait() };
     });
 
     {
         const dep0 = (await vault.getDepositedAmount()) as bigint;
         if (dep0 > 0n) {
-            const enc = await cofhe.encryptInputs([Encryptable.uint128(dep0)]).execute();
+            const enc = await cofhe.encryptInputs([Encryptable.uint64(dep0)]).execute();
             await (await vault.closePosition(dep0, enc[0])).wait();
         }
     }
     await bench("3.2", "vault-open-real", "StrategyVault", "openPosition", "real", "1 USDC", async () => {
-        const enc = await cofhe.encryptInputs([
-            Encryptable.uint128(1_000_000n), Encryptable.uint128(0n),
-        ]).execute();
-        const tx = await vault.openPosition(USDC, 1_000_000n, enc[0], enc[1], sId);
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(1_000_000n)]).execute();
+        const tx = await vault.openPosition(USDC, 1_000_000n, enc[0], 1n, tester.address);
         return { tx, rcpt: await tx.wait() };
     });
 
     await bench("3.2", "vault-add-real", "StrategyVault", "addCollateral", "real", "0.5 USDC", async () => {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(500_000n)]).execute();
-        const tx = await vault.addCollateral(USDC, 500_000n, enc[0]);
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(500_000n)]).execute();
+        const tx = await vault.addCollateral(USDC, 500_000n, enc[0], tester.address);
+        return { tx, rcpt: await tx.wait() };
+    });
+
+    await bench("3.2", "vault-add-real", "StrategyVault", "addCollateral", "real", "0.5 USDC", async () => {
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(500_000n)]).execute();
+        const tx = await vault.addCollateral(USDC, 500_000n, enc[0], tester.address);
         return { tx, rcpt: await tx.wait() };
     });
 
@@ -345,38 +346,38 @@ async function main() {
 
     await bench("3.2", "vault-close-real", "StrategyVault", "closePosition", "real", "full deposited", async () => {
         const dep0 = (await vault.getDepositedAmount()) as bigint;
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(dep0)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(dep0)]).execute();
         const tx = await vault.closePosition(dep0, enc[0]);
         return { tx, rcpt: await tx.wait() };
     });
 
 
-    await bench("3.2", "pool-supply-min", "LendingPool", "supply", "min", "1 wei USDC", async () => {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(1n)]).execute();
-        const tx = await pool.supply(USDC, 1n, enc[0]);
+    await bench("3.2", "pool-supply-min", "LendingPool", "supplyToLending", "min", "1 wei USDC", async () => {
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(1n)]).execute();
+        const tx = await pool.supplyToLending(USDC, 1n, enc[0], tester.address);
         return { tx, rcpt: await tx.wait() };
     });
-    await bench("3.2", "pool-supply-real", "LendingPool", "supply", "real", "1 USDC", async () => {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(1_000_000n)]).execute();
-        const tx = await pool.supply(USDC, 1_000_000n, enc[0]);
+    await bench("3.2", "pool-supply-real", "LendingPool", "supplyToLending", "real", "1 USDC", async () => {
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(1_000_000n)]).execute();
+        const tx = await pool.supplyToLending(USDC, 1_000_000n, enc[0], tester.address);
         return { tx, rcpt: await tx.wait() };
     });
 
-    await bench("3.2", "pool-borrow", "LendingPool", "checkLtvAndBorrow", "real", "0.5 USDC against 1 USDC", async () => {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(500_000n)]).execute();
-        const tx = await pool.checkLtvAndBorrow(USDC, USDC, 500_000n, enc[0], 70, 100);
+    await bench("3.2", "pool-borrow", "LendingPool", "borrowFromLending", "real", "0.5 USDC against 1 USDC", async () => {
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(500_000n)]).execute();
+        const tx = await pool.borrowFromLending(USDC, 500_000n, enc[0], tester.address);
         return { tx, rcpt: await tx.wait() };
     });
 
     await bench("3.2", "pool-repay", "LendingPool", "repay", "real", "0.5 USDC", async () => {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(500_000n)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(500_000n)]).execute();
         const tx = await pool.repay(USDC, 500_000n, enc[0]);
         return { tx, rcpt: await tx.wait() };
     });
 
     await bench("3.2", "pool-withdraw", "LendingPool", "withdraw", "real", "1 USDC", async () => {
         const supNow = (await pool.getPlainSupplyBalance(USDC)) as bigint;
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(supNow)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(supNow)]).execute();
         const tx = await pool.withdraw(USDC, supNow, enc[0]);
         return { tx, rcpt: await tx.wait() };
     });
@@ -388,8 +389,7 @@ async function main() {
     const routerMaxDeadline = (await router.MAX_DEADLINE_OFFSET()) as bigint;
     const deadlineOffset = routerMaxDeadline / 2n;
     await bench("3.2", "router-submit", "SwapRouter", "submitSwapIntent", "real", `USDC→WETH 1 USDC, dl ${deadlineOffset}s`, async () => {
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(1_000_000n), Encryptable.uint128(990_000n)]).execute();
-        const tx = await router.submitSwapIntent(USDC, WETH, enc[0], enc[1], deadlineOffset);
+        const tx = await router.submitSwapIntent(USDC, WETH, 1_000_000n, 990_000n, deadlineOffset);
         const rcpt = await tx.wait();
         for (const log of rcpt!.logs) {
             try {
@@ -420,7 +420,6 @@ async function main() {
     console.log(`\n── 3.3 Strategy lifecycle (register→open→add→close) ──`);
 
     let lifecycleGas = 0n;
-    const lcRegId = (await registry.strategyCount()) + 1n;
     {
         const g1 = await bench("3.3", "lc-reg", "StrategyRegistry", "registerStrategy", "lifecycle", "lifecycle step 1", async () => {
             const tx = await registry.registerStrategy(`Lifecycle Strat ${ts}`, ethers.zeroPadValue("0xfeed", 32));
@@ -430,25 +429,31 @@ async function main() {
     }
     {
         const g2 = await bench("3.3", "lc-open", "StrategyVault", "openPosition", "lifecycle", "lifecycle step 2", async () => {
-            const enc = await cofhe.encryptInputs([
-                Encryptable.uint128(1_000_000n), Encryptable.uint128(0n),
-            ]).execute();
-            const tx = await vault.openPosition(USDC, 1_000_000n, enc[0], enc[1], lcRegId);
+            const enc = await cofhe.encryptInputs([Encryptable.uint64(1_000_000n)]).execute();
+        const tx = await vault.openPosition(USDC, 1_000_000n, enc[0], 1n, tester.address);
             return { tx, rcpt: await tx.wait() };
         });
         if (g2) lifecycleGas += g2;
     }
     {
         const g3 = await bench("3.3", "lc-add", "StrategyVault", "addCollateral", "lifecycle", "lifecycle step 3", async () => {
-            const enc = await cofhe.encryptInputs([Encryptable.uint128(500_000n)]).execute();
-            const tx = await vault.addCollateral(USDC, 500_000n, enc[0]);
+            const enc = await cofhe.encryptInputs([Encryptable.uint64(500_000n)]).execute();
+            const tx = await vault.addCollateral(USDC, 500_000n, enc[0], tester.address);
+            return { tx, rcpt: await tx.wait() };
+        });
+        if (g3) lifecycleGas += g3;
+    }
+    {
+        const g3 = await bench("3.3", "lc-add", "StrategyVault", "addCollateral", "lifecycle", "lifecycle step 3", async () => {
+            const enc = await cofhe.encryptInputs([Encryptable.uint64(500_000n)]).execute();
+            const tx = await vault.addCollateral(USDC, 500_000n, enc[0], tester.address);
             return { tx, rcpt: await tx.wait() };
         });
         if (g3) lifecycleGas += g3;
     }
     {
         const g4 = await bench("3.3", "lc-close", "StrategyVault", "closePosition", "lifecycle", "lifecycle step 4", async () => {
-            const enc = await cofhe.encryptInputs([Encryptable.uint128(1_500_000n)]).execute();
+            const enc = await cofhe.encryptInputs([Encryptable.uint64(1_500_000n)]).execute();
             const tx = await vault.closePosition(1_500_000n, enc[0]);
             return { tx, rcpt: await tx.wait() };
         });
@@ -476,22 +481,22 @@ async function main() {
     try {
         const supAmt = 2_000_000n;
         const borAmt = 500_000n;
-        const e1 = await cofhe.encryptInputs([Encryptable.uint128(supAmt)]).execute();
+        const e1 = await cofhe.encryptInputs([Encryptable.uint64(supAmt)]).execute();
         const t1 = await pool.supply(USDC, supAmt, e1[0]);
         await t1.wait();
 
         await bench("3.4", "pool-borrow-oracle", "LendingPool", "borrowWithOracle", "real", "0.5 USDC against 2 USDC w/ oracle", async () => {
-            const enc = await cofhe.encryptInputs([Encryptable.uint128(borAmt)]).execute();
+            const enc = await cofhe.encryptInputs([Encryptable.uint64(borAmt)]).execute();
             const tx = await pool.borrowWithOracle(USDC, USDC, borAmt, enc[0]);
             return { tx, rcpt: await tx.wait() };
         });
 
 
-        const repayEnc = await cofhe.encryptInputs([Encryptable.uint128(borAmt)]).execute();
+        const repayEnc = await cofhe.encryptInputs([Encryptable.uint64(borAmt)]).execute();
         await (await pool.repay(USDC, borAmt, repayEnc[0])).wait();
         const supNow = (await pool.getPlainSupplyBalance(USDC)) as bigint;
         if (supNow > 0n) {
-            const e2 = await cofhe.encryptInputs([Encryptable.uint128(supNow)]).execute();
+            const e2 = await cofhe.encryptInputs([Encryptable.uint64(supNow)]).execute();
             await (await pool.withdraw(USDC, supNow, e2[0])).wait();
         }
     } catch (e) {
@@ -529,12 +534,12 @@ async function main() {
 
             const enc = await cofhe
                 .encryptInputs([
-                    Encryptable.uint128(lcCol),
-                    Encryptable.uint128(0n),
-                    Encryptable.uint128(0n),
-                    Encryptable.uint128(0n),
-                    Encryptable.uint128(0n),
-                    Encryptable.uint128(0n),
+                    Encryptable.uint64(lcCol),
+                    Encryptable.uint64(0n),
+                    Encryptable.uint64(0n),
+                    Encryptable.uint64(0n),
+                    Encryptable.uint64(0n),
+                    Encryptable.uint64(0n),
                 ])
                 .execute();
 
@@ -635,13 +640,13 @@ async function main() {
 
     try {
         const ethAmt = 1_000_000_000_000_000n;
-        const enc = await cofhe.encryptInputs([Encryptable.uint128(ethAmt)]).execute();
+        const enc = await cofhe.encryptInputs([Encryptable.uint64(ethAmt)]).execute();
         await bench("3.4", "pool-supplyEth", "LendingPool", "supplyEth", "real", "0.001 ETH wrap-and-supply", async () => {
             const tx = await pool.supplyEth(enc[0], { value: ethAmt });
             return { tx, rcpt: await tx.wait() };
         });
 
-        const enc2 = await cofhe.encryptInputs([Encryptable.uint128(ethAmt)]).execute();
+        const enc2 = await cofhe.encryptInputs([Encryptable.uint64(ethAmt)]).execute();
         await bench("3.4", "pool-withdrawEth", "LendingPool", "withdrawEth", "real", "0.001 ETH unwrap-and-return", async () => {
             const tx = await pool.withdrawEth(ethAmt, enc2[0]);
             return { tx, rcpt: await tx.wait() };

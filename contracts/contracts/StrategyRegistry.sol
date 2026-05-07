@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, ebool, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IStrategyRegistry } from "./IStrategyRegistry.sol";
@@ -193,7 +193,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         idByContentHash[contentHash] = id;
         strategies[id] = Strategy({
             workflowHash: workflowHash,
-            creator: msg.sender,
+            creator: _msgSender(),
             active: true,
             createdAt: uint64(block.timestamp),
             name: name,
@@ -207,7 +207,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
 
     function setActive(uint256 strategyId, bool active) external whenNotPaused {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
-        if (strategies[strategyId].creator != msg.sender) revert OnlyCreator();
+        if (strategies[strategyId].creator != _msgSender()) revert OnlyCreator();
         strategies[strategyId].active = active;
         emit StrategyActiveSet(strategyId, active);
     }
@@ -231,6 +231,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         euint128 amount
     ) external override nonReentrant onlyVault {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
+        if (!strategies[strategyId].active) revert StrategyInactive();
         _modifyTvl(strategyId, amount, false);
         emit TvlDecreased(strategyId, msg.sender);
     }
@@ -243,12 +244,59 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
 
 
 
+    function incrementTvl(
+        uint256 strategyId,
+        InEuint128 calldata encAmount
+    ) external nonReentrant onlyVault {
+        if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
+        if (!strategies[strategyId].active) revert StrategyInactive();
+        InEuint128 memory m = encAmount;
+        euint128 amount = FHE.asEuint128(m);
+        _modifyTvlZeroCopy(strategyId, amount, true);
+        emit TvlIncreased(strategyId, msg.sender);
+    }
+
+    function decrementTvl(
+        uint256 strategyId,
+        InEuint128 calldata encAmount
+    ) external nonReentrant onlyVault {
+        if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
+        if (!strategies[strategyId].active) revert StrategyInactive();
+        InEuint128 memory m = encAmount;
+        euint128 amount = FHE.asEuint128(m);
+        _modifyTvlZeroCopy(strategyId, amount, false);
+        emit TvlDecreased(strategyId, msg.sender);
+    }
+
+    function _modifyTvlZeroCopy(
+        uint256 strategyId,
+        euint128 amount,
+        bool isIncrement
+    ) internal {
+        euint128 prev = encryptedTvls[strategyId];
+        FHE.allowThis(prev);
+        euint128 result;
+        if (isIncrement) {
+            result = FHE.add(prev, amount);
+        } else {
+            ebool hasEnough = FHE.gte(prev, amount);
+            result = FHE.select(hasEnough, FHE.sub(prev, amount), prev);
+        }
+        encryptedTvls[strategyId] = result;
+        FHE.allowThis(result);
+    }
+
     function _modifyTvl(uint256 strategyId, euint128 amount, bool isIncrement) internal {
         if (!FHE.isAllowed(amount, msg.sender)) revert FhePermissionDenied();
         euint128 prev = encryptedTvls[strategyId];
         FHE.allowThis(prev);
-        euint128 result =
-            isIncrement ? FHE.add(prev, amount) : FHE.sub(prev, FHE.min(amount, prev));
+        euint128 result;
+        if (isIncrement) {
+            result = FHE.add(prev, amount);
+        } else {
+            ebool hasEnough = FHE.gte(prev, amount);
+            result = FHE.select(hasEnough, FHE.sub(prev, amount), prev);
+        }
         encryptedTvls[strategyId] = result;
         FHE.allowThis(result);
     }

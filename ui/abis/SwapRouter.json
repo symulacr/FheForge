@@ -47,28 +47,7 @@
   },
   {
     "inputs": [],
-    "name": "FhePermissionDenied",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "IntentExpired",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "got",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "expected",
-        "type": "uint8"
-      }
-    ],
-    "name": "InvalidEncryptedInput",
     "type": "error"
   },
   {
@@ -395,25 +374,6 @@
         "type": "bytes32"
       }
     ],
-    "name": "getAmountIn",
-    "outputs": [
-      {
-        "internalType": "euint128",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "intentId",
-        "type": "bytes32"
-      }
-    ],
     "name": "getIntentMeta",
     "outputs": [
       {
@@ -512,58 +472,14 @@
         "type": "address"
       },
       {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "ctHash",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "securityZone",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "utype",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bytes",
-            "name": "signature",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct InEuint128",
+        "internalType": "uint256",
         "name": "amountIn",
-        "type": "tuple"
+        "type": "uint256"
       },
       {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "ctHash",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "securityZone",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "utype",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bytes",
-            "name": "signature",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct InEuint128",
+        "internalType": "uint256",
         "name": "minAmountOut",
-        "type": "tuple"
+        "type": "uint256"
       },
       {
         "internalType": "uint256",

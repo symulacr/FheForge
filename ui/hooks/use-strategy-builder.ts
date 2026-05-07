@@ -402,16 +402,11 @@ export function useDefiBuilder() {
         if (!supplyNode) {
           console.warn("No SUPPLY node found, skipping openPosition");
         } else {
-          const borrowNode = nodes.find(
-            (n) => n.data?.config?.operationType === "BORROW",
-          );
           const joinNodes = nodes.filter(
             (n) => n.data?.config?.operationType === "JOIN_STRATEGY",
           );
           const supplyConfig = supplyNode.data.config;
-          const borrowConfig = borrowNode?.data?.config;
           const collateralEth = String(supplyConfig.amount ?? "0");
-          const debtEth = String(borrowConfig?.amount ?? "0");
           // F-03: apyTarget + loopCount no longer travel with openPosition.
           // They live as plaintext on the registry's Strategy struct and
           // should be set at `registerStrategy` time via the 4-arg overload
@@ -439,8 +434,6 @@ export function useDefiBuilder() {
               collateralToken,
               collateralEth,
               collateralEth,
-              debtEth,
-              strategyId,
             ).catch((e: unknown) => console.warn("openPosition failed:", e));
           }
         }

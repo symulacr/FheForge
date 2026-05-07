@@ -58,13 +58,13 @@ Run: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-s
 
 ## Known Issues
 
-| Severity | Issue |
-|---|---|
-| HIGH | `LendingPool.borrow()` — no collat check. Use `checkLtvAndBorrow` |
-| HIGH | `StrategyVault.addCollateral()` — missing `nonReentrant` |
-| MED | `closePosition()` — no encrypted debt check before close |
-| MED | `Registry.decrementTvl` — FHE.sub wrap on underflow |
-| LOW | `Router.executor` EOA — need dedicated executor contract |
+| Severtiy | Issue | Status |
+|---|---|---|---|
+| HIGH | `LendingPool.borrow()` — no collat check. Use `checkLtvAndBorrow` | Open |
+| HIGH | `StrategyVault.positionStrategyIds` never written — TVL decrement dead code | FIXED (Wave 5) |
+| MED | `closePosition()` — no encrypted debt check before close | Open |
+| LOW | `Router.executor` EOA — need dedicated executor contract | Open (FHE-stripped, lower impact) |
+| LOW | 96 solhint prettier warnings | Open (cosmetic) |
 
 ---
 

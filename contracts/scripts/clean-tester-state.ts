@@ -39,7 +39,7 @@ async function main(): Promise<void> {
     const dep0 = (await vault.getDepositedAmount()) as bigint;
     console.log(`Closing leftover vault position with deposited=${dep0}…`);
     try {
-      const enc = await client.encryptInputs([Encryptable.uint128(dep0)]).execute();
+      const enc = await client.encryptInputs([Encryptable.uint64(dep0)]).execute();
       const tx = await vault.closePosition(dep0, enc[0]);
       await tx.wait();
       console.log(`  ✓ closed tx=${tx.hash}`);
@@ -58,7 +58,7 @@ async function main(): Promise<void> {
   console.log(`Pool USDC supply=${supply} borrow=${borrow}`);
   if (borrow > 0n) {
     try {
-      const enc = await client.encryptInputs([Encryptable.uint128(borrow)]).execute();
+      const enc = await client.encryptInputs([Encryptable.uint64(borrow)]).execute();
       const tx = await pool.repay(USDC, borrow, enc[0]);
       await tx.wait();
       console.log(`  ✓ repaid ${borrow} tx=${tx.hash}`);
@@ -68,7 +68,7 @@ async function main(): Promise<void> {
   }
   if (supply > 0n) {
     try {
-      const enc = await client.encryptInputs([Encryptable.uint128(supply)]).execute();
+      const enc = await client.encryptInputs([Encryptable.uint64(supply)]).execute();
       const tx = await pool.withdraw(USDC, supply, enc[0]);
       await tx.wait();
       console.log(`  ✓ withdrew ${supply} tx=${tx.hash}`);
