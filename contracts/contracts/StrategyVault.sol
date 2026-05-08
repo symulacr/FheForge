@@ -90,7 +90,10 @@ contract StrategyVault is ReentrancyGuard, Pausable {
     }
 
     /// @notice Opens a vault position for `user`. Caller (Composer) holds the tokens.
-    ///         Debt defaults to zero; strategyId is not tracked (Composer handles TVL).
+    ///         Debt defaults to zero.
+    /// @dev    Dual plain+encrypted input: no on-chain equality check between `amount`
+    ///         and `encAmount`. User can skew. Mitigation requires CoFHE ZK proof of
+    ///         equality (post-MVP). Trusted Composer guards this in practice.
     function openPosition(
         address token,
         uint256 amount,

@@ -147,6 +147,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         if (workflowHash == bytes32(0)) revert ZeroWorkflowHash();
 
         bytes32 contentHash;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             let m := mload(0x40)
             mstore(m, caller())
@@ -206,7 +207,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         if (!strategies[strategyId].active) revert StrategyInactive();
         InEuint128 memory m = encAmount;
         euint128 amount = FHE.asEuint128(m);
-        _modifyTvlZeroCopy(strategyId, amount, true);
+        _modifyTvl(strategyId, amount, true);
         emit TvlIncreased(strategyId, msg.sender);
     }
 
@@ -218,22 +219,8 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         if (!strategies[strategyId].active) revert StrategyInactive();
         InEuint128 memory m = encAmount;
         euint128 amount = FHE.asEuint128(m);
-        _modifyTvlZeroCopy(strategyId, amount, false);
+        _modifyTvl(strategyId, amount, false);
         emit TvlDecreased(strategyId, msg.sender);
-    }
-
-    function _modifyTvlZeroCopy(uint256 strategyId, euint128 amount, bool isIncrement) internal {
-        euint128 prev = encryptedTvls[strategyId];
-        FHE.allowThis(prev);
-        euint128 result;
-        if (isIncrement) {
-            result = FHE.add(prev, amount);
-        } else {
-            ebool hasEnough = FHE.gte(prev, amount);
-            result = FHE.select(hasEnough, FHE.sub(prev, amount), prev);
-        }
-        encryptedTvls[strategyId] = result;
-        FHE.allowThis(result);
     }
 
     function _modifyTvl(uint256 strategyId, euint128 amount, bool isIncrement) internal {

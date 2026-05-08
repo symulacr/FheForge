@@ -11,8 +11,12 @@ contract ExecutorContract is Ownable {
 
     error TransferFailed();
 
-    event IntentExecuted(bytes32 indexed intentId, address indexed user, uint256 outputAmount);
-    event TokensWithdrawn(address indexed token, uint256 amount);
+    event IntentExecuted(
+        bytes32 indexed intentId,
+        address indexed user,
+        uint256 indexed outputAmount
+    );
+    event TokensWithdrawn(address indexed token, uint256 indexed amount);
 
     constructor() Ownable(msg.sender) {}
 
