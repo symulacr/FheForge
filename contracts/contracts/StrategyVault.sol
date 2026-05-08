@@ -1,13 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {FHE, InEuint128, InEuint64, euint128, euint64} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IStrategyRegistry} from "./IStrategyRegistry.sol";
-import {SharedStrategyMeta} from "./libraries/SharedStrategyMeta.sol";
+import {
+    FHE,
+    InEuint128,
+    InEuint64,
+    euint128,
+    euint64
+} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IStrategyRegistry } from "./IStrategyRegistry.sol";
+import { SharedStrategyMeta } from "./libraries/SharedStrategyMeta.sol";
 
 contract StrategyVault is ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
@@ -41,15 +47,29 @@ contract StrategyVault is ReentrancyGuard, Pausable {
     error SameBlockClose();
 
     event PositionOpened(
-        address indexed user, address indexed collateralToken, uint256 collateralAmount, uint256 indexed strategyId
+        address indexed user,
+        address indexed collateralToken,
+        uint256 collateralAmount,
+        uint256 indexed strategyId
     );
-    event CollateralAdded(address indexed user, address indexed collateralToken, uint256 indexed amount);
+    event CollateralAdded(
+        address indexed user,
+        address indexed collateralToken,
+        uint256 indexed amount
+    );
     event PositionClosed(
-        address indexed user, address indexed collateralToken, uint256 indexed collateralAmount, bool fullClose
+        address indexed user,
+        address indexed collateralToken,
+        uint256 indexed collateralAmount,
+        bool fullClose
     );
     event Paused();
     event Unpaused();
-    event EmergencyWithdrawn(address indexed user, address indexed collateralToken, uint256 indexed amount);
+    event EmergencyWithdrawn(
+        address indexed user,
+        address indexed collateralToken,
+        uint256 indexed amount
+    );
 
     modifier onlyOwner() {
         _onlyOwner();
@@ -92,7 +112,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
 
         euint128 c = FHE.asEuint128(encAmount);
 
-        positions[user] = Position({collateral: c, debt: _ZERO});
+        positions[user] = Position({ collateral: c, debt: _ZERO });
 
         SharedStrategyMeta.grantPositionAcl(user, c, _ZERO);
 
@@ -100,11 +120,13 @@ contract StrategyVault is ReentrancyGuard, Pausable {
     }
 
     /// @notice Zero-copy overload: caller already holds a verified euint128 handle.
-    function openPosition(address token, uint256 amount, euint128 encAmount, uint256 strategyId, address user)
-        external
-        nonReentrant
-        whenNotPaused
-    {
+    function openPosition(
+        address token,
+        uint256 amount,
+        euint128 encAmount,
+        uint256 strategyId,
+        address user
+    ) external nonReentrant whenNotPaused {
         if (hasPosition[user]) revert PositionAlreadyExists();
         if (amount == 0) revert ZeroAmount();
         if (token == address(0)) revert ZeroAddress();
@@ -117,7 +139,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        positions[user] = Position({collateral: encAmount, debt: _ZERO});
+        positions[user] = Position({ collateral: encAmount, debt: _ZERO });
 
         SharedStrategyMeta.grantPositionAcl(user, encAmount, _ZERO);
 
@@ -126,11 +148,12 @@ contract StrategyVault is ReentrancyGuard, Pausable {
 
     /// @notice Adds collateral to an existing position on behalf of `user`.
     ///         Uses euint64 for collateral amounts (L3: < 18.4B * 1e18).
-    function addCollateral(address collateralToken, uint256 amount, InEuint64 calldata encAmount, address user)
-        external
-        nonReentrant
-        whenNotPaused
-    {
+    function addCollateral(
+        address collateralToken,
+        uint256 amount,
+        InEuint64 calldata encAmount,
+        address user
+    ) external nonReentrant whenNotPaused {
         if (!hasPosition[user]) revert NoPosition();
         if (amount == 0) revert ZeroAmount();
         if (collateralTokens[user] != collateralToken) revert TokenMismatch();
@@ -150,11 +173,12 @@ contract StrategyVault is ReentrancyGuard, Pausable {
 
     /// @notice euint128 overload: caller already holds a verified euint128 handle.
     ///         Skips FHE.asEuint128() conversion, saving ~150k gas.
-    function addCollateral(address collateralToken, uint256 amount, euint128 encAmount, address user)
-        external
-        nonReentrant
-        whenNotPaused
-    {
+    function addCollateral(
+        address collateralToken,
+        uint256 amount,
+        euint128 encAmount,
+        address user
+    ) external nonReentrant whenNotPaused {
         if (!hasPosition[user]) revert NoPosition();
         if (amount == 0) revert ZeroAmount();
         if (collateralTokens[user] != collateralToken) revert TokenMismatch();
@@ -171,11 +195,10 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         emit CollateralAdded(user, collateralToken, amount);
     }
 
-    function closePosition(uint256 collateralAmount, InEuint128 calldata encCollateralAmount)
-        external
-        nonReentrant
-        whenNotPaused
-    {
+    function closePosition(
+        uint256 collateralAmount,
+        InEuint128 calldata encCollateralAmount
+    ) external nonReentrant whenNotPaused {
         if (!hasPosition[_msgSender()]) revert NoPosition();
         if (collateralAmount == 0) revert ZeroAmount();
         uint256 deposited = depositedAmounts[_msgSender()];
@@ -204,7 +227,10 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         FHE.allowThis(encClosed);
 
         if (!fullClose) {
-            euint128 newCollateral = FHE.sub(currentCollateral, FHE.min(encClosed, currentCollateral));
+            euint128 newCollateral = FHE.sub(
+                currentCollateral,
+                FHE.min(encClosed, currentCollateral)
+            );
             pos.collateral = newCollateral;
             FHE.allowThis(newCollateral);
             FHE.allow(newCollateral, _msgSender());

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {Test, console} from "forge-std/Test.sol";
-import {MockERC20} from "../contracts/MockERC20.sol";
-import {SwapRouter} from "../contracts/SwapRouter.sol";
-import {ExecutorContract} from "../contracts/ExecutorContract.sol";
+import { Test, console } from "forge-std/Test.sol";
+import { MockERC20 } from "../contracts/MockERC20.sol";
+import { SwapRouter } from "../contracts/SwapRouter.sol";
+import { ExecutorContract } from "../contracts/ExecutorContract.sol";
 
 contract ExecutorContractTest is Test {
     uint256 internal constant MIN_DEADLINE = 30;
@@ -65,7 +65,7 @@ contract ExecutorContractTest is Test {
         assertEq(tokenOut.balanceOf(user), outputAmount, "user should receive outputAmount");
 
         // 6. Verify the intent is cleared (executed intents are deleted)
-        (, , address u,) = router.getIntentMeta(intentId);
+        (, , address u, ) = router.getIntentMeta(intentId);
         assertEq(u, address(0), "intent should be deleted after execution");
     }
 
@@ -91,7 +91,9 @@ contract ExecutorContractTest is Test {
 
         // Non-owner tries to execute
         vm.startPrank(user);
-        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")), user));
+        vm.expectRevert(
+            abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")), user)
+        );
         executorContract.executeIntent(address(router), intentId, outputAmount);
         vm.stopPrank();
     }
@@ -124,7 +126,9 @@ contract ExecutorContractTest is Test {
         tokenOut.mint(address(executorContract), amount);
 
         vm.prank(user);
-        vm.expectRevert(abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")), user));
+        vm.expectRevert(
+            abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")), user)
+        );
         executorContract.withdrawTokens(address(tokenOut), amount);
     }
 

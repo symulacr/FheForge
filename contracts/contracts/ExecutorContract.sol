@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ISwapRouter} from "../interfaces/ISwapRouter.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ISwapRouter } from "../interfaces/ISwapRouter.sol";
 
 contract ExecutorContract is Ownable {
     using SafeERC20 for IERC20;
@@ -18,7 +18,11 @@ contract ExecutorContract is Ownable {
 
     /// @notice Execute a swap intent on behalf of the protocol.
     /// @dev Router must be funded with tokenOut and approved by this contract beforehand.
-    function executeIntent(address router, bytes32 intentId, uint256 outputAmount) external onlyOwner {
+    function executeIntent(
+        address router,
+        bytes32 intentId,
+        uint256 outputAmount
+    ) external onlyOwner {
         ISwapRouter(router).executeIntent(intentId, outputAmount);
         emit IntentExecuted(intentId, msg.sender, outputAmount);
     }

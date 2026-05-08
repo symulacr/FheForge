@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {FHE, euint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 library SharedStrategyMeta {
     struct PositionView {

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {IPyth} from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
-import {PythStructs} from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { IPyth } from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
+import { PythStructs } from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
 
 contract PriceOracle {
     using SafeCast for int256;
@@ -37,8 +37,17 @@ contract PriceOracle {
     error UncertainPrice();
     error EthTransferFailed();
 
-    event SourceSet(address indexed token, bytes32 indexed priceId, uint8 indexed tokenDecimals, uint64 staleThreshold);
-    event CollateralFactorSet(address indexed token, uint16 indexed ltvBps, uint16 indexed liqThresholdBps);
+    event SourceSet(
+        address indexed token,
+        bytes32 indexed priceId,
+        uint8 indexed tokenDecimals,
+        uint64 staleThreshold
+    );
+    event CollateralFactorSet(
+        address indexed token,
+        uint16 indexed ltvBps,
+        uint16 indexed liqThresholdBps
+    );
     event PythCacheUpdated(address indexed caller, uint256 indexed feePaid);
 
     modifier onlyOwner() {
@@ -57,7 +66,12 @@ contract PriceOracle {
         DEFAULT_STALE_THRESHOLD = defaultStaleThreshold_;
     }
 
-    function setSource(address token, bytes32 priceId_, uint8 decimals_, uint64 threshold_) external onlyOwner {
+    function setSource(
+        address token,
+        bytes32 priceId_,
+        uint8 decimals_,
+        uint64 threshold_
+    ) external onlyOwner {
         if (token == address(0)) revert ZeroAddress();
         priceId[token] = priceId_;
         tokenDecimals[token] = decimals_;
@@ -65,7 +79,11 @@ contract PriceOracle {
         emit SourceSet(token, priceId_, decimals_, threshold_);
     }
 
-    function setCollateralFactor(address token, uint16 ltvBps, uint16 liqThresholdBps) external onlyOwner {
+    function setCollateralFactor(
+        address token,
+        uint16 ltvBps,
+        uint16 liqThresholdBps
+    ) external onlyOwner {
         if (token == address(0)) revert ZeroAddress();
         if (ltvBps > BPS_DEN) revert InvalidBps();
         if (liqThresholdBps > BPS_DEN) revert InvalidBps();
@@ -78,11 +96,13 @@ contract PriceOracle {
     function updatePriceFeeds(bytes[] calldata updateData) external payable {
         uint256 fee = PYTH.getUpdateFee(updateData);
         if (msg.value != fee) revert PythUpdateFeeMismatch();
-        PYTH.updatePriceFeeds{value: fee}(updateData);
+        PYTH.updatePriceFeeds{ value: fee }(updateData);
         emit PythCacheUpdated(msg.sender, fee);
     }
 
-    function getPythUpdateFee(bytes[] calldata updateData) external view returns (uint256 feeAmount) {
+    function getPythUpdateFee(
+        bytes[] calldata updateData
+    ) external view returns (uint256 feeAmount) {
         return PYTH.getUpdateFee(updateData);
     }
 
@@ -113,14 +133,14 @@ contract PriceOracle {
     }
 
     function convertToUsd(address token, uint256 amount) external view returns (uint256 usdWad) {
-        (uint256 priceWad,) = getPriceUsd(token);
+        (uint256 priceWad, ) = getPriceUsd(token);
         uint8 dec = tokenDecimals[token];
         if (dec == 0) dec = WAD_DECIMALS;
         usdWad = (amount * priceWad) / (10 ** dec);
     }
 
     function convertFromUsd(address token, uint256 usdWad) external view returns (uint256 amount) {
-        (uint256 priceWad,) = getPriceUsd(token);
+        (uint256 priceWad, ) = getPriceUsd(token);
         uint8 dec = tokenDecimals[token];
         if (dec == 0) dec = WAD_DECIMALS;
         amount = (usdWad * (10 ** dec)) / priceWad;
@@ -134,7 +154,7 @@ contract PriceOracle {
         if (to == address(0)) revert ZeroAddress();
         uint256 bal = address(this).balance;
         if (bal < 1) return;
-        (bool ok,) = to.call{value: bal}("");
+        (bool ok, ) = to.call{ value: bal }("");
         if (!ok) revert EthTransferFailed();
     }
 }

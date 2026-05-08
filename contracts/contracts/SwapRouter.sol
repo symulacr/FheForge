@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
 contract SwapRouter is Pausable {
     using SafeERC20 for IERC20;
@@ -44,9 +44,17 @@ contract SwapRouter is Pausable {
     error TimelockNotElapsed();
 
     event IntentSubmitted(
-        bytes32 indexed intentId, address indexed user, address indexed tokenIn, address tokenOut, uint256 deadline
+        bytes32 indexed intentId,
+        address indexed user,
+        address indexed tokenIn,
+        address tokenOut,
+        uint256 deadline
     );
-    event IntentExecuted(bytes32 indexed intentId, address indexed user, uint256 indexed outputAmount);
+    event IntentExecuted(
+        bytes32 indexed intentId,
+        address indexed user,
+        uint256 indexed outputAmount
+    );
     event IntentCancelled(bytes32 indexed intentId, address indexed user);
     event ExecutorProposed(address indexed newExecutor, uint256 indexed earliest);
     event ExecutorRotated(address indexed previousExecutor, address indexed newExecutor);
@@ -134,11 +142,9 @@ contract SwapRouter is Pausable {
         emit IntentSubmitted(intentId, msg.sender, tokenIn, tokenOut, deadline);
     }
 
-    function getIntentMeta(bytes32 intentId)
-        external
-        view
-        returns (address tokenIn, address tokenOut, address user, uint256 deadline)
-    {
+    function getIntentMeta(
+        bytes32 intentId
+    ) external view returns (address tokenIn, address tokenOut, address user, uint256 deadline) {
         SwapIntent storage i = intents[intentId];
         return (i.tokenIn, i.tokenOut, i.user, i.deadline);
     }

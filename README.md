@@ -58,13 +58,19 @@ Run: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-s
 
 ## Known Issues
 
-| Severtiy | Issue | Status |
-|---|---|---|---|
-| HIGH | `LendingPool.borrow()` — no collat check. Use `checkLtvAndBorrow` | Open |
-| HIGH | `StrategyVault.positionStrategyIds` never written — TVL decrement dead code | FIXED (Wave 5) |
-| MED | `closePosition()` — no encrypted debt check before close | Open |
-| LOW | `Router.executor` EOA — need dedicated executor contract | Open (FHE-stripped, lower impact) |
-| LOW | 96 solhint prettier warnings | Open (cosmetic) |
+| Severity | Issue | Status |
+|---|---|---|
+| MED | `closePosition()` — no encrypted debt check before close. Debt tracked in LendingPool, not Vault. Vault debt always zero. Coordinated close+repay via Composer needed. | Open (architectural) |
+| LOW | 5 solhint warnings (packing, inline asm, indexed events). Cosmetic. | Deferred |
+
+### Resolved
+
+| Severity | Issue | Resolution |
+|---|---|---|
+| HIGH | `LendingPool.borrow()` — no collat check | Stale — no bare `borrow()` exists. Only `checkLtvAndBorrow` + `borrowWithOracle`, both guarded. |
+| HIGH | `StrategyVault.positionStrategyIds` never written | Fixed (Wave 5) |
+| LOW | `Router.executor` EOA | Fixed — `ExecutorContract` deployed (Wave 6) |
+| LOW | 96 solhint prettier warnings | Fixed — prettier format, 0 errors, 5 cosmetic warnings remain |
 
 ---
 
