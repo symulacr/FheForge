@@ -19,5 +19,7 @@
     "FheForgeComposer": "0x2b58f0ceb151a26d87408051347c068fd1f465b2cebe94c5c3d2e5945070fa06",
     "setVault": "0x9f0053128ce5ed7b10955091acca9b3be06b7c701536fbb33e332e2722791929"
   },
-  "notes": "Wave 9: merged _modifyTvl. Wave 8: FHE ACL cross-contract fix. Pool/Router/Oracle unchanged from v4."
+  "notes": "Wave 9: merged _modifyTvl. Wave 8: FHE ACL cross-contract fix. Pool/Router/Oracle unchanged from v4.",
+  "swapExecutor": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
+  "weth": "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d"
 }
