@@ -1,737 +1,721 @@
 [
   {
-    "type": "constructor",
     "inputs": [
       {
+        "internalType": "address",
         "name": "registry_",
-        "type": "address",
-        "internalType": "address"
+        "type": "address"
       },
       {
+        "internalType": "address",
         "name": "vault_",
-        "type": "address",
-        "internalType": "address"
+        "type": "address"
       },
       {
+        "internalType": "address",
         "name": "pool_",
-        "type": "address",
-        "internalType": "address"
+        "type": "address"
       },
       {
+        "internalType": "address",
         "name": "router_",
-        "type": "address",
-        "internalType": "address"
+        "type": "address"
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "nonpayable",
+    "type": "constructor"
   },
   {
-    "type": "function",
-    "name": "OWNER",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "PERMIT2",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "POOL",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract ILendingPool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "REGISTRY",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IRegistry"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "ROUTER",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract ISwapRouter"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "VAULT",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IStrategyVault"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "openLeveragedStrategy",
-    "inputs": [
-      {
-        "name": "p",
-        "type": "tuple",
-        "internalType": "struct FheForgeComposer.OpenStrategyParams",
-        "components": [
-          {
-            "name": "strategyName",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "workflowHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "collateralToken",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "collateralAmount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "poolSupplyAmount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "borrowToken",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "poolBorrowAmount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "useOracleBorrow",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "ltvNum",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "ltvDen",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "swapTokenOut",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "swapDeadlineOffset",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "strategyId",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "apyTarget",
-            "type": "uint16",
-            "internalType": "uint16"
-          },
-          {
-            "name": "loopCount",
-            "type": "uint8",
-            "internalType": "uint8"
-          },
-          {
-            "name": "swapAmountIn",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "swapMinOut",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "collateralPermit",
-            "type": "tuple",
-            "internalType": "struct FheForgeComposer.Permit2Authorization",
-            "components": [
-              {
-                "name": "amount",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "deadline",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "nonce",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "name": "e",
-        "type": "tuple",
-        "internalType": "struct FheForgeComposer.OpenStrategyEncrypted",
-        "components": [
-          {
-            "name": "collateral",
-            "type": "tuple",
-            "internalType": "struct InEuint128",
-            "components": [
-              {
-                "name": "ctHash",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "securityZone",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "utype",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          },
-          {
-            "name": "supplyEnc",
-            "type": "tuple",
-            "internalType": "struct InEuint64",
-            "components": [
-              {
-                "name": "ctHash",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "securityZone",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "utype",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          },
-          {
-            "name": "borrowEnc",
-            "type": "tuple",
-            "internalType": "struct InEuint64",
-            "components": [
-              {
-                "name": "ctHash",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "securityZone",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "utype",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    "outputs": [
-      {
-        "name": "strategyId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "intentId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "pause",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "paused",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "rebalance",
-    "inputs": [
-      {
-        "name": "p",
-        "type": "tuple",
-        "internalType": "struct FheForgeComposer.RebalanceParams",
-        "components": [
-          {
-            "name": "collateralToken",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "addCollateralAmount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "repayAmount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "repayToken",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "newBorrowAmount",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "borrowToken",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "useOracleBorrow",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "ltvNum",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "ltvDen",
-            "type": "uint128",
-            "internalType": "uint128"
-          },
-          {
-            "name": "collateralPermit",
-            "type": "tuple",
-            "internalType": "struct FheForgeComposer.Permit2Authorization",
-            "components": [
-              {
-                "name": "amount",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "deadline",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "nonce",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          },
-          {
-            "name": "repayPermit",
-            "type": "tuple",
-            "internalType": "struct FheForgeComposer.Permit2Authorization",
-            "components": [
-              {
-                "name": "amount",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "deadline",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "nonce",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          }
-        ]
-      },
-      {
-        "name": "e",
-        "type": "tuple",
-        "internalType": "struct FheForgeComposer.RebalanceEncrypted",
-        "components": [
-          {
-            "name": "addCollateralEnc",
-            "type": "tuple",
-            "internalType": "struct InEuint64",
-            "components": [
-              {
-                "name": "ctHash",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "securityZone",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "utype",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          },
-          {
-            "name": "repayEnc",
-            "type": "tuple",
-            "internalType": "struct InEuint64",
-            "components": [
-              {
-                "name": "ctHash",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "securityZone",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "utype",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          },
-          {
-            "name": "newBorrowEnc",
-            "type": "tuple",
-            "internalType": "struct InEuint64",
-            "components": [
-              {
-                "name": "ctHash",
-                "type": "uint256",
-                "internalType": "uint256"
-              },
-              {
-                "name": "securityZone",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "utype",
-                "type": "uint8",
-                "internalType": "uint8"
-              },
-              {
-                "name": "signature",
-                "type": "bytes",
-                "internalType": "bytes"
-              }
-            ]
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "sweepToken",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "to",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "unpause",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "event",
-    "name": "LeveragedStrategyOpened",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "strategyId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "intentId",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "supplyAmount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "borrowAmount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Paused",
-    "inputs": [],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Paused",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "StrategyRebalanced",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "addAmount",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "repayAmount",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "newBorrowAmount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Unpaused",
-    "inputs": [],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "Unpaused",
-    "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "error",
     "name": "EnforcedPause",
-    "inputs": []
+    "type": "error"
   },
   {
-    "type": "error",
+    "inputs": [],
     "name": "ExpectedPause",
-    "inputs": []
+    "type": "error"
   },
   {
-    "type": "error",
-    "name": "InvalidEncryptedInput",
+    "inputs": [],
+    "name": "NotOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
-        "name": "got",
-        "type": "uint8",
-        "internalType": "uint8"
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "SafeERC20FailedOperation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
       },
       {
-        "name": "expected",
-        "type": "uint8",
-        "internalType": "uint8"
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "strategyId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "intentId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "supplyAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "borrowAmount",
+        "type": "uint256"
       }
-    ]
+    ],
+    "name": "LeveragedStrategyOpened",
+    "type": "event"
   },
   {
-    "type": "error",
-    "name": "NotOwner",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ReentrancyGuardReentrantCall",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "SafeERC20FailedOperation",
+    "anonymous": false,
     "inputs": [
       {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
+        "indexed": false,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
       }
-    ]
+    ],
+    "name": "Paused",
+    "type": "event"
   },
   {
-    "type": "error",
-    "name": "ZeroAddress",
-    "inputs": []
+    "anonymous": false,
+    "inputs": [],
+    "name": "Paused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "addAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "repayAmount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "newBorrowAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "StrategyRebalanced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "Unpaused",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [],
+    "name": "Unpaused",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "OWNER",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PERMIT2",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "POOL",
+    "outputs": [
+      {
+        "internalType": "contract ILendingPool",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "REGISTRY",
+    "outputs": [
+      {
+        "internalType": "contract IRegistry",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ROUTER",
+    "outputs": [
+      {
+        "internalType": "contract ISwapRouter",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "VAULT",
+    "outputs": [
+      {
+        "internalType": "contract IStrategyVault",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "strategyName",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "workflowHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "collateralToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "collateralAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "poolSupplyAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "borrowToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "poolBorrowAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "useOracleBorrow",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint128",
+            "name": "ltvNum",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "ltvDen",
+            "type": "uint128"
+          },
+          {
+            "internalType": "address",
+            "name": "swapTokenOut",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "swapDeadlineOffset",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "strategyId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint16",
+            "name": "apyTarget",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint8",
+            "name": "loopCount",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "swapAmountIn",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "swapMinOut",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct FheForgeComposer.Permit2Authorization",
+            "name": "collateralPermit",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct FheForgeComposer.OpenStrategyParams",
+        "name": "p",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "ctHash",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint8",
+                "name": "securityZone",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "utype",
+                "type": "uint8"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct InEuint128",
+            "name": "collateral",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "ctHash",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint8",
+                "name": "securityZone",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "utype",
+                "type": "uint8"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct InEuint64",
+            "name": "supplyEnc",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "ctHash",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint8",
+                "name": "securityZone",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "utype",
+                "type": "uint8"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct InEuint64",
+            "name": "borrowEnc",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct FheForgeComposer.OpenStrategyEncrypted",
+        "name": "e",
+        "type": "tuple"
+      }
+    ],
+    "name": "openLeveragedStrategy",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "strategyId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "intentId",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "paused",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "collateralToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "addCollateralAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "repayAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "repayToken",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "newBorrowAmount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "borrowToken",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "useOracleBorrow",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint128",
+            "name": "ltvNum",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "ltvDen",
+            "type": "uint128"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct FheForgeComposer.Permit2Authorization",
+            "name": "collateralPermit",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "amount",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "deadline",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "nonce",
+                "type": "uint256"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct FheForgeComposer.Permit2Authorization",
+            "name": "repayPermit",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct FheForgeComposer.RebalanceParams",
+        "name": "p",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "ctHash",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint8",
+                "name": "securityZone",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "utype",
+                "type": "uint8"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct InEuint64",
+            "name": "addCollateralEnc",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "ctHash",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint8",
+                "name": "securityZone",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "utype",
+                "type": "uint8"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct InEuint64",
+            "name": "repayEnc",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "ctHash",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint8",
+                "name": "securityZone",
+                "type": "uint8"
+              },
+              {
+                "internalType": "uint8",
+                "name": "utype",
+                "type": "uint8"
+              },
+              {
+                "internalType": "bytes",
+                "name": "signature",
+                "type": "bytes"
+              }
+            ],
+            "internalType": "struct InEuint64",
+            "name": "newBorrowEnc",
+            "type": "tuple"
+          }
+        ],
+        "internalType": "struct FheForgeComposer.RebalanceEncrypted",
+        "name": "e",
+        "type": "tuple"
+      }
+    ],
+    "name": "rebalance",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      }
+    ],
+    "name": "sweepToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ]
