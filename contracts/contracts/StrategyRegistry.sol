@@ -237,7 +237,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     }
 
     function _modifyTvl(uint256 strategyId, euint128 amount, bool isIncrement) internal {
-        if (!FHE.isAllowed(amount, msg.sender)) revert FhePermissionDenied();
+        if (!FHE.isAllowed(amount, address(this))) revert FhePermissionDenied();
         euint128 prev = encryptedTvls[strategyId];
         FHE.allowThis(prev);
         euint128 result;

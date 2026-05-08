@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import {
-    FHE,
-    InEuint64,
-    InEuint128,
-    euint128,
-    euint64
-} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { InEuint64, InEuint128, euint128, euint64 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -328,9 +322,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
             IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), needsPull);
         }
         _ensureApproval(p.collateralToken, address(POOL), p.poolSupplyAmount);
-        euint64 supplyHandle = FHE.asEuint64(e.supplyEnc);
-        FHE.allowThis(supplyHandle);
-        POOL.supplyToLending(p.collateralToken, p.poolSupplyAmount, supplyHandle, _msgSender());
+        POOL.supplyToLending(p.collateralToken, p.poolSupplyAmount, e.supplyEnc, _msgSender());
     }
 
     function _borrowFromPool(
@@ -338,9 +330,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         OpenStrategyEncrypted calldata e
     ) internal {
         if (p.poolBorrowAmount == 0) return;
-        euint64 borrowHandle = FHE.asEuint64(e.borrowEnc);
-        FHE.allowThis(borrowHandle);
-        POOL.borrowFromLending(p.borrowToken, p.poolBorrowAmount, borrowHandle, _msgSender());
+        POOL.borrowFromLending(p.borrowToken, p.poolBorrowAmount, e.borrowEnc, _msgSender());
         uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
         if (received > 0) {
             IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
@@ -421,9 +411,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         }
 
         if (p.newBorrowAmount > 0) {
-            euint64 borrowHandle = FHE.asEuint64(e.newBorrowEnc);
-            FHE.allowThis(borrowHandle);
-            POOL.borrowFromLending(p.borrowToken, p.newBorrowAmount, borrowHandle, _msgSender());
+            POOL.borrowFromLending(p.borrowToken, p.newBorrowAmount, e.newBorrowEnc, _msgSender());
             uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
             if (received > 0) {
                 IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
