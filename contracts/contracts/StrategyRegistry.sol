@@ -12,6 +12,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
 
     uint256 public immutable VAULT_ROTATION_DELAY;
 
+    // solhint-disable-next-line gas-struct-packing
     struct Strategy {
         bytes32 workflowHash;
         address creator;

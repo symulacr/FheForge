@@ -83,6 +83,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "ZeroAmount",
+    "type": "error"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {

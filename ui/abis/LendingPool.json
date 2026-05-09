@@ -77,6 +77,11 @@
   },
   {
     "inputs": [],
+    "name": "NotComposer",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "OnlyOwner",
     "type": "error"
   },
@@ -675,6 +680,19 @@
   },
   {
     "inputs": [],
+    "name": "composer",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "disableOracle",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -1059,6 +1077,19 @@
       }
     ],
     "name": "repayWithPermit2",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "c",
+        "type": "address"
+      }
+    ],
+    "name": "setComposer",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
