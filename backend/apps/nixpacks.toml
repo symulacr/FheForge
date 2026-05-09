@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "bun"]
+nixPkgs = ["nodejs_22", "bun"]
 
 [phases.install]
 cmds = ["bun install"]

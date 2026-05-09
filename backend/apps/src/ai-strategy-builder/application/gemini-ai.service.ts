@@ -43,7 +43,8 @@ export class GeminiAiService {
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY environment variable is required');
+      console.warn('GEMINI_API_KEY not set — AI strategy builder disabled');
+      return;
     }
 
     this.genAI = new GoogleGenerativeAI(apiKey);
@@ -58,11 +59,16 @@ export class GeminiAiService {
     });
   }
 
+  private requireModel() {
+    if (!this.model) throw new Error('AI strategy builder disabled — GEMINI_API_KEY not set');
+  }
+
   async generateStrategySteps(
     userIntent: string,
     additionalContext?: string,
     tokenAmount?: number,
   ): Promise<StrategyStepResponseDto[]> {
+    this.requireModel();
     if (this.isMaximizeYieldRequest(userIntent)) {
       return this.generateMaximizeYieldStrategy(
         userIntent,
@@ -471,6 +477,7 @@ export class GeminiAiService {
     additionalContext?: string,
     tokenAmount?: number,
   ): Promise<StrategyStepResponseDto[]> {
+    this.requireModel();
     
     const { inputToken, defaultAmount } =
       this.extractInputTokenFromIntent(userIntent);
@@ -884,6 +891,7 @@ Return ONLY the JSON array:
     riskFactors: string[];
     recommendations: string[];
   }> {
+    this.requireModel();
     const prompt = `
 Analyze the risk level of this DeFi strategy and provide recommendations:
 
@@ -936,6 +944,7 @@ Return JSON format:
     optimizedSteps: StrategyStepResponseDto[];
     optimizations: string[];
   }> {
+    this.requireModel();
     const prompt = `
 Optimize this DeFi strategy for better efficiency and lower risk:
 
