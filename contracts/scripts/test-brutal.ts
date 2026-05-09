@@ -23,7 +23,7 @@ const pol=await ethers.getContractAt("LendingPool",dep.contracts.LendingPool,d);
 const rtr=await ethers.getContractAt("SwapRouter",dep.contracts.SwapRouter,d);
 const orc=await ethers.getContractAt("PriceOracle",dep.contracts.PriceOracle,d);
 const cmp=await ethers.getContractAt("FheForgeComposer",dep.contracts.FheForgeComposer,d);
-const tok=await ethers.getContractAt(["function balanceOf(address) view returns (uint256)","function approve(address,uint256) returns (bool)","function mint(address,uint256)"],U,d);
+const tok=await ethers.getContractAt(["function balanceOf(address) view returns (uint256)","function approve(address,uint256) returns (bool)","function mint(address,uint256)","function allowance(address,address) view returns (uint256)"],U,d);
 const wethTok=await ethers.getContractAt(["function balanceOf(address) view returns (uint256)","function approve(address,uint256) returns (bool)","function mint(address,uint256)"],W,d);
 const vI=vlt.interface;const pI=pol.interface;const rI=reg.interface;const rtI=rtr.interface;
 console.log("ETH:",ethers.formatEther(await ethers.provider.getBalance(a)));
@@ -31,7 +31,7 @@ console.log("ETH:",ethers.formatEther(await ethers.provider.getBalance(a)));
 // P0: CoFHE + fund
 console.log("\n=== P0 ===");
 let cc=null;
-try{cc=await hre.cofhe.createClientWithBatteries(d);Y("CoFHE")}catch(e){N("CoFHE",dec(e));return}
+try{const cfg=createCofheConfig({environment:"node",supportedChains:[arbSepolia]});cc=createCofheClient(cfg);const{publicClient,walletClient}=await hre.cofhe.hardhatSignerAdapter(d);await cc.connect(publicClient,walletClient);await cc.permits.createSelf({issuer:a});Y("CoFHE")}catch(e){N("CoFHE",dec(e));return}
 const b=await tok.balanceOf(a);if(b<50_000_000n){await(await tok.mint(a,50_000_000n)).wait();Y("mint USDC 50M")}else Y("USDC");
 const wb=await wethTok.balanceOf(a);if(wb<10_000_000n){await(await wethTok.mint(a,10_000_000n)).wait();Y("mint WETH 10M")}else Y("WETH");
 const[a1,a2,a3]=await Promise.all([tok.allowance(a,dep.contracts.StrategyVault),tok.allowance(a,dep.contracts.LendingPool),tok.allowance(a,dep.contracts.FheForgeComposer)]);
