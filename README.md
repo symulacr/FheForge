@@ -14,13 +14,15 @@ API → https://fheforge-api-production.up.railway.app
 ## Contracts — Arbitrum Sepolia (421614)
 
 | Contract | Address |
-|---|---|
-| StrategyVault | `0x261c4b5a66C24Dd1974E7ea470e76154dff062F5` |
-| LendingPool | `0xb4F6b792219e3d6Cd3f3B8088285e52a64CCcb44` |
-| SwapRouter | `0x78C2818a401477F78E129A7526bC833Eb93d964A` |
-| StrategyRegistry | `0xcdFB608e7f45f6e6cCA27e504ce6b8aDe64701B9` |
-| WETH | `0x980B62Da83eFf3D4576C647993b0c1D7faf17c73` |
-| USDC | `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d` |
+|---|---|---|
+| StrategyVault | `0x3D16Db66d778b5465190d21b792130204D839f86` |
+| LendingPool | `0xc11129958089d4c108e69FA042cEB121a004e555` |
+| SwapRouter | `0x92747133b448767eE94d1B3b19fD1258c1C49d5c` |
+| StrategyRegistry | `0xfe9FAb915b0271CEA1243a299a4a4085497DE260` |
+| PriceOracle | `0xB2387ee4a6dC95603633780D86D23D84dE9C7fd3` |
+| FheForgeComposer | `0x267c694B6c9a02e9fc511070A076E53828765aEB` |
+| WETH (mock) | `0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d` |
+| USDC (mock) | `0x150376EdEbc5AC48771655a61a795d828BeC8Df6` |
 
 ---
 
@@ -48,8 +50,9 @@ API → https://fheforge-api-production.up.railway.app
 ## Tests
 
 ```
-hardened  108 PASS | 0 FAIL | 7 VULN
-sharp      46 PASS | 2 FAIL (LendingPool withdraw guard — known bug)
+forge      13 PASS | 0 FAIL
+hardhat      4 PASS | 0 FAIL
+brutal     T1-T12 live breaker
 ```
 
 Run: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-sharp.js`
@@ -60,8 +63,8 @@ Run: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-s
 
 | Severity | Issue | Status |
 |---|---|---|
-| MED | `closePosition()` — no encrypted debt check before close. Debt tracked in LendingPool, not Vault. Vault debt always zero. Coordinated close+repay via Composer needed. | Open (architectural) |
-| LOW | 5 solhint warnings (packing, inline asm, indexed events). Cosmetic. | Deferred |
+| MED | Dual plain+encrypted input skew — no on-chain `amount == encAmount` enforcement. Mitigation requires CoFHE ZK proof of equality (post-MVP). | Known — documented in @dev |
+| LOW | 2 solhint warnings (struct packing). Cosmetic. | Deferred |
 
 ### Resolved
 
@@ -70,7 +73,7 @@ Run: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-s
 | HIGH | `LendingPool.borrow()` — no collat check | Stale — no bare `borrow()` exists. Only `checkLtvAndBorrow` + `borrowWithOracle`, both guarded. |
 | HIGH | `StrategyVault.positionStrategyIds` never written | Fixed (Wave 5) |
 | LOW | `Router.executor` EOA | Fixed — `ExecutorContract` deployed (Wave 6) |
-| LOW | 96 solhint prettier warnings | Fixed — prettier format, 0 errors, 5 cosmetic warnings remain |
+| LOW | 96 solhint prettier warnings | Fixed — prettier format, 0 errors, 2 cosmetic warnings remain |
 
 ---
 
