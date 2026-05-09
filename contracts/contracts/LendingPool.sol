@@ -54,6 +54,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
     euint64 private immutable _ZERO;
     address public immutable OWNER;
+    address public composer;
 
     uint256 public constant BPS_DEN = 1e4;
 
@@ -83,6 +84,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     error PositionHealthy();
     error LiquidationTooLarge();
     error TokenMismatch();
+    error NotComposer();
 
     event Supplied(address indexed user, address indexed token, uint256 indexed amount);
     event Borrowed(
@@ -116,6 +118,11 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
     function _onlyOwner() internal view {
         if (msg.sender != OWNER) revert OnlyOwner();
+    }
+
+    modifier onlyComposer() {
+        if (msg.sender != composer) revert NotComposer();
+        _;
     }
 
     constructor() {
@@ -376,6 +383,11 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit WethDisabled();
     }
 
+    function setComposer(address c) external onlyOwner {
+        if (c == address(0)) revert ZeroAddress();
+        composer = c;
+    }
+
     function supplyEth(InEuint64 calldata encAmount) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         if (msg.value == 0) revert ZeroAmount();
@@ -578,7 +590,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 amount,
         InEuint64 calldata encAmount,
         address user
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused onlyComposer {
         if (token == address(0)) revert ZeroAddress();
         if (user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
@@ -602,7 +614,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 amount,
         euint64 encAmount,
         address user
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused onlyComposer {
         if (token == address(0)) revert ZeroAddress();
         if (user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
@@ -626,7 +638,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 amount,
         InEuint64 calldata encAmount,
         address user
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused onlyComposer {
         if (token == address(0)) revert ZeroAddress();
         if (user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
@@ -654,7 +666,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 amount,
         euint64 encAmount,
         address user
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused onlyComposer {
         if (token == address(0)) revert ZeroAddress();
         if (user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
@@ -682,7 +694,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 amount,
         InEuint64 calldata encAmount,
         address user
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused onlyComposer {
         if (token == address(0)) revert ZeroAddress();
         if (user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
@@ -708,7 +720,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 amount,
         euint64 encAmount,
         address user
-    ) external nonReentrant whenNotPaused {
+    ) external nonReentrant whenNotPaused onlyComposer {
         if (token == address(0)) revert ZeroAddress();
         if (user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
