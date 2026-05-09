@@ -226,22 +226,21 @@ contract StrategyVault is ReentrancyGuard, Pausable {
             hasPosition[_msgSender()] = false;
         }
 
-        euint128 encClosed = FHE.asEuint128(encCollateralAmount);
-        FHE.allowThis(encClosed);
-
-        if (!fullClose) {
-            euint128 newCollateral = FHE.sub(
-                currentCollateral,
-                FHE.min(encClosed, currentCollateral)
-            );
-            pos.collateral = newCollateral;
-            FHE.allowThis(newCollateral);
-            FHE.allow(newCollateral, _msgSender());
-        }
-
         if (strategyId != 0) {
+            euint128 encClosed = FHE.asEuint128(encCollateralAmount);
+            FHE.allowThis(encClosed);
             FHE.allowTransient(encClosed, REGISTRY);
             IStrategyRegistry(REGISTRY).decrementTvl(strategyId, encClosed);
+
+            if (!fullClose) {
+                euint128 newCollateral = FHE.sub(
+                    currentCollateral,
+                    FHE.min(encClosed, currentCollateral)
+                );
+                pos.collateral = newCollateral;
+                FHE.allowThis(newCollateral);
+                FHE.allow(newCollateral, _msgSender());
+            }
         }
 
         IERC20(token).safeTransfer(_msgSender(), collateralAmount);
@@ -283,7 +282,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         // emit Unpaused();
     }
 
-    function getCollateral() external nonReentrant returns (euint128) {
+    function getCollateral() external returns (euint128) {
         if (!hasPosition[_msgSender()]) revert NoPosition();
         FHE.allow(positions[_msgSender()].collateral, _msgSender());
         return positions[_msgSender()].collateral;

@@ -32,6 +32,7 @@ contract PriceOracle {
     error NoPriceFeed();
     error NegativePrice();
     error ZeroAddress();
+    error ZeroAmount();
     error InvalidBps();
     error PythUpdateFeeMismatch();
     error UncertainPrice();
@@ -73,6 +74,7 @@ contract PriceOracle {
         uint64 threshold_
     ) external onlyOwner {
         if (token == address(0)) revert ZeroAddress();
+        if (decimals_ == 0) revert ZeroAmount();
         priceId[token] = priceId_;
         tokenDecimals[token] = decimals_;
         staleThreshold[token] = threshold_;
