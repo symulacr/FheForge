@@ -8,7 +8,8 @@
     "skipDefaultLibCheck": true,
     "typeRoots": ["./types", "./node_modules/@types", "../node_modules/@types"],
     "outDir": "./dist",
-    "moduleResolution": "node16",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
     "resolveJsonModule": true,
     "paths": {
       "@/core": ["../node_modules/.bun/@cofhe+sdk@0.5.1+d77193ada486e617/node_modules/@cofhe/sdk/dist/core.d.ts"],
