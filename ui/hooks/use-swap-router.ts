@@ -74,9 +74,24 @@ export function useSwapRouter() {
     [routerAddress, cofheState.permitReady, writeContractAsync],
   );
 
+  const executeIntent = useCallback(
+    async (intentId: Hash, outputAmount: bigint): Promise<Hash> => {
+      if (!routerAddress) throw new Error("SwapRouter address not configured");
+      if (!cofheState.permitReady) throw new Error("CoFHE permit not ready");
+      return writeContractAsync({
+        address: routerAddress,
+        abi: SwapRouterABI,
+        functionName: "executeIntent",
+        args: [intentId, outputAmount],
+      });
+    },
+    [routerAddress, cofheState.permitReady, writeContractAsync],
+  );
+
   return {
     getIntentMeta,
     cancelIntent,
+    executeIntent,
     isLoading,
     isCancelling,
     routerAddress,

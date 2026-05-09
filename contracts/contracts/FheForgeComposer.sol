@@ -217,12 +217,12 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
 
     function pause() external onlyOwner {
         _pause();
-        // emit Paused();
+        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        // emit Unpaused();
+        emit Unpaused();
     }
 
     struct Permit2Authorization {
@@ -235,21 +235,21 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     struct OpenStrategyParams {
         string strategyName;
         bytes32 workflowHash;
-        address collateralToken;
         uint256 collateralAmount;
         uint256 poolSupplyAmount;
-        address borrowToken;
         uint256 poolBorrowAmount;
-        bool useOracleBorrow;
-        uint128 ltvNum;
-        uint128 ltvDen;
-        address swapTokenOut;
         uint256 swapDeadlineOffset;
         uint256 strategyId;
-        uint16 apyTarget;
-        uint8 loopCount;
         uint256 swapAmountIn;
         uint256 swapMinOut;
+        address collateralToken;
+        address borrowToken;
+        address swapTokenOut;
+        uint128 ltvNum;
+        uint128 ltvDen;
+        bool useOracleBorrow;
+        uint16 apyTarget;
+        uint8 loopCount;
         Permit2Authorization collateralPermit;
     }
 

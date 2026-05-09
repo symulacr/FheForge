@@ -37,9 +37,9 @@ export const CHAIN_CONTRACT_ADDRESSES: Record<
     pool: process.env.NEXT_PUBLIC_BASE_POOL_ADDRESS! as Address,
     router: process.env.NEXT_PUBLIC_BASE_ROUTER_ADDRESS! as Address,
     registry: process.env.NEXT_PUBLIC_BASE_REGISTRY_ADDRESS! as Address,
-    composer: process.env.NEXT_PUBLIC_COMPOSER_ADDRESS! as Address,
-    swapRouter: process.env.NEXT_PUBLIC_SWAP_ROUTER_ADDRESS! as Address,
-    oracle: process.env.NEXT_PUBLIC_ORACLE_ADDRESS! as Address,
+    composer: process.env.NEXT_PUBLIC_BASE_COMPOSER_ADDRESS! as Address,
+    swapRouter: process.env.NEXT_PUBLIC_BASE_SWAP_ROUTER_ADDRESS! as Address,
+    oracle: process.env.NEXT_PUBLIC_BASE_ORACLE_ADDRESS! as Address,
   },
 };
 export const getContractAddresses = (chainId: number) => {

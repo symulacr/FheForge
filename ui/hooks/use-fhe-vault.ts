@@ -19,6 +19,16 @@ interface EncryptedHandle {
 
 export type EncryptedUint128Input = EncryptedHandle;
 
+// MC-41/42: Permit2 types for supplyWithPermit2 / repayWithPermit2
+export interface PermitTransferFrom {
+  permitted: {
+    token: `0x${string}`;
+    amount: bigint;
+  };
+  nonce: bigint;
+  deadline: bigint;
+}
+
 export function useFheVault() {
   const cofheClient = useCofheClient();
   const cofheState = useCofheState();
@@ -165,8 +175,8 @@ export function useFheVault() {
   // These are onlyComposer-gated on LendingPool — user calls revert.
   // Use useComposer().openLeveragedStrategy or useRebalance() instead.
 
-  // MC-28: Pool repay uses InEuint64
-  const repayBorrow = async (token: string, amount: string, decimals = 18) => {
+  // MC-23/28: Pool repay uses InEuint64 (renamed from repayBorrow — same function)
+  const repay = async (token: string, amount: string, decimals = 18) => {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
     validateEuint128(amt);
@@ -243,42 +253,6 @@ export function useFheVault() {
     });
   };
 
-  // MC-28: Pool repay uses InEuint64
-  const repay = async (token: string, amount: bigint): Promise<Hash> => {
-    const { pool } = requireAddresses();
-    validateEuint128(amount);
-    setIsEncrypting(true);
-    try {
-      const enc = await encrypt64(amount);
-      return writeContractAsync({
-        address: pool as `0x${string}`,
-        abi: PoolABI,
-        functionName: "repay",
-        args: [token, amount, enc] as unknown as [string, bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
-      });
-    } finally {
-      setIsEncrypting(false);
-    }
-  };
-
-  // MC-28: Pool withdraw uses InEuint64
-  const withdraw = async (token: string, amount: bigint): Promise<Hash> => {
-    const { pool } = requireAddresses();
-    validateEuint128(amount);
-    setIsEncrypting(true);
-    try {
-      const enc = await encrypt64(amount);
-      return writeContractAsync({
-        address: pool as `0x${string}`,
-        abi: PoolABI,
-        functionName: "withdraw",
-        args: [token, amount, enc] as unknown as [string, bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
-      });
-    } finally {
-      setIsEncrypting(false);
-    }
-  };
-
   // MC-20/28: Pool supplyEth uses InEuint64
   const supplyEth = async (amount: bigint): Promise<Hash> => {
     const { pool } = requireAddresses();
@@ -309,17 +283,67 @@ export function useFheVault() {
     });
   };
 
+  // MC-41: supplyWithPermit2 — LendingPool.supplyWithPermit2(address, uint256, InEuint64, PermitTransferFrom, bytes)
+  const supplyWithPermit2 = async (
+    token: string,
+    amount: string,
+    permit: PermitTransferFrom,
+    signature: `0x${string}`,
+    decimals = 18,
+  ): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    const amt = parseUnits(amount, decimals);
+    validateEuint128(amt);
+    setIsEncrypting(true);
+    try {
+      const enc = await encrypt64(amt);
+      return writeContractAsync({
+        address: pool as `0x${string}`,
+        abi: PoolABI,
+        functionName: "supplyWithPermit2",
+        args: [token, amt, enc, permit, signature],
+      });
+    } finally {
+      setIsEncrypting(false);
+    }
+  };
+
+  // MC-42: repayWithPermit2 — LendingPool.repayWithPermit2(address, uint256, InEuint64, PermitTransferFrom, bytes)
+  const repayWithPermit2 = async (
+    token: string,
+    amount: string,
+    permit: PermitTransferFrom,
+    signature: `0x${string}`,
+    decimals = 18,
+  ): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    const amt = parseUnits(amount, decimals);
+    validateEuint128(amt);
+    setIsEncrypting(true);
+    try {
+      const enc = await encrypt64(amt);
+      return writeContractAsync({
+        address: pool as `0x${string}`,
+        abi: PoolABI,
+        functionName: "repayWithPermit2",
+        args: [token, amt, enc, permit, signature],
+      });
+    } finally {
+      setIsEncrypting(false);
+    }
+  };
+
   return {
     openPosition,
     addCollateral,
-    repayBorrow,
+    repay,
     withdrawSupply,
     submitSwapIntent,
     closePosition,
-    repay,
-    withdraw,
     supplyEth,
     withdrawEth,
+    supplyWithPermit2,
+    repayWithPermit2,
     revealCollateral,
     revealBorrow,
     revealSwapIntent,

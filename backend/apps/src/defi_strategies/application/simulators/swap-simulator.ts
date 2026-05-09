@@ -12,10 +12,10 @@ export class SwapSimulator extends BaseSimulator {
   constructor(private readonly fhenixStrategyService: FhenixStrategyService) {
     super();
   }
-  simulate(
+  async simulate(
     step: StrategyStepResponseDto,
     context: SimulationContext,
-  ): SimulationStepResult {
+  ): Promise<SimulationStepResult> {
     const inputAmount = context.current_amount;
 
     const feePercentage = 0.3;
@@ -35,7 +35,7 @@ export class SwapSimulator extends BaseSimulator {
       );
     }
 
-    const exchangeRate = this.getExchangeRate(
+    const exchangeRate = await this.getExchangeRate(
       step.tokenIn!.assetId,
       step.tokenOut!.assetId,
     );
@@ -66,8 +66,8 @@ export class SwapSimulator extends BaseSimulator {
     };
   }
 
-  private getExchangeRate(assetIdIn: string, assetIdOut: string): number {
-    const exchangeRate = this.fhenixStrategyService.getAssetPrice(
+  private async getExchangeRate(assetIdIn: string, assetIdOut: string): Promise<number> {
+    const exchangeRate = await this.fhenixStrategyService.getAssetPrice(
       assetIdIn,
       assetIdOut,
     );

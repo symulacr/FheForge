@@ -12,10 +12,10 @@ export class JoinStrategySimulator extends BaseSimulator {
   constructor(private readonly fhenixStrategyService: FhenixStrategyService) {
     super();
   }
-  simulate(
+  async simulate(
     step: StrategyStepResponseDto,
     context: SimulationContext,
-  ): SimulationStepResult {
+  ): Promise<SimulationStepResult> {
     const inputAmount = context.current_amount;
 
     const feePercentage = 0.1;
@@ -35,7 +35,7 @@ export class JoinStrategySimulator extends BaseSimulator {
       );
     }
 
-    const exchangeRate = this.getExchangeRate(
+    const exchangeRate = await this.getExchangeRate(
       step.tokenIn?.assetId,
       step.tokenOut?.assetId,
     );
@@ -66,11 +66,11 @@ export class JoinStrategySimulator extends BaseSimulator {
     };
   }
 
-  private getExchangeRate(
+  private async getExchangeRate(
     assetIdIn: string | undefined,
     assetIdOut: string | undefined,
-  ): number {
-    return this.fhenixStrategyService.getAssetPrice(
+  ): Promise<number> {
+    return await this.fhenixStrategyService.getAssetPrice(
       assetIdIn ?? '',
       assetIdOut ?? '',
     );

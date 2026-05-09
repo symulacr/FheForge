@@ -1,20 +1,40 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BaseSimulator } from './base-simulator';
 import {
   SimulationContext,
   SimulationStepResult,
 } from '../../domain/simulation-engine.interface';
 import { StrategyStepResponseDto } from 'src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto';
+import { JsonRpcProvider, Contract } from 'ethers';
+
+const STRATEGY_REGISTRY_ABI = [
+  'function getStrategyParams(uint256 strategyId) external view returns (uint16 apyTarget, uint8 loopCount)',
+];
 
 @Injectable()
 export class SupplySimulator extends BaseSimulator {
-  simulate(
+  private readonly logger = new Logger(SupplySimulator.name);
+  private provider: JsonRpcProvider | null = null;
+  private strategyRegistry: Contract | null = null;
+
+  constructor(private readonly configService: ConfigService) {
+    super();
+    const rpcUrl = this.configService.get<string>('FHENIX_RPC');
+    const registryAddress = this.configService.get<string>('STRATEGY_REGISTRY_ADDRESS');
+    if (rpcUrl && registryAddress) {
+      this.provider = new JsonRpcProvider(rpcUrl);
+      this.strategyRegistry = new Contract(registryAddress, STRATEGY_REGISTRY_ABI, this.provider);
+    }
+  }
+
+  async simulate(
     step: StrategyStepResponseDto,
     context: SimulationContext,
-  ): SimulationStepResult {
+  ): Promise<SimulationStepResult> {
     const inputAmount = context.current_amount;
 
-    const supplyApy = this.getSupplyApy(step.tokenIn?.assetId);
+    const supplyApy = await this.getSupplyApy(context.strategyId || 0n);
 
     const outputAmount = inputAmount;
 
@@ -51,10 +71,19 @@ export class SupplySimulator extends BaseSimulator {
     };
   }
 
-  private getSupplyApy(_assetId: string | undefined): number {
-    const supplyApyBps = process.env.SUPPLY_APY_BPS;
-    if (!supplyApyBps) throw new Error('SUPPLY_APY_BPS env var is required');
-    const bps = parseFloat(supplyApyBps);
-    return bps / 100;
+  private async getSupplyApy(strategyId: bigint): Promise<number> {
+    if (!this.strategyRegistry) {
+      this.logger.warn('StrategyRegistry not configured, using fallback APY');
+      return 5.0;
+    }
+
+    try {
+      const params = await this.strategyRegistry.getStrategyParams(strategyId);
+      // apyTarget is in basis points (uint16), convert to percentage
+      return Number(params.apyTarget) / 100;
+    } catch (error) {
+      this.logger.error(`Failed to fetch strategy params for ID ${strategyId}:`, error);
+      return 5.0; // Fallback to default
+    }
   }
 }

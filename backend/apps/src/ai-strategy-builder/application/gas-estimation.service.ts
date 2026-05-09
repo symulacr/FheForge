@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 @Injectable()
 export class GasEstimationService {
   private readonly logger = new Logger(GasEstimationService.name);
-  private provider: ethers.providers.JsonRpcProvider | null = null;
+  private provider: ethers.JsonRpcProvider | null = null;
 
   private readonly GAS_ESTIMATES: Record<string, number> = {
     ENABLE_E_MODE: 50000,
@@ -24,17 +24,17 @@ export class GasEstimationService {
   constructor(private readonly configService: ConfigService) {
     const rpcUrl = this.configService.get<string>('FHENIX_RPC');
     if (rpcUrl) {
-      this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+      this.provider = new ethers.JsonRpcProvider(rpcUrl);
     }
   }
 
   async estimateGasForStep(stepType: string): Promise<number> {
     if (this.provider) {
       try {
-        const gasPrice = await this.provider.getGasPrice();
+        const gasPrice = await this.provider.getFeeData().then((f) => f.gasPrice);
         const gasLimit = this.GAS_ESTIMATES[stepType] ?? this.DEFAULT_GAS;
         return Number(
-          ethers.utils.formatUnits(gasPrice.mul(gasLimit), 'ether'),
+          ethers.formatUnits(gasPrice! * BigInt(gasLimit), 'ether'),
         );
       } catch {
         this.logger.warn(

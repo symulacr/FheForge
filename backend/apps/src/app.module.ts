@@ -9,6 +9,7 @@ import { DefiModulesModule } from './defi_modules/defi_modules.module';
 import { DefiStrategiesModule } from './defi_strategies/defi_strategies.module';
 import { DefiTokenModule } from './defi_token/defi_token.module';
 import { AiStrategyBuilderModule } from './ai-strategy-builder/ai-strategy-builder.module';
+import { EventIndexerModule } from './event-indexer/event-indexer.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AppController } from './app.controller';
 import { FhenixStrategyService } from './shared/infrastructure/fhenix-strategy.service';
@@ -31,6 +32,7 @@ import { AuthModule } from './auth/auth.module';
     DefiStrategiesModule,
     DefiTokenModule,
     AiStrategyBuilderModule,
+    EventIndexerModule,
   ],
   controllers: [AppController],
   providers: [

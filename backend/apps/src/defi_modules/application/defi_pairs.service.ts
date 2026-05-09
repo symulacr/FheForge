@@ -88,7 +88,7 @@ export class DefiPairsService {
       this.defiTokenService.getDefiTokenById(tokenOutId),
     ]);
 
-    const spotPrice = this.fhenixStrategy.getAssetPrice(
+    const spotPrice = await this.fhenixStrategy.getAssetPrice(
       tokenIn.name,
       tokenOut.name,
     );
@@ -120,7 +120,7 @@ export class DefiPairsService {
       this.defiTokenService.getDefiTokenById(tokenOutId),
     ]);
 
-    const spotPrice = this.fhenixStrategy.getAssetPrice(
+    const spotPrice = await this.fhenixStrategy.getAssetPrice(
       tokenIn.name,
       tokenOut.name,
     );
@@ -172,7 +172,7 @@ export class DefiPairsService {
     const spotPrice =
       collateralTokenId === borrowTokenId
         ? 1
-        : this.fhenixStrategy.getAssetPrice(
+        : await this.fhenixStrategy.getAssetPrice(
             collateralToken.name,
             borrowToken.name,
           );

@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BaseSimulator } from './base-simulator';
 import {
   SimulationContext,
@@ -6,6 +7,11 @@ import {
 } from '../../domain/simulation-engine.interface';
 import { FhenixStrategyService } from 'src/shared/infrastructure/fhenix-strategy.service';
 import { StrategyStepResponseDto } from 'src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto';
+import { JsonRpcProvider, Contract } from 'ethers';
+
+const STRATEGY_REGISTRY_ABI = [
+  'function getStrategyParams(uint256 strategyId) external view returns (uint16 apyTarget, uint8 loopCount)',
+];
 
 interface StrategyStepWithCollateral extends StrategyStepResponseDto {
   collateralRatio?: number;
@@ -13,24 +19,37 @@ interface StrategyStepWithCollateral extends StrategyStepResponseDto {
 
 @Injectable()
 export class BorrowSimulator extends BaseSimulator {
-  constructor(private readonly fhenixStrategyService: FhenixStrategyService) {
+  private readonly logger = new Logger(BorrowSimulator.name);
+  private provider: JsonRpcProvider | null = null;
+  private strategyRegistry: Contract | null = null;
+
+  constructor(
+    private readonly fhenixStrategyService: FhenixStrategyService,
+    private readonly configService: ConfigService,
+  ) {
     super();
+    const rpcUrl = this.configService.get<string>('FHENIX_RPC');
+    const registryAddress = this.configService.get<string>('STRATEGY_REGISTRY_ADDRESS');
+    if (rpcUrl && registryAddress) {
+      this.provider = new JsonRpcProvider(rpcUrl);
+      this.strategyRegistry = new Contract(registryAddress, STRATEGY_REGISTRY_ABI, this.provider);
+    }
   }
 
-  simulate(
+  async simulate(
     step: StrategyStepWithCollateral,
     context: SimulationContext,
-  ): SimulationStepResult {
+  ): Promise<SimulationStepResult> {
     const inputAmount = context.current_amount;
 
     const fee = 0;
 
-    const interestRate = this.getInterestRate(step.tokenOut?.assetId);
+    const interestRate = await this.getInterestRate(context.strategyId || 0n);
 
     const collateralRatio = step.collateralRatio || 0.7;
     const borrowAmount = inputAmount * collateralRatio;
 
-    const exchangeRate = this.getExchangeRate(
+    const exchangeRate = await this.getExchangeRate(
       step.tokenIn!.assetId,
       step.tokenOut!.assetId,
     );
@@ -76,18 +95,24 @@ export class BorrowSimulator extends BaseSimulator {
     };
   }
 
-  private getInterestRate(assetId: string | undefined): number {
-    const rates: Record<string, number> = {
-      '1': 5.5,
-      '5': 7.2,
-      '0': 3.8,
-    };
+  private async getInterestRate(strategyId: bigint): Promise<number> {
+    if (!this.strategyRegistry) {
+      this.logger.warn('StrategyRegistry not configured, using fallback APY');
+      return 6.0;
+    }
 
-    return rates[assetId || ''] || 6.0;
+    try {
+      const params = await this.strategyRegistry.getStrategyParams(strategyId);
+      // apyTarget is in basis points (uint16), convert to percentage
+      return Number(params.apyTarget) / 100;
+    } catch (error) {
+      this.logger.error(`Failed to fetch strategy params for ID ${strategyId}:`, error);
+      return 6.0; // Fallback to default
+    }
   }
 
-  private getExchangeRate(assetIdIn: string, assetIdOut: string): number {
-    const exchangeRate = this.fhenixStrategyService.getAssetPrice(
+  private async getExchangeRate(assetIdIn: string, assetIdOut: string): Promise<number> {
+    const exchangeRate = await this.fhenixStrategyService.getAssetPrice(
       assetIdIn,
       assetIdOut,
     );

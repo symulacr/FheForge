@@ -274,12 +274,12 @@ contract StrategyVault is ReentrancyGuard, Pausable {
 
     function pause() external onlyOwner {
         _pause();
-        // emit Paused();
+        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        // emit Unpaused();
+        emit Unpaused();
     }
 
     function getCollateral() external returns (euint128) {

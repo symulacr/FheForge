@@ -9,6 +9,7 @@ export interface SimulationContext {
   warnings: string[];
   fhe_mode: boolean;
   amount_precision: 'EXACT' | 'BOUNDED';
+  strategyId?: bigint;
 }
 
 export interface SimulationStepDto {

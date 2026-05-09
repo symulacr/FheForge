@@ -353,12 +353,12 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
     function pause() external onlyOwner {
         _pause();
-        // emit Paused();
+        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        // emit Unpaused();
+        emit Unpaused();
     }
 
     function setOracle(address newOracle) external onlyOwner {

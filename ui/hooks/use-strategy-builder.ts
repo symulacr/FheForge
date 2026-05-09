@@ -145,7 +145,7 @@ export type { SaveConfigPayload };
 export function useDefiBuilder() {
   const { user } = useUser();
   const router = useRouter();
-  const { openPosition } = useFheVault();
+  const { openPosition, addCollateral } = useFheVault();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -399,9 +399,25 @@ export function useDefiBuilder() {
         const supplyNode = nodes.find(
           (n) => n.data?.config?.operationType === "SUPPLY",
         );
-        if (!supplyNode) {
-          console.warn("No SUPPLY node found, skipping openPosition");
-        } else {
+        const addCollateralNode = nodes.find(
+          (n) => n.data?.config?.operationType === "ADD_COLLATERAL",
+        );
+        if (!supplyNode && !addCollateralNode) {
+          console.warn("No SUPPLY or ADD_COLLATERAL node found, skipping vault call");
+        } else if (addCollateralNode) {
+          // MC-19: addCollateral wired — user already has a position and wants to top up
+          const cfg = addCollateralNode.data.config;
+          const amount = String(cfg.amount ?? "0");
+          const tokenSymbol = cfg.tokenInSymbol?.toUpperCase() ?? "WETH";
+          const collateralToken = TOKEN_SYMBOL_MAP[tokenSymbol]?.address;
+          if (!collateralToken) {
+            displayToast("error", `No contract address for token ${tokenSymbol}`);
+            return;
+          }
+          addCollateral(collateralToken, amount).catch((e: unknown) =>
+            console.warn("addCollateral failed:", e),
+          );
+        } else if (supplyNode) {
           const joinNodes = nodes.filter(
             (n) => n.data?.config?.operationType === "JOIN_STRATEGY",
           );
@@ -450,7 +466,7 @@ export function useDefiBuilder() {
         setCreating(false);
       }
     },
-    [user, nodes, router, openPosition],
+    [user, nodes, router, openPosition, addCollateral],
   );
 
   return {

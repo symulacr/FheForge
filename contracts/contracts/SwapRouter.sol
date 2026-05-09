@@ -13,12 +13,12 @@ contract SwapRouter is Pausable {
     uint256 public immutable EXECUTOR_ROTATION_DELAY;
 
     struct SwapIntent {
-        address tokenIn;
-        address tokenOut;
         uint256 amountIn;
         uint256 minAmountOut;
-        address user;
         uint256 deadline;
+        address tokenIn;
+        address tokenOut;
+        address user;
     }
 
     mapping(bytes32 => SwapIntent) private intents;
@@ -105,12 +105,12 @@ contract SwapRouter is Pausable {
 
     function pause() external onlyOwner {
         _pause();
-        // emit Paused();
+        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        // emit Unpaused();
+        emit Unpaused();
     }
 
     function submitSwapIntent(
