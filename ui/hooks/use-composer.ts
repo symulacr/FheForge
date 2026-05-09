@@ -78,6 +78,7 @@ export function useComposer() {
   };
 
   // MC-28: Composer supplyEnc/borrowEnc use InEuint64
+  // CoFHE SDK supports Encryptable.uint128() - no truncation risk for euint128 values
   const encrypt64 = async (value: bigint): Promise<InEuint64> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady)

@@ -26,7 +26,9 @@
     "migration:run:dev": "node migrations/run-migrations.js --env development",
     "migration:run:prod": "node migrations/run-migrations.js --env production",
     "migration:rollback:dev": "node migrations/run-migrations.js --env development --rollback",
-    "migration:rollback:prod": "node migrations/run-migrations.js --env production --rollback"
+    "migration:rollback:prod": "node migrations/run-migrations.js --env production --rollback",
+    "migration:event-indexing": "node migrations/run-migration.js",
+    "verify:env": "node scripts/verify-env-vars.js"
   },
   "dependencies": {
 

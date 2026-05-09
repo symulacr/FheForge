@@ -260,11 +260,6 @@
             "type": "bytes32"
           },
           {
-            "internalType": "address",
-            "name": "collateralToken",
-            "type": "address"
-          },
-          {
             "internalType": "uint256",
             "name": "collateralAmount",
             "type": "uint256"
@@ -275,34 +270,9 @@
             "type": "uint256"
           },
           {
-            "internalType": "address",
-            "name": "borrowToken",
-            "type": "address"
-          },
-          {
             "internalType": "uint256",
             "name": "poolBorrowAmount",
             "type": "uint256"
-          },
-          {
-            "internalType": "bool",
-            "name": "useOracleBorrow",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint128",
-            "name": "ltvNum",
-            "type": "uint128"
-          },
-          {
-            "internalType": "uint128",
-            "name": "ltvDen",
-            "type": "uint128"
-          },
-          {
-            "internalType": "address",
-            "name": "swapTokenOut",
-            "type": "address"
           },
           {
             "internalType": "uint256",
@@ -315,16 +285,6 @@
             "type": "uint256"
           },
           {
-            "internalType": "uint16",
-            "name": "apyTarget",
-            "type": "uint16"
-          },
-          {
-            "internalType": "uint8",
-            "name": "loopCount",
-            "type": "uint8"
-          },
-          {
             "internalType": "uint256",
             "name": "swapAmountIn",
             "type": "uint256"
@@ -333,6 +293,46 @@
             "internalType": "uint256",
             "name": "swapMinOut",
             "type": "uint256"
+          },
+          {
+            "internalType": "address",
+            "name": "collateralToken",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "borrowToken",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "swapTokenOut",
+            "type": "address"
+          },
+          {
+            "internalType": "uint128",
+            "name": "ltvNum",
+            "type": "uint128"
+          },
+          {
+            "internalType": "uint128",
+            "name": "ltvDen",
+            "type": "uint128"
+          },
+          {
+            "internalType": "bool",
+            "name": "useOracleBorrow",
+            "type": "bool"
+          },
+          {
+            "internalType": "uint16",
+            "name": "apyTarget",
+            "type": "uint16"
+          },
+          {
+            "internalType": "uint8",
+            "name": "loopCount",
+            "type": "uint8"
           },
           {
             "components": [

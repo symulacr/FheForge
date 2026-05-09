@@ -31,6 +31,8 @@ API → https://fheforge-api-production.up.railway.app
 
 - **StrategyVault** — open/add/close pos, `euint128` collat, FHE ACL
 - **LendingPool** — supply/borrow/checkLtvAndBorrow/repay/withdraw, encrypted amt
+- **Lending Actions** — liquidate, borrowWithOracle, emergencyWithdraw, isSupported (MC-36/37/38/44/45)
+- **Event Indexing** — on-chain event monitoring for StrategyVault and LendingPool (MC-55)
 - **SwapRouter** — submit/cancel/execute swap intents, encrypted `amountIn`/`minOut`
 - **StrategyRegistry** — register strategy, track encrypted TVL
 - **DeFi Builder** — ReactFlow canvas compose strategy (SWAP/SUPPLY/BORROW)

@@ -53,6 +53,7 @@ export function useFheVault() {
   };
 
   // MC-27: Vault functions (openPosition, closePosition) use InEuint128
+  // CoFHE SDK supports Encryptable.uint128() - no truncation risk for euint128 values
   const encrypt128 = async (value: bigint): Promise<EncryptedHandle> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");

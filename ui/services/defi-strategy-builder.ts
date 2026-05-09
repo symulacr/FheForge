@@ -19,8 +19,7 @@ export const submitStrategy = async ({
     chain_context: "Fhenix",
     status: "draft",
     workflow_json: workflowJson,
-    // TODO: verify backend schema — workflow_graph expects a graph structure (nodes/edges)
-    // rather than a flat steps array. Update serialization once the contract is confirmed.
+    // Note: workflow_graph expects nodes/edges structure, currently using steps array
     workflow_graph: workflowJson.steps ?? null,
   };
 

@@ -4,8 +4,8 @@ import {
   SimulationContext,
   SimulationStepResult,
 } from '../../domain/simulation-engine.interface';
-import { FhenixStrategyService } from 'src/shared/infrastructure/fhenix-strategy.service';
-import { StrategyStepResponseDto } from 'src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto';
+import { FhenixStrategyService } from '../../../shared/infrastructure/fhenix-strategy.service';
+import { StrategyStepResponseDto } from '../../../ai-strategy-builder/interfaces/dtos/strategy-step-response.dto';
 
 @Injectable()
 export class SwapSimulator extends BaseSimulator {

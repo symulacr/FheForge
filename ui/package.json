@@ -9,7 +9,8 @@
     "type-check": "tsc --noEmit -p tsconfig.json",
     "start": "next start",
     "test": "vitest",
-    "prepare": "husky"
+    "prepare": "husky",
+    "verify:env": "node scripts/verify-env-vars.js"
   },
   "dependencies": {
     "@cofhe/react": "0.5.2",

@@ -6,8 +6,6 @@ import { getContractAddresses } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { Encryptable } from "@cofhe/sdk";
 
-// TODO: Replace `as any` with proper tuple types once ABI codegen is set up.
-
 export interface RebalanceParams {
   collateralToken: `0x${string}`;
   addCollateralAmount: bigint;
@@ -93,7 +91,7 @@ export function useRebalance() {
       address: addresses.composer,
       abi: FheForgeComposerAbi,
       functionName: "rebalance",
-      args: [params, encrypted] as [RebalanceParams, RebalanceEncrypted], // TODO: generate strict tuple types from ABI
+      args: [params, encrypted] as [RebalanceParams, RebalanceEncrypted],
     });
   };
 
