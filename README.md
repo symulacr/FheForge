@@ -15,12 +15,13 @@ API → https://fheforge-api-production.up.railway.app
 
 | Contract | Address |
 |---|---|---|
-| StrategyVault | `0x3D16Db66d778b5465190d21b792130204D839f86` |
-| LendingPool | `0xc11129958089d4c108e69FA042cEB121a004e555` |
+| StrategyVault | `0x543Cb8AB0e9dC71553c009B9aA095fB4a1fc3745` |
+| LendingPool | `0xAB4CD38DFdf8F7d446d3758ED5958dFcB84Af8C6` |
 | SwapRouter | `0x92747133b448767eE94d1B3b19fD1258c1C49d5c` |
 | StrategyRegistry | `0xfe9FAb915b0271CEA1243a299a4a4085497DE260` |
-| PriceOracle | `0xB2387ee4a6dC95603633780D86D23D84dE9C7fd3` |
-| FheForgeComposer | `0x267c694B6c9a02e9fc511070A076E53828765aEB` |
+| PriceOracle | `0x8c7CF00EA1dB76C8B2465e0CA944f94407f0633C` |
+| FheForgeComposer | `0x13Cdc64499530f69553D26C8807A37434c74953b` |
+| ExecutorContract | `0x5BF0a5cB4a0e4ae82a13bC4a8d85DfD42D6D4233` |
 | WETH (mock) | `0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d` |
 | USDC (mock) | `0x150376EdEbc5AC48771655a61a795d828BeC8Df6` |
 

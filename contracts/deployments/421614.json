@@ -2,24 +2,29 @@
   "network": "arb-sepolia",
   "chainId": 421614,
   "deployer": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
-  "deployedAt": "2026-05-08T23:30:00Z",
-  "mode": "wave9",
-  "wave": 9,
+  "deployedAt": "2026-05-09T17:45:00Z",
+  "mode": "wave10",
+  "wave": 10,
   "contracts": {
     "StrategyRegistry": "0xfe9FAb915b0271CEA1243a299a4a4085497DE260",
-    "StrategyVault": "0x3D16Db66d778b5465190d21b792130204D839f86",
-    "FheForgeComposer": "0x267c694B6c9a02e9fc511070A076E53828765aEB",
-    "LendingPool": "0xc11129958089d4c108e69FA042cEB121a004e555",
+    "StrategyVault": "0x543Cb8AB0e9dC71553c009B9aA095fB4a1fc3745",
+    "FheForgeComposer": "0x13Cdc64499530f69553D26C8807A37434c74953b",
+    "LendingPool": "0xAB4CD38DFdf8F7d446d3758ED5958dFcB84Af8C6",
     "SwapRouter": "0x92747133b448767eE94d1B3b19fD1258c1C49d5c",
-    "PriceOracle": "0xB2387ee4a6dC95603633780D86D23D84dE9C7fd3"
+    "PriceOracle": "0x8c7CF00EA1dB76C8B2465e0CA944f94407f0633C",
+    "ExecutorContract": "0x5BF0a5cB4a0e4ae82a13bC4a8d85DfD42D6D4233"
   },
   "deploymentTxs": {
     "StrategyRegistry": "0x35b2775f994cbb3842f6a6c838ddcfe9bacc01f46c28832022ba7f21100d7857",
-    "StrategyVault": "0xdf87b810acbd762c481d6d3458bd2b20824d26427c85000002a8e1adaec8e90a",
-    "FheForgeComposer": "0x2b58f0ceb151a26d87408051347c068fd1f465b2cebe94c5c3d2e5945070fa06",
-    "setVault": "0x9f0053128ce5ed7b10955091acca9b3be06b7c701536fbb33e332e2722791929"
+    "StrategyVault": "wave10",
+    "FheForgeComposer": "wave10",
+    "LendingPool": "wave10",
+    "PriceOracle": "wave10",
+    "ExecutorContract": "wave10",
+    "setVault": "wave10",
+    "setComposer": "wave10"
   },
-  "notes": "Wave 9 full: all contracts owned by 0x4855...",
+  "notes": "Wave 10: onlyComposer gate, ZeroAmount guard, FHE ACL fix, setComposer wired, ExecutorContract deployed (not yet proposed — SwapRouter owner is 0xEf13...)",
   "swapExecutor": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
   "weth": "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d"
 }

@@ -31,11 +31,14 @@ async function main() {
   const vaultAddr = await vault.getAddress();
   console.log("Vault:", vaultAddr);
 
-  // 4. Wire registry → vault (timelocked rotation)
+  // 4. Wire registry → vault (timelocked rotation — 90s delay)
   console.log("\n── Rotating vault on registry ──");
   const registry = await ethers.getContractAt("StrategyRegistry", dep.contracts.StrategyRegistry);
+  const rotationDelay = await registry.VAULT_ROTATION_DELAY();
+  console.log("Vault rotation delay:", rotationDelay.toString(), "seconds");
   await (await registry.proposeVault(vaultAddr)).wait();
-  console.log("Registry.proposeVault done");
+  console.log("Registry.proposeVault done — waiting", rotationDelay.toString(), "s for timelock...");
+  await new Promise(resolve => setTimeout(resolve, Number(rotationDelay) * 1000 + 2000));
   await (await registry.acceptVault()).wait();
   console.log("Registry.acceptVault done");
 
@@ -74,14 +77,39 @@ async function main() {
   await (await oracle.setCollateralFactor(WETH, 8000, 8500)).wait();
   console.log("Oracle feeds set");
 
-  // 9. Update deployment record
+  // 9. MC-39: Deploy ExecutorContract + propose as SwapRouter.executor
+  console.log("\n── Deploying ExecutorContract ──");
+  const ExecContract = await ethers.getContractFactory("ExecutorContract");
+  const execContract = await ExecContract.deploy();
+  await execContract.waitForDeployment();
+  const execAddr = await execContract.getAddress();
+  console.log("ExecutorContract:", execAddr);
+
+  // Propose as SwapRouter executor (timelocked — must wait EXECUTOR_ROTATION_DELAY)
+  const router = await ethers.getContractAt("SwapRouter", dep.contracts.SwapRouter);
+  const routerOwner = await router.OWNER();
+  if (routerOwner.toLowerCase() === deployer.address.toLowerCase()) {
+    await (await router.proposeExecutor(execAddr)).wait();
+    console.log("Router.proposeExecutor(", execAddr, ") done");
+    const execDelay = await router.EXECUTOR_ROTATION_DELAY();
+    console.log("Waiting", execDelay.toString(), "s for timelock...");
+    await new Promise(resolve => setTimeout(resolve, Number(execDelay) * 1000 + 2000));
+    await (await router.acceptExecutor()).wait();
+    console.log("Router.acceptExecutor done");
+  } else {
+    console.log("SKIP: Deployer", deployer.address, "is not SwapRouter owner", routerOwner);
+    console.log("ExecutorContract deployed at", execAddr, "— owner must call router.proposeExecutor() + acceptExecutor()");
+  }
+
+  // 10. Update deployment record
   dep.contracts.LendingPool = poolAddr;
   dep.contracts.PriceOracle = oracleAddr;
   dep.contracts.StrategyVault = vaultAddr;
   dep.contracts.FheForgeComposer = composerAddr;
+  dep.contracts.ExecutorContract = execAddr;
   dep.wave = 10;
   dep.deployedAt = new Date().toISOString();
-  dep.notes = "Wave 10: onlyComposer gate, ZeroAmount guard, FHE ACL fix, setComposer wired";
+  dep.notes = "Wave 10: onlyComposer gate, ZeroAmount guard, FHE ACL fix, setComposer wired, ExecutorContract deployed";
   fs.writeFileSync("deployments/421614.json", JSON.stringify(dep, null, 2));
 
   console.log("\n── NEW ADDRESSES ──");
