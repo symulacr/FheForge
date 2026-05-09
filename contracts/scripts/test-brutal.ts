@@ -31,7 +31,7 @@ console.log("ETH:",ethers.formatEther(await ethers.provider.getBalance(a)));
 // P0: CoFHE + fund
 console.log("\n=== P0 ===");
 let cc=null;
-try{cc=createCofheClient(createCofheConfig({environment:"node",supportedChains:[arbSepolia]}));const{x,y}=await hre.cofhe.hardhatSignerAdapter(d);await cc.connect(x,y);await cc.permits.createSelf({issuer:a});Y("CoFHE")}catch(e){N("CoFHE",dec(e));return}
+try{cc=await hre.cofhe.createClientWithBatteries(d);Y("CoFHE")}catch(e){N("CoFHE",dec(e));return}
 const b=await tok.balanceOf(a);if(b<50_000_000n){await(await tok.mint(a,50_000_000n)).wait();Y("mint USDC 50M")}else Y("USDC");
 const wb=await wethTok.balanceOf(a);if(wb<10_000_000n){await(await wethTok.mint(a,10_000_000n)).wait();Y("mint WETH 10M")}else Y("WETH");
 const[a1,a2,a3]=await Promise.all([tok.allowance(a,dep.contracts.StrategyVault),tok.allowance(a,dep.contracts.LendingPool),tok.allowance(a,dep.contracts.FheForgeComposer)]);
