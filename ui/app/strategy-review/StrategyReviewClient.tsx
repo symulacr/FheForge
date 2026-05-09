@@ -42,7 +42,7 @@ export default function StrategyReviewClient() {
   const searchParams = useSearchParams();
   const [executing, setExecuting] = useState(false);
   const [slippage, setSlippage] = useState(SLIPPAGE_TOLERANCE);
-  const { openLeveragedStrategy, encrypt128, isPending: composerPending } = useComposer();
+  const { openLeveragedStrategy, encrypt128, encrypt64, isPending: composerPending } = useComposer();
 
   const encodedData = searchParams.get("data");
   const strategyIdParam = searchParams.get("strategyId");
@@ -128,8 +128,8 @@ export default function StrategyReviewClient() {
       const [encCollateral, encSupply, encBorrow] =
         await Promise.all([
           encrypt128(collateralWei),
-          encrypt128(supplyWei),
-          encrypt128(borrowWei),
+          encrypt64(supplyWei),
+          encrypt64(borrowWei),
         ]);
 
       const permit2Auth = await signPermit();

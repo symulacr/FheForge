@@ -434,6 +434,7 @@ export function useDefiBuilder() {
               collateralToken,
               collateralEth,
               collateralEth,
+              BigInt(strategyId),
             ).catch((e: unknown) => console.warn("openPosition failed:", e));
           }
         }

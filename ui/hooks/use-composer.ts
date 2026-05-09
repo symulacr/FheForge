@@ -65,13 +65,26 @@ export function useComposer() {
     }
   }, [chainId]);
 
+  // MC-27: Composer collateral uses InEuint128
   const encrypt128 = async (value: bigint): Promise<InEuint128> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady)
       throw new Error("CoFHE permit not ready");
     const handles = (await cofheClient
-      .encryptInputs([Encryptable.uint64(value)])
+      .encryptInputs([Encryptable.uint128(value)])
       .execute()) as InEuint128[];
+    if (!handles[0]) throw new Error("CoFHE returned empty handle list");
+    return handles[0];
+  };
+
+  // MC-28: Composer supplyEnc/borrowEnc use InEuint64
+  const encrypt64 = async (value: bigint): Promise<InEuint64> => {
+    if (!cofheClient) throw new Error("CoFHE client not ready");
+    if (!cofheState.permitReady)
+      throw new Error("CoFHE permit not ready");
+    const handles = (await cofheClient
+      .encryptInputs([Encryptable.uint64(value)])
+      .execute()) as InEuint64[];
     if (!handles[0]) throw new Error("CoFHE returned empty handle list");
     return handles[0];
   };
@@ -97,5 +110,6 @@ export function useComposer() {
     composerAddress,
     isPending,
     encrypt128,
+    encrypt64,
   };
 }

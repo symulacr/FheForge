@@ -42,7 +42,19 @@ export function useFheVault() {
     return addresses;
   };
 
+  // MC-27: Vault functions (openPosition, closePosition) use InEuint128
   const encrypt128 = async (value: bigint): Promise<EncryptedHandle> => {
+    if (!cofheClient) throw new Error("CoFHE client not ready");
+    if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");
+    const handles = (await cofheClient
+      .encryptInputs([Encryptable.uint128(value)])
+      .execute()) as EncryptedHandle[];
+    if (!handles[0]) throw new Error("CoFHE returned empty handle list");
+    return handles[0];
+  };
+
+  // MC-28: Pool functions (repay, withdraw, supplyEth, withdrawEth) + Vault.addCollateral use InEuint64
+  const encrypt64 = async (value: bigint): Promise<EncryptedHandle> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");
     const handles = (await cofheClient
@@ -84,10 +96,13 @@ export function useFheVault() {
     return decryptForView(encryptedAmount);
   };
 
+  // MC-09: added strategyId parameter (5th arg required by StrategyVault.openPosition)
+  // MC-27: uses encrypt128 (InEuint128)
   const openPosition = async (
     collateralToken: string,
     collateralAmount: string,
     collateralEth: string,
+    strategyId: bigint = 0n,
   ) => {
     const { vault } = requireAddresses();
     const collateral = parseUnits(collateralEth, 18);
@@ -109,6 +124,7 @@ export function useFheVault() {
           collateralToken,
           amountWei,
           encColl,
+          strategyId,
           userAddr,
         ],
       });
@@ -117,12 +133,14 @@ export function useFheVault() {
     }
   };
 
-  const supplyToLending = async (
-    token: string,
+  // MC-13: addCollateral — StrategyVault.addCollateral(address, uint256, InEuint64, address)
+  // MC-28: uses encrypt64 (InEuint64)
+  const addCollateral = async (
+    collateralToken: string,
     amount: string,
     decimals = 18,
   ) => {
-    const { pool } = requireAddresses();
+    const { vault } = requireAddresses();
     const amt = parseUnits(amount, decimals);
     validateEuint128(amt);
 
@@ -131,51 +149,30 @@ export function useFheVault() {
 
     setIsEncrypting(true);
     try {
-      const enc = await encrypt128(amt);
+      const enc = await encrypt64(amt);
       return writeContractAsync({
-        address: pool as `0x${string}`,
-        abi: PoolABI,
-        functionName: "supplyToLending",
-        args: [token, amt, enc, userAddr],
+        address: vault as `0x${string}`,
+        abi: VaultABI,
+        functionName: "addCollateral",
+        args: [collateralToken, amt, enc, userAddr],
       });
     } finally {
       setIsEncrypting(false);
     }
   };
 
-  const borrowFromLending = async (
-    token: string,
-    borrowAmount: string,
-    decimals = 18,
-  ) => {
-    const { pool } = requireAddresses();
-    const amt = parseUnits(borrowAmount, decimals);
-    validateEuint128(amt);
+  // MC-07/08: supplyToLending and borrowFromLending REMOVED.
+  // These are onlyComposer-gated on LendingPool — user calls revert.
+  // Use useComposer().openLeveragedStrategy or useRebalance() instead.
 
-    const userAddr = userAddress;
-    if (!userAddr) throw new Error("Wallet not connected");
-
-    setIsEncrypting(true);
-    try {
-      const enc = await encrypt128(amt);
-      return writeContractAsync({
-        address: pool as `0x${string}`,
-        abi: PoolABI,
-        functionName: "borrowFromLending",
-        args: [token, amt, enc, userAddr],
-      });
-    } finally {
-      setIsEncrypting(false);
-    }
-  };
-
+  // MC-28: Pool repay uses InEuint64
   const repayBorrow = async (token: string, amount: string, decimals = 18) => {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
     validateEuint128(amt);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt128(amt);
+      const enc = await encrypt64(amt);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
@@ -187,6 +184,7 @@ export function useFheVault() {
     }
   };
 
+  // MC-28: Pool withdraw uses InEuint64
   const withdrawSupply = async (
     token: string,
     amount: string,
@@ -197,7 +195,7 @@ export function useFheVault() {
     validateEuint128(amt);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt128(amt);
+      const enc = await encrypt64(amt);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
@@ -231,6 +229,7 @@ export function useFheVault() {
     });
   };
 
+  // MC-27: Vault closePosition uses InEuint128
   const closePosition = async (
     collateralAmount: bigint,
     encryptedCollateralAmount: EncryptedUint128Input,
@@ -244,15 +243,13 @@ export function useFheVault() {
     });
   };
 
-  // TODO: Wire to vault `repay` once the ABI exposes a repay function.
-  // The current StrategyVault ABI does not include a standalone repay;
-  // repayment goes through the LendingPool via `repayBorrow` above.
+  // MC-28: Pool repay uses InEuint64
   const repay = async (token: string, amount: bigint): Promise<Hash> => {
     const { pool } = requireAddresses();
     validateEuint128(amount);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt128(amount);
+      const enc = await encrypt64(amount);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
@@ -264,15 +261,13 @@ export function useFheVault() {
     }
   };
 
-  // TODO: Wire to vault `withdraw` once the ABI exposes a withdraw function.
-  // The current StrategyVault ABI does not include a standalone withdraw;
-  // withdrawal goes through the LendingPool via `withdrawSupply` above.
+  // MC-28: Pool withdraw uses InEuint64
   const withdraw = async (token: string, amount: bigint): Promise<Hash> => {
     const { pool } = requireAddresses();
     validateEuint128(amount);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt128(amount);
+      const enc = await encrypt64(amount);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
@@ -284,54 +279,47 @@ export function useFheVault() {
     }
   };
 
-  // TODO: Wire supplyEth once the Vault ABI exposes a native ETH supply function.
-  // Current StrategyVault uses addCollateral for ERC-20 tokens.
-  // const supplyEth = async (amount: bigint): Promise<Hash> => {
-  //   const { vault } = requireAddresses();
-  //   validateEuint128(amount);
-  //   setIsEncrypting(true);
-  //   try {
-  //     const enc = await encrypt128(amount);
-  //     return writeContractAsync({
-  //       address: vault as `0x${string}`,
-  //       abi: VaultABI,
-  //       functionName: "supplyEth",
-  //       args: [amount, enc],
-  //     });
-  //   } finally {
-  //     setIsEncrypting(false);
-  //   }
-  // };
+  // MC-20/28: Pool supplyEth uses InEuint64
+  const supplyEth = async (amount: bigint): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    validateEuint128(amount);
+    setIsEncrypting(true);
+    try {
+      const enc = await encrypt64(amount);
+      return writeContractAsync({
+        address: pool as `0x${string}`,
+        abi: PoolABI,
+        functionName: "supplyEth",
+        args: [enc],
+        value: amount,
+      });
+    } finally {
+      setIsEncrypting(false);
+    }
+  };
 
-  // TODO: Wire withdrawEth once the Vault ABI exposes a native ETH withdraw function.
-  // Current StrategyVault uses closePosition or emergencyWithdraw for withdrawals.
-  // const withdrawEth = async (amount: bigint): Promise<Hash> => {
-  //   const { vault } = requireAddresses();
-  //   validateEuint128(amount);
-  //   setIsEncrypting(true);
-  //   try {
-  //     const enc = await encrypt128(amount);
-  //     return writeContractAsync({
-  //       address: vault as `0x${string}`,
-  //       abi: VaultABI,
-  //       functionName: "withdrawEth",
-  //       args: [amount, enc],
-  //     });
-  //   } finally {
-  //     setIsEncrypting(false);
-  //   }
-  // };
+  // MC-21/28: Pool withdrawEth uses InEuint64
+  const withdrawEth = async (amount: bigint, encAmount: EncryptedHandle): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    return writeContractAsync({
+      address: pool as `0x${string}`,
+      abi: PoolABI,
+      functionName: "withdrawEth",
+      args: [amount, encAmount],
+    });
+  };
 
   return {
     openPosition,
-    supplyToLending,
-    borrowFromLending,
+    addCollateral,
     repayBorrow,
     withdrawSupply,
     submitSwapIntent,
     closePosition,
     repay,
     withdraw,
+    supplyEth,
+    withdrawEth,
     revealCollateral,
     revealBorrow,
     revealSwapIntent,

@@ -4,7 +4,7 @@ import type { Address, Hash } from "viem";
 
 import Permit2ABI from "@/abis/Permit2.json";
 
-const PERMIT2_ADDRESS = "0x000000000022D473029F534aF5eCd6b4E4A6884E" as const;
+const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as const;
 
 const PERMIT_DETAILS_TYPE = {
   PermitDetails: [
@@ -58,7 +58,7 @@ export function usePermit2(
         token,
         amount: approvedAmount,
         expiration,
-nonce: 0,
+        nonce: 0,
       },
     });
 

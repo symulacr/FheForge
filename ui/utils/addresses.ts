@@ -63,6 +63,7 @@ export const validateEnvVars = () => {
     "NEXT_PUBLIC_REGISTRY_ADDRESS",
     "NEXT_PUBLIC_COMPOSER_ADDRESS",
     "NEXT_PUBLIC_SWAP_ROUTER_ADDRESS",
+    "NEXT_PUBLIC_ORACLE_ADDRESS",
   ];
   const missing = required.filter((k) => !process.env[k]);
   if (missing.length > 0) {
