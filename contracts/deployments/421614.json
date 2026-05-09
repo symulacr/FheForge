@@ -8,10 +8,10 @@
   "contracts": {
     "StrategyRegistry": "0xfe9FAb915b0271CEA1243a299a4a4085497DE260",
     "StrategyVault": "0x3D16Db66d778b5465190d21b792130204D839f86",
-    "FheForgeComposer": "0x7eC5068a91859542a7d747dAA1097de294cD78Bc",
-    "LendingPool": "0x225799A4B2272f8e062f2960374f9248722350Be",
+    "FheForgeComposer": "0x267c694B6c9a02e9fc511070A076E53828765aEB",
+    "LendingPool": "0xc11129958089d4c108e69FA042cEB121a004e555",
     "SwapRouter": "0x92747133b448767eE94d1B3b19fD1258c1C49d5c",
-    "PriceOracle": "0xd1f834681E5C32485DF421FE2672d31707cF0ebb"
+    "PriceOracle": "0xB2387ee4a6dC95603633780D86D23D84dE9C7fd3"
   },
   "deploymentTxs": {
     "StrategyRegistry": "0x35b2775f994cbb3842f6a6c838ddcfe9bacc01f46c28832022ba7f21100d7857",
@@ -19,7 +19,7 @@
     "FheForgeComposer": "0x2b58f0ceb151a26d87408051347c068fd1f465b2cebe94c5c3d2e5945070fa06",
     "setVault": "0x9f0053128ce5ed7b10955091acca9b3be06b7c701536fbb33e332e2722791929"
   },
-  "notes": "Wave 9: merged _modifyTvl. Wave 8: FHE ACL cross-contract fix. Pool/Router/Oracle unchanged from v4.",
+  "notes": "Wave 9 full: all contracts owned by 0x4855...",
   "swapExecutor": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
   "weth": "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d"
 }
