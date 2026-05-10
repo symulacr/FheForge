@@ -68,6 +68,7 @@ Run: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-s
 |---|---|---|
 | MED | Dual plain+encrypted input skew — no on-chain `amount == encAmount` enforcement. Mitigation requires CoFHE ZK proof of equality (post-MVP). | Known — documented in @dev |
 | LOW | 2 solhint warnings (struct packing). Cosmetic. | Deferred |
+| INFO | Webpack build warnings (ox/viem dynamic imports, circular dependencies). Third-party library issue, does not affect functionality. | Monitored — library updates |
 
 ### Resolved
 

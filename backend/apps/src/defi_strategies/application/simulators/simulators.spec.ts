@@ -16,7 +16,8 @@ describe('MC-56: Backend Simulators On-Chain APY Reads', () => {
       get: jest.fn((key: string) => {
         const config = {
           FHENIX_RPC: 'https://test-rpc.example.com',
-          STRATEGY_REGISTRY_ADDRESS: '0x1234567890123456789012345678901234567890',
+          STRATEGY_REGISTRY_ADDRESS:
+            '0x1234567890123456789012345678901234567890',
         };
         return config[key as keyof typeof config];
       }),

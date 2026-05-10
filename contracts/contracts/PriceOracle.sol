@@ -37,6 +37,7 @@ contract PriceOracle {
     error PythUpdateFeeMismatch();
     error UncertainPrice();
     error EthTransferFailed();
+    error ZeroPrice();
 
     event SourceSet(
         address indexed token,
@@ -117,7 +118,8 @@ contract PriceOracle {
 
         PythStructs.Price memory p = PYTH.getPriceNoOlderThan(id, threshold);
 
-        if (p.price < 1) revert NegativePrice();
+        if (p.price == 0) revert ZeroPrice();
+        if (p.price < 0) revert NegativePrice();
         uint256 absAnswer = int256(p.price).toUint256();
 
         if (p.conf < 1) revert UncertainPrice();

@@ -16,6 +16,11 @@
   },
   {
     "inputs": [],
+    "name": "Euint64Overflow",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ExceedsBorrowBalance",
     "type": "error"
   },
@@ -192,6 +197,19 @@
       }
     ],
     "name": "Borrowed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "composer",
+        "type": "address"
+      }
+    ],
+    "name": "ComposerSet",
     "type": "event"
   },
   {

@@ -130,7 +130,6 @@ export class StrategyConstraintsService {
         await this.defiPairsService.getAvailablePairsForToken(tokenId);
       const operations: AvailableOperation[] = [];
 
-      
       for (const pair of asInput) {
         const tokenOut = this.getTokenById(pair.token_out_id!);
 
@@ -149,7 +148,6 @@ export class StrategyConstraintsService {
         });
       }
 
-      
       for (const pair of asOutput) {
         const tokenIn = this.getTokenById(pair.token_in_id!);
 
@@ -161,14 +159,12 @@ export class StrategyConstraintsService {
         });
       }
 
-      
       operations.push({
         type: OperationType.SUPPLY,
         tokenIn: this.getTokenById(tokenId),
         supported: true,
       });
 
-      
       operations.push({
         type: OperationType.ENABLE_E_MODE,
         supported: true,
@@ -245,10 +241,9 @@ export class StrategyConstraintsService {
     const intent = userIntent.toLowerCase();
     const context = additionalContext?.toLowerCase() || '';
 
-    let maxLeverage = 3; 
+    let maxLeverage = 3;
     let riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' = 'MEDIUM';
 
-    
     if (
       intent.includes('conservative') ||
       intent.includes('safe') ||
@@ -268,7 +263,6 @@ export class StrategyConstraintsService {
       riskLevel = 'MEDIUM';
     }
 
-    
     if (context.includes('max') && context.includes('leverage')) {
       const leverageMatch = context.match(/max(?:imum)?\s*(\d+)x?\s*leverage/);
       if (leverageMatch) {
@@ -278,7 +272,7 @@ export class StrategyConstraintsService {
 
     return {
       maxLeverage,
-      supportedPairs: [], 
+      supportedPairs: [],
       riskLevel,
     };
   }
@@ -316,7 +310,7 @@ export class StrategyConstraintsService {
         }
 
         case OperationType.ENABLE_E_MODE:
-          return true; 
+          return true;
 
         default:
           return false;

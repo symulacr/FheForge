@@ -12,7 +12,6 @@ export class DefiStrategyExecutionService {
   ) {}
 
   async create(data: Partial<DefiStrategyExecution>) {
-    
     const version = await this.versionService.getById(
       data.strategy_version_id as string,
     );

@@ -66,7 +66,10 @@ export class SwapSimulator extends BaseSimulator {
     };
   }
 
-  private async getExchangeRate(assetIdIn: string, assetIdOut: string): Promise<number> {
+  private async getExchangeRate(
+    assetIdIn: string,
+    assetIdOut: string,
+  ): Promise<number> {
     const exchangeRate = await this.fhenixStrategyService.getAssetPrice(
       assetIdIn,
       assetIdOut,

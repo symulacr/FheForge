@@ -430,6 +430,10 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         address token,
         Permit2Authorization calldata auth
     ) internal returns (uint256 pulled) {
+        // C-10: deadline==0 means "skip Permit2, use safeTransferFrom fallback" instead.
+        // This overloads the Permit2 deadline field — a real Permit2 signature with
+        // deadline=0 is invalid. Callers must ensure deadline=0 is only used to
+        // signal "no Permit2 auth", not as an actual Permit2 deadline.
         if (auth.deadline == 0) return 0;
         IPermit2(PERMIT2).permitTransferFrom(
             IPermit2.PermitTransferFrom({

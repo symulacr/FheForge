@@ -52,13 +52,12 @@ export class StrategyParserService {
     tokenAmount?: number,
   ): Promise<StrategyStepResponseDto[]> {
     this.logger.log('Parsing natural language input', {
-      userIntent: userIntent.substring(0, 100) + '...', 
+      userIntent: userIntent.substring(0, 100) + '...',
       hasAdditionalContext: !!additionalContext,
       tokenAmount,
     });
 
     try {
-      
       if (this.isStructuredStepsFormat(userIntent)) {
         this.logger.debug('Using structured steps parsing');
         return this.parseStructuredSteps(
@@ -68,7 +67,6 @@ export class StrategyParserService {
         );
       }
 
-      
       this.logger.debug('Using AI-powered parsing');
       const aiResponse = await this.geminiAi.generateStrategySteps(
         userIntent,
@@ -76,7 +74,6 @@ export class StrategyParserService {
         tokenAmount,
       );
 
-      
       return this.validateAndSanitizeSteps(aiResponse);
     } catch (error) {
       this.logger.error(
@@ -87,18 +84,7 @@ export class StrategyParserService {
     }
   }
 
-  
-
-
-
-
-
-
-
-
-
   private parseAiResponse(aiResponse: unknown): StrategyStepResponseDto[] {
-    
     if (Array.isArray(aiResponse)) {
       this.logger.debug('AI response is already an array', {
         stepCount: aiResponse.length,
@@ -106,7 +92,6 @@ export class StrategyParserService {
       return aiResponse as StrategyStepResponseDto[];
     }
 
-    
     if (
       typeof aiResponse === 'object' &&
       aiResponse !== null &&
@@ -120,7 +105,6 @@ export class StrategyParserService {
       return steps as StrategyStepResponseDto[];
     }
 
-    
     if (typeof aiResponse === 'string') {
       this.logger.debug('AI response is string, attempting JSON parse', {
         length: aiResponse.length,
@@ -165,7 +149,6 @@ export class StrategyParserService {
       }
     }
 
-    
     this.logger.error('Unsupported AI response format', {
       responseType: typeof aiResponse,
       isNull: aiResponse === null,
@@ -183,17 +166,15 @@ export class StrategyParserService {
 
     return steps.map((step, index) => {
       const rawStep = step as StrategyStepRaw;
-      
+
       if (!rawStep.type || !rawStep.agent) {
         throw new Error(
           `Step ${index + 1}: Missing required fields (type, agent)`,
         );
       }
 
-      
       const stepNumber = rawStep.step || index + 1;
 
-      
       const validTypes = [
         'SWAP',
         'SUPPLY',
@@ -212,7 +193,6 @@ export class StrategyParserService {
         );
       }
 
-      
       if (rawStep.tokenIn?.amount) {
         rawStep.tokenIn.amount = Number(
           Number(rawStep.tokenIn.amount).toFixed(6),
@@ -241,29 +221,23 @@ export class StrategyParserService {
   ): StrategyStepResponseDto[] {
     const normalizedIntent = userIntent.toLowerCase().trim();
 
-    
     const { inputToken, defaultAmount } =
       this.extractInputTokenFromIntent(userIntent);
     const finalAmount = tokenAmount || defaultAmount;
     const tokenSymbol = inputToken;
     const amount = finalAmount;
 
-    
     const assetId = this.getAssetIdBySymbol(tokenSymbol);
     const inputTokenObj = { symbol: tokenSymbol, amount, assetId };
 
-    
     if (this.isCustomStrategy(normalizedIntent)) {
       return this.parseCustomStrategy(normalizedIntent, inputTokenObj);
     }
 
-    
     return this.createSimpleSupplyStrategy(inputTokenObj);
   }
 
   private isStructuredStepsFormat(input: string): boolean {
-    
-    
     const numberedStepsPattern =
       /\d+\.\s*(supply|lend|borrow|swap|join|stake)/i;
     const hasMultipleSteps = (input.match(/\d+\./g) || []).length >= 2;
@@ -278,7 +252,6 @@ export class StrategyParserService {
   ): StrategyStepResponseDto[] {
     const steps: StrategyStepResponseDto[] = [];
 
-    
     const { inputToken, defaultAmount } =
       this.extractInputTokenFromIntent(input);
     const finalAmount = tokenAmount || defaultAmount;
@@ -293,7 +266,6 @@ export class StrategyParserService {
     for (const stepMatch of stepMatches) {
       const normalizedStep = stepMatch.toLowerCase().trim();
 
-      
       if (
         normalizedStep.includes('lend') ||
         normalizedStep.includes('supply')
@@ -307,7 +279,7 @@ export class StrategyParserService {
         );
         if (step) {
           steps.push(step);
-          
+
           if (step.tokenIn) {
             currentTokenAmounts[step.tokenIn.symbol] = Math.max(
               0,
@@ -326,7 +298,7 @@ export class StrategyParserService {
         );
         if (step) {
           steps.push(step);
-          
+
           if (step.tokenOut) {
             currentTokenAmounts[step.tokenOut.symbol] =
               (currentTokenAmounts[step.tokenOut.symbol] || 0) +
@@ -345,7 +317,7 @@ export class StrategyParserService {
         );
         if (step) {
           steps.push(step);
-          
+
           if (step.tokenIn && step.tokenOut) {
             currentTokenAmounts[step.tokenIn.symbol] = Math.max(
               0,
@@ -373,7 +345,6 @@ export class StrategyParserService {
       stepNumber++;
     }
 
-    
     const hasJoinStrategy = steps.some((s) => s.type === 'JOIN_STRATEGY');
     const explicitEMode = /enable\s+e\s*mode/i.test(input);
 
@@ -384,7 +355,6 @@ export class StrategyParserService {
         agent: 'FHENIX',
       });
 
-      
       steps.forEach((step, index) => {
         step.step = index + 1;
       });
@@ -398,19 +368,16 @@ export class StrategyParserService {
     stepNumber: number,
     inputToken: { symbol: string; amount: number; assetId?: string },
   ): StrategyStepResponseDto | null {
-    
     const tokenMatch = stepLine.match(/supply\s+(WETH|USDC|USDT)/i);
     const percentageMatch = stepLine.match(/(\d+)%/);
 
-    
     let token: string;
     if (tokenMatch) {
       token = tokenMatch[1].toUpperCase();
     } else if (stepNumber === 1) {
       token = inputToken.symbol.toUpperCase();
     } else {
-      
-      token = 'WETH'; 
+      token = 'WETH';
     }
 
     const percentage = percentageMatch ? parseInt(percentageMatch[1]) : 100;
@@ -432,11 +399,9 @@ export class StrategyParserService {
     inputToken: string;
     defaultAmount: number;
   } {
-    
     const amountMatch = input.match(/(\d+(?:\.\d+)?)\s*(WETH|USDC|USDT)/i);
     const tokenMatch = input.match(/(WETH|USDC|USDT)/i);
 
-    
     const initialTokenMatch = input.match(
       /initial\s+token\s+is\s+(WETH|USDC|USDT)/i,
     );
@@ -444,22 +409,18 @@ export class StrategyParserService {
       /with\s+(\d+(?:\.\d+)?)\s*(WETH|USDC|USDT)/i,
     );
 
-    let inputToken = 'WETH'; 
-    let defaultAmount = 10; 
+    let inputToken = 'WETH';
+    let defaultAmount = 10;
 
-    
     if (initialTokenMatch) {
       inputToken = initialTokenMatch[1].toUpperCase();
-    }
-    
-    else if (withTokenMatch) {
+    } else if (withTokenMatch) {
       defaultAmount = parseFloat(withTokenMatch[1]);
       inputToken = withTokenMatch[2].toUpperCase();
     } else if (amountMatch) {
       defaultAmount = parseFloat(amountMatch[1]);
       inputToken = amountMatch[2].toUpperCase();
     } else if (tokenMatch) {
-      
       inputToken = tokenMatch[1].toUpperCase();
     }
 
@@ -473,7 +434,6 @@ export class StrategyParserService {
     finalAmount: number,
     currentTokenAmounts: { [symbol: string]: number },
   ): StrategyStepResponseDto | null {
-    
     const tokenMatch = stepLine.match(/supply\s+(WETH|USDC|USDT)/i);
     const percentageMatch = stepLine.match(/(\d+)%/);
 
@@ -482,7 +442,7 @@ export class StrategyParserService {
 
     if (tokenMatch) {
       token = tokenMatch[1].toUpperCase();
-      
+
       const availableAmount = currentTokenAmounts[token] || finalAmount;
       const percentage = percentageMatch ? parseInt(percentageMatch[1]) : 100;
       amount = (availableAmount * percentage) / 100;
@@ -491,7 +451,6 @@ export class StrategyParserService {
       const percentage = percentageMatch ? parseInt(percentageMatch[1]) : 100;
       amount = (finalAmount * percentage) / 100;
     } else {
-      
       token = 'WETH';
       amount = finalAmount;
     }
@@ -515,7 +474,6 @@ export class StrategyParserService {
     finalAmount: number,
     currentTokenAmounts: { [symbol: string]: number },
   ): StrategyStepResponseDto | null {
-    
     const borrowTokenMatch = stepLine.match(/borrow\s+(WETH|USDC|USDT)/i);
     const collateralTokenMatch = stepLine.match(/using.*?(WETH|USDC|USDT)/i);
     const ltvMatch = stepLine.match(/(\d+)%\s*ltv/i);
@@ -523,9 +481,8 @@ export class StrategyParserService {
     const borrowToken = borrowTokenMatch
       ? borrowTokenMatch[1].toUpperCase()
       : 'WETH';
-    const ltv = ltvMatch ? parseInt(ltvMatch[1]) : 50; 
+    const ltv = ltvMatch ? parseInt(ltvMatch[1]) : 50;
 
-    
     let borrowAmount: number;
     if (collateralTokenMatch) {
       const collateralToken = collateralTokenMatch[1].toUpperCase();
@@ -533,7 +490,6 @@ export class StrategyParserService {
         currentTokenAmounts[collateralToken] || finalAmount;
       borrowAmount = (collateralAmount * ltv) / 100;
     } else {
-      
       borrowAmount = (finalAmount * ltv) / 100;
     }
 
@@ -555,7 +511,6 @@ export class StrategyParserService {
     defaultInputToken: string,
     finalAmount: number,
   ): StrategyStepResponseDto | null {
-    
     const swapMatch = stepLine.match(/swap\s+(\w+)\s+to\s+(\w+)/i);
 
     if (!swapMatch) return null;
@@ -564,7 +519,6 @@ export class StrategyParserService {
     const tokenOut = swapMatch[2].toUpperCase();
     const amount = finalAmount;
 
-    
     let outputAmount = amount;
     if (tokenIn === 'WETH' && tokenOut === 'USDC')
       outputAmount = amount * this.swapRateWethUsdc;
@@ -598,7 +552,6 @@ export class StrategyParserService {
     defaultInputToken: string,
     finalAmount: number,
   ): StrategyStepResponseDto | null {
-    
     const joinMatch = stepLine.match(/(weth|usdc|usdt)/i);
 
     if (!joinMatch) return null;
@@ -655,7 +608,6 @@ export class StrategyParserService {
     stepNumber: number,
     inputToken: { symbol: string; amount: number; assetId?: string },
   ): StrategyStepResponseDto | null {
-    
     const swapMatch = stepLine.match(/swap\s+(\w+)\s+to\s+(\w+)/i);
 
     if (!swapMatch) return null;
@@ -664,7 +616,6 @@ export class StrategyParserService {
     const tokenOut = swapMatch[2].toUpperCase();
     const amount = inputToken.amount;
 
-    
     let outputAmount = amount;
     if (tokenIn === 'WETH' && tokenOut === 'USDC')
       outputAmount = amount * this.swapRateWethUsdc;
@@ -697,7 +648,6 @@ export class StrategyParserService {
     stepNumber: number,
     inputToken: { symbol: string; amount: number; assetId?: string },
   ): StrategyStepResponseDto | null {
-    
     const joinMatch = stepLine.match(/(weth|usdc|usdt)/i);
 
     if (!joinMatch) return null;
@@ -753,7 +703,6 @@ export class StrategyParserService {
     const assetId =
       inputToken.assetId || this.getAssetIdBySymbol(inputToken.symbol);
 
-    
     const operations = this.extractOperationsFromIntent(intent, inputToken);
 
     for (const op of operations) {
@@ -802,15 +751,12 @@ export class StrategyParserService {
   }
 
   private extractIterationsFromIntent(intent: string): number {
-    
     const iterMatch = intent.match(/(\d+)\s*(times?|loops?|iterations?)/i);
     if (iterMatch) return parseInt(iterMatch[1]);
 
-    
     const xMatch = intent.match(/(\d+)x/i);
     if (xMatch) return parseInt(xMatch[1]);
 
-    
     if (
       intent.includes('aggressive') ||
       intent.includes('maximum') ||
@@ -825,7 +771,7 @@ export class StrategyParserService {
       return 2;
     if (intent.includes('moderate')) return 3;
 
-    return 3; 
+    return 3;
   }
 
   private extractOperationsFromIntent(
@@ -850,7 +796,6 @@ export class StrategyParserService {
       amountOut?: number;
     }> = [];
 
-    
     if (intent.includes('swap')) {
       operations.push({
         type: 'swap',
@@ -868,7 +813,7 @@ export class StrategyParserService {
     if (intent.includes('borrow')) {
       operations.push({
         type: 'borrow',
-        amount: inputToken.amount * 0.9, 
+        amount: inputToken.amount * 0.9,
       });
     }
 

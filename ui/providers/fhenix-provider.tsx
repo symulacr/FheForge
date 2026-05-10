@@ -66,6 +66,9 @@ const INITIAL_STATE: CofheState = {
 let cofheClientSingleton: CofheClient | null = null;
 
 async function getClient() {
+  if (typeof window === "undefined") {
+    return null;
+  }
   if (!cofheClientSingleton) {
     const mod = (await import("@cofhe/sdk/web")) as unknown as {
       createCofheClient?: (config: unknown) => CofheClient;
@@ -109,11 +112,16 @@ function CofheConnector({
   if (!initRef.current) {
     initRef.current = true;
     (async () => {
-      let c: CofheClient;
+      let c: CofheClient | null;
       try {
         c = await getClient();
       } catch (err) {
         setError("CoFHE SDK failed to load: " + String(err));
+        return;
+      }
+
+      if (!c) {
+        setError("CoFHE SDK not available on server");
         return;
       }
       setClient(c);

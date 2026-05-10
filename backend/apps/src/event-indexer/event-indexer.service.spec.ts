@@ -68,7 +68,9 @@ describe('MC-55: Event Indexer Service', () => {
     // MC-55: Verify the service can be configured with env vars
     await service.onModuleInit();
     expect(mockConfigService.get).toHaveBeenCalledWith('FHENIX_RPC');
-    expect(mockConfigService.get).toHaveBeenCalledWith('STRATEGY_VAULT_ADDRESS');
+    expect(mockConfigService.get).toHaveBeenCalledWith(
+      'STRATEGY_VAULT_ADDRESS',
+    );
     expect(mockConfigService.get).toHaveBeenCalledWith('LENDING_POOL_ADDRESS');
   });
 

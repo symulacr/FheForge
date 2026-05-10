@@ -85,6 +85,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     error LiquidationTooLarge();
     error TokenMismatch();
     error NotComposer();
+    error Euint64Overflow();
 
     event Supplied(address indexed user, address indexed token, uint256 indexed amount);
     event Borrowed(
@@ -102,6 +103,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     event OracleDisabled();
     event WethSet(address indexed weth);
     event WethDisabled();
+    event ComposerSet(address indexed composer);
     event Liquidated(
         address indexed liquidator,
         address indexed user,
@@ -188,6 +190,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
     function _pullAndSupply(address token, uint256 amount, InEuint64 calldata encAmount) internal {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
+        // C-12: Guard against euint64 overflow (max ~18.4 tokens at 18 decimals)
+        if (amount > type(uint64).max) revert Euint64Overflow();
         IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
         _finalizeSupply(token, amount, encAmount);
     }
@@ -260,6 +264,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
     function _pullAndRepay(address token, uint256 amount, InEuint64 calldata encAmount) internal {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
+        // C-12: Guard against euint64 overflow
+        if (amount > type(uint64).max) revert Euint64Overflow();
         IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
         _finalizeRepay(token, amount, encAmount);
     }
@@ -386,11 +392,14 @@ contract LendingPool is ReentrancyGuard, Pausable {
     function setComposer(address c) external onlyOwner {
         if (c == address(0)) revert ZeroAddress();
         composer = c;
+        emit ComposerSet(c);
     }
 
     function supplyEth(InEuint64 calldata encAmount) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         if (msg.value == 0) revert ZeroAmount();
+        // C-12: Guard against euint64 overflow
+        if (msg.value > type(uint64).max) revert Euint64Overflow();
         address tokenAddr = address(weth);
 
         plainSupplyBalances[tokenAddr][_msgSender()] += msg.value;
@@ -460,6 +469,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 existingBorrow
     ) internal returns (euint64 actual) {
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
+        // C-12: Guard against euint64 overflow
+        if (borrowAmount > type(uint64).max) revert Euint64Overflow();
 
         plainBorrowBalances[borrowToken][_msgSender()] = existingBorrow + borrowAmount;
         totalPlainBorrow[borrowToken] += borrowAmount;
@@ -572,6 +583,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         euint64 prevDebt = borrowBalances[debtToken][user];
         euint64 newBorrowEnc = FHE.sub(prevDebt, FHE.min(dCovEnc, prevDebt));
         borrowBalances[debtToken][user] = newBorrowEnc;
+        FHE.allowThis(newBorrowEnc);
         FHE.allow(newBorrowEnc, user);
         FHE.allowTransient(newBorrowEnc, _msgSender());
 
@@ -579,6 +591,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         euint64 prevSupply = supplyBalances[collateralToken][user];
         euint64 newSupplyEnc = FHE.sub(prevSupply, FHE.min(sEnc, prevSupply));
         supplyBalances[collateralToken][user] = newSupplyEnc;
+        FHE.allowThis(newSupplyEnc);
         FHE.allow(newSupplyEnc, user);
         FHE.allowTransient(newSupplyEnc, _msgSender());
     }
@@ -594,6 +607,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         if (token == address(0)) revert ZeroAddress();
         if (user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
+        // C-12: Guard against euint64 overflow
+        if (amount > type(uint64).max) revert Euint64Overflow();
         IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
 
         plainSupplyBalances[token][user] += amount;
@@ -643,6 +658,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
         if (user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
         if (liquidReserve[token] < amount) revert InsufficientReserve();
+        // C-12: Guard against euint64 overflow
+        if (amount > type(uint64).max) revert Euint64Overflow();
 
         plainBorrowBalances[token][user] += amount;
         totalPlainBorrow[token] += amount;

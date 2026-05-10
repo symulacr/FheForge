@@ -55,6 +55,11 @@ export const validateEuint128 = (v: bigint) => {
     throw new Error(`Amount ${v} exceeds euint128 range`);
 };
 
+export const validateEuint64 = (v: bigint) => {
+  if (v < 0n || v > 2n ** 64n - 1n)
+    throw new Error(`Amount ${v} exceeds euint64 range (max ${(2n ** 64n - 1n).toString()})`);
+};
+
 export const validateEnvVars = () => {
   const required = [
     "NEXT_PUBLIC_VAULT_ADDRESS",

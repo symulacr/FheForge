@@ -5,7 +5,7 @@ export interface StrategyTemplate {
   id: string;
   name: string;
   description: string;
-  apy: number; 
+  apy: number;
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH';
   loopCount: number;
   steps: StrategyStepResponseDto[];
@@ -256,7 +256,6 @@ export class StrategyTemplatesService {
       return null;
     }
 
-    
     return filteredTemplates.sort((a, b) => b.apy - a.apy)[0];
   }
 

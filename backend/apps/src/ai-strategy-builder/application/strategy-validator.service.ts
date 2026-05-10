@@ -8,21 +8,6 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @Injectable()
 export class StrategyValidatorService {
   private readonly logger = new Logger(StrategyValidatorService.name);
@@ -31,12 +16,6 @@ export class StrategyValidatorService {
     private readonly defiPairsService: DefiPairsService,
     private readonly defiTokenService: DefiTokenService,
   ) {}
-
-  
-
-
-
-
 
   async validateSteps(steps: StrategyStepResponseDto[]): Promise<{
     isValid: boolean;
@@ -53,19 +32,16 @@ export class StrategyValidatorService {
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i];
 
-      
       if (!step.type || !step.agent) {
         errors.push(`Step ${i + 1}: Missing required fields (type, agent)`);
         continue;
       }
 
-      
       if (!this.isValidOperationType(step.type)) {
         errors.push(`Step ${i + 1}: Invalid operation type '${step.type}'`);
         continue;
       }
 
-      
       if (this.requiresTokenValidation(step.type)) {
         const pairValidation = await this.validateTokenPair(step);
         if (!pairValidation.isValid) {
@@ -73,7 +49,6 @@ export class StrategyValidatorService {
         }
       }
 
-      
       if (i > 0) {
         const sequenceValidation = this.validateSequence(steps[i - 1], step);
         if (!sequenceValidation.isValid) {
@@ -81,7 +56,6 @@ export class StrategyValidatorService {
         }
       }
 
-      
       if (step.tokenIn?.amount && step.tokenIn.amount <= 0) {
         errors.push(`Step ${i + 1}: Invalid tokenIn amount (must be > 0)`);
       }
@@ -90,7 +64,6 @@ export class StrategyValidatorService {
       }
     }
 
-    
     const strategyValidation = this.validateOverallStrategy(steps);
     const flowValidation = this.validateStrategyFlow(steps);
 
@@ -139,7 +112,6 @@ export class StrategyValidatorService {
     step: StrategyStepResponseDto,
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      
       let operationType: OperationType;
       switch (step.type) {
         case 'SWAP':
@@ -155,23 +127,20 @@ export class StrategyValidatorService {
           operationType = OperationType.JOIN_STRATEGY;
           break;
         default:
-          return { isValid: true }; 
+          return { isValid: true };
       }
 
-      
       if (
         (operationType === OperationType.SWAP ||
           operationType === OperationType.JOIN_STRATEGY) &&
         step.tokenIn &&
         step.tokenOut
       ) {
-        
         const [tokenInEntity, tokenOutEntity] = await Promise.all([
           this.getTokenIdByAssetId(step.tokenIn.assetId),
           this.getTokenIdByAssetId(step.tokenOut.assetId),
         ]);
 
-        
         const estimate = await this.defiPairsService.estimateDefiPair({
           operation_type: operationType,
           token_in_id: tokenInEntity,
@@ -187,9 +156,7 @@ export class StrategyValidatorService {
         }
       }
 
-      
       if (operationType === OperationType.SUPPLY && step.tokenIn) {
-        
         const tokenInEntity = await this.getTokenIdByAssetId(
           step.tokenIn.assetId,
         );
@@ -208,10 +175,7 @@ export class StrategyValidatorService {
         }
       }
 
-      
       if (operationType === OperationType.BORROW && step.tokenOut) {
-        
-        
         return { isValid: true };
       }
 
@@ -239,7 +203,6 @@ export class StrategyValidatorService {
     prevStep: StrategyStepResponseDto,
     currentStep: StrategyStepResponseDto,
   ): { isValid: boolean; warning?: string } {
-    
     if (prevStep.tokenOut && currentStep.tokenIn) {
       if (prevStep.tokenOut.symbol !== currentStep.tokenIn.symbol) {
         return {
@@ -248,7 +211,6 @@ export class StrategyValidatorService {
         };
       }
 
-      
       const amountDiff = Math.abs(
         prevStep.tokenOut.amount - currentStep.tokenIn.amount,
       );
@@ -260,7 +222,6 @@ export class StrategyValidatorService {
       }
     }
 
-    
     const sequenceValidation = this.validateStepSequenceRules(
       prevStep.type,
       currentStep.type,
@@ -272,24 +233,10 @@ export class StrategyValidatorService {
     return { isValid: true };
   }
 
-  
-
-
-
-
-
-
-
-
-
-
-
-
   private validateStepSequenceRules(
     prevStepType: string,
     currentStepType: string,
   ): { isValid: boolean; warning?: string } {
-    
     if (
       prevStepType === 'ENABLE_E_MODE' ||
       currentStepType === 'ENABLE_E_MODE'
@@ -297,7 +244,6 @@ export class StrategyValidatorService {
       return { isValid: true };
     }
 
-    
     const allowedNextSteps: Record<string, string[]> = {
       SWAP: ['SUPPLY', 'SWAP', 'JOIN_STRATEGY'],
       JOIN_STRATEGY: ['SWAP', 'BORROW'],
@@ -307,12 +253,10 @@ export class StrategyValidatorService {
 
     const allowedNext = allowedNextSteps[prevStepType];
 
-    
     if (!allowedNext) {
       return { isValid: true };
     }
 
-    
     if (!allowedNext.includes(currentStepType)) {
       return {
         isValid: false,
@@ -330,7 +274,6 @@ export class StrategyValidatorService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    
     const hasBorrow = steps.some((s) => s.type === 'BORROW');
     const hasEMode = steps.some((s) => s.type === 'ENABLE_E_MODE');
 
@@ -340,7 +283,6 @@ export class StrategyValidatorService {
       );
     }
 
-    
     const loopCount = steps.filter((s) => s.type === 'BORROW').length;
     if (loopCount > 10) {
       warnings.push(
@@ -348,7 +290,6 @@ export class StrategyValidatorService {
       );
     }
 
-    
     const firstBorrowIndex = steps.findIndex((s) => s.type === 'BORROW');
     const firstSupplyIndex = steps.findIndex(
       (s) => s.type === 'SUPPLY' || s.type === 'JOIN_STRATEGY',
@@ -362,22 +303,12 @@ export class StrategyValidatorService {
       errors.push('Must SUPPLY collateral before BORROW');
     }
 
-    
     if (steps.length === 0) {
       errors.push('Strategy must have at least one step');
     }
 
     return { errors, warnings };
   }
-
-  
-
-
-
-
-
-
-
 
   private validateStrategyFlow(steps: StrategyStepResponseDto[]): {
     errors: string[];
@@ -386,7 +317,6 @@ export class StrategyValidatorService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    
     const nonEModeSteps = steps.filter((step) => step.type !== 'ENABLE_E_MODE');
     if (nonEModeSteps.length === 0) {
       errors.push(
@@ -395,10 +325,8 @@ export class StrategyValidatorService {
       return { errors, warnings };
     }
 
-    
     const stepTypes = nonEModeSteps.map((step) => step.type);
 
-    
     const hasSupply =
       stepTypes.includes('SUPPLY') || stepTypes.includes('JOIN_STRATEGY');
     const hasBorrow = stepTypes.includes('BORROW');
@@ -409,7 +337,6 @@ export class StrategyValidatorService {
       );
     }
 
-    
     const borrowCount = stepTypes.filter((type) => type === 'BORROW').length;
     const supplyCount = stepTypes.filter((type) => type === 'SUPPLY').length;
     const joinCount = stepTypes.filter(
@@ -422,14 +349,12 @@ export class StrategyValidatorService {
       );
     }
 
-    
     if (stepTypes.length > 20) {
       warnings.push(
         'Strategy is very complex with many steps - consider simplifying for better execution',
       );
     }
 
-    
     for (let i = 1; i < nonEModeSteps.length; i++) {
       const prevStep = nonEModeSteps[i - 1];
       const currentStep = nonEModeSteps[i];
@@ -446,11 +371,6 @@ export class StrategyValidatorService {
     return { errors, warnings };
   }
 
-  
-
-
-
-
   getBusinessRules(): Record<string, string[]> {
     return {
       SWAP: ['SUPPLY', 'SWAP', 'JOIN_STRATEGY'],
@@ -460,19 +380,12 @@ export class StrategyValidatorService {
     };
   }
 
-  
-
-
-
-
-
-
   isValidSequence(fromStep: string, toStep: string): boolean {
     const rules = this.getBusinessRules();
     const allowedNext = rules[fromStep];
 
     if (!allowedNext) {
-      return true; 
+      return true;
     }
 
     return allowedNext.includes(toStep);

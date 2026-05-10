@@ -13,6 +13,11 @@ const STRATEGY_REGISTRY_ABI = [
   'function getStrategyParams(uint256 strategyId) external view returns (uint16 apyTarget, uint8 loopCount)',
 ];
 
+interface StrategyParams {
+  apyTarget: bigint;
+  loopCount: bigint;
+}
+
 interface StrategyStepWithCollateral extends StrategyStepResponseDto {
   collateralRatio?: number;
 }
@@ -29,10 +34,16 @@ export class BorrowSimulator extends BaseSimulator {
   ) {
     super();
     const rpcUrl = this.configService.get<string>('FHENIX_RPC');
-    const registryAddress = this.configService.get<string>('STRATEGY_REGISTRY_ADDRESS');
+    const registryAddress = this.configService.get<string>(
+      'STRATEGY_REGISTRY_ADDRESS',
+    );
     if (rpcUrl && registryAddress) {
       this.provider = new JsonRpcProvider(rpcUrl);
-      this.strategyRegistry = new Contract(registryAddress, STRATEGY_REGISTRY_ABI, this.provider);
+      this.strategyRegistry = new Contract(
+        registryAddress,
+        STRATEGY_REGISTRY_ABI,
+        this.provider,
+      );
     }
   }
 
@@ -102,16 +113,24 @@ export class BorrowSimulator extends BaseSimulator {
     }
 
     try {
-      const params = await this.strategyRegistry.getStrategyParams(strategyId);
+      const params = (await this.strategyRegistry.getStrategyParams(
+        strategyId,
+      )) as StrategyParams;
       // apyTarget is in basis points (uint16), convert to percentage
       return Number(params.apyTarget) / 100;
     } catch (error) {
-      this.logger.error(`Failed to fetch strategy params for ID ${strategyId}:`, error);
+      this.logger.error(
+        `Failed to fetch strategy params for ID ${strategyId}:`,
+        error,
+      );
       return 6.0; // Fallback to default
     }
   }
 
-  private async getExchangeRate(assetIdIn: string, assetIdOut: string): Promise<number> {
+  private async getExchangeRate(
+    assetIdIn: string,
+    assetIdOut: string,
+  ): Promise<number> {
     const exchangeRate = await this.fhenixStrategyService.getAssetPrice(
       assetIdIn,
       assetIdOut,

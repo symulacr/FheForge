@@ -31,7 +31,9 @@ export class GasEstimationService {
   async estimateGasForStep(stepType: string): Promise<number> {
     if (this.provider) {
       try {
-        const gasPrice = await this.provider.getFeeData().then((f) => f.gasPrice);
+        const gasPrice = await this.provider
+          .getFeeData()
+          .then((f) => f.gasPrice);
         const gasLimit = this.GAS_ESTIMATES[stepType] ?? this.DEFAULT_GAS;
         return Number(
           ethers.formatUnits(gasPrice! * BigInt(gasLimit), 'ether'),

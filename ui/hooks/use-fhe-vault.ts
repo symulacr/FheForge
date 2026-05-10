@@ -6,7 +6,7 @@ import { useMemo, useRef, useState } from "react";
 import VaultABI from "@/abis/StrategyVault.json";
 import PoolABI from "@/abis/LendingPool.json";
 import RouterABI from "@/abis/SwapRouter.json";
-import { getContractAddresses, validateEuint128 } from "@/utils/addresses";
+import { getContractAddresses, validateEuint128, validateEuint64 } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { SLIPPAGE_TOLERANCE } from "@/lib/constants";
 
@@ -75,18 +75,21 @@ export function useFheVault() {
     return handles[0];
   };
 
-  const decryptForView = async (handle: EncryptedHandle): Promise<string> => {
+  const decryptForView = async (
+    handle: EncryptedHandle,
+    fheType: typeof FheTypes.Uint128 | typeof FheTypes.Uint64 = FheTypes.Uint128,
+  ): Promise<string> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");
     const result = await (
       cofheClient as {
         decryptForView: (
           hash: bigint,
-          fheType: typeof FheTypes.Uint128,
+          fheType: typeof FheTypes.Uint128 | typeof FheTypes.Uint64,
         ) => { execute: () => Promise<bigint> };
       }
     )
-      .decryptForView(handle.ctHash, FheTypes.Uint128)
+      .decryptForView(handle.ctHash, fheType)
       .execute();
     return formatUnits(result, 18);
   };
@@ -100,32 +103,30 @@ export function useFheVault() {
   const revealBorrow = async (): Promise<string> => {
     const handle = lastEncryptedBorrow.current;
     if (!handle) throw new Error("No encrypted borrow stored — open a position first");
-    return decryptForView(handle);
+    return decryptForView(handle, FheTypes.Uint64);
   };
 
   const revealSwapIntent = async (encryptedAmount: EncryptedUint128Input): Promise<string> => {
     return decryptForView(encryptedAmount);
   };
 
-  // MC-09: added strategyId parameter (5th arg required by StrategyVault.openPosition)
-  // MC-27: uses encrypt128 (InEuint128)
+  // F-01/MC-09: Single amount param — plain and encrypted must match.
+  // StrategyVault.openPosition(token, amount, InEuint128, strategyId, user)
   const openPosition = async (
     collateralToken: string,
     collateralAmount: string,
-    collateralEth: string,
     strategyId: bigint = 0n,
   ) => {
     const { vault } = requireAddresses();
-    const collateral = parseUnits(collateralEth, 18);
     const amountWei = parseUnits(collateralAmount, 18);
-    validateEuint128(collateral);
+    validateEuint128(amountWei);
 
     const userAddr = userAddress;
     if (!userAddr) throw new Error("Wallet not connected");
 
     setIsEncrypting(true);
     try {
-      const encColl = await encrypt128(collateral);
+      const encColl = await encrypt128(amountWei);
       lastEncryptedSupply.current = encColl;
       return writeContractAsync({
         address: vault as `0x${string}`,
@@ -153,7 +154,7 @@ export function useFheVault() {
   ) => {
     const { vault } = requireAddresses();
     const amt = parseUnits(amount, decimals);
-    validateEuint128(amt);
+    validateEuint64(amt);
 
     const userAddr = userAddress;
     if (!userAddr) throw new Error("Wallet not connected");
@@ -180,7 +181,7 @@ export function useFheVault() {
   const repay = async (token: string, amount: string, decimals = 18) => {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
-    validateEuint128(amt);
+    validateEuint64(amt);
     setIsEncrypting(true);
     try {
       const enc = await encrypt64(amt);
@@ -203,7 +204,7 @@ export function useFheVault() {
   ) => {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
-    validateEuint128(amt);
+    validateEuint64(amt);
     setIsEncrypting(true);
     try {
       const enc = await encrypt64(amt);
@@ -257,7 +258,7 @@ export function useFheVault() {
   // MC-20/28: Pool supplyEth uses InEuint64
   const supplyEth = async (amount: bigint): Promise<Hash> => {
     const { pool } = requireAddresses();
-    validateEuint128(amount);
+    validateEuint64(amount);
     setIsEncrypting(true);
     try {
       const enc = await encrypt64(amount);
@@ -294,7 +295,7 @@ export function useFheVault() {
   ): Promise<Hash> => {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
-    validateEuint128(amt);
+    validateEuint64(amt);
     setIsEncrypting(true);
     try {
       const enc = await encrypt64(amt);
@@ -319,7 +320,7 @@ export function useFheVault() {
   ): Promise<Hash> => {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
-    validateEuint128(amt);
+    validateEuint64(amt);
     setIsEncrypting(true);
     try {
       const enc = await encrypt64(amt);

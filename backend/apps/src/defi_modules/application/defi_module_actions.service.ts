@@ -15,7 +15,6 @@ export class DefiModuleActionsService {
   async createAction(
     data: CreateDefiModuleActionDto,
   ): Promise<DefiModuleAction> {
-    
     await this.defiModulesService.getById(data.module_id);
 
     return this.defiModuleActionsRepository.save(

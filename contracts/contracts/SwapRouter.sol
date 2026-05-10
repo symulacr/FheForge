@@ -36,6 +36,8 @@ contract SwapRouter is Pausable {
     error NotExecutor();
     error IntentExpired();
     error ZeroOutput();
+    error InsufficientOutput();
+    error ZeroAmount();
     error ZeroAddress();
     error DeadlineTooShort();
     error DeadlineTooLong();
@@ -122,6 +124,7 @@ contract SwapRouter is Pausable {
     ) external whenNotPaused returns (bytes32 intentId) {
         if (tokenIn == address(0) || tokenOut == address(0)) revert ZeroAddress();
         if (tokenIn == tokenOut) revert SameToken();
+        if (amountIn == 0) revert ZeroAmount();
         if (deadlineOffset < MIN_DEADLINE_OFFSET) revert DeadlineTooShort();
         if (deadlineOffset > MAX_DEADLINE_OFFSET) revert DeadlineTooLong();
 
@@ -139,6 +142,9 @@ contract SwapRouter is Pausable {
             deadline: deadline
         });
 
+        // C-04: Escrow tokenIn from user
+        IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amountIn);
+
         emit IntentSubmitted(intentId, msg.sender, tokenIn, tokenOut, deadline);
     }
 
@@ -151,7 +157,11 @@ contract SwapRouter is Pausable {
 
     function cancelIntent(bytes32 intentId) external {
         if (intents[intentId].user != _msgSender()) revert NotCreator();
+        // C-04: Return escrowed tokenIn to user
+        address tokenIn = intents[intentId].tokenIn;
+        uint256 amountIn = intents[intentId].amountIn;
         delete intents[intentId];
+        IERC20(tokenIn).safeTransfer(_msgSender(), amountIn);
         emit IntentCancelled(intentId, msg.sender);
     }
 
@@ -161,11 +171,17 @@ contract SwapRouter is Pausable {
         if (i.user == address(0)) revert UnknownIntent();
         if (block.timestamp > i.deadline) revert IntentExpired();
         if (outputAmount == 0) revert ZeroOutput();
+        // C-03: Enforce minAmountOut
+        if (outputAmount < i.minAmountOut) revert InsufficientOutput();
 
         address user = i.user;
         address tokenOut = i.tokenOut;
+        address tokenIn = i.tokenIn;
+        uint256 amountIn = i.amountIn;
 
         IERC20(tokenOut).safeTransferFrom(msg.sender, user, outputAmount);
+        // C-04: Release escrowed tokenIn to executor
+        IERC20(tokenIn).safeTransfer(msg.sender, amountIn);
         delete intents[intentId];
         emit IntentExecuted(intentId, user, outputAmount);
     }

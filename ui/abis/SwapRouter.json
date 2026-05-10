@@ -47,6 +47,11 @@
   },
   {
     "inputs": [],
+    "name": "InsufficientOutput",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "IntentExpired",
     "type": "error"
   },
@@ -99,6 +104,11 @@
   {
     "inputs": [],
     "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAmount",
     "type": "error"
   },
   {

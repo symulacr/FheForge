@@ -8,6 +8,11 @@ import { DefiStrategyVersion } from '../domain/defi_strategy_version.entity';
 export class DefiStrategiesRepositoryImplement implements DefiStrategiesRepository {
   constructor(private readonly supabase: SupabaseService) {}
 
+  // B-04: TODO — verify workflow_json hash matches on-chain StrategyRegistry.workflowHash
+  // before saving. Current code stores workflow_json without cross-checking the
+  // on-chain commitment. A mismatch means backend shows wrong strategy composition.
+
+
   public async save(defiStrategy: DefiStrategy): Promise<DefiStrategy> {
     const { data, error } = await this.supabase
       .getClient()
@@ -116,7 +121,6 @@ export class DefiStrategiesRepositoryImplement implements DefiStrategiesReposito
   }
 
   public async delete(id: string): Promise<void> {
-    
     const { error: versionError } = await this.supabase
       .getClient()
       .from('defi_strategy_versions')
@@ -129,7 +133,6 @@ export class DefiStrategiesRepositoryImplement implements DefiStrategiesReposito
       );
     }
 
-    
     const { error } = await this.supabase
       .getClient()
       .from('defi_strategies')

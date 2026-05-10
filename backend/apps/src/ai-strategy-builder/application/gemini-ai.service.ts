@@ -50,17 +50,12 @@ export class GeminiAiService {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
       model: 'gemini-3-flash-preview',
-      
-      
-      
-      
-      
-      
     });
   }
 
   private requireModel() {
-    if (!this.model) throw new Error('AI strategy builder disabled — GEMINI_API_KEY not set');
+    if (!this.model)
+      throw new Error('AI strategy builder disabled — GEMINI_API_KEY not set');
   }
 
   async generateStrategySteps(
@@ -103,7 +98,6 @@ export class GeminiAiService {
       needsEMode,
     );
 
-    
     const maxRetries = 3;
     let retryCount = 0;
     let lastError: unknown;
@@ -118,7 +112,6 @@ export class GeminiAiService {
           throw new Error('Gemini returned empty response');
         }
 
-        
         let steps: StrategyStepResponseDto[];
         const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
         if (jsonMatch) {
@@ -145,10 +138,8 @@ export class GeminiAiService {
           );
         }
 
-        
         steps = this.filterInvalidEnableEMode(steps, userIntent);
 
-        
         steps = this.addInitialSwapIfNeeded(
           steps,
           userIntent,
@@ -163,14 +154,12 @@ export class GeminiAiService {
         );
         lastError = error;
 
-        
         const isRateLimit =
           getErrorStatus(error) === 429 ||
           getErrorMessage(error).includes('429') ||
           getErrorMessage(error).includes('Too Many Requests');
 
         if (isRateLimit && retryCount < maxRetries) {
-          
           const delaySeconds = Math.pow(2, retryCount);
 
           await new Promise((resolve) =>
@@ -180,15 +169,12 @@ export class GeminiAiService {
           continue;
         }
 
-        
         break;
       }
     }
 
-    
     const error = lastError;
 
-    
     const errorStatus = getErrorProperty(error, 'status');
     const errorStatusText = getErrorProperty(error, 'statusText');
     const errorMessage = getErrorMessage(error);
@@ -200,7 +186,6 @@ export class GeminiAiService {
       errorDetails: errorDetails,
     });
 
-    
     if (
       errorStatus === 429 ||
       errorMessage?.includes('429') ||
@@ -235,11 +220,9 @@ export class GeminiAiService {
     inputToken: string;
     defaultAmount: number;
   } {
-    
     const amountMatch = input.match(/(\d+(?:\.\d+)?)\s*(WETH|USDT|USDC)/i);
     const tokenMatch = input.match(/(WETH|USDT|USDC)/i);
 
-    
     const initialTokenMatch = input.match(
       /initial\s+token\s+is\s+(WETH|USDT|USDC)/i,
     );
@@ -247,24 +230,18 @@ export class GeminiAiService {
       /with\s+(\d+(?:\.\d+)?)\s*(WETH|USDT|USDC)/i,
     );
 
-    let inputToken = 'WETH'; 
-    let defaultAmount = 10; 
+    let inputToken = 'WETH';
+    let defaultAmount = 10;
 
-    
     if (initialTokenMatch) {
       inputToken = initialTokenMatch[1].toUpperCase();
-    }
-    
-    else if (withTokenMatch) {
+    } else if (withTokenMatch) {
       defaultAmount = parseFloat(withTokenMatch[1]);
       inputToken = withTokenMatch[2].toUpperCase();
     } else if (amountMatch) {
       defaultAmount = parseFloat(amountMatch[1]);
       inputToken = amountMatch[2].toUpperCase();
-    }
-    
-    else if (tokenMatch) {
-      
+    } else if (tokenMatch) {
       inputToken = tokenMatch[1].toUpperCase();
     }
 
@@ -272,19 +249,16 @@ export class GeminiAiService {
   }
 
   private extractLoopCount(input: string): number {
-    
     const iterMatch = input.match(/(\d+)\s*(times?|loops?|iterations?)/i);
     if (iterMatch) return parseInt(iterMatch[1]);
 
-    
     const xMatch = input.match(/(\d+)x/i);
     if (xMatch) return parseInt(xMatch[1]);
 
-    
     const withLoopMatch = input.match(/with\s+(\d+)\s+loops?/i);
     if (withLoopMatch) return parseInt(withLoopMatch[1]);
 
-    return 3; 
+    return 3;
   }
 
   private extractInitialTokenFromContext(
@@ -299,16 +273,13 @@ export class GeminiAiService {
   }
 
   private shouldAddEnableEMode(userIntent: string): boolean {
-    
     const explicitEMode = /enable\s+e\s*mode/i.test(userIntent);
 
-    
     const hasJoinStrategy =
       /join.*(?:weth|usdc|usdt).*strategy|(?:weth|usdc|usdt).*strategy|join.*strategy.*(?:weth|usdc|usdt)/i.test(
         userIntent,
       );
 
-    
     const isSimpleSupplyBorrow =
       /^\s*(?:\d+\.\s*)?(?:supply|lend).*(?:borrow|loan)/i.test(
         userIntent.trim(),
@@ -316,7 +287,6 @@ export class GeminiAiService {
       !hasJoinStrategy &&
       !explicitEMode;
 
-    
     if (isSimpleSupplyBorrow) {
       return false;
     }
@@ -331,8 +301,6 @@ export class GeminiAiService {
     const initialToken = this.extractInitialTokenFromContext(additionalContext);
     if (!initialToken) return { needsSwap: false, fromToken: '', toToken: '' };
 
-    
-    
     const firstStepMatch = userIntent.match(
       /(?:1\.\s*)?(?:supply|lend|swap|borrow|join)\s+(\w+)/i,
     );
@@ -341,7 +309,6 @@ export class GeminiAiService {
 
     const firstStepToken = firstStepMatch[1].toUpperCase();
 
-    
     const needsSwap = initialToken.toUpperCase() !== firstStepToken;
 
     return {
@@ -355,17 +322,14 @@ export class GeminiAiService {
     steps: StrategyStepResponseDto[],
     userIntent: string,
   ): StrategyStepResponseDto[] {
-    
     const hasJoinStrategy = steps.some((step) => step.type === 'JOIN_STRATEGY');
     const explicitEMode = /enable\s+e\s*mode/i.test(userIntent);
 
-    
     if (!hasJoinStrategy && !explicitEMode) {
       const filteredSteps = steps.filter(
         (step) => step.type !== 'ENABLE_E_MODE',
       );
 
-      
       return filteredSteps.map((step, index) => ({
         ...step,
         step: index + 1,
@@ -385,7 +349,6 @@ export class GeminiAiService {
       return steps;
     }
 
-    
     const firstStepWithToken = steps.find(
       (step) => step.type !== 'ENABLE_E_MODE' && step.tokenIn?.symbol,
     );
@@ -401,7 +364,6 @@ export class GeminiAiService {
       return steps;
     }
 
-    
     const enableEModeIndex = steps.findIndex(
       (step) => step.type === 'ENABLE_E_MODE',
     );
@@ -417,14 +379,11 @@ export class GeminiAiService {
       return steps;
     }
 
-    
     const fromAssetId = this.getAssetIdBySymbol(initialToken);
     const toAssetId = this.getAssetIdBySymbol(firstStepToken);
 
-    
     const firstStepAmount = firstStepWithToken.tokenIn.amount || 10;
 
-    
     const swapStep: StrategyStepResponseDto = {
       step: expectedSwapIndex + 1,
       type: 'SWAP',
@@ -437,15 +396,13 @@ export class GeminiAiService {
       tokenOut: {
         assetId: toAssetId,
         symbol: firstStepToken,
-        amount: firstStepAmount * 0.98, 
+        amount: firstStepAmount * 0.98,
       },
     };
 
-    
     const updatedSteps = [...steps];
     updatedSteps.splice(expectedSwapIndex, 0, swapStep);
 
-    
     return updatedSteps.map((step, index) => ({
       ...step,
       step: index + 1,
@@ -459,7 +416,7 @@ export class GeminiAiService {
       USDT: process.env.TOKEN_USDT || '',
     };
 
-    return assetMap[symbol.toUpperCase()] || ''; 
+    return assetMap[symbol.toUpperCase()] || '';
   }
 
   private isMaximizeYieldRequest(userIntent: string): boolean {
@@ -478,13 +435,12 @@ export class GeminiAiService {
     tokenAmount?: number,
   ): Promise<StrategyStepResponseDto[]> {
     this.requireModel();
-    
+
     const { inputToken, defaultAmount } =
       this.extractInputTokenFromIntent(userIntent);
     const finalAmount = tokenAmount || defaultAmount;
     const initialToken = this.extractInitialTokenFromContext(additionalContext);
 
-    
     const riskLevel = this.extractRiskLevel(userIntent);
     const maxLoops = this.templatesService.getMaxLoopsForRisk(riskLevel);
 
@@ -497,7 +453,6 @@ export class GeminiAiService {
       return this.generateRegularStrategy(userIntent, additionalContext);
     }
 
-    
     const tokenToUse = initialToken || inputToken;
     let adaptedSteps = this.templatesService.adaptTemplateToToken(
       bestTemplate,
@@ -505,7 +460,6 @@ export class GeminiAiService {
       finalAmount,
     );
 
-    
     adaptedSteps = this.addInitialSwapIfNeeded(
       adaptedSteps,
       userIntent,
@@ -538,7 +492,6 @@ export class GeminiAiService {
       return 'MEDIUM';
     }
 
-    
     return 'MEDIUM';
   }
 
@@ -547,7 +500,6 @@ export class GeminiAiService {
     additionalContext?: string,
     tokenAmount?: number,
   ): Promise<StrategyStepResponseDto[]> {
-    
     const { inputToken, defaultAmount } =
       this.extractInputTokenFromIntent(userIntent);
     const finalAmount = tokenAmount || defaultAmount;
@@ -620,7 +572,6 @@ export class GeminiAiService {
       .map((token) => `- ${token.symbol} (assetId: "${token.assetId}")`)
       .join('\n');
 
-    
     const isStructuredSteps = /^\s*\d+\.\s*\w+/m.test(userIntent);
 
     if (isStructuredSteps) {

@@ -2,17 +2,17 @@
   "network": "arb-sepolia",
   "chainId": 421614,
   "deployer": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
-  "deployedAt": "2026-05-09T17:55:30.771Z",
-  "mode": "wave11",
-  "wave": 11,
+  "deployedAt": "2026-05-10T23:19:17.710Z",
+  "mode": "wave13",
+  "wave": 13,
   "contracts": {
-    "StrategyRegistry": "0xfe9FAb915b0271CEA1243a299a4a4085497DE260",
-    "StrategyVault": "0xBf65f09f901340328C17e10d67479bd884feC551",
-    "FheForgeComposer": "0xCEF1B60C8FE8641f3346c5eD0ebBDA742c62e750",
-    "LendingPool": "0x605e973B47C311aE9ad7ea5984e673B129fCB769",
-    "SwapRouter": "0xc613Ba147b7d76854c6e2D37E15fe50FFbD8F489",
-    "PriceOracle": "0x6793a71fefA499d9A345Bd4Ab15eae8bb27F065C",
-    "ExecutorContract": "0xA4f22e945569e51d006623c92bbA202b65a25182"
+    "StrategyRegistry": "0xeb79Ca811bDa4216386aE62fd3f025c9896b678E",
+    "StrategyVault": "0xc1174350a49bE845AE139B4693471E9193C511e7",
+    "FheForgeComposer": "0x00a5459D58567eE70238f2a60d7C38f83177CFA3",
+    "LendingPool": "0x40885CFE83BbB28d8c951040A81294c250018886",
+    "SwapRouter": "0x96F55b3DaDDEf16cF4cC1af6aCe0BDdcCa8d2e56",
+    "PriceOracle": "0xae1077813b6232bca426F7005b01a5ACea061A1F",
+    "ExecutorContract": "0x178b454FFf8DE85dEb5bf2D309EeBe5e0E7dDeD4"
   },
   "deploymentTxs": {
     "StrategyRegistry": "0x35b2775f994cbb3842f6a6c838ddcfe9bacc01f46c28832022ba7f21100d7857",
@@ -24,7 +24,7 @@
     "setVault": "wave10",
     "setComposer": "wave10"
   },
-  "notes": "Wave 11: full redeploy with SwapRouter owned by deployer, ExecutorContract as executor, all wiring complete",
-  "swapExecutor": "0xA4f22e945569e51d006623c92bbA202b65a25182",
+  "notes": "Wave 13: C-03 minAmountOut, C-04 escrow, C-08 ZeroPrice, C-12 overflow guard, H-06 ComposerSet, full redeploy",
+  "swapExecutor": "0x178b454FFf8DE85dEb5bf2D309EeBe5e0E7dDeD4",
   "weth": "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d"
 }

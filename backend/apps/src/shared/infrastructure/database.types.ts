@@ -1,7 +1,3 @@
-
-
-
-
 export interface UserRow {
   id: string;
   wallet_address: string;

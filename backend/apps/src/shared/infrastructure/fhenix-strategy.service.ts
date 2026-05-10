@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ethers, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { JsonRpcProvider } from 'ethers/providers';
 import { formatUnits } from 'ethers/utils';
 
@@ -18,7 +18,10 @@ export class FhenixStrategyService implements OnModuleInit {
   private priceOracle: Contract | null = null;
 
   /** On-chain price cache: token address → USD price (WAD) */
-  private readonly priceCache: Map<string, { priceWad: bigint; updatedAt: number }> = new Map();
+  private readonly priceCache: Map<
+    string,
+    { priceWad: bigint; updatedAt: number }
+  > = new Map();
   private readonly CACHE_TTL_MS = 60_000; // 1 minute
 
   constructor(private readonly configService: ConfigService) {}
@@ -29,12 +32,20 @@ export class FhenixStrategyService implements OnModuleInit {
       this.provider = new JsonRpcProvider(rpcUrl);
     }
 
-    const oracleAddress = this.configService.get<string>('PRICE_ORACLE_ADDRESS');
+    const oracleAddress = this.configService.get<string>(
+      'PRICE_ORACLE_ADDRESS',
+    );
     if (oracleAddress && this.provider) {
-      this.priceOracle = new Contract(oracleAddress, PRICE_ORACLE_ABI, this.provider);
+      this.priceOracle = new Contract(
+        oracleAddress,
+        PRICE_ORACLE_ABI,
+        this.provider,
+      );
       this.logger.log(`PriceOracle connected at ${oracleAddress}`);
     } else {
-      this.logger.warn('PRICE_ORACLE_ADDRESS not set — on-chain price reads disabled');
+      this.logger.warn(
+        'PRICE_ORACLE_ADDRESS not set — on-chain price reads disabled',
+      );
     }
   }
 
@@ -57,14 +68,27 @@ export class FhenixStrategyService implements OnModuleInit {
       try {
         const [priceWad, updatedAt] = await this.priceOracle.getPriceUsd(token);
         this.priceCache.set(token, { priceWad, updatedAt: Date.now() });
-        this.logger.debug(`Oracle price for ${token}: ${formatUnits(priceWad, 18)} USD (on-chain updatedAt=${updatedAt})`);
+        this.logger.debug(
+          `Oracle price for ${token}: ${formatUnits(priceWad, 18)} USD (on-chain updatedAt=${updatedAt})`,
+        );
         return Number(priceWad) / Number(WAD);
       } catch (err) {
-        this.logger.warn(`Oracle read failed for ${token}: ${(err as Error).message}, falling back to static rate`);
+        const msg = (err as Error).message;
+        // B-01: Detect stale oracle and warn explicitly (not silent fallback)
+        const isStale = msg.includes('PythNoOlderThan') || msg.includes('NoPriceFeed') || msg.includes('UncertainPrice');
+        if (isStale) {
+          this.logger.error(
+            `Oracle STALE for ${token}: ${msg} — using static rate. Call updatePriceFeeds to refresh.`,
+          );
+        } else {
+          this.logger.warn(
+            `Oracle read failed for ${token}: ${msg}, falling back to static rate`,
+          );
+        }
       }
     }
 
-    // Fallback: static env-var rate
+    // Fallback: static env-var rate (may be stale — see B-01 warning above)
     return this.getStaticPriceUsd(token);
   }
 
@@ -81,7 +105,9 @@ export class FhenixStrategyService implements OnModuleInit {
     ]);
 
     if (priceOut === 0) {
-      throw new Error(`Token ${tokenOut} has zero USD price — cannot compute exchange rate`);
+      throw new Error(
+        `Token ${tokenOut} has zero USD price — cannot compute exchange rate`,
+      );
     }
 
     return priceIn / priceOut;
@@ -98,7 +124,12 @@ export class FhenixStrategyService implements OnModuleInit {
     // Try cache first
     const cachedIn = this.priceCache.get(tokenIn);
     const cachedOut = this.priceCache.get(tokenOut);
-    if (cachedIn && cachedOut && Date.now() - cachedIn.updatedAt < this.CACHE_TTL_MS && Date.now() - cachedOut.updatedAt < this.CACHE_TTL_MS) {
+    if (
+      cachedIn &&
+      cachedOut &&
+      Date.now() - cachedIn.updatedAt < this.CACHE_TTL_MS &&
+      Date.now() - cachedOut.updatedAt < this.CACHE_TTL_MS
+    ) {
       const priceIn = Number(cachedIn.priceWad) / Number(WAD);
       const priceOut = Number(cachedOut.priceWad) / Number(WAD);
       if (priceOut !== 0) return priceIn / priceOut;

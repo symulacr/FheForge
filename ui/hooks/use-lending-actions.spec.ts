@@ -1,22 +1,23 @@
 import { renderHook } from '@testing-library/react';
+import { vi } from 'vitest';
 import { useLendingActions } from './use-lending-actions';
 
 // Mock wagmi hooks
-jest.mock('wagmi', () => ({
+vi.mock('wagmi', () => ({
   useWriteContract: () => ({
-    writeContractAsync: jest.fn().mockResolvedValue('0x123'),
+    writeContractAsync: vi.fn().mockResolvedValue('0x123'),
     isPending: false,
   }),
   useChainId: () => 421614,
   usePublicClient: () => ({
-    readContract: jest.fn().mockResolvedValue(true),
+    readContract: vi.fn().mockResolvedValue(true),
   }),
 }));
 
 // Mock CoFHE provider
-jest.mock('@/providers/fhenix-provider', () => ({
+vi.mock('@/providers/fhenix-provider', () => ({
   useCofheClient: () => ({
-    encryptInputs: jest.fn().mockResolvedValue([{ ctHash: 1n, securityZone: 1, utype: 1, signature: '0x' }]),
+    encryptInputs: vi.fn().mockResolvedValue([{ ctHash: 1n, securityZone: 1, utype: 1, signature: '0x' }]),
   }),
   useCofheState: () => ({
     permitReady: true,
@@ -24,12 +25,12 @@ jest.mock('@/providers/fhenix-provider', () => ({
 }));
 
 // Mock addresses utility
-jest.mock('@/utils/addresses', () => ({
+vi.mock('@/utils/addresses', () => ({
   getContractAddresses: () => ({
     pool: '0x1234567890123456789012345678901234567890',
     oracle: '0x0987654321098765432109876543210987654321',
   }),
-  validateEuint128: jest.fn(),
+  validateEuint128: vi.fn(),
 }));
 
 describe('MC-36/37/38/44/45: Lending Action Hooks', () => {

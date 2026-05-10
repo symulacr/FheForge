@@ -1,6 +1,11 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ethers, Contract } from 'ethers';
+import { Contract } from 'ethers';
 import { JsonRpcProvider } from 'ethers/providers';
 import { Result } from 'ethers/abi';
 import { SupabaseService } from '../shared/infrastructure/supabase.service';
@@ -30,6 +35,11 @@ interface IndexedEvent {
   timestamp: string;
 }
 
+interface EventIndexerState {
+  id: string;
+  last_block: number;
+}
+
 @Injectable()
 export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventIndexerService.name);
@@ -50,7 +60,9 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     const rpcUrl = this.configService.get<string>('FHENIX_RPC');
-    const vaultAddress = this.configService.get<string>('STRATEGY_VAULT_ADDRESS');
+    const vaultAddress = this.configService.get<string>(
+      'STRATEGY_VAULT_ADDRESS',
+    );
     const poolAddress = this.configService.get<string>('LENDING_POOL_ADDRESS');
 
     if (!rpcUrl) {
@@ -61,21 +73,35 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
     this.provider = new JsonRpcProvider(rpcUrl);
 
     if (vaultAddress) {
-      this.strategyVault = new Contract(vaultAddress, STRATEGY_VAULT_ABI, this.provider);
+      this.strategyVault = new Contract(
+        vaultAddress,
+        STRATEGY_VAULT_ABI,
+        this.provider,
+      );
       this.logger.log(`StrategyVault event listener at ${vaultAddress}`);
     } else {
-      this.logger.warn('STRATEGY_VAULT_ADDRESS not set — vault events will not be indexed');
+      this.logger.warn(
+        'STRATEGY_VAULT_ADDRESS not set — vault events will not be indexed',
+      );
     }
 
     if (poolAddress) {
-      this.lendingPool = new Contract(poolAddress, LENDING_POOL_ABI, this.provider);
+      this.lendingPool = new Contract(
+        poolAddress,
+        LENDING_POOL_ABI,
+        this.provider,
+      );
       this.logger.log(`LendingPool event listener at ${poolAddress}`);
     } else {
-      this.logger.warn('LENDING_POOL_ADDRESS not set — pool events will not be indexed');
+      this.logger.warn(
+        'LENDING_POOL_ADDRESS not set — pool events will not be indexed',
+      );
     }
 
     if (!this.strategyVault && !this.lendingPool) {
-      this.logger.warn('No contract addresses configured — event indexing disabled');
+      this.logger.warn(
+        'No contract addresses configured — event indexing disabled',
+      );
       return;
     }
 
@@ -88,11 +114,13 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
         .eq('id', 'global')
         .single();
       if (data?.last_block) {
-        this.lastProcessedBlock = data.last_block;
+        this.lastProcessedBlock = (data as EventIndexerState).last_block;
         this.logger.log(`Resuming from block ${this.lastProcessedBlock}`);
       }
     } catch {
-      this.logger.log('No previous indexer state found — starting from current block');
+      this.logger.log(
+        'No previous indexer state found — starting from current block',
+      );
     }
 
     // If no saved state, start from current block
@@ -101,7 +129,11 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.running = true;
-    this.pollTimer = setInterval(() => this.pollEvents(), this.POLL_INTERVAL_MS);
+    this.pollTimer = setInterval(() => {
+      this.pollEvents().catch((err) => {
+        this.logger.error('Unhandled polling error:', err);
+      });
+    }, this.POLL_INTERVAL_MS);
     this.logger.log('Event indexer started');
   }
 
@@ -130,7 +162,11 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
 
       // Query StrategyVault events
       if (this.strategyVault) {
-        const vaultFilter = { fromBlock, toBlock, address: await this.strategyVault.getAddress() };
+        const vaultFilter = {
+          fromBlock,
+          toBlock,
+          address: await this.strategyVault.getAddress(),
+        };
         const logs = await this.provider.getLogs(vaultFilter);
         for (const log of logs) {
           const parsed = this.strategyVault.interface.parseLog(log);
@@ -150,7 +186,11 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
 
       // Query LendingPool events
       if (this.lendingPool) {
-        const poolFilter = { fromBlock, toBlock, address: await this.lendingPool.getAddress() };
+        const poolFilter = {
+          fromBlock,
+          toBlock,
+          address: await this.lendingPool.getAddress(),
+        };
         const logs = await this.provider.getLogs(poolFilter);
         for (const log of logs) {
           const parsed = this.lendingPool.interface.parseLog(log);
@@ -178,7 +218,9 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
       await this.saveCheckpoint(toBlock);
 
       if (events.length > 0) {
-        this.logger.debug(`Indexed ${events.length} events from blocks ${fromBlock}-${toBlock}`);
+        this.logger.debug(
+          `Indexed ${events.length} events from blocks ${fromBlock}-${toBlock}`,
+        );
       }
     } catch (err) {
       this.logger.error(`Event polling error: ${(err as Error).message}`);
