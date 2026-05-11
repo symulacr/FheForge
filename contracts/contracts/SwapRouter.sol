@@ -6,6 +6,27 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { FheForgeBase } from "./FheForgeBase.sol";
 import { TimelockedRotation } from "./libraries/TimelockedRotation.sol";
 
+/// @notice Uniswap V3 SwapRouter02 interface (minimal — only what we need)
+interface IUniswapV3SwapRouter {
+    struct ExactInputSingleParams {
+        address tokenIn;
+        address tokenOut;
+        uint24 fee;
+        address recipient;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+        uint160 sqrtPriceLimitX96;
+    }
+    struct ExactInputParams {
+        bytes path;
+        address recipient;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+    }
+    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+    function exactInput(ExactInputParams calldata params) external payable returns (uint256 amountOut);
+}
+
 contract SwapRouter is FheForgeBase, TimelockedRotation {
     using SafeERC20 for IERC20;
 
@@ -25,6 +46,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
     mapping(address => uint256) private nonces;
 
     address public executor;
+    address public immutable UNISWAP_V3_ROUTER;
 
     error SameToken();
     error UnknownIntent();
@@ -51,12 +73,15 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
     event IntentCancelled(bytes32 indexed intentId, address indexed user);
     event ExecutorProposed(address indexed newExecutor, uint256 indexed earliest);
     event ExecutorRotated(address indexed previousExecutor, address indexed newExecutor);
+    event UniswapV3SingleSwap(address indexed user, address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut);
+    event UniswapV3MultiHopSwap(address indexed user, uint256 amountIn, uint256 amountOut);
 
     constructor(
         address executor_,
         uint256 minDeadlineOffset_,
         uint256 maxDeadlineOffset_,
-        uint256 executorRotationDelay_
+        uint256 executorRotationDelay_,
+        address uniswapV3Router_
     ) FheForgeBase() TimelockedRotation(executorRotationDelay_) {
         if (executor_ == address(0)) revert ZeroAddress();
         if (minDeadlineOffset_ == 0) revert DeadlineTooShort();
@@ -64,6 +89,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         executor = executor_;
         MIN_DEADLINE_OFFSET = minDeadlineOffset_;
         MAX_DEADLINE_OFFSET = maxDeadlineOffset_;
+        UNISWAP_V3_ROUTER = uniswapV3Router_;
     }
 
     function proposeExecutor(address newExecutor) external onlyOwner {
@@ -147,4 +173,62 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         delete intents[intentId];
         emit IntentExecuted(intentId, user, outputAmount);
     }
+
+    // ────────── Uniswap V3 Direct Swap Paths ──────────
+
+    /// @notice Swap via Uniswap V3 single-hop exactInputSingle
+    function swapViaUniswapV3Single(
+        address tokenIn,
+        address tokenOut,
+        uint24 fee,
+        uint256 amountIn,
+        uint256 amountOutMinimum
+    ) external whenNotPaused returns (uint256 amountOut) {
+        if (tokenIn == address(0) || tokenOut == address(0)) revert ZeroAddress();
+        if (amountIn == 0) revert ZeroAmount();
+
+        IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amountIn);
+        IERC20(tokenIn).forceApprove(UNISWAP_V3_ROUTER, amountIn);
+
+        amountOut = IUniswapV3SwapRouter(UNISWAP_V3_ROUTER).exactInputSingle(
+            IUniswapV3SwapRouter.ExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                fee: fee,
+                recipient: _msgSender(),
+                amountIn: amountIn,
+                amountOutMinimum: amountOutMinimum,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        emit UniswapV3SingleSwap(_msgSender(), tokenIn, tokenOut, amountIn, amountOut);
+    }
+
+    /// @notice Swap via Uniswap V3 multi-hop exactInput
+    /// @param path Encoded as abi.encodePacked(tokenAddr, fee, tokenAddr, fee, ...)
+    function swapViaUniswapV3MultiHop(
+        bytes calldata path,
+        uint256 amountIn,
+        uint256 amountOutMinimum
+    ) external whenNotPaused returns (uint256 amountOut) {
+        if (amountIn == 0) revert ZeroAmount();
+
+        // Decode first token from path for transferFrom
+        address tokenIn = address(bytes20(path[:20]));
+        IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amountIn);
+        IERC20(tokenIn).forceApprove(UNISWAP_V3_ROUTER, amountIn);
+
+        amountOut = IUniswapV3SwapRouter(UNISWAP_V3_ROUTER).exactInput(
+            IUniswapV3SwapRouter.ExactInputParams({
+                path: path,
+                recipient: _msgSender(),
+                amountIn: amountIn,
+                amountOutMinimum: amountOutMinimum
+            })
+        );
+
+        emit UniswapV3MultiHopSwap(_msgSender(), amountIn, amountOut);
+    }
+
 }

@@ -50,6 +50,7 @@ contract PriceOracle is FheForgeBase {
     event FallbackPriceSet(address indexed token, uint256 price);
     event FallbackPriceRemoved(address indexed token);
     event StalenessThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
+    event SourcesBatchSet(uint256 count);
 
     constructor(address pyth_, uint256 defaultStaleThreshold_) FheForgeBase() {
         if (pyth_ == address(0)) revert ZeroAddress();
@@ -76,6 +77,26 @@ contract PriceOracle is FheForgeBase {
         delete priceId[token];
         delete staleThreshold[token];
         emit SourceSet(token, bytes32(0), 0, 0);
+    }
+
+    struct FeedInfo {
+        address token;
+        bytes32 priceId;
+        uint8 decimals;
+        uint64 staleThreshold;
+    }
+
+    function batchSetSources(FeedInfo[] calldata feeds) external onlyOwner {
+        for (uint256 i = 0; i < feeds.length; i++) {
+            FeedInfo calldata feed = feeds[i];
+            if (feed.token == address(0)) revert ZeroAddress();
+            if (feed.decimals == 0) revert ZeroAmount();
+            priceId[feed.token] = feed.priceId;
+            tokenDecimals[feed.token] = feed.decimals;
+            staleThreshold[feed.token] = feed.staleThreshold;
+            emit SourceSet(feed.token, feed.priceId, feed.decimals, feed.staleThreshold);
+        }
+        emit SourcesBatchSet(feeds.length);
     }
 
     function setCollateralFactor(

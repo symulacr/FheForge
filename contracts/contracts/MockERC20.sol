@@ -2,16 +2,20 @@
 pragma solidity 0.8.25;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-error MainnetForbidden();
+contract MockERC20 is ERC20, Ownable {
+    uint8 private _decimals;
 
-contract MockERC20 is ERC20 {
-    constructor() ERC20("Mock Token", "MCK") {
-        if (block.chainid == 1 || block.chainid == 42161) revert MainnetForbidden();
-        _mint(msg.sender, 1e24);
+    constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) Ownable(msg.sender) {
+        _decimals = decimals_;
     }
 
-    function mint(address to, uint256 amount) external {
+    function decimals() public view override returns (uint8) {
+        return _decimals;
+    }
+
+    function mint(address to, uint256 amount) external onlyOwner {
         _mint(to, amount);
     }
 }

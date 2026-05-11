@@ -29,7 +29,7 @@ import * as path from "path";
 // CONFIG — edit these for your network / wave
 // ═══════════════════════════════════════════════════════════
 
-const WAVE = 24;
+const WAVE = 25;
 const NETWORK_ID = 421614; // arb-sepolia
 
 // External addresses (Arbitrum Sepolia)
@@ -37,6 +37,8 @@ const PYTH_ADDR   = "0x4374e5a8b9C22271E9EB878A2AA31DE97DF15DAF";
 const WETH_ADDR   = "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32";
 const USDC_ADDR   = "0x150376EdEbc5AC48771655a61a795d828BeC8Df6";
 const WETH_PYTH   = "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace";
+const UNISWAP_V3_ROUTER = "0x101F443B4d1b059569D643917553c771E1b9663E";
+const USDC_PYTH   = "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a";
 
 // Constructor args
 const REGISTRY_VAULT_ROTATION_DELAY = 90n;   // seconds (demo mode)
@@ -165,7 +167,10 @@ async function main() {
     ROUTER_MIN_DEADLINE,         // minDeadlineOffset_
     ROUTER_MAX_DEADLINE,         // maxDeadlineOffset_
     ROUTER_EXECUTOR_ROT_DELAY,   // executorRotationDelay_
+    UNISWAP_V3_ROUTER,          // uniswapV3Router_
   ]);
+
+  const tokenRegistry = await deploy("TokenRegistry", "TokenRegistry");
 
   // ── Level 1: Vault (depends on Registry) ────────────────
   console.log("\n═══ LEVEL 1: Deploy ═══");
@@ -184,6 +189,15 @@ async function main() {
     await router.getAddress(),
   ]);
 
+  // ── Level 3: StrategyExecutor ──────────────────────────────
+  console.log("\n═══ LEVEL 3: StrategyExecutor ═══");
+
+  const strategyExecutor = await deploy("StrategyExecutor", "StrategyExecutor", [
+    await pool.getAddress(),
+    await vault.getAddress(),
+    await router.getAddress(),
+  ]);
+
   // ── Addresses for wiring ────────────────────────────────
   const addrs = {
     registry:  await registry.getAddress(),
@@ -193,6 +207,8 @@ async function main() {
     vault:     await vault.getAddress(),
     composer:  await composer.getAddress(),
     executor:  await executor.getAddress(),
+    tokenRegistry: await tokenRegistry.getAddress(),
+    strategyExecutor: await strategyExecutor.getAddress(),
   };
 
   // ── Wiring ─────────────────────────────────────────────
@@ -212,11 +228,13 @@ async function main() {
   await send("oracle.setSource WETH", () =>
     oracle.setSource(WETH_ADDR, WETH_PYTH, ORACLE_DECIMALS_WETH, ORACLE_STALE_THRESHOLD));
   await send("oracle.setSource USDC", () =>
-    oracle.setSource(USDC_ADDR, WETH_PYTH, ORACLE_DECIMALS_USDC, ORACLE_STALE_THRESHOLD));
+    oracle.setSource(USDC_ADDR, USDC_PYTH, ORACLE_DECIMALS_USDC, ORACLE_STALE_THRESHOLD));
   await send("oracle.setCollateralFactor USDC", () =>
     oracle.setCollateralFactor(USDC_ADDR, COLLATERAL_FACTOR_LTV, COLLATERIAL_FACTOR_LIQUID));
   await send("oracle.setCollateralFactor WETH", () =>
     oracle.setCollateralFactor(WETH_ADDR, COLLATERAL_FACTOR_LTV, COLLATERIAL_FACTOR_LIQUID));
+
+  // 3b. Oracle: batch feeds deferred to oracle-wave25-setup.ts (need mock token addresses first)
 
   // 4. Router: rotate executor (timelocked — set to ExecutorContract)
   //    Constructor already set initial executor, but if we need to
@@ -238,9 +256,11 @@ async function main() {
     ["LendingPool",       addrs.pool,      []],
     ["PriceOracle",       addrs.oracle,    [PYTH_ADDR, ORACLE_STALE_THRESHOLD.toString()]],
     ["ExecutorContract",  addrs.executor,  []],
-    ["SwapRouter",        addrs.router,    [addrs.executor, ROUTER_MIN_DEADLINE.toString(), ROUTER_MAX_DEADLINE.toString(), ROUTER_EXECUTOR_ROT_DELAY.toString()]],
+    ["SwapRouter",        addrs.router,    [addrs.executor, ROUTER_MIN_DEADLINE.toString(), ROUTER_MAX_DEADLINE.toString(), ROUTER_EXECUTOR_ROT_DELAY.toString(), UNISWAP_V3_ROUTER]],
     ["StrategyVault",     addrs.vault,     [addrs.registry]],
     ["FheForgeComposer",  addrs.composer,  [addrs.registry, addrs.vault, addrs.pool, addrs.router]],
+    ["TokenRegistry",     addrs.tokenRegistry, []],
+    ["StrategyExecutor",  addrs.strategyExecutor, [addrs.pool, addrs.vault, addrs.router]],
   ];
 
   for (const [name, addr, args] of verifyItems) {
@@ -256,6 +276,8 @@ async function main() {
   dep.contracts.ExecutorContract  = addrs.executor;
   dep.contracts.StrategyVault     = addrs.vault;
   dep.contracts.FheForgeComposer  = addrs.composer;
+  dep.contracts.TokenRegistry     = addrs.tokenRegistry;
+  dep.contracts.StrategyExecutor  = addrs.strategyExecutor;
   dep.swapExecutor = addrs.executor;
   dep.weth = WETH_ADDR;
   dep.wave = WAVE;
@@ -278,6 +300,9 @@ async function main() {
   console.log(`NEXT_PUBLIC_SWAP_ROUTER_ADDRESS=${addrs.router}`);
   console.log(`NEXT_PUBLIC_VAULT_ADDRESS=${addrs.vault}`);
   console.log(`NEXT_PUBLIC_COMPOSER_ADDRESS=${addrs.composer}`);
+  console.log(`NEXT_PUBLIC_TOKEN_REGISTRY_ADDRESS=${addrs.tokenRegistry}`);
+  console.log(`NEXT_PUBLIC_UNISWAP_V3_ROUTER=${UNISWAP_V3_ROUTER}`);
+  console.log(`NEXT_PUBLIC_STRATEGY_EXECUTOR_ADDRESS=${addrs.strategyExecutor}`);
   console.log(`NEXT_PUBLIC_TOKEN_WETH=${WETH_ADDR}`);
   console.log(`NEXT_PUBLIC_TOKEN_USDC=${USDC_ADDR}`);
   console.log(`PRICE_ORACLE_ADDRESS=${addrs.oracle}`);
