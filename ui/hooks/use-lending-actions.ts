@@ -30,10 +30,8 @@ export interface LiquidateWithProofParams {
   supplySig: `0x${string}`;
 }
 
-// P5: pending contract update — stub until contract ABI is synced
-// export const requestUnshield = ...
-// export const unshieldWithProof = ...
-// export const requestBorrowReveal = ...
+// P5: pending contract ABI sync — these functions exist in the contract but not in the ABI
+// requestUnshield, unshieldWithProof, requestBorrowReveal — will be enabled after ABI regeneration
 
 
 export function useLendingActions() {
@@ -70,22 +68,6 @@ export function useLendingActions() {
     return handles[0];
   };
 
-  // ────────── MC-36: liquidate ──────────
-
-  const liquidate = async (
-    user: Address,
-    collateralToken: Address,
-    debtToken: Address,
-    debtToCover: bigint,
-  ): Promise<Hash> => {
-    const { pool } = requireAddresses();
-    return writeContractAsync({
-      address: pool as `0x${string}`,
-      abi: PoolABI,
-      functionName: "liquidate",
-      args: [user, collateralToken, debtToken, debtToCover],
-    });
-  };
 
   // ────────── P2: requestLiquidationCheck ──────────
 
@@ -162,17 +144,6 @@ export function useLendingActions() {
     });
   };
 
-  // ────────── MC-44: emergencyWithdraw (only when paused) ──────────
-
-  const emergencyWithdraw = async (token: Address): Promise<Hash> => {
-    const { pool } = requireAddresses();
-    return writeContractAsync({
-      address: pool as `0x${string}`,
-      abi: PoolABI,
-      functionName: "emergencyWithdraw",
-      args: [token],
-    });
-  };
 
   // ────────── MC-45: isSupported (PriceOracle read) ──────────
 
@@ -229,12 +200,10 @@ export function useLendingActions() {
   };
 
   return {
-    liquidate,
     requestLiquidationCheck,
     liquidateWithProof,
     checkLtvAndBorrow,
     borrowWithOracle,
-    emergencyWithdraw,
     isSupported,
     checkLtvAndBorrowWithEncrypt,
     borrowWithOracleWithEncrypt,

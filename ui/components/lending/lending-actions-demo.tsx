@@ -14,16 +14,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
  * - MC-36: liquidate
  * - MC-37: checkLtvAndBorrow
  * - MC-38: borrowWithOracle
- * - MC-44: emergencyWithdraw
+ * - MC-44: emergencyWithdraw (moved to Vault hook)
  * - MC-45: isSupported
  */
 export function LendingActionsDemo() {
   const { address } = useAccount();
   const {
-    liquidate,
+    liquidateWithProof,
     checkLtvAndBorrowWithEncrypt,
     borrowWithOracleWithEncrypt,
-    emergencyWithdraw,
     isSupported,
     isEncrypting,
     isPending,
@@ -36,28 +35,12 @@ export function LendingActionsDemo() {
   const [ltvNum, setLtvNum] = useState("75");
   const [ltvDen, setLtvDen] = useState("100");
   const [tokenToCheck, setTokenToCheck] = useState("");
-  const [tokenToWithdraw, setTokenToWithdraw] = useState("");
+
   const [result, setResult] = useState<string>("");
   const [isSupportedResult, setIsSupportedResult] = useState<boolean | null>(null);
 
   const handleLiquidate = async () => {
-    if (!userAddress || !collateralToken || !borrowToken) {
-      setResult("Please fill in all liquidate fields");
-      return;
-    }
-    try {
-      setResult("Processing liquidation...");
-      const debtToCover = BigInt(1000000); // Example amount
-      const tx = await liquidate(
-        userAddress as `0x${string}`,
-        collateralToken as `0x${string}`,
-        borrowToken as `0x${string}`,
-        debtToCover,
-      );
-      setResult(`Liquidation tx: ${tx}`);
-    } catch (error) {
-      setResult(`Liquidation failed: ${(error as Error).message}`);
-    }
+    setResult("Use requestLiquidationCheck first, then liquidateWithProof with the decrypted balance proof");
   };
 
   const handleCheckLtvAndBorrow = async () => {
@@ -100,19 +83,6 @@ export function LendingActionsDemo() {
     }
   };
 
-  const handleEmergencyWithdraw = async () => {
-    if (!tokenToWithdraw) {
-      setResult("Please fill in token address");
-      return;
-    }
-    try {
-      setResult("Processing emergency withdraw...");
-      const tx = await emergencyWithdraw(tokenToWithdraw as `0x${string}`);
-      setResult(`Emergency withdraw tx: ${tx}`);
-    } catch (error) {
-      setResult(`Emergency withdraw failed: ${(error as Error).message}`);
-    }
-  };
 
   const handleIsSupported = async () => {
     if (!tokenToCheck) {
@@ -134,7 +104,7 @@ export function LendingActionsDemo() {
         <CardHeader>
           <CardTitle>Lending Actions Demo</CardTitle>
           <CardDescription>
-            Demonstrates MC-36/37/38/44/45: liquidate, checkLtvAndBorrow, borrowWithOracle, emergencyWithdraw, isSupported
+            Demonstrates: liquidateWithProof, checkLtvAndBorrow, borrowWithOracle, isSupported
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -227,24 +197,6 @@ export function LendingActionsDemo() {
             </Button>
           </div>
 
-          {/* emergencyWithdraw (MC-44) */}
-          <div className="space-y-2 border p-4 rounded">
-            <h3 className="font-semibold">MC-44: Emergency Withdraw</h3>
-            <div>
-              <Label>Token Address</Label>
-              <Input
-                placeholder="0x..."
-                value={tokenToWithdraw}
-                onChange={(e) => setTokenToWithdraw(e.target.value)}
-              />
-            </div>
-            <Button
-              onClick={handleEmergencyWithdraw}
-              disabled={isPending}
-            >
-              Emergency Withdraw
-            </Button>
-          </div>
 
           {/* isSupported (MC-45) */}
           <div className="space-y-2 border p-4 rounded">

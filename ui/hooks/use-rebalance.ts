@@ -52,12 +52,12 @@ export function useRebalance() {
     if (!addCollateralEnc[0]) throw new Error("CoFHE returned empty handle for addCollateralAmount");
 
     const repayEnc = (await cofheClient
-      .encryptInputs([Encryptable.uint64(params.repayAmount)])
+      .encryptInputs([Encryptable.uint128(params.repayAmount)])
       .execute()) as InEuint128[];
     if (!repayEnc[0]) throw new Error("CoFHE returned empty handle for repayAmount");
 
     const newBorrowEnc = (await cofheClient
-      .encryptInputs([Encryptable.uint64(params.newBorrowAmount)])
+      .encryptInputs([Encryptable.uint128(params.newBorrowAmount)])
       .execute()) as InEuint128[];
     if (!newBorrowEnc[0]) throw new Error("CoFHE returned empty handle for newBorrowAmount");
 

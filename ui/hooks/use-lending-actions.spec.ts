@@ -33,12 +33,12 @@ vi.mock('@/utils/addresses', () => ({
   validateEuint128: vi.fn(),
 }));
 
-describe('MC-36/37/38/44/45: Lending Action Hooks', () => {
+describe('Lending Action Hooks (liquidateWithProof, borrow, oracle, isSupported)', () => {
   it('should export all required lending action functions', () => {
     const { result } = renderHook(() => useLendingActions());
 
-    // MC-36: liquidate
-    expect(typeof result.current.liquidate).toBe('function');
+    // liquidate removed — Pool has no liquidate function, only liquidateWithProof
+    expect(typeof result.current.liquidateWithProof).toBe('function');
     
     // MC-37: checkLtvAndBorrow
     expect(typeof result.current.checkLtvAndBorrow).toBe('function');
@@ -46,8 +46,8 @@ describe('MC-36/37/38/44/45: Lending Action Hooks', () => {
     // MC-38: borrowWithOracle
     expect(typeof result.current.borrowWithOracle).toBe('function');
     
-    // MC-44: emergencyWithdraw
-    expect(typeof result.current.emergencyWithdraw).toBe('function');
+    // emergencyWithdraw moved to Vault hook — Pool has no emergencyWithdraw
+    expect(typeof result.current.requestLiquidationCheck).toBe('function');
     
     // MC-45: isSupported
     expect(typeof result.current.isSupported).toBe('function');
