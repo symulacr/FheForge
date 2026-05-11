@@ -78,13 +78,41 @@ export function useComposer() {
   };
 
   // MC-28: Composer supplyEnc/borrowEnc use InEuint64
-  // CoFHE SDK supports Encryptable.uint128() - no truncation risk for euint128 values
   const encrypt64 = async (value: bigint): Promise<InEuint64> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady)
       throw new Error("CoFHE permit not ready");
     const handles = (await cofheClient
       .encryptInputs([Encryptable.uint64(value)])
+      .execute()) as InEuint64[];
+    if (!handles[0]) throw new Error("CoFHE returned empty handle list");
+    return handles[0];
+  };
+
+  // R7: Encrypt with setAccount(composerAddress) for cross-contract FHE input validation
+  // When Composer forwards encrypted inputs to Pool/Vault, msg.sender = Composer.
+  // The proof signature must embed Composer's address, not the user's.
+  const encrypt128ForComposer = async (value: bigint): Promise<InEuint128> => {
+    if (!cofheClient) throw new Error("CoFHE client not ready");
+    if (!cofheState.permitReady)
+      throw new Error("CoFHE permit not ready");
+    if (!composerAddress) throw new Error("Composer address not configured");
+    const handles = (await cofheClient
+      .encryptInputs([Encryptable.uint128(value)])
+      .setAccount(composerAddress)
+      .execute()) as InEuint128[];
+    if (!handles[0]) throw new Error("CoFHE returned empty handle list");
+    return handles[0];
+  };
+
+  const encrypt64ForComposer = async (value: bigint): Promise<InEuint64> => {
+    if (!cofheClient) throw new Error("CoFHE client not ready");
+    if (!cofheState.permitReady)
+      throw new Error("CoFHE permit not ready");
+    if (!composerAddress) throw new Error("Composer address not configured");
+    const handles = (await cofheClient
+      .encryptInputs([Encryptable.uint64(value)])
+      .setAccount(composerAddress)
       .execute()) as InEuint64[];
     if (!handles[0]) throw new Error("CoFHE returned empty handle list");
     return handles[0];
@@ -112,5 +140,7 @@ export function useComposer() {
     isPending,
     encrypt128,
     encrypt64,
+    encrypt128ForComposer,
+    encrypt64ForComposer,
   };
 }

@@ -11,10 +11,10 @@
     "deploy:base": "HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat run scripts/deploy.ts --network base-sepolia"
   },
   "devDependencies": {
-    "@cofhe/abi": "0.5.1",
-    "@cofhe/hardhat-plugin": "0.5.1",
-    "@cofhe/mock-contracts": "0.5.1",
-    "@cofhe/sdk": "0.5.1",
+    "@cofhe/abi": "0.5.2",
+    "@cofhe/hardhat-plugin": "0.5.2",
+    "@cofhe/mock-contracts": "0.5.2",
+    "@cofhe/sdk": "0.5.2",
     "@fhenixprotocol/cofhe-contracts": "0.1.3",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.0",

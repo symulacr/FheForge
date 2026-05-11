@@ -37,7 +37,7 @@ interface CofheClient {
   connect: (publicClient: unknown, walletClient: unknown) => Promise<void>;
   disconnect: () => Promise<void>;
   permits: { getOrCreateSelfPermit: () => Promise<unknown> };
-  encryptInputs: (inputs: unknown[]) => { execute: () => Promise<unknown> };
+  encryptInputs: (inputs: unknown[]) => { setAccount: (account: string) => { execute: () => Promise<unknown> }; execute: () => Promise<unknown> };
   decryptForView: (
     ctHash: bigint,
     fheType: number,

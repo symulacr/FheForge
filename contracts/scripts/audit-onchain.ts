@@ -211,6 +211,18 @@ async function main() {
     dbg(`enc64(${v}): ctHash=${r.ctHash.toString().slice(0,16)}… utype=${r.utype} securityZone=${r.securityZone}`);
     return r;
   };
+  const enc64For = async (v: bigint, account: string) => {
+    if (!cofheClient) throw new Error("no cofhe");
+    const [r] = await cofheClient.encryptInputs([Encryptable.uint64(v)]).setAccount(account).execute();
+    dbg(`enc64For(${v}, ${account.slice(0,10)}…): ctHash=${r.ctHash.toString().slice(0,16)}… utype=${r.utype}`);
+    return r;
+  };
+  const enc128For = async (v: bigint, account: string) => {
+    if (!cofheClient) throw new Error("no cofhe");
+    const [r] = await cofheClient.encryptInputs([Encryptable.uint128(v)]).setAccount(account).execute();
+    dbg(`enc128For(${v}, ${account.slice(0,10)}…): ctHash=${r.ctHash.toString().slice(0,16)}… utype=${r.utype}`);
+    return r;
+  };
   const enc128 = async (v: bigint) => {
     if (!cofheClient) throw new Error("no cofhe");
     const [r] = await cofheClient.encryptInputs([Encryptable.uint128(v)]).execute();
@@ -944,9 +956,10 @@ async function main() {
       }
 
       const collAmt = ethers.parseUnits("200", 6);
-      const eColl2 = await enc128(collAmt);
-      const eSupply = await enc64(ethers.parseUnits("200", 6));
-      const eBorrow = await enc64(ethers.parseUnits("80", 6));
+      const composerAddr = await composer.getAddress();
+      const eColl2 = await enc128For(collAmt, composerAddr);
+      const eSupply = await enc64For(ethers.parseUnits("200", 6), composerAddr);
+      const eBorrow = await enc64For(ethers.parseUnits("80", 6), composerAddr);
 
       dbg(`openLeveragedStrategyDirect: using direct transferFrom (no Permit2)`);
       const params = {
@@ -972,15 +985,12 @@ async function main() {
       const enc = { collateral: eColl2, supplyEnc: eSupply, borrowEnc: eBorrow };
       const tx = await composer.openLeveragedStrategyDirect(params, enc);
       await tx.wait();
-      pass("Composer", "openLeveragedStrategyDirect", "full leveraged flow without Permit2", tx.hash);
+      pass("Composer", "openLeveragedStrategyDirect", "full leveraged flow without Permit2 + setAccount(composer)", tx.hash);
+    } catch (e: unknown) {
       const decoded = decodeRevert(e);
-      if (decoded.includes("InvalidSigner")) {
-        fail("Composer", "openLeveragedStrategyDirect", `InvalidSigner — CoFHE mock requires FHE input signer == msg.sender to sub-contract. Composer forwards encrypted inputs from user to Pool/Vault, changing msg.sender. [GAP: testnet FHE mock limitation — works on mainnet with threshold decryption. Test via frontend with real wallet where user is msg.sender to Composer]`);
-        dbg(`openLeveragedStrategyDirect: this is a CoFHE mock limitation, NOT a contract bug`);
-      } else {
-        fail("Composer", "openLeveragedStrategyDirect", decoded);
-        dbg(`openLeveragedStrategyDirect full: ${String(e).slice(0,500)}`);
-      }
+      fail("Composer", "openLeveragedStrategyDirect", decoded);
+      dbg(`openLeveragedStrategyDirect full: ${String(e).slice(0,500)}`);
+    }
   } else { skip("Composer", "openLeveragedStrategyDirect", cofheClient ? "no stratId" : "FHE required"); }
 
   // rebalanceDirect — no Permit2 needed
@@ -989,9 +999,10 @@ async function main() {
       const addCollAmt = ethers.parseUnits("50", 6);
       const repayAmt3 = ethers.parseUnits("20", 6);
       const newBorrowAmt = ethers.parseUnits("20", 6);
-      const eAddColl = await enc64(addCollAmt);
-      const eRepay = await enc64(repayAmt3);
-      const eNewBorrow = await enc64(newBorrowAmt);
+      const composerAddr2 = await composer.getAddress();
+      const eAddColl = await enc64For(addCollAmt, composerAddr2);
+      const eRepay = await enc64For(repayAmt3, composerAddr2);
+      const eNewBorrow = await enc64For(newBorrowAmt, composerAddr2);
 
       dbg(`rebalanceDirect: using direct transferFrom (no Permit2)`);
       const rebParams = {
