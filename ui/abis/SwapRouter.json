@@ -42,6 +42,11 @@
   },
   {
     "inputs": [],
+    "name": "EthTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ExpectedPause",
     "type": "error"
   },
@@ -57,7 +62,7 @@
   },
   {
     "inputs": [],
-    "name": "NoPendingExecutor",
+    "name": "NoPendingRole",
     "type": "error"
   },
   {
@@ -73,6 +78,11 @@
   {
     "inputs": [],
     "name": "OnlyOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReentrancyGuardReentrantCall",
     "type": "error"
   },
   {
@@ -92,8 +102,24 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "int32",
+        "name": "value",
+        "type": "int32"
+      }
+    ],
+    "name": "SecurityZoneOutOfBounds",
+    "type": "error"
+  },
+  {
     "inputs": [],
     "name": "TimelockNotElapsed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TokenMismatch",
     "type": "error"
   },
   {
@@ -263,7 +289,7 @@
   },
   {
     "inputs": [],
-    "name": "EXECUTOR_ROTATION_DELAY",
+    "name": "BPS_DEN",
     "outputs": [
       {
         "internalType": "uint256",
@@ -308,6 +334,32 @@
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ROTATION_DELAY",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "WAD",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -420,7 +472,7 @@
   },
   {
     "inputs": [],
-    "name": "pendingExecutor",
+    "name": "pendingRole",
     "outputs": [
       {
         "internalType": "address",
@@ -433,7 +485,7 @@
   },
   {
     "inputs": [],
-    "name": "pendingExecutorEarliest",
+    "name": "pendingRoleEarliest",
     "outputs": [
       {
         "internalType": "uint256",

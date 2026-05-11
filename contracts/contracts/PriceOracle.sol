@@ -4,44 +4,34 @@ pragma solidity 0.8.25;
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IPyth } from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
 import { PythStructs } from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import { FheForgeBase } from "./FheForgeBase.sol";
 
-contract PriceOracle {
+contract PriceOracle is FheForgeBase {
     using SafeCast for int256;
     using SafeCast for uint256;
 
-    uint256 public constant WAD = 1e18;
-    uint256 public constant BPS_DEN = 1e4;
     uint8 public constant WAD_DECIMALS = 18;
-
     int256 public constant MAX_PYTH_EXP = 38;
 
     uint256 public immutable DEFAULT_STALE_THRESHOLD;
     IPyth public immutable PYTH;
 
     mapping(address => bytes32) public priceId;
-
     mapping(address => uint64) public staleThreshold;
-
     mapping(address => uint8) public tokenDecimals;
     mapping(address => uint16) public collateralFactorBps;
     mapping(address => uint16) public liquidationThresholdBps;
-
-    address public immutable OWNER;
 
     mapping(address => uint256) private fallbackPrices;
     mapping(address => bool) private hasFallback;
     uint256 public stalenessThreshold = 1 hours;
     mapping(address => uint256) public lastPriceUpdate;
 
-    error OnlyOwner();
     error NoPriceFeed();
     error NegativePrice();
-    error ZeroAddress();
-    error ZeroAmount();
     error InvalidBps();
     error PythUpdateFeeMismatch();
     error UncertainPrice();
-    error EthTransferFailed();
     error ZeroPrice();
     error NoPriceAvailable();
 
@@ -61,18 +51,8 @@ contract PriceOracle {
     event FallbackPriceRemoved(address indexed token);
     event StalenessThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
 
-    modifier onlyOwner() {
-        _onlyOwner();
-        _;
-    }
-
-    function _onlyOwner() internal view {
-        if (msg.sender != OWNER) revert OnlyOwner();
-    }
-
-    constructor(address pyth_, uint256 defaultStaleThreshold_) {
+    constructor(address pyth_, uint256 defaultStaleThreshold_) FheForgeBase() {
         if (pyth_ == address(0)) revert ZeroAddress();
-        OWNER = msg.sender;
         PYTH = IPyth(pyth_);
         DEFAULT_STALE_THRESHOLD = defaultStaleThreshold_;
     }
@@ -117,12 +97,7 @@ contract PriceOracle {
         if (msg.value != fee) revert PythUpdateFeeMismatch();
         PYTH.updatePriceFeeds{ value: fee }(updateData);
 
-        // Update lastPriceUpdate for all registered tokens.
-        // This is an approximation: any successful update refreshes the
-        // staleness clock for all tracked tokens. Gas cost is O(N registered tokens).
         uint256 timestamp = block.timestamp;
-        // We iterate through a reasonable range of slots (tokens are sparse).
-        // For production, consider maintaining an active token list.
         for (uint i = 0; i < 256; i++) {
             address token = address(uint160(i));
             if (priceId[token] != bytes32(0)) {
@@ -166,21 +141,14 @@ contract PriceOracle {
         updatedAt = p.publishTime.toUint64();
     }
 
-    /// @notice Returns true if the Pyth price for a token is older than the staleness threshold.
-    /// @dev Uses the Pyth price's publishTime; falls back to lastPriceUpdate if publishTime is 0.
-    /// @param token The token to check.
-    /// @return True if price is stale or never updated; false if fresh.
     function isStale(address token) external view returns (bool) {
         if (priceId[token] == bytes32(0)) return true;
 
         bytes32 id = priceId[token];
-        // Try to read Pyth price (without staleness guard) to get publishTime.
-        // Pyth's getPriceUnsafe returns the last cached price regardless of age.
         PythStructs.Price memory p = PYTH.getPriceUnsafe(id);
 
         uint256 age;
         if (p.publishTime == 0) {
-            // No Pyth price ever — fall back to lastPriceUpdate
             if (lastPriceUpdate[token] == 0) return true;
             age = block.timestamp - lastPriceUpdate[token];
         } else {
@@ -190,10 +158,6 @@ contract PriceOracle {
         return age > stalenessThreshold;
     }
 
-    /// @notice Returns the Pyth price if fresh; otherwise returns the fallback price if set.
-    /// @dev Uses the globally configurable stalenessThreshold to determine freshness.
-    /// @param token The token to get price for.
-    /// @return The price in WAD scale.
     function getPriceWithFallback(address token) public view returns (uint256) {
         bytes32 id = priceId[token];
 
@@ -207,13 +171,12 @@ contract PriceOracle {
         bool stale = _isPythStale(id, token);
 
         if (!stale) {
-            // Fetch fresh Pyth price
             uint256 threshold = staleThreshold[token];
             if (threshold == 0) threshold = DEFAULT_STALE_THRESHOLD;
             try PYTH.getPriceNoOlderThan(id, threshold) returns (PythStructs.Price memory p) {
                 return _normalizePythPrice(p);
             } catch {
-                // Pyth call failed (e.g. feed exists but no data) — fall through to fallback
+                // Pyth call failed — fall through to fallback
             }
         }
 
@@ -225,8 +188,6 @@ contract PriceOracle {
         revert NoPriceAvailable();
     }
 
-    /// @notice Returns true if the Pyth price for a given priceId is older than stalenessThreshold.
-    /// @dev Checks Pyth's publishTime; falls back to lastPriceUpdate[token] if publishTime == 0.
     function _isPythStale(bytes32 id, address token) internal view returns (bool) {
         PythStructs.Price memory p = PYTH.getPriceUnsafe(id);
 
@@ -241,7 +202,6 @@ contract PriceOracle {
         return age > stalenessThreshold;
     }
 
-    /// @notice Normalizes a Pyth price struct to WAD-scale uint256.
     function _normalizePythPrice(PythStructs.Price memory p) internal pure returns (uint256 priceWad) {
         if (p.price == 0) revert ZeroPrice();
         if (p.price < 0) revert NegativePrice();
@@ -259,9 +219,6 @@ contract PriceOracle {
         }
     }
 
-    /// @notice Sets a fallback price for a token. Used when Pyth price becomes stale.
-    /// @param token The token to set fallback price for.
-    /// @param price The fallback price in WAD scale.
     function setFallbackPrice(address token, uint256 price) external onlyOwner {
         if (token == address(0)) revert ZeroAddress();
         if (price == 0) revert ZeroAmount();
@@ -270,8 +227,6 @@ contract PriceOracle {
         emit FallbackPriceSet(token, price);
     }
 
-    /// @notice Removes the fallback price for a token.
-    /// @param token The token to remove fallback price for.
     function removeFallbackPrice(address token) external onlyOwner {
         if (token == address(0)) revert ZeroAddress();
         delete fallbackPrices[token];
@@ -279,8 +234,6 @@ contract PriceOracle {
         emit FallbackPriceRemoved(token);
     }
 
-    /// @notice Updates the global staleness threshold.
-    /// @param newThreshold The new threshold in seconds.
     function setStalenessThreshold(uint256 newThreshold) external onlyOwner {
         if (newThreshold == 0) revert ZeroAmount();
         uint256 old = stalenessThreshold;

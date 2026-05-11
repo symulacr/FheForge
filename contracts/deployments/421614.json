@@ -2,17 +2,17 @@
   "network": "arb-sepolia",
   "chainId": 421614,
   "deployer": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
-  "deployedAt": "2026-05-11T16:48:47.576Z",
-  "mode": "wave17",
-  "wave": 22,
+  "deployedAt": "2026-05-11T19:42:58.048Z",
+  "mode": "wave24",
+  "wave": 24,
   "contracts": {
-    "StrategyRegistry": "0xd035Db797400B1945CcdBA8432ddF4207aaeCA24",
-    "StrategyVault": "0x1d9bDd276Bde838b2D6652FeA2b73F26576cDe25",
-    "FheForgeComposer": "0x5B307950B3864C09B1C5CA7109A41032c73d6712",
-    "LendingPool": "0x8A59eBeB41f85ec563cA898780d76bB219925cc1",
-    "SwapRouter": "0x3C5eF157783cFf1B7ce1a5BCe37e99EFC3165819",
-    "PriceOracle": "0x2d5D0799973dFf967643baA1Fec6D10FAe6FCDD7",
-    "ExecutorContract": "0x8cF0831BdCb8c73F7A343372E9FC2C665c8730b6"
+    "StrategyRegistry": "0xDc57990Cd6aC65f3dc7439800b148FFA54FdD0c0",
+    "StrategyVault": "0x333B5fcEbFaCd1EaDcb5E23957313171c502e3f6",
+    "FheForgeComposer": "0xD3929079A960ebAa59FAba65a7bE738ADa8bcBbA",
+    "LendingPool": "0x5605879F1ad15Cf663A861AbC93BD104709D7AB4",
+    "SwapRouter": "0x4242C57920C2c5AA7b18909a5D07E311CF5D6211",
+    "PriceOracle": "0xCd18800c5b1ba85eD81A2d201102D37A1B551245",
+    "ExecutorContract": "0x8486E8Af266509D937B5241756d0023375504774"
   },
   "deploymentTxs": {
     "StrategyRegistry": "0x35b2775f994cbb3842f6a6c838ddcfe9bacc01f46c28832022ba7f21100d7857",
@@ -24,8 +24,8 @@
     "setVault": "wave10",
     "setComposer": "wave10"
   },
-  "notes": "Wave 17: C-03 minAmountOut, C-04 escrow, C-08 ZeroPrice, C-12 overflow guard, H-06 ComposerSet, full redeploy",
-  "swapExecutor": "0x8cF0831BdCb8c73F7A343372E9FC2C665c8730b6",
+  "notes": "Wave 24: C-03 minAmountOut, C-04 escrow, C-08 ZeroPrice, C-12 overflow guard, H-06 ComposerSet, full redeploy",
+  "swapExecutor": "0x8486E8Af266509D937B5241756d0023375504774",
   "weth": "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32",
   "waveDescription": "New PriceOracle with real Pyth + stablecoin fallback"
 }

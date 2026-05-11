@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { FHE, ebool, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { FHESafeMath128 } from "./libraries/FHESafeMath128.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { FHE, ebool, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { IStrategyRegistry } from "./IStrategyRegistry.sol";
+import { FheForgeBase } from "./FheForgeBase.sol";
+import { TimelockedRotation } from "./libraries/TimelockedRotation.sol";
 
-contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
+contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation {
     uint256 public constant MIN_NAME_LENGTH = 1;
     uint256 public constant MAX_NAME_LENGTH = 256;
 
-    uint256 public immutable VAULT_ROTATION_DELAY;
-
-    // solhint-disable-next-line gas-struct-packing
+    // solhint:disable-next-line gas-struct-packing
     struct Strategy {
         bytes32 workflowHash;
         address creator;
@@ -25,19 +22,15 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     }
 
     error OnlyVault();
-    error OnlyOwner();
     error OnlyCreator();
     error InvalidStrategyId();
     error VaultAlreadySet();
     error FhePermissionDenied();
-    error ZeroAddress();
     error EmptyName();
     error NameTooLong();
     error ZeroWorkflowHash();
     error StrategyAlreadyExists();
     error StrategyInactive();
-    error NoPendingVault();
-    error TimelockNotElapsed();
 
     mapping(uint256 => Strategy) private strategies;
     mapping(uint256 => euint128) private encryptedTvls;
@@ -46,13 +39,6 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     uint256 public strategyCount;
 
     address public vaultAddress;
-    address public immutable OWNER;
-
-    euint128 private immutable _ZERO;
-
-    address public pendingVault;
-
-    uint256 public pendingVaultEarliest;
 
     event StrategyRegistered(uint256 indexed id, address indexed creator, string name);
     event StrategyActiveSet(uint256 indexed id, bool indexed active);
@@ -78,28 +64,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         if (msg.sender != vaultAddress) revert OnlyVault();
     }
 
-    modifier onlyOwner() {
-        _onlyOwner();
-        _;
-    }
-
-    function _onlyOwner() internal view {
-        if (msg.sender != OWNER) revert OnlyOwner();
-    }
-
-    constructor(uint256 vaultRotationDelay_) {
-        OWNER = msg.sender;
-        VAULT_ROTATION_DELAY = vaultRotationDelay_;
-        euint128 z = FHE.asEuint128(0);
-        FHE.allowThis(z);
-        _ZERO = z;
-    }
-
-    /// @dev Substitute _ZERO for uninitialized handles (bytes32(0)).
-    ///      See LendingPool._ensureInitialized for rationale.
-    function _ensureInitialized(euint128 handle) internal view returns (euint128) {
-        return FHE.isInitialized(handle) ? handle : _ZERO;
-    }
+    constructor(uint256 vaultRotationDelay_) FheForgeBase() TimelockedRotation(vaultRotationDelay_) {}
 
     function setVault(address v) external onlyOwner {
         if (v == address(0)) revert ZeroAddress();
@@ -109,27 +74,14 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     }
 
     function proposeVault(address newVault) external onlyOwner {
-        if (newVault == address(0)) revert ZeroAddress();
-        pendingVault = newVault;
-        pendingVaultEarliest = block.timestamp + VAULT_ROTATION_DELAY;
-        emit VaultProposed(newVault, pendingVaultEarliest);
+        _proposeRole(newVault);
+        emit VaultProposed(newVault, pendingRoleEarliest);
     }
 
     function acceptVault() external {
-        if (pendingVault == address(0)) revert NoPendingVault();
-        if (block.timestamp < pendingVaultEarliest) revert TimelockNotElapsed();
-        vaultAddress = pendingVault;
-        pendingVault = address(0);
-        pendingVaultEarliest = 0;
+        address newVault = _acceptRole();
+        vaultAddress = newVault;
         emit VaultSet(vaultAddress);
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     function registerStrategy(
@@ -211,43 +163,18 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         emit TvlDecreased(strategyId, msg.sender);
     }
 
-    function incrementTvl(
-        uint256 strategyId,
-        InEuint128 calldata encAmount
-    ) external nonReentrant onlyVault {
-        if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
-        if (!strategies[strategyId].active) revert StrategyInactive();
-        InEuint128 memory m = encAmount;
-        euint128 amount = FHE.asEuint128(m);
-        _modifyTvl(strategyId, amount, true);
-        emit TvlIncreased(strategyId, msg.sender);
-    }
-
-    function decrementTvl(
-        uint256 strategyId,
-        InEuint128 calldata encAmount
-    ) external nonReentrant onlyVault {
-        if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
-        if (!strategies[strategyId].active) revert StrategyInactive();
-        InEuint128 memory m = encAmount;
-        euint128 amount = FHE.asEuint128(m);
-        _modifyTvl(strategyId, amount, false);
-        emit TvlDecreased(strategyId, msg.sender);
-    }
-
     function _modifyTvl(uint256 strategyId, euint128 amount, bool isIncrement) internal {
         if (!FHE.isAllowed(amount, address(this))) revert FhePermissionDenied();
         euint128 prev = _ensureInitialized(encryptedTvls[strategyId]);
         FHE.allowThis(prev);
         euint128 result;
         if (isIncrement) {
-            (, result) = FHESafeMath128.tryIncrease(prev, amount);
+            result = _safeIncrease(prev, amount, OWNER);
         } else {
-            (, result) = FHESafeMath128.tryDecrease(prev, amount);
+            result = _safeDecrease(prev, amount, OWNER);
         }
         encryptedTvls[strategyId] = result;
         FHE.allowThis(result);
-
     }
 
     /// @notice Returns the encrypted TVL for a strategy, ACL-granted to caller for decryptForView.
@@ -284,8 +211,6 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
 
     // ────────── P10: Cross-chain broadcast ──────────
 
-    /// @notice Broadcast strategy metadata to a destination domain.
-    /// Off-chain relayer watches CrossChainMessage events and delivers via Hyperlane/AMB.
     function broadcastStrategy(uint256 strategyId, uint256 destinationDomain) external {
         if (strategyId >= strategyCount) revert InvalidStrategyId();
         Strategy storage s = strategies[strategyId];
@@ -302,8 +227,6 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         emit CrossChainMessage(destinationDomain, intentId, msg.sender, payload);
     }
 
-    /// @notice Receive a cross-chain strategy registration.
-    /// Called by relayer after verifying Hyperlane/AMB proof.
     function receiveCrossChainStrategy(
         uint256 sourceDomain,
         uint256 sourceStrategyId,

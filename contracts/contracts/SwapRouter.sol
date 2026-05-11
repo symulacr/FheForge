@@ -3,14 +3,14 @@ pragma solidity 0.8.25;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { FheForgeBase } from "./FheForgeBase.sol";
+import { TimelockedRotation } from "./libraries/TimelockedRotation.sol";
 
-contract SwapRouter is Pausable {
+contract SwapRouter is FheForgeBase, TimelockedRotation {
     using SafeERC20 for IERC20;
 
     uint256 public immutable MIN_DEADLINE_OFFSET;
     uint256 public immutable MAX_DEADLINE_OFFSET;
-    uint256 public immutable EXECUTOR_ROTATION_DELAY;
 
     struct SwapIntent {
         uint256 amountIn;
@@ -25,10 +25,6 @@ contract SwapRouter is Pausable {
     mapping(address => uint256) private nonces;
 
     address public executor;
-    address public immutable OWNER;
-    address public pendingExecutor;
-
-    uint256 public pendingExecutorEarliest;
 
     error SameToken();
     error UnknownIntent();
@@ -37,13 +33,8 @@ contract SwapRouter is Pausable {
     error IntentExpired();
     error ZeroOutput();
     error InsufficientOutput();
-    error ZeroAmount();
-    error ZeroAddress();
     error DeadlineTooShort();
     error DeadlineTooLong();
-    error OnlyOwner();
-    error NoPendingExecutor();
-    error TimelockNotElapsed();
 
     event IntentSubmitted(
         bytes32 indexed intentId,
@@ -61,54 +52,29 @@ contract SwapRouter is Pausable {
     event ExecutorProposed(address indexed newExecutor, uint256 indexed earliest);
     event ExecutorRotated(address indexed previousExecutor, address indexed newExecutor);
 
-    modifier onlyOwner() {
-        _onlyOwner();
-        _;
-    }
-
-    function _onlyOwner() internal view {
-        if (msg.sender != OWNER) revert OnlyOwner();
-    }
-
     constructor(
         address executor_,
         uint256 minDeadlineOffset_,
         uint256 maxDeadlineOffset_,
         uint256 executorRotationDelay_
-    ) {
+    ) FheForgeBase() TimelockedRotation(executorRotationDelay_) {
         if (executor_ == address(0)) revert ZeroAddress();
         if (minDeadlineOffset_ == 0) revert DeadlineTooShort();
         if (maxDeadlineOffset_ < minDeadlineOffset_) revert DeadlineTooLong();
         executor = executor_;
         MIN_DEADLINE_OFFSET = minDeadlineOffset_;
         MAX_DEADLINE_OFFSET = maxDeadlineOffset_;
-        EXECUTOR_ROTATION_DELAY = executorRotationDelay_;
-        OWNER = msg.sender;
     }
 
     function proposeExecutor(address newExecutor) external onlyOwner {
-        if (newExecutor == address(0)) revert ZeroAddress();
-        pendingExecutor = newExecutor;
-        pendingExecutorEarliest = block.timestamp + EXECUTOR_ROTATION_DELAY;
-        emit ExecutorProposed(newExecutor, pendingExecutorEarliest);
+        _proposeRole(newExecutor);
+        emit ExecutorProposed(newExecutor, pendingRoleEarliest);
     }
 
     function acceptExecutor() external {
-        if (pendingExecutor == address(0)) revert NoPendingExecutor();
-        if (block.timestamp < pendingExecutorEarliest) revert TimelockNotElapsed();
         address oldExec = executor;
-        executor = pendingExecutor;
-        pendingExecutor = address(0);
-        pendingExecutorEarliest = 0;
+        executor = _acceptRole();
         emit ExecutorRotated(oldExec, executor);
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     function submitSwapIntent(
@@ -153,7 +119,7 @@ contract SwapRouter is Pausable {
 
     function cancelIntent(bytes32 intentId) external {
         if (intents[intentId].user != _msgSender()) revert NotCreator();
-        // C-04: Return escrowed tokenIn to user
+        // C-04: Return escrowed tokensIn to user
         address tokenIn = intents[intentId].tokenIn;
         uint256 amountIn = intents[intentId].amountIn;
         delete intents[intentId];

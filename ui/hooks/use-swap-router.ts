@@ -4,7 +4,7 @@ import type { Hash, Address } from "viem";
 import { useMemo, useState, useCallback } from "react";
 
 import SwapRouterArtifact from "@/abis/SwapRouter.json";
-const SwapRouterABI = SwapRouterArtifact.abi as unknown as Abi;
+const SwapRouterABI = SwapRouterArtifact as unknown as Abi;
 import { getContractAddresses } from "@/utils/addresses";
 import { useCofheState } from "@/providers/fhenix-provider";
 

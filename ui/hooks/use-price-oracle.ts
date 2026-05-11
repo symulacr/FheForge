@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Address, Hash } from "viem";
 import { getContractAddresses } from "@/utils/addresses";
 import PriceOracleArtifact from "@/abis/PriceOracle.json";
-const PriceOracleABI = PriceOracleArtifact.abi as unknown as Abi;
+const PriceOracleABI = PriceOracleArtifact as unknown as Abi;
 
 export function usePriceOracle() {
   const chainId = useChainId();

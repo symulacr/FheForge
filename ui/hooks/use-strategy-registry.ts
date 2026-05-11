@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Address, Hash } from "viem";
 import { getContractAddresses } from "@/utils/addresses";
 import StrategyRegistryArtifact from "@/abis/StrategyRegistry.json";
-const StrategyRegistryABI = StrategyRegistryArtifact.abi as unknown as Abi;
+const StrategyRegistryABI = StrategyRegistryArtifact as unknown as Abi;
 
 export interface StrategyMeta {
   name: string;

@@ -4,20 +4,12 @@ pragma solidity 0.8.25;
 import { FHE, InEuint128, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { PriceOracle } from "./PriceOracle.sol";
-import { FHESafeMath128 } from "./libraries/FHESafeMath128.sol";
+import { FheForgeBase } from "./FheForgeBase.sol";
+import { IWETH9 } from "./interfaces/IWETH9.sol";
 
-interface IWETH9 {
-    function deposit() external payable;
-    function withdraw(uint256) external;
-    function balanceOf(address) external view returns (uint256);
-    function transfer(address, uint256) external returns (bool);
-}
-
-contract LendingPool is ReentrancyGuard, Pausable {
+contract LendingPool is FheForgeBase {
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -26,7 +18,6 @@ contract LendingPool is ReentrancyGuard, Pausable {
     mapping(address => uint256) public totalPlainBorrow;
     mapping(address => uint256) public liquidReserve;
     // ────────── P3: Interest accrual state ──────────
-    uint256 public constant WAD = 1e18;
     uint256 public constant RESERVE_FACTOR_BPS = 1000; // 10% to protocol reserve
     uint256 public constant YEAR = 365 days;
 
@@ -41,11 +32,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     event UnshieldRequested(address indexed user, address indexed token);
     event BalanceRevealed(address indexed user, address indexed token, uint256 amount);
 
-    euint128 private immutable _ZERO;
-    address public immutable OWNER;
     address public composer;
-
-    uint256 public constant BPS_DEN = 1e4;
 
     uint16 public constant LIQUIDATION_BONUS_BPS = 500;
 
@@ -59,15 +46,10 @@ contract LendingPool is ReentrancyGuard, Pausable {
     error LtvExceedsHundredPercent();
     error InsufficientCollateral();
     error InsufficientReserve();
-    error ZeroAddress();
-    error ZeroAmount();
-    error EthTransferFailed();
-    error OnlyOwner();
     error OracleNotSet();
     error WethNotSet();
     error PositionHealthy();
     error LiquidationTooLarge();
-    error TokenMismatch();
     error NotComposer();
     error NotLiquidatable();
     error InvalidProof();
@@ -98,34 +80,12 @@ contract LendingPool is ReentrancyGuard, Pausable {
         uint256 collateralSeized
     );
 
-    modifier onlyOwner() {
-        _onlyOwner();
-        _;
-    }
-
-    function _onlyOwner() internal view {
-        if (msg.sender != OWNER) revert OnlyOwner();
-    }
-
     modifier onlyComposer() {
         if (msg.sender != composer) revert NotComposer();
         _;
     }
 
-    constructor() {
-        OWNER = msg.sender;
-        euint128 z = FHE.asEuint128(0);
-        FHE.allowThis(z);
-        _ZERO = z;
-    }
-
-    /// @dev Substitute _ZERO for uninitialized handles (bytes32(0)).
-    ///      Default mapping values are not registered with the FHE coprocessor,
-    ///      so any ACL/FHE operation on them reverts with SenderNotAllowed(0xd0d25976).
-    ///      _ZERO is created in the constructor with FHE.allowThis — safe for all operations.
-    function _ensureInitialized(euint128 handle) internal view returns (euint128) {
-        return FHE.isInitialized(handle) ? handle : _ZERO;
-    }
+    constructor() FheForgeBase() {}
 
     // ────────── User-facing shield / borrow / repay / unshield ──────────
 
@@ -148,16 +108,11 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
         // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 claimedPlain = FHE.asEuint128(amount);
-        ebool amountsMatch = FHE.eq(incoming, claimedPlain);
-        euint128 verifiedIncoming = FHE.select(amountsMatch, incoming, _ZERO);
+        euint128 verifiedIncoming = _verifyEquality(incoming, amount);
 
         // ─── P-CRIT-1 FIX: Safe increase with overflow detection ───
         euint128 stored = supplyBalances[token][_msgSender()];
-        (, euint128 newBalance) = FHESafeMath128.tryIncrease(stored, verifiedIncoming);
-        supplyBalances[token][_msgSender()] = newBalance;
-        FHE.allowThis(newBalance);
-        FHE.allow(newBalance, _msgSender());
+        supplyBalances[token][_msgSender()] = _safeIncrease(stored, verifiedIncoming, _msgSender());
 
         emit Supplied(msg.sender, token);
     }
@@ -186,19 +141,12 @@ contract LendingPool is ReentrancyGuard, Pausable {
         if (ltvNum > ltvDen) revert LtvExceedsHundredPercent();
 
         // ─── P-HIGH-5 FIX: Encrypted health check via FHE.select ───
-        // Oracle gates the plain transfer; encrypted check provides audit layer.
-        // Product comparison avoids division overflow:
-        //   isHealthy = (newBorrow * ltvDen) <= (supplyBal * ltvNum)
         euint128 supplyBal = _ensureInitialized(supplyBalances[collateralToken][_msgSender()]);
         euint128 borrowBal = _ensureInitialized(borrowBalances[borrowToken][_msgSender()]);
-        // Note: allowThis on these is now safe — _ensureInitialized guarantees valid handles.
-        // Persistent ACL from original store + _ZERO constructor allowThis = access preserved.
 
         // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 requested = FHE.asEuint128(encBorrowAmount);
-        euint128 claimedPlain = FHE.asEuint128(borrowAmount);
-        ebool amountsMatch = FHE.eq(requested, claimedPlain);
-        euint128 verifiedBorrow = FHE.select(amountsMatch, requested, _ZERO);
+        euint128 verifiedBorrow = _verifyEquality(requested, borrowAmount);
 
         // Encrypted health check: newBorrow * ltvDen <= supplyBal * ltvNum
         euint128 newBorrow = FHE.add(borrowBal, verifiedBorrow);
@@ -210,15 +158,10 @@ contract LendingPool is ReentrancyGuard, Pausable {
         actual = FHE.select(isHealthy, verifiedBorrow, _ZERO);
 
         // Store encrypted borrow state
-        (, euint128 finalBorrow) = FHESafeMath128.tryIncrease(borrowBal, actual);
-        borrowBalances[borrowToken][_msgSender()] = finalBorrow;
-        FHE.allowThis(finalBorrow);
-        FHE.allow(finalBorrow, _msgSender());
-        FHE.allowThis(actual);
-        FHE.allow(actual, _msgSender());
+        borrowBalances[borrowToken][_msgSender()] = _safeIncrease(borrowBal, actual, _msgSender());
+        _grantAcl(actual, _msgSender());
 
         // Plain transfer only if oracle confirms healthy (conservative gate)
-        // Note: encrypted check may disagree — the encrypted state is the source of truth
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
         totalPlainBorrow[borrowToken] += borrowAmount;
         liquidReserve[borrowToken] -= borrowAmount;
@@ -242,16 +185,11 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
         // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 claimedPlain = FHE.asEuint128(amount);
-        ebool amountsMatch = FHE.eq(incoming, claimedPlain);
-        euint128 verifiedIncoming = FHE.select(amountsMatch, incoming, _ZERO);
+        euint128 verifiedIncoming = _verifyEquality(incoming, amount);
 
         // ─── P-CRIT-1 FIX: Safe decrease with underflow detection ───
         euint128 currentBalance = borrowBalances[token][_msgSender()];
-        (, euint128 newBalance) = FHESafeMath128.tryDecrease(currentBalance, verifiedIncoming);
-        borrowBalances[token][_msgSender()] = newBalance;
-        FHE.allowThis(newBalance);
-        FHE.allow(newBalance, _msgSender());
+        borrowBalances[token][_msgSender()] = _safeDecrease(currentBalance, verifiedIncoming, _msgSender());
 
         emit Repaid(msg.sender, token);
     }
@@ -287,22 +225,67 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
         // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 claimedPlain = FHE.asEuint128(amount);
-        ebool amountsMatch = FHE.eq(incoming, claimedPlain);
-        euint128 verifiedIncoming = FHE.select(amountsMatch, incoming, _ZERO);
+        euint128 verifiedIncoming = _verifyEquality(incoming, amount);
 
         // ─── P-CRIT-1 FIX: Safe decrease with underflow detection ───
         euint128 currentBalance = supplyBalances[token][_msgSender()];
-        (, euint128 newBalance) = FHESafeMath128.tryDecrease(currentBalance, verifiedIncoming);
-        supplyBalances[token][_msgSender()] = newBalance;
-        FHE.allowThis(newBalance);
-        FHE.allow(newBalance, _msgSender());
+        supplyBalances[token][_msgSender()] = _safeDecrease(currentBalance, verifiedIncoming, _msgSender());
     }
 
     function requestBalanceReveal(address token) external {
         if (token == address(0)) revert ZeroAddress();
         FHE.allowPublic(_ensureInitialized(supplyBalances[token][_msgSender()]));
     }
+
+    // ────────── V3-2: Unshield lifecycle (FHERC20 pattern) ──────────
+
+    /// @notice Request unshield — marks supply balance for decryption.
+    ///         User must call unshieldWithProof after this with the decrypted proof.
+    function requestUnshield(address token) external {
+        if (token == address(0)) revert ZeroAddress();
+        euint128 bal = _ensureInitialized(supplyBalances[token][_msgSender()]);
+        FHE.allowPublic(bal);
+        emit UnshieldRequested(msg.sender, token);
+    }
+
+    /// @notice Unshield with proof — full position exit.
+    ///         After requestUnshield, user gets proof via decryptForTx,
+    ///         then submits proof here to withdraw entire balance.
+    function unshieldWithProof(
+        address token,
+        uint128 balanceProof,
+        bytes calldata balanceSig
+    ) external nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        euint128 bal = _ensureInitialized(supplyBalances[token][_msgSender()]);
+        if (!FHE.verifyDecryptResult(bal, balanceProof, balanceSig)) {
+            revert InvalidProof();
+        }
+        uint256 amount = uint256(balanceProof);
+        if (amount == 0) revert ZeroAmount();
+
+        uint256 reserve = liquidReserve[token];
+        if (reserve < amount || reserve - amount < totalPlainBorrow[token]) {
+            revert InsufficientReserve();
+        }
+        liquidReserve[token] = reserve - amount;
+
+        // Zero out supply balance (full exit)
+        supplyBalances[token][_msgSender()] = _ZERO;
+        // Also zero borrow balance if any (clean exit)
+        borrowBalances[token][_msgSender()] = _ZERO;
+
+        IERC20(token).safeTransfer(_msgSender(), amount);
+        emit Withdrawn(msg.sender, token);
+    }
+
+    /// @notice Request borrow reveal — marks borrow balance for decryption.
+    function requestBorrowReveal(address token) external {
+        if (token == address(0)) revert ZeroAddress();
+        FHE.allowPublic(_ensureInitialized(borrowBalances[token][_msgSender()]));
+    }
+
+
 
     function withdrawPausedWithProof(
         address token,
@@ -327,14 +310,6 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
         IERC20(token).safeTransfer(_msgSender(), amount);
         emit PausedWithdrawn(msg.sender, token, amount);
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     function setOracle(address newOracle) external onlyOwner {
@@ -375,16 +350,11 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
         // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 claimedPlain = FHE.asEuint128(msg.value);
-        ebool amountsMatch = FHE.eq(incoming, claimedPlain);
-        euint128 verifiedIncoming = FHE.select(amountsMatch, incoming, _ZERO);
+        euint128 verifiedIncoming = _verifyEquality(incoming, msg.value);
 
         // ─── P-CRIT-1 FIX: Safe increase ───
         euint128 stored = supplyBalances[tokenAddr][_msgSender()];
-        (, euint128 newBalance) = FHESafeMath128.tryIncrease(stored, verifiedIncoming);
-        supplyBalances[tokenAddr][_msgSender()] = newBalance;
-        FHE.allowThis(newBalance);
-        FHE.allow(newBalance, _msgSender());
+        supplyBalances[tokenAddr][_msgSender()] = _safeIncrease(stored, verifiedIncoming, _msgSender());
 
         weth.deposit{ value: msg.value }();
 
@@ -442,19 +412,13 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
         // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 requested = FHE.asEuint128(encBorrowAmount);
-        euint128 claimedPlain = FHE.asEuint128(borrowAmount);
-        ebool amountsMatch = FHE.eq(requested, claimedPlain);
-        euint128 verifiedRequested = FHE.select(amountsMatch, requested, _ZERO);
+        euint128 verifiedRequested = _verifyEquality(requested, borrowAmount);
         actual = verifiedRequested;
 
         // ─── P-CRIT-1 FIX: Safe increase ───
         euint128 storedBorrow = borrowBalances[borrowToken][_msgSender()];
-        (, euint128 newBorrow) = FHESafeMath128.tryIncrease(storedBorrow, verifiedRequested);
-        borrowBalances[borrowToken][_msgSender()] = newBorrow;
-        FHE.allowThis(actual);
-        FHE.allow(actual, _msgSender());
-        FHE.allowThis(newBorrow);
-        FHE.allow(newBorrow, _msgSender());
+        borrowBalances[borrowToken][_msgSender()] = _safeIncrease(storedBorrow, verifiedRequested, _msgSender());
+        _grantAcl(actual, _msgSender());
 
         IERC20(borrowToken).safeTransfer(_msgSender(), borrowAmount);
 
@@ -489,10 +453,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         // ─── P-CRIT-1 FIX: Safe increase ───
         euint128 storedSupply = supplyBalances[token][user];
-        (, euint128 newSupply) = FHESafeMath128.tryIncrease(storedSupply, handle);
-        supplyBalances[token][user] = newSupply;
-        FHE.allowThis(newSupply);
-        FHE.allow(newSupply, user);
+        supplyBalances[token][user] = _safeIncrease(storedSupply, handle, user);
         emit Supplied(user, token);
     }
 
@@ -509,10 +470,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         liquidReserve[token] -= amount;
         // ─── P-CRIT-1 FIX: Safe increase ───
         euint128 storedBorrow = borrowBalances[token][user];
-        (, euint128 newBorrow) = FHESafeMath128.tryIncrease(storedBorrow, handle);
-        borrowBalances[token][user] = newBorrow;
-        FHE.allowThis(newBorrow);
-        FHE.allow(newBorrow, user);
+        borrowBalances[token][user] = _safeIncrease(storedBorrow, handle, user);
         IERC20(token).safeTransfer(msg.sender, amount);
         emit Borrowed(msg.sender, address(0), token);
     }
@@ -530,10 +488,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         // ─── P-CRIT-1 FIX: Safe decrease ───
         euint128 currentBalance = borrowBalances[token][user];
-        (, euint128 newBalance) = FHESafeMath128.tryDecrease(currentBalance, handle);
-        borrowBalances[token][user] = newBalance;
-        FHE.allowThis(newBalance);
-        FHE.allow(newBalance, user);
+        borrowBalances[token][user] = _safeDecrease(currentBalance, handle, user);
         emit Repaid(user, token);
     }
 
@@ -595,15 +550,10 @@ contract LendingPool is ReentrancyGuard, Pausable {
         liquidReserve[debtToken] += actualDebtCover;
 
         // ─── P-CRIT-2 FIX: Use stored encrypted handle as minuend ───
-        // Subtrahend is trivial (public by liquidation design) — unavoidable.
-        // Minuend is the REAL stored handle → result stays encrypted.
         euint128 repayEnc = FHE.asEuint128(actualDebtCover);
         euint128 storedDebt = _ensureInitialized(borrowBalances[debtToken][user]);
         FHE.allowThis(storedDebt);
-        (, euint128 newDebt) = FHESafeMath128.tryDecrease(storedDebt, repayEnc);
-        borrowBalances[debtToken][user] = newDebt;
-        FHE.allowThis(newDebt);
-        FHE.allow(newDebt, _msgSender());
+        borrowBalances[debtToken][user] = _safeDecrease(storedDebt, repayEnc, _msgSender());
 
         // Calculate collateral to seize: debtCover * price * (1 + bonus)
         uint256 seizedCollateral =
@@ -619,10 +569,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         euint128 seizeEnc = FHE.asEuint128(seizedCollateral);
         euint128 storedColl = _ensureInitialized(supplyBalances[collateralToken][user]);
         FHE.allowThis(storedColl);
-        (, euint128 newCollateral) = FHESafeMath128.tryDecrease(storedColl, seizeEnc);
-        supplyBalances[collateralToken][user] = newCollateral;
-        FHE.allowThis(newCollateral);
-        FHE.allow(newCollateral, _msgSender());
+        supplyBalances[collateralToken][user] = _safeDecrease(storedColl, seizeEnc, _msgSender());
 
         // Transfer seized collateral to liquidator
         IERC20(collateralToken).safeTransfer(_msgSender(), seizedCollateral);

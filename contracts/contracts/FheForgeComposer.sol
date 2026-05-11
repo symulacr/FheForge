@@ -4,128 +4,19 @@ pragma solidity 0.8.25;
 import { FHE, InEuint128, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { FheForgeBase } from "./FheForgeBase.sol";
+import { ILendingPool } from "./interfaces/ILendingPool.sol";
+import { IStrategyVault } from "./interfaces/IStrategyVault.sol";
+import { IRegistry } from "./interfaces/IRegistry.sol";
+import { ISwapRouter } from "./interfaces/ISwapRouter.sol";
 
-interface IRegistry {
-    function registerStrategy(
-        string calldata name,
-        bytes32 workflowHash,
-        uint16 apyTarget,
-        uint8 loopCount
-    ) external returns (uint256 id);
-
-    function strategyCount() external view returns (uint256);
-}
-
-interface IStrategyVault {
-    function openPosition(
-        address token,
-        uint256 amount,
-        InEuint128 calldata encAmount,
-        uint256 strategyId,
-        address user
-    ) external returns (bytes32);
-
-    function openPosition(
-        address token,
-        uint256 amount,
-        euint128 encAmount,
-        uint256 strategyId,
-        address user
-    ) external returns (bytes32);
-
-    function addCollateral(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 amount,
-        InEuint128 calldata encAmount,
-        address user
-    ) external;
-
-    function addCollateral(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 amount,
-        euint128 encAmount,
-        address user
-    ) external;
-
-    function closePosition(
-        bytes32 positionId,
-        uint256 collateralAmount,
-        InEuint128 calldata encCollateralAmount
-    ) external;
-
-    function positionExists(bytes32 positionId) external view returns (bool);
-}
-
-interface ILendingPool {
-    function shield(address token, uint256 amount, InEuint128 calldata encAmount) external;
-
-    function depositFor(
-        address token,
-        uint256 amount,
-        euint128 handle,
-        address user
-    ) external;
-
-    function borrowWithLtvCheck(
-        address collateralToken,
-        address borrowToken,
-        uint256 borrowAmount,
-        InEuint128 calldata encBorrowAmount,
-        uint128 ltvNum,
-        uint128 ltvDen
-    ) external returns (euint128);
-
-    function borrowWithOracle(
-        address collateralToken,
-        address borrowToken,
-        uint256 borrowAmount,
-        InEuint128 calldata encBorrowAmount
-    ) external returns (euint128);
-
-    function borrowFor(
-        address token,
-        uint256 amount,
-        euint128 handle,
-        address user
-    ) external;
-
-    function repayDebt(address token, uint256 amount, InEuint128 calldata encAmount) external;
-
-    function repayFor(
-        address token,
-        uint256 amount,
-        euint128 handle,
-        address user
-    ) external;
-
-    function partialUnshield(address token, uint256 amount, InEuint128 calldata encAmount) external;
-}
-
-interface ISwapRouter {
-    function submitSwapIntent(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 minAmountOut,
-        uint256 deadlineOffset
-    ) external returns (bytes32 intentId);
-}
-
-contract FheForgeComposer is ReentrancyGuard, Pausable {
+contract FheForgeComposer is FheForgeBase {
     using SafeERC20 for IERC20;
 
     IRegistry public immutable REGISTRY;
     IStrategyVault public immutable VAULT;
     ILendingPool public immutable POOL;
     ISwapRouter public immutable ROUTER;
-    address public immutable OWNER;
-
-    error ZeroAddress();
-    error NotOwner();
 
     event LeveragedStrategyOpened(
         address indexed user,
@@ -136,16 +27,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         address indexed user
     );
 
-    modifier onlyOwner() {
-        _onlyOwner();
-        _;
-    }
-
-    function _onlyOwner() internal view {
-        if (msg.sender != OWNER) revert NotOwner();
-    }
-
-    constructor(address registry_, address vault_, address pool_, address router_) {
+    constructor(address registry_, address vault_, address pool_, address router_) FheForgeBase() {
         if (
             registry_ == address(0) ||
             vault_ == address(0) ||
@@ -158,16 +40,6 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         VAULT = IStrategyVault(vault_);
         POOL = ILendingPool(pool_);
         ROUTER = ISwapRouter(router_);
-
-        OWNER = msg.sender;
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     struct OpenStrategyParams {
@@ -238,9 +110,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         if (p.collateralAmount == 0) return bytes32(0);
         _ensureApproval(p.collateralToken, address(VAULT), p.collateralAmount);
         euint128 incomingColl = FHE.asEuint128(e.collateral);
-        euint128 claimedCollPlain = FHE.asEuint128(p.collateralAmount);
-        ebool collMatch = FHE.eq(incomingColl, claimedCollPlain);
-        euint128 verifiedColl = FHE.select(collMatch, incomingColl, FHE.asEuint128(0));
+        euint128 verifiedColl = _verifyEquality(incomingColl, p.collateralAmount);
         FHE.allowTransient(verifiedColl, address(VAULT));
         return VAULT.openPosition(
             p.collateralToken, p.collateralAmount, verifiedColl, strategyId, _msgSender()
@@ -254,11 +124,8 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     ) internal {
         if (supplyAmount == 0) return;
         _ensureApproval(p.collateralToken, address(POOL), supplyAmount);
-        // P0: Grant Pool ACL to use encrypted supply handle
         euint128 incomingSupply = FHE.asEuint128(e.supplyEnc);
-        euint128 claimedSupplyPlain = FHE.asEuint128(supplyAmount);
-        ebool supplyMatch = FHE.eq(incomingSupply, claimedSupplyPlain);
-        euint128 verifiedSupply = FHE.select(supplyMatch, incomingSupply, FHE.asEuint128(0));
+        euint128 verifiedSupply = _verifyEquality(incomingSupply, supplyAmount);
         FHE.allowTransient(verifiedSupply, address(POOL));
         POOL.depositFor(p.collateralToken, supplyAmount, verifiedSupply, _msgSender());
     }
@@ -268,15 +135,10 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         OpenStrategyEncrypted calldata e
     ) internal {
         if (p.poolBorrowAmount == 0) return;
-        // P0: Grant Pool ACL to use encrypted borrow handle
         euint128 incomingBorrow = FHE.asEuint128(e.borrowEnc);
-        euint128 claimedBorrowPlain = FHE.asEuint128(p.poolBorrowAmount);
-        ebool borrowMatch = FHE.eq(incomingBorrow, claimedBorrowPlain);
-        euint128 verifiedBorrow = FHE.select(borrowMatch, incomingBorrow, FHE.asEuint128(0));
+        euint128 verifiedBorrow = _verifyEquality(incomingBorrow, p.poolBorrowAmount);
         FHE.allowTransient(verifiedBorrow, address(POOL));
         POOL.borrowFor(p.borrowToken, p.poolBorrowAmount, verifiedBorrow, _msgSender());
-        // P0: Keep borrowed tokens in Composer for potential swap escrow.
-        // Do NOT send to user here — _submitSwap handles forwarding.
     }
 
     function _submitSwap(
@@ -339,11 +201,8 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         }
         if (p.addCollateralAmount > 0) {
             _ensureApproval(p.collateralToken, address(VAULT), p.addCollateralAmount);
-            // P0: Grant Vault ACL to use encrypted collateral handle
             euint128 addCollEnc = FHE.asEuint128(e.addCollateralEnc);
-            euint128 claimedAddCollPlain = FHE.asEuint128(p.addCollateralAmount);
-            ebool addCollMatch = FHE.eq(addCollEnc, claimedAddCollPlain);
-            euint128 verifiedAddColl = FHE.select(addCollMatch, addCollEnc, FHE.asEuint128(0));
+            euint128 verifiedAddColl = _verifyEquality(addCollEnc, p.addCollateralAmount);
             FHE.allowTransient(verifiedAddColl, address(VAULT));
             VAULT.addCollateral(
                 p.positionId, p.collateralToken, p.addCollateralAmount, verifiedAddColl, _msgSender()
@@ -352,26 +211,19 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
 
         if (p.repayAmount > 0) {
             _ensureApproval(p.repayToken, address(POOL), p.repayAmount);
-            // P0: Grant Pool ACL to use encrypted repay handle
             euint128 repayEnc = FHE.asEuint128(e.repayEnc);
-            euint128 claimedRepayPlain = FHE.asEuint128(p.repayAmount);
-            ebool repayMatch = FHE.eq(repayEnc, claimedRepayPlain);
-            euint128 verifiedRepay = FHE.select(repayMatch, repayEnc, FHE.asEuint128(0));
+            euint128 verifiedRepay = _verifyEquality(repayEnc, p.repayAmount);
             FHE.allowTransient(verifiedRepay, address(POOL));
             POOL.repayFor(p.repayToken, p.repayAmount, verifiedRepay, _msgSender());
         }
 
         if (p.newBorrowAmount > 0) {
-            // P0: Grant Pool ACL to use encrypted borrow handle
             euint128 newBorrowEnc = FHE.asEuint128(e.newBorrowEnc);
-            euint128 claimedNewBorrowPlain = FHE.asEuint128(p.newBorrowAmount);
-            ebool newBorrowMatch = FHE.eq(newBorrowEnc, claimedNewBorrowPlain);
-            euint128 verifiedNewBorrow = FHE.select(newBorrowMatch, newBorrowEnc, FHE.asEuint128(0));
+            euint128 verifiedNewBorrow = _verifyEquality(newBorrowEnc, p.newBorrowAmount);
             FHE.allowTransient(verifiedNewBorrow, address(POOL));
             POOL.borrowFor(
                 p.borrowToken, p.newBorrowAmount, verifiedNewBorrow, _msgSender()
             );
-            // P0: Keep borrowed tokens in Composer (consistent with openLeveragedStrategy)
         }
 
         emit StrategyRebalanced(

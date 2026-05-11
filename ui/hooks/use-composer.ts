@@ -3,7 +3,7 @@ import type { Abi } from "viem";
 import { useMemo } from "react";
 import type { Hash } from "viem";
 import ComposerArtifact from "@/abis/FheForgeComposer.json";
-const ComposerABI = ComposerArtifact.abi as unknown as Abi;
+const ComposerABI = ComposerArtifact as unknown as Abi;
 
 import { getContractAddresses } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";

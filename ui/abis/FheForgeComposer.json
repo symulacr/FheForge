@@ -32,6 +32,11 @@
   },
   {
     "inputs": [],
+    "name": "EthTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ExpectedPause",
     "type": "error"
   },
@@ -53,7 +58,7 @@
   },
   {
     "inputs": [],
-    "name": "NotOwner",
+    "name": "OnlyOwner",
     "type": "error"
   },
   {
@@ -85,7 +90,17 @@
   },
   {
     "inputs": [],
+    "name": "TokenMismatch",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAmount",
     "type": "error"
   },
   {
@@ -154,6 +169,19 @@
   },
   {
     "inputs": [],
+    "name": "BPS_DEN",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "OWNER",
     "outputs": [
       {
@@ -212,6 +240,19 @@
         "internalType": "contract IStrategyVault",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "WAD",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

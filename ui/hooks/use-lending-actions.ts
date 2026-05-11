@@ -4,9 +4,9 @@ import { Encryptable } from "@cofhe/sdk";
 import { parseUnits, type Address, type Hash } from "viem";
 import { useMemo, useState, useCallback } from "react";
 import PoolArtifact from "@/abis/LendingPool.json";
-const PoolABI = PoolArtifact.abi as unknown as Abi;
+const PoolABI = PoolArtifact as unknown as Abi;
 import PriceOracleArtifact from "@/abis/PriceOracle.json";
-const PriceOracleABI = PriceOracleArtifact.abi as unknown as Abi;
+const PriceOracleABI = PriceOracleArtifact as unknown as Abi;
 
 import { getContractAddresses, validateEuint128 } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
@@ -30,9 +30,8 @@ export interface LiquidateWithProofParams {
   supplySig: `0x${string}`;
 }
 
-// P5: pending contract ABI sync — these functions exist in the contract but not in the ABI
-// requestUnshield, unshieldWithProof, requestBorrowReveal — will be enabled after ABI regeneration
-
+// V3-2: Unshield lifecycle (requestUnshield → unshieldWithProof)
+// V3-3: Borrow reveal (requestBorrowReveal)
 
 export function useLendingActions() {
   const cofheClient = useCofheClient();
@@ -198,6 +197,45 @@ export function useLendingActions() {
       setIsEncrypting(false);
     }
   };
+  // ────────── V3-2: requestUnshield ──────────
+
+  const requestUnshield = async (token: Address): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    return writeContractAsync({
+      address: pool as `0x${string}`,
+      abi: PoolABI,
+      functionName: "requestUnshield",
+      args: [token],
+    });
+  };
+
+  // ────────── V3-2: unshieldWithProof ──────────
+
+  const unshieldWithProof = async (
+    token: Address,
+    balanceProof: bigint,
+    balanceSig: `0x${string}`,
+  ): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    return writeContractAsync({
+      address: pool as `0x${string}`,
+      abi: PoolABI,
+      functionName: "unshieldWithProof",
+      args: [token, balanceProof, balanceSig],
+    });
+  };
+
+  // ────────── V3-3: requestBorrowReveal ──────────
+
+  const requestBorrowReveal = async (token: Address): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    return writeContractAsync({
+      address: pool as `0x${string}`,
+      abi: PoolABI,
+      functionName: "requestBorrowReveal",
+      args: [token],
+    });
+  };
 
   return {
     requestLiquidityCheck,
@@ -208,6 +246,9 @@ export function useLendingActions() {
     borrowWithLtvCheckWithEncrypt,
     borrowWithOracleWithEncrypt,
     encrypt,
+    requestUnshield,
+    unshieldWithProof,
+    requestBorrowReveal,
     isEncrypting,
     isPending,
   };

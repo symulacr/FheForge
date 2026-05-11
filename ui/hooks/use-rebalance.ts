@@ -3,7 +3,7 @@ import { useChainId } from "wagmi";
 import type { Abi } from "viem";
 import type { Hash } from "viem";
 import FheForgeComposerArtifact from "@/abis/FheForgeComposer.json";
-const FheForgeComposerAbi = FheForgeComposerArtifact.abi as unknown as Abi;
+const FheForgeComposerAbi = FheForgeComposerArtifact as unknown as Abi;
 import { getContractAddresses } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { Encryptable } from "@cofhe/sdk";

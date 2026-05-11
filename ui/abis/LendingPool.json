@@ -1061,6 +1061,19 @@
     "inputs": [
       {
         "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "requestBorrowReveal",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "user",
         "type": "address"
       },
@@ -1076,6 +1089,19 @@
       }
     ],
     "name": "requestLiquidityCheck",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "requestUnshield",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1221,6 +1247,29 @@
   {
     "inputs": [],
     "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint128",
+        "name": "balanceProof",
+        "type": "uint128"
+      },
+      {
+        "internalType": "bytes",
+        "name": "balanceSig",
+        "type": "bytes"
+      }
+    ],
+    "name": "unshieldWithProof",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

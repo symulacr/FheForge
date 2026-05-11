@@ -22,28 +22,17 @@
   },
   {
     "inputs": [],
+    "name": "EthTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ExpectedPause",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "FhePermissionDenied",
-    "type": "error"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint8",
-        "name": "got",
-        "type": "uint8"
-      },
-      {
-        "internalType": "uint8",
-        "name": "expected",
-        "type": "uint8"
-      }
-    ],
-    "name": "InvalidEncryptedInput",
     "type": "error"
   },
   {
@@ -58,7 +47,7 @@
   },
   {
     "inputs": [],
-    "name": "NoPendingVault",
+    "name": "NoPendingRole",
     "type": "error"
   },
   {
@@ -109,12 +98,22 @@
   },
   {
     "inputs": [],
+    "name": "TokenMismatch",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "VaultAlreadySet",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "ZeroAddress",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAmount",
     "type": "error"
   },
   {
@@ -295,6 +294,19 @@
   },
   {
     "inputs": [],
+    "name": "BPS_DEN",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "MAX_NAME_LENGTH",
     "outputs": [
       {
@@ -334,7 +346,20 @@
   },
   {
     "inputs": [],
-    "name": "VAULT_ROTATION_DELAY",
+    "name": "ROTATION_DELAY",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "WAD",
     "outputs": [
       {
         "internalType": "uint256",
@@ -381,46 +406,6 @@
         "internalType": "euint128",
         "name": "amount",
         "type": "bytes32"
-      }
-    ],
-    "name": "decrementTvl",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "strategyId",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "ctHash",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "securityZone",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "utype",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bytes",
-            "name": "signature",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct InEuint128",
-        "name": "encAmount",
-        "type": "tuple"
       }
     ],
     "name": "decrementTvl",
@@ -548,46 +533,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "strategyId",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "ctHash",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "securityZone",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "utype",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bytes",
-            "name": "signature",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct InEuint128",
-        "name": "encAmount",
-        "type": "tuple"
-      }
-    ],
-    "name": "incrementTvl",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "localDomain",
     "outputs": [
@@ -622,7 +567,7 @@
   },
   {
     "inputs": [],
-    "name": "pendingVault",
+    "name": "pendingRole",
     "outputs": [
       {
         "internalType": "address",
@@ -635,7 +580,7 @@
   },
   {
     "inputs": [],
-    "name": "pendingVaultEarliest",
+    "name": "pendingRoleEarliest",
     "outputs": [
       {
         "internalType": "uint256",

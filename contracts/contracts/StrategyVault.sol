@@ -7,15 +7,13 @@ import {
     euint128,
     ebool
 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStrategyRegistry } from "./IStrategyRegistry.sol";
+import { FheForgeBase } from "./FheForgeBase.sol";
 import { SharedStrategyMeta } from "./libraries/SharedStrategyMeta.sol";
-import { FHESafeMath128 } from "./libraries/FHESafeMath128.sol";
 
-contract StrategyVault is ReentrancyGuard, Pausable {
+contract StrategyVault is FheForgeBase {
     using SafeERC20 for IERC20;
 
     struct Position {
@@ -33,18 +31,11 @@ contract StrategyVault is ReentrancyGuard, Pausable {
     mapping(address => uint256) private userPositionNonce;
 
     address public immutable REGISTRY;
-    address public immutable OWNER;
-
-    euint128 private immutable _ZERO;
 
     error PositionNotFound();
     error InvalidStrategyId();
     error NoPosition();
     error ExceedsDeposit();
-    error ZeroAddress();
-    error ZeroAmount();
-    error TokenMismatch();
-    error OnlyOwner();
     error SameBlockClose();
 
     // ─── P-HIGH-6 FIX: Events no longer emit plain amounts ───
@@ -72,67 +63,13 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         uint256 amount
     );
 
-    modifier onlyOwner() {
-        _onlyOwner();
-        _;
-    }
-
-    function _onlyOwner() internal view {
-        if (msg.sender != OWNER) revert OnlyOwner();
-    }
-
-    constructor(address registry_) {
+    constructor(address registry_) FheForgeBase() {
         if (registry_ == address(0)) revert ZeroAddress();
         REGISTRY = registry_;
-        OWNER = msg.sender;
-        euint128 z = FHE.asEuint128(0);
-        FHE.allowThis(z);
-        _ZERO = z;
-    }
-
-    /// @dev Substitute _ZERO for uninitialized handles (bytes32(0)).
-    ///      See LendingPool._ensureInitialized for rationale.
-    function _ensureInitialized(euint128 handle) internal view returns (euint128) {
-        return FHE.isInitialized(handle) ? handle : _ZERO;
     }
 
     /// @notice Opens a vault position for `user`. Caller (Composer) holds the tokens.
-    ///         Equality verification ensures encrypted input matches claimed plain amount.
-    function openPosition(
-        address token,
-        uint256 amount,
-        InEuint128 calldata encAmount,
-        uint256 strategyId,
-        address user
-    ) external nonReentrant whenNotPaused returns (bytes32 positionId) {
-        if (amount == 0) revert ZeroAmount();
-        if (token == address(0)) revert ZeroAddress();
-
-        // ─── P-CRIT-4 FIX: Equality verification ───
-        euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 claimedPlain = FHE.asEuint128(amount);
-        ebool amountsMatch = FHE.eq(incoming, claimedPlain);
-        euint128 verifiedIncoming = FHE.select(amountsMatch, incoming, _ZERO);
-
-        positionId = keccak256(abi.encode(user, userPositionNonce[user]++));
-
-        positionDepositedAmount[positionId] = amount;
-        positionCollateralToken[positionId] = token;
-        positionOpenedAtBlock[positionId] = block.number;
-        positionStrategyId[positionId] = strategyId;
-        positionExists[positionId] = true;
-        userPositionIds[user].push(positionId);
-
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-
-        positions[user][positionId] = Position({ collateral: verifiedIncoming, debt: _ZERO });
-
-        SharedStrategyMeta.grantPositionAcl(user, verifiedIncoming, _ZERO);
-
-        emit PositionOpened(positionId, user, token, strategyId);
-    }
-
-    /// @notice Zero-copy overload: caller already holds a verified euint128 handle.
+    ///         Equality verification is done by the caller (Composer) before passing the handle.
     function openPosition(
         address token,
         uint256 amount,
@@ -162,40 +99,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
     }
 
     /// @notice Adds collateral to an existing position on behalf of `user`.
-    ///         Equality verification ensures encrypted input matches claimed plain amount.
-    function addCollateral(
-        bytes32 positionId,
-        address collateralToken,
-        uint256 amount,
-        InEuint128 calldata encAmount,
-        address user
-    ) external nonReentrant whenNotPaused {
-        if (!positionExists[positionId]) revert PositionNotFound();
-        if (amount == 0) revert ZeroAmount();
-        if (positionCollateralToken[positionId] != collateralToken) revert TokenMismatch();
-
-        positionDepositedAmount[positionId] += amount;
-
-        IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), amount);
-
-        // ─── P-CRIT-4 FIX: Equality verification ───
-        euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 claimedPlain = FHE.asEuint128(amount);
-        ebool amountsMatch = FHE.eq(incoming, claimedPlain);
-        euint128 verifiedIncoming = FHE.select(amountsMatch, incoming, _ZERO);
-
-        // ─── P-CRIT-1 FIX: Safe increase ───
-        (, euint128 newCollateral) = FHESafeMath128.tryIncrease(
-            positions[user][positionId].collateral, verifiedIncoming
-        );
-        positions[user][positionId].collateral = newCollateral;
-
-        SharedStrategyMeta.grantUpdatedHandle(user, newCollateral);
-
-        emit CollateralAdded(positionId, user, collateralToken);
-    }
-
-    /// @notice euint128 overload: caller already holds a verified euint128 handle.
+    ///         Equality verification is done by the caller (Composer) before passing the handle.
     function addCollateral(
         bytes32 positionId,
         address collateralToken,
@@ -212,12 +116,11 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), amount);
 
         // ─── P-CRIT-1 FIX: Safe increase ───
-        (, euint128 newCollateral) = FHESafeMath128.tryIncrease(
-            positions[user][positionId].collateral, encAmount
+        positions[user][positionId].collateral = SharedStrategyMeta.safeIncrease(
+            positions[user][positionId].collateral, encAmount, user
         );
-        positions[user][positionId].collateral = newCollateral;
 
-        SharedStrategyMeta.grantUpdatedHandle(user, newCollateral);
+        SharedStrategyMeta.grantUpdatedHandle(user, positions[user][positionId].collateral);
 
         emit CollateralAdded(positionId, user, collateralToken);
     }
@@ -252,9 +155,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         if (strategyId != 0) {
             // ─── P-CRIT-4 FIX: Equality verification ───
             euint128 encClosed = FHE.asEuint128(encCollateralAmount);
-            euint128 claimedPlain = FHE.asEuint128(collateralAmount);
-            ebool amountsMatch = FHE.eq(encClosed, claimedPlain);
-            euint128 verifiedClosed = FHE.select(amountsMatch, encClosed, _ZERO);
+            euint128 verifiedClosed = _verifyEquality(encClosed, collateralAmount);
 
             FHE.allowThis(verifiedClosed);
             FHE.allowTransient(verifiedClosed, REGISTRY);
@@ -262,12 +163,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
 
             if (!fullClose) {
                 // ─── P-CRIT-1 FIX: Safe decrease ───
-                (, euint128 newCollateral) = FHESafeMath128.tryDecrease(
-                    currentCollateral, verifiedClosed
-                );
-                pos.collateral = newCollateral;
-                FHE.allowThis(newCollateral);
-                FHE.allow(newCollateral, user);
+                pos.collateral = _safeDecrease(currentCollateral, verifiedClosed, user);
             }
         }
 
@@ -299,14 +195,6 @@ contract StrategyVault is ReentrancyGuard, Pausable {
 
         IERC20(token).safeTransfer(user, amount);
         emit PausedWithdrawn(positionId, user, token, amount);
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     function getCollateral(bytes32 positionId) external returns (euint128) {

@@ -17,6 +17,11 @@
   },
   {
     "inputs": [],
+    "name": "EthTransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ExceedsDeposit",
     "type": "error"
   },
@@ -254,6 +259,19 @@
   },
   {
     "inputs": [],
+    "name": "BPS_DEN",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "OWNER",
     "outputs": [
       {
@@ -273,6 +291,19 @@
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "WAD",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -299,61 +330,6 @@
         "internalType": "euint128",
         "name": "encAmount",
         "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "user",
-        "type": "address"
-      }
-    ],
-    "name": "addCollateral",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "positionId",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "collateralToken",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "ctHash",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "securityZone",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "utype",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bytes",
-            "name": "signature",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct InEuint128",
-        "name": "encAmount",
-        "type": "tuple"
       },
       {
         "internalType": "address",
@@ -508,67 +484,6 @@
         "internalType": "euint128",
         "name": "encAmount",
         "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "strategyId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "user",
-        "type": "address"
-      }
-    ],
-    "name": "openPosition",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "positionId",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "ctHash",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint8",
-            "name": "securityZone",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "utype",
-            "type": "uint8"
-          },
-          {
-            "internalType": "bytes",
-            "name": "signature",
-            "type": "bytes"
-          }
-        ],
-        "internalType": "struct InEuint128",
-        "name": "encAmount",
-        "type": "tuple"
       },
       {
         "internalType": "uint256",

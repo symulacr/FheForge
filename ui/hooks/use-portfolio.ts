@@ -3,9 +3,9 @@ import type { Abi } from "viem";
 import { useMemo, useState } from "react";
 import type { Address } from "viem";
 import VaultArtifact from "@/abis/StrategyVault.json";
-const VaultABI = VaultArtifact.abi as unknown as Abi;
+const VaultABI = VaultArtifact as unknown as Abi;
 import PoolArtifact from "@/abis/LendingPool.json";
-const PoolABI = PoolArtifact.abi as unknown as Abi;
+const PoolABI = PoolArtifact as unknown as Abi;
 import { getContractAddresses } from "@/utils/addresses";
 
 export type PositionId = `0x${string}`;

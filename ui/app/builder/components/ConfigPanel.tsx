@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { useReadContract, useAccount } from "wagmi";
 import { formatUnits, type Abi } from "viem";
 import VaultArtifact from "@/abis/StrategyVault.json";
-const VaultABI = VaultArtifact.abi as unknown as Abi;
+const VaultABI = VaultArtifact as unknown as Abi;
 import { FheTypes } from "@cofhe/sdk";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { FHENIX_CONTRACT_ADDRESSES } from "@/utils/addresses";

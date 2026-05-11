@@ -5,11 +5,11 @@ import { parseUnits, formatUnits, keccak256, toHex, type Hash } from "viem";
 import { useMemo, useRef, useState } from "react";
 
 import VaultArtifact from "@/abis/StrategyVault.json";
-const VaultABI = VaultArtifact.abi as unknown as Abi;
+const VaultABI = VaultArtifact as unknown as Abi;
 import PoolArtifact from "@/abis/LendingPool.json";
-const PoolABI = PoolArtifact.abi as unknown as Abi;
+const PoolABI = PoolArtifact as unknown as Abi;
 import RouterArtifact from "@/abis/SwapRouter.json";
-const RouterABI = RouterArtifact.abi as unknown as Abi;
+const RouterABI = RouterArtifact as unknown as Abi;
 import { getContractAddresses, validateEuint128 } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { SLIPPAGE_TOLERANCE } from "@/lib/constants";
