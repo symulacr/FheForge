@@ -508,3 +508,117 @@ Lines 182-186: accepts `BRIDGE`, `STAKE`, `UNSTAKE` as valid step types. These d
 ---
 
 *18 missing items added after systematic cross-check of all function signatures, frontend enums, backend enums, AI prompts, and dead code.*
+
+## 9. Corrections — Previous Review Got Wrong (ABI Reality Check)
+
+After verifying against ACTUAL deployed ABIs and live contract source, the following items in the review were WRONG:
+
+### CORR-1: Permit2 is FULLY REMOVED from Composer — no dead variant exists
+
+The review (MISS-14) says: "Composer has both `openLeveragedStrategy` (Permit2-based, dead) and `openLeveragedStrategyDirect` (transferFrom-based, current)".
+
+**REALITY**: The Composer contract has ONLY ONE function: `openLeveragedStrategy` — and it uses `transferFrom` directly. There is NO `openLeveragedStrategyDirect` in the contract. The ABI confirms: only `openLeveragedStrategy` exists.
+
+The `useComposer.ts` hook has `openLeveragedStrategyDirect` calling `functionName: "openLeveragedStrategyDirect"` — this would REVERT because the function doesn't exist. This is a FRONTEND BUG, not a dead code issue.
+
+**Fix**: Remove `openLeveragedStrategyDirect` from `useComposer.ts`. The hook should call `openLeveragedStrategy` only.
+
+### CORR-2: `RebalanceParams` does NOT have Permit2 structs
+
+The review (MISS-15) says `RebalanceParams` has `collateralPermit`/`repayPermit`. **REALITY**: The contract's `RebalanceParams` has:
+```
+positionId, collateralToken, addCollateralAmount, repayAmount, repayToken, newBorrowAmount, borrowToken, useOracleBorrow, ltvNum, ltvDen
+```
+NO Permit2 fields. `rebalance` uses plain `transferFrom`. This is already clean.
+
+### CORR-3: LendingPool ABI is STALE — missing cross-contract functions
+
+The ABI at `ui/abis/LendingPool.json` does NOT include:
+- `supplyToLending(address, uint256, euint128, address)`
+- `borrowFromLending(address, uint256, euint128, address)`
+- `repayBorrow(address, uint256, euint128, address)`
+- `requestUnshield(address)`
+- `unshieldWithProof(address, uint128, bytes)`
+- `requestBorrowReveal(address)`
+- `getSupplyBalance(address)` / `getBorrowBalance(address)` (if they existed)
+
+The Composer calls these functions via its inline `ILendingPool` interface, which IS up-to-date. But the frontend `useLendingActions.ts` cannot call them because they're not in the ABI.
+
+**This is why `requestUnshield`/`unshieldWithProof`/`requestBorrowReveal` are commented-out stubs** — the ABI doesn't have them yet.
+
+**Fix**: Re-generate ABIs from compiled contracts. The current ABIs are from an older wave (pre-Wave17).
+
+### CORR-4: `openLeveragedStrategyDirect` in useComposer is a BUG, not dead code
+
+`useComposer.ts` line 117 calls `functionName: "openLeveragedStrategyDirect"` — this function DOES NOT EXIST in the Composer contract or ABI. This call would revert on-chain.
+
+**Fix**: Remove the `openLeveragedStrategyDirect` function from `useComposer.ts`. It's a leftover from when there were two paths (Permit2 vs Direct). Now there's only one path (`openLeveragedStrategy` using `transferFrom`).
+
+### CORR-5: Cross-chain is EVENT-ONLY, not functional — correct to keep, don't remove
+
+The review doesn't question cross-chain, but to be clear: `broadcastStrategy` and `receiveCrossChainStrategy` in Registry emit `CrossChainMessage` events. There's no Hyperlane/AMB integration. Off-chain relayer needed. This is correctly designed (P10 decision: no Hyperlane dependency). Keep as-is.
+
+### CORR-6: Composer inline interfaces are NOT dead — they're the ONLY source of truth for cross-contract calls
+
+The review (V3-1d) says "Extract ILendingPool, IStrategyVault, ISwapRouter, IWETH9 from Composer inline defs". But the Composer's inline `ILendingPool` interface includes `supplyToLending`, `borrowFromLending`, `repayBorrow` — functions that the Pool ABI doesn't expose. The inline interfaces are MORE up-to-date than the ABIs.
+
+**Fix**: When extracting interfaces to `contracts/interfaces/`, use the Composer's inline definitions as source, not the stale ABIs. The interface files should match the Composer's inline signatures exactly.
+
+### CORR-7: `_openVaultPosition` BUG is partially fixed
+
+The review says Composer passes `e.collateral` (InEuint128) to Vault. Looking at line 246:
+```solidity
+return VAULT.openPosition(
+    p.collateralToken, p.collateralAmount, e.collateral, strategyId, _msgSender()
+);
+```
+It passes `e.collateral` (InEuint128) to Vault's `openPosition(address, uint256, InEuint128, uint256, address)`. This is the InEuint128 overload — it WORKS because Vault HAS the InEuint128 overload. The BUG was that the euint128 path (after `FHE.asEuint128` conversion + `allowTransient`) was unused — the code does the conversion but then passes the original InEuint128.
+
+**Fix**: After V3-0 removes the InEuint128 overload, change to pass `incomingColl` (euint128) to Vault's euint128-only `openPosition`.
+
+### CORR-8: Naming should follow SHIELD/UNSHIELD pattern consistently, not mix with old terms
+
+User asked for short, understandable names. Current pattern is inconsistent:
+- `supply` / `withdraw` (Aave terms)
+- `supplyToLending` / `borrowFromLending` (hybrid terms)
+- `requestUnshield` / `unshieldWithProof` (new FHE terms)
+- `requestEmergencyBalance` (confusing term)
+
+**Proposed naming map** (short, consistent, follows FHE lifecycle):
+
+| User-facing | Composer-facing | Rationale |
+|---|---|---|
+| `shield` | `depositFor` | shield=lock+encrypt, depositFor=on-behalf |
+| `shieldEth` | — | ETH variant |
+| `partialUnshield` | — | partial exit (encrypted subtract + plain transfer) |
+| `partialUnshieldEth` | — | ETH variant |
+| `requestUnshield` | — | full exit step 1: allowPublic |
+| `unshieldWithProof` | — | full exit step 2: verify + transfer |
+| `repayDebt` | `repayFor` | user repays own / Composer repays for user |
+| `borrowWithLtvCheck` | `borrowFor` | user borrows with check / Composer borrows for user |
+| `borrowWithOracle` | — | oracle-priced borrow |
+| `requestBalanceReveal` | — | allowPublic for user's own balance |
+| `withdrawPausedWithProof` | — | paused-state exit with proof |
+| `requestLiquidityCheck` | — | allowPublic for liquidation eligibility |
+| `liquidateWithProof` | — | proof-based liquidation |
+
+All < 25 chars. All verb-first. All consistent with FHE lifecycle: shield → use → unshield.
+
+### CORR-9: Dead code audit scripts — Permit2 references are historical, not dead code in contracts
+
+The audit scripts at `contracts/scripts/audit-onchain.ts` and `audit-quick.ts` reference Permit2 in SKIP entries. These are NOT calling dead contract functions — they're just noting that certain tests are skipped because they require Permit2 flow (which no longer exists). The SKIP entries themselves are the dead code.
+
+**Fix**: Remove the SKIP entries for Permit2 functions. Don't need to test what doesn't exist.
+
+### CORR-10: `supplyToLending`/`borrowFromLending`/`repayBorrow` ARE ALIVE, not just Composer relics
+
+The review implies these are OceanFin relics. They're NOT — they're the cross-contract path that Composer uses to call Pool. Without them, Composer can't function. They just need RENAME:
+- `supplyToLending` → `depositFor` (Composer deposits on behalf of user)
+- `borrowFromLending` → `borrowFor` (Composer borrows for user)
+- `repayBorrow` → `repayFor` (Composer repays for user)
+
+These are architecturally necessary — the onlyComposer-gated functions that let Composer act on behalf of users.
+
+---
+
+*10 corrections after verifying against actual compiled contract source and deployed ABIs. The review had assumed P6 left dead Permit2 code — it didn't. The real issue is stale ABIs and a frontend bug calling a non-existent function.*
