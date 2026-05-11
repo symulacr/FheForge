@@ -237,13 +237,14 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         }
         encryptedTvls[strategyId] = result;
         FHE.allowThis(result);
-        FHE.allowSender(result);
+
     }
 
     /// @notice Returns the encrypted TVL for a strategy, ACL-granted to caller for decryptForView.
     function getEncryptedTvl(uint256 strategyId) external returns (euint128) {
         euint128 v = encryptedTvls[strategyId];
         FHE.allow(v, msg.sender);
+        FHE.allowSender(v);
         return v;
     }
 

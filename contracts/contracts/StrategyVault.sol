@@ -285,6 +285,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
     function getCollateral() external returns (euint128) {
         if (!hasPosition[_msgSender()]) revert NoPosition();
         FHE.allow(positions[_msgSender()].collateral, _msgSender());
+        FHE.allowSender(positions[_msgSender()].collateral);
         return positions[_msgSender()].collateral;
     }
 

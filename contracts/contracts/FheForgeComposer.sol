@@ -426,6 +426,85 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         );
     }
 
+    /// @notice Direct-transferFrom variant: user pre-approves Composer, no Permit2 needed.
+    ///         Reduces signing steps from 3→2 (encrypt + tx).
+    function openLeveragedStrategyDirect(
+        OpenStrategyParams calldata p,
+        OpenStrategyEncrypted calldata e
+    ) external nonReentrant whenNotPaused returns (uint256 strategyId, bytes32 intentId) {
+        // Pull collateral directly from user (requires prior approval)
+        if (p.collateralAmount > 0) {
+            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), p.collateralAmount);
+        }
+        // Pull extra supply amount if needed
+        uint256 extraSupply = p.poolSupplyAmount > p.collateralAmount ? p.poolSupplyAmount - p.collateralAmount : 0;
+        if (extraSupply > 0) {
+            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), extraSupply);
+        }
+
+        strategyId = _resolveStrategyId(p);
+        _openVaultPositionDirect(p, e, strategyId);
+        _supplyToPoolDirect(p, e);
+        _borrowFromPool(p, e);
+        intentId = _submitSwap(p, e);
+
+        emit LeveragedStrategyOpened(
+            msg.sender, strategyId, intentId, p.poolSupplyAmount, p.poolBorrowAmount
+        );
+    }
+
+    function _openVaultPositionDirect(
+        OpenStrategyParams calldata p,
+        OpenStrategyEncrypted calldata e,
+        uint256 strategyId
+    ) internal {
+        if (p.collateralAmount == 0) return;
+        _ensureApproval(p.collateralToken, address(VAULT), p.collateralAmount);
+        VAULT.openPosition(
+            p.collateralToken, p.collateralAmount, e.collateral, strategyId, _msgSender()
+        );
+    }
+
+    function _supplyToPoolDirect(
+        OpenStrategyParams calldata p,
+        OpenStrategyEncrypted calldata e
+    ) internal {
+        if (p.poolSupplyAmount == 0) return;
+        _ensureApproval(p.collateralToken, address(POOL), p.poolSupplyAmount);
+        POOL.supplyToLending(p.collateralToken, p.poolSupplyAmount, e.supplyEnc, _msgSender());
+    }
+
+    /// @notice Direct-transferFrom variant of rebalance: no Permit2 needed.
+    function rebalanceDirect(
+        RebalanceParams calldata p,
+        RebalanceEncrypted calldata e
+    ) external nonReentrant whenNotPaused {
+        // Pull collateral directly
+        if (p.addCollateralAmount > 0) {
+            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), p.addCollateralAmount);
+        }
+        // Pull repay token directly
+        if (p.repayAmount > 0) {
+            IERC20(p.repayToken).safeTransferFrom(_msgSender(), address(this), p.repayAmount);
+        }
+        if (p.addCollateralAmount > 0) {
+            _ensureApproval(p.collateralToken, address(VAULT), p.addCollateralAmount);
+            VAULT.addCollateral(p.collateralToken, p.addCollateralAmount, e.addCollateralEnc, _msgSender());
+        }
+        if (p.repayAmount > 0) {
+            _ensureApproval(p.repayToken, address(POOL), p.repayAmount);
+            POOL.repay(p.repayToken, p.repayAmount, e.repayEnc);
+        }
+        if (p.newBorrowAmount > 0) {
+            POOL.borrowFromLending(p.borrowToken, p.newBorrowAmount, e.newBorrowEnc, _msgSender());
+            uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
+            if (received > 0) {
+                IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
+            }
+        }
+        emit StrategyRebalanced(msg.sender, p.addCollateralAmount, p.repayAmount, p.newBorrowAmount);
+    }
+
     function _pullViaPermit2(
         address token,
         Permit2Authorization calldata auth

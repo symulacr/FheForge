@@ -764,6 +764,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         euint64 stored = supplyBalances[token][_msgSender()];
         if (FHE.isInitialized(stored)) {
             FHE.allow(stored, _msgSender());
+            FHE.allowSender(stored);
             return stored;
         }
         FHE.allow(_ZERO, _msgSender());
@@ -774,6 +775,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         euint64 stored = borrowBalances[token][_msgSender()];
         if (FHE.isInitialized(stored)) {
             FHE.allow(stored, _msgSender());
+            FHE.allowSender(stored);
             return stored;
         }
         FHE.allow(_ZERO, _msgSender());

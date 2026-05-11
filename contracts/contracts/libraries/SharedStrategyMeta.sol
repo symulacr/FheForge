@@ -12,15 +12,13 @@ library SharedStrategyMeta {
     function grantPositionAcl(address caller, euint128 collateral, euint128 debt) internal {
         FHE.allowThis(collateral);
         FHE.allow(collateral, caller);
-        FHE.allowSender(collateral);
         FHE.allowThis(debt);
         FHE.allow(debt, caller);
-        FHE.allowSender(debt);
     }
 
     function grantUpdatedHandle(address caller, euint128 handle) internal {
         FHE.allowThis(handle);
         FHE.allow(handle, caller);
-        FHE.allowSender(handle);
+
     }
 }

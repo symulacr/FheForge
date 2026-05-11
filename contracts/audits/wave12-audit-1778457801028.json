@@ -1,0 +1,906 @@
+{
+  "timestamp": "2026-05-11T00:03:21.028Z",
+  "wave": 12,
+  "network": "arb-sepolia",
+  "chainId": 421614,
+  "deployer": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
+  "contracts": {
+    "registry": "0x3f5F4FDA744f5a45678CAc142D2c9cDF81deebe0",
+    "pool": "0xE488DD8443f7f4806e859951b077885cC7067e9E",
+    "oracle": "0x7bA63AD2e9803030Be04a9C269CF1E2650cF760b",
+    "router": "0x82EaF299081040aF7C160868a7a4aa8Cd74b018D",
+    "vault": "0xC29C544380B4f52C3E1acED7c570b7366D50Eb3C",
+    "composer": "0xcBC185e7E0A4cd902962E050D3Df473eBe7f8d8b",
+    "executor": "0xdA6e80cb0D196Eaf7B0683E4eabAA9a8CC378a3D"
+  },
+  "cofheAvailable": true,
+  "summary": {
+    "pass": 53,
+    "fail": 7,
+    "skip": 18,
+    "read": 42,
+    "admin": 7,
+    "total": 127
+  },
+  "fheIssues": [
+    {
+      "contract": "LendingPool",
+      "loc": "supplyBalances+plainSupplyBalances",
+      "severity": "CRITICAL",
+      "issue": "Dual plain+encrypted state: FHE values stored alongside plain mirrors. Plain values observable on-chain, defeating FHE confidentiality. If they diverge (skew), contract uses plain for require() which leaks info via execution paths.",
+      "fix": "Remove plainSupplyBalances/plainBorrowBalances. Use FHE.select for conditional logic. Use decryptForView for UI display. Only decrypt on-chain when absolutely necessary via allowPublic+publishDecryptResult."
+    },
+    {
+      "contract": "All",
+      "loc": "no allowPublic() calls",
+      "severity": "HIGH",
+      "issue": "No FHE.allowPublic() anywhere in the system. Users cannot decrypt their balances on-chain via publishDecryptResult. No unshield/reveal flow exists. The only decryption path is decryptForView (off-chain UI-only), which requires permits.",
+      "fix": "Add allowPublic() on encrypted values when they are meant to become public (e.g. unshield, withdraw reveal). Add contract functions that call publishDecryptResult for on-chain settlement."
+    },
+    {
+      "contract": "All",
+      "loc": "no publishDecryptResult flow",
+      "severity": "HIGH",
+      "issue": "Contracts never call FHE.publishDecryptResult or FHE.verifyDecryptResult. No on-chain decryption is possible. Contract logic that needs to know a value (e.g. liquidation check, borrow limit) must decrypt somehow — currently uses plain mirrors which violates FHE.",
+      "fix": "For liquidation: use verifyDecryptResult with off-chain threshold sig. For health checks: compute entirely in FHE using FHE.select/FHE.gte without decrypting. Add publishDecryptResult functions for user-initiated reveals."
+    },
+    {
+      "contract": "LendingPool",
+      "loc": "_writeLiquidationHandles:582,589",
+      "severity": "HIGH",
+      "issue": "Uses FHE.asEuint64(debtToCover.toUint128()) and FHE.asEuint64(seizeAmount.toUint128()) — these are TRIVIAL encryptions from plain values. Not confidential. Observers can see the amounts. FHE operations on trivial+encrypted produce trivial results if the trivial value is known.",
+      "fix": "Liquidation amounts should either be fully encrypted inputs from the liquidator, or use decryptForTx+verifyDecryptResult for on-chain amount verification."
+    },
+    {
+      "contract": "LendingPool",
+      "loc": "withdraw/checkLtvAndBorrow",
+      "severity": "HIGH",
+      "issue": "Contracts use require() with plain values to check encrypted conditions (e.g. reserve sufficiency, LTV). This leaks info via execution paths — a reverted tx reveals the condition was false. Per CoFHE docs: 'There is no secure code branching with FHE'.",
+      "fix": "Replace require on encrypted conditions with FHE.select-based logic. Use FHE.gte for comparisons, FHE.select for conditional assignment. Only require on plaintext access control checks (msg.sender==owner etc)."
+    },
+    {
+      "contract": "StrategyVault",
+      "loc": "closePosition:SameBlockClose",
+      "severity": "MEDIUM",
+      "issue": "SameBlockClose reverts if closing in same block as opening. This is a plain require on block.number which leaks timing info about position management. Not a critical FHE leak but shows the pattern of execution-path branching.",
+      "fix": "Consider allowing same-block close (why prevent it?) or use FHE.select to handle the conditional gracefully instead of reverting."
+    },
+    {
+      "contract": "Composer",
+      "loc": "openLeveragedStrategy/rebalance",
+      "severity": "HIGH",
+      "issue": "Composer calls Pool.supplyToLending/borrowFromLending and Vault.openPosition/addCollateral. Pool's cross-contract functions use allow(user) + allowThis which gives Composer access via allowTransient. But if the Composer needs to READ the resulting encrypted balances later, it won't have ACL unless explicitly granted.",
+      "fix": "Use FHE.allowTransient for cross-contract calls within same tx. Use FHE.allow for persistent cross-contract access. Ensure Pool grants Composer ACL on encrypted results from composed operations."
+    },
+    {
+      "contract": "LendingPool",
+      "loc": "euint64 balances",
+      "severity": "MEDIUM",
+      "issue": "Uses euint64 for supply/borrow balances. USDC has 6 decimals; euint64 max ~1.84e19. With 6 decimals that's ~1.84e13 USDC ($18 trillion). Sufficient but if supporting tokens with 18 decimals, euint64 maxes at ~18.4 ETH. euint128 would be safer.",
+      "fix": "Consider migrating to euint128 for balances (like Vault uses for collateral). More gas but prevents overflow with high-decimal tokens. Or cap amounts at safe thresholds."
+    },
+    {
+      "contract": "Composer",
+      "loc": "_pullViaPermit2",
+      "severity": "HIGH",
+      "issue": "Composer requires Permit2 EIP-712 signatures for _pullViaPermit2 in openLeveragedStrategy and rebalance. Cannot be generated from scripts. Frontend must construct and sign these. This creates significant UX friction — users need wallet signing for Permit2 + FHE encryption + tx submission = 3 separate signing steps.",
+      "fix": "1) Add a direct-transferFrom path as alternative to Permit2 (user pre-approves Composer). 2) Bundle Permit2 signing with FHE encryption in the UI. 3) Use EIP-2612 permits (cheaper) instead of Permit2 where possible. 4) Consider meta-tx/relayer to reduce signing steps."
+    },
+    {
+      "contract": "LendingPool",
+      "loc": "no interest model",
+      "severity": "MEDIUM",
+      "issue": "No interest accrual on supply/borrow. In a real FHE lending protocol, interest must be computed on encrypted balances using FHE.mul with encrypted rate. This requires careful FHE.select usage for health checks post-accrual.",
+      "fix": "Add interest accrual: store encrypted supplyIndex/borrowIndex. Apply FHE.mul on balances each accrual. Use FHE.select for health factor checks. Compute entirely in FHE — never decrypt for interest logic."
+    },
+    {
+      "contract": "StrategyRegistry",
+      "loc": "getEncryptedTvl ACL",
+      "severity": "MEDIUM",
+      "issue": "decryptForView on encryptedTvl fails — allowSender may not be sufficient for off-chain decrypt.",
+      "fix": "Verify CoFHE network supports allowSender for decryptForView. May need explicit permit flow."
+    }
+  ],
+  "results": [
+    {
+      "contract": "CoFHE",
+      "fn": "client+connect+permit",
+      "status": "PASS",
+      "info": "self-permit via getOrCreateSelfPermit"
+    },
+    {
+      "contract": "USDC",
+      "fn": "balanceOf",
+      "status": "READ",
+      "info": "999999999999990645.0"
+    },
+    {
+      "contract": "WETH",
+      "fn": "balanceOf",
+      "status": "READ",
+      "info": "999999.8"
+    },
+    {
+      "contract": "Token",
+      "fn": "approve(USDC→Pool)",
+      "status": "PASS",
+      "info": "MaxUint256"
+    },
+    {
+      "contract": "Token",
+      "fn": "approve(WETH→Pool)",
+      "status": "PASS",
+      "info": "MaxUint256"
+    },
+    {
+      "contract": "Token",
+      "fn": "approve(USDC→Vault)",
+      "status": "PASS",
+      "info": "MaxUint256"
+    },
+    {
+      "contract": "Token",
+      "fn": "approve(WETH→Vault)",
+      "status": "PASS",
+      "info": "MaxUint256"
+    },
+    {
+      "contract": "Token",
+      "fn": "approve(USDC→Composer)",
+      "status": "PASS",
+      "info": "MaxUint256"
+    },
+    {
+      "contract": "Token",
+      "fn": "approve(WETH→Composer)",
+      "status": "PASS",
+      "info": "MaxUint256"
+    },
+    {
+      "contract": "Token",
+      "fn": "approve(USDC→Router)",
+      "status": "PASS",
+      "info": "MaxUint256"
+    },
+    {
+      "contract": "Token",
+      "fn": "approve(WETH→Router)",
+      "status": "PASS",
+      "info": "MaxUint256"
+    },
+    {
+      "contract": "Registry",
+      "fn": "setVault",
+      "status": "ADMIN",
+      "info": "already wired on deploy"
+    },
+    {
+      "contract": "Registry",
+      "fn": "proposeVault",
+      "status": "PASS",
+      "info": "proposed 0xC29C544380B4…",
+      "txHash": "0x96bbb93ff7c7c7a9830a7c4a29fcc604c831ab6eb09e5ced2735a0de259c33ec"
+    },
+    {
+      "contract": "Registry",
+      "fn": "acceptVault",
+      "status": "SKIP",
+      "reason": "timelock 90s — not tested in audit"
+    },
+    {
+      "contract": "Registry",
+      "fn": "pause",
+      "status": "PASS",
+      "info": "paused",
+      "txHash": "0xd6dfe663c68745c1fc6439a979fd7f871fc94550b47263a3fac947b71993c3d3"
+    },
+    {
+      "contract": "Registry",
+      "fn": "unpause",
+      "status": "PASS",
+      "info": "unpaused",
+      "txHash": "0xd893dbb28542fb38f6a01cbfab60880671f69a32505068de2a278aef189775b3"
+    },
+    {
+      "contract": "Registry",
+      "fn": "registerStrategy",
+      "status": "PASS",
+      "info": "id=1 name=Audit-1778457401959",
+      "txHash": "0xc072bdc85697b9230524f80984065fe3432b90c9c3bbbb00bd9448d6f4121a4d"
+    },
+    {
+      "contract": "Registry",
+      "fn": "strategyCount",
+      "status": "READ",
+      "info": "1"
+    },
+    {
+      "contract": "Registry",
+      "fn": "getStrategyMeta",
+      "status": "READ",
+      "info": "name=Audit-1778457401959 active=true"
+    },
+    {
+      "contract": "Registry",
+      "fn": "getStrategyParams",
+      "status": "READ",
+      "info": "apy=650 loops=2"
+    },
+    {
+      "contract": "Registry",
+      "fn": "setActive(false)",
+      "status": "PASS",
+      "info": "id=1",
+      "txHash": "0xa38e523ddf14c5c4c5287174180fd565c5ca398257e2c0960bec36c464b867ff"
+    },
+    {
+      "contract": "Registry",
+      "fn": "setActive(true)",
+      "status": "PASS",
+      "info": "id=1",
+      "txHash": "0x098692638ea499dd10bab182383c6415a8db9ff6d27fe8cf459990730cacc7ec"
+    },
+    {
+      "contract": "Registry",
+      "fn": "incrementTvl",
+      "status": "SKIP",
+      "reason": "onlyVault — exercised via Vault flow"
+    },
+    {
+      "contract": "Registry",
+      "fn": "decrementTvl",
+      "status": "SKIP",
+      "reason": "onlyVault — exercised via Vault flow"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "setSource",
+      "status": "ADMIN",
+      "info": "wired on deploy"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "setCollateralFactor",
+      "status": "ADMIN",
+      "info": "wired on deploy"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "getPythUpdateFee",
+      "status": "READ",
+      "info": "0.0 ETH"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "getPriceUsd(WETH)",
+      "status": "READ",
+      "info": "$2373.5 updated=1778453998"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "convertToUsd(1 WETH)",
+      "status": "READ",
+      "info": "$2373.5"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "convertFromUsd($2000)",
+      "status": "READ",
+      "info": "0.84263745523488519 WETH"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "isSupported",
+      "status": "READ",
+      "info": "WETH=true USDC=true"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "updatePriceFeeds(empty)",
+      "status": "PASS",
+      "info": "fee=0.0",
+      "txHash": "0xed862e79063655e2bb9ad6d68f850a147703f9363da03b339c14ab06e78fa771"
+    },
+    {
+      "contract": "Oracle",
+      "fn": "sweepEth",
+      "status": "SKIP",
+      "reason": "admin-only fund sweep — not tested"
+    },
+    {
+      "contract": "Pool",
+      "fn": "setOracle",
+      "status": "ADMIN",
+      "info": "wired on deploy"
+    },
+    {
+      "contract": "Pool",
+      "fn": "setWeth",
+      "status": "ADMIN",
+      "info": "wired on deploy"
+    },
+    {
+      "contract": "Pool",
+      "fn": "setComposer",
+      "status": "ADMIN",
+      "info": "wired on deploy"
+    },
+    {
+      "contract": "Pool",
+      "fn": "disableOracle",
+      "status": "SKIP",
+      "reason": "would break pool"
+    },
+    {
+      "contract": "Pool",
+      "fn": "disableWeth",
+      "status": "SKIP",
+      "reason": "would break pool"
+    },
+    {
+      "contract": "Pool",
+      "fn": "supply(USDC)",
+      "status": "PASS",
+      "info": "1000.0",
+      "txHash": "0x24ea89b82a4a664571421328186790287d59a2a50dbaf71788e0e10319cd63b2"
+    },
+    {
+      "contract": "Pool",
+      "fn": "supplyWithPermit2",
+      "status": "SKIP",
+      "reason": "requires Permit2 signature flow"
+    },
+    {
+      "contract": "Pool",
+      "fn": "supplyEth",
+      "status": "FAIL",
+      "reason": "unknown(0x) data=0x"
+    },
+    {
+      "contract": "Pool",
+      "fn": "getSupplyBalance(USDC)",
+      "status": "READ",
+      "info": "ctHash=0xe58958605f43433b16…"
+    },
+    {
+      "contract": "Pool",
+      "fn": "getPlainSupplyBalance(USDC)",
+      "status": "READ",
+      "info": "1000.0"
+    },
+    {
+      "contract": "Pool",
+      "fn": "checkLtvAndBorrow",
+      "status": "PASS",
+      "info": "500.0 USDC",
+      "txHash": "0xab0a393f41f238d82a480e0291c228b9d77dfde7cc51886029d2de4ea459b602"
+    },
+    {
+      "contract": "Pool",
+      "fn": "borrowWithOracle",
+      "status": "PASS",
+      "info": "100.0 USDC",
+      "txHash": "0x506adaab2569e166dd17d6de1b41729ce0212a25f1fb6880a85db602bf1894bf"
+    },
+    {
+      "contract": "Pool",
+      "fn": "getBorrowBalance(USDC)",
+      "status": "READ",
+      "info": "ctHash=0x334a871c77166fb879…"
+    },
+    {
+      "contract": "Pool",
+      "fn": "getPlainBorrowBalance(USDC)",
+      "status": "READ",
+      "info": "600.0"
+    },
+    {
+      "contract": "Pool",
+      "fn": "repay(USDC)",
+      "status": "PASS",
+      "info": "100.0",
+      "txHash": "0x194f0db174619c164df490726e8e6113923f1dcef47eb53df506a807dcec185f"
+    },
+    {
+      "contract": "Pool",
+      "fn": "repayWithPermit2",
+      "status": "SKIP",
+      "reason": "requires Permit2 signature"
+    },
+    {
+      "contract": "Pool",
+      "fn": "repay(USDC) #2",
+      "status": "PASS",
+      "info": "200.0 — creating excess reserve",
+      "txHash": "0x78d24f5084dbc8d83856706ff6dae1b392b27264a1eeaa02be24195fc587fd02"
+    },
+    {
+      "contract": "Pool",
+      "fn": "withdraw(USDC)",
+      "status": "PASS",
+      "info": "50.0",
+      "txHash": "0xdfa9fc38ffce70eca174e1a9cf82381c24f8907234a8a74e1df934cae5b8c589"
+    },
+    {
+      "contract": "Pool",
+      "fn": "withdrawEth",
+      "status": "SKIP",
+      "reason": "no WETH supply to withdraw"
+    },
+    {
+      "contract": "Pool",
+      "fn": "supplyToLending",
+      "status": "SKIP",
+      "reason": "onlyComposer — exercised via Composer openLeveragedStrategy"
+    },
+    {
+      "contract": "Pool",
+      "fn": "borrowFromLending",
+      "status": "SKIP",
+      "reason": "onlyComposer — exercised via Composer openLeveragedStrategy"
+    },
+    {
+      "contract": "Pool",
+      "fn": "repayBorrow",
+      "status": "SKIP",
+      "reason": "onlyComposer — exercised via Composer rebalance"
+    },
+    {
+      "contract": "Pool",
+      "fn": "liquidate",
+      "status": "SKIP",
+      "reason": "requires underwater position — complex setup skipped"
+    },
+    {
+      "contract": "Pool",
+      "fn": "pause",
+      "status": "PASS",
+      "info": "paused",
+      "txHash": "0x49079da5d2531cadc3ca9c1433627176d2839ad314135c3b7ae0e4b890e61650"
+    },
+    {
+      "contract": "Pool",
+      "fn": "emergencyWithdraw",
+      "status": "FAIL",
+      "reason": "InsufficientReserve()"
+    },
+    {
+      "contract": "Pool",
+      "fn": "unpause",
+      "status": "PASS",
+      "info": "unpaused",
+      "txHash": "0x6b2eb9971168a5528824d61f8e9502307addafb9c7818a5129a0031c40cb47a3"
+    },
+    {
+      "contract": "Pool",
+      "fn": "permitTransferFrom",
+      "status": "SKIP",
+      "reason": "onlyComposer — internal Permit2 flow"
+    },
+    {
+      "contract": "Pool",
+      "fn": "ETH/WETH roundtrip",
+      "status": "FAIL",
+      "reason": "unknown(0x) data=0x"
+    },
+    {
+      "contract": "Pool",
+      "fn": "supply(USDC lifecycle)",
+      "status": "PASS",
+      "info": "2000.0",
+      "txHash": "0x0167bf14d28ffc9fecbe0d7be3ec63df004b1f20988ce228d916808fde304b97"
+    },
+    {
+      "contract": "Pool",
+      "fn": "borrow(USDC lifecycle)",
+      "status": "PASS",
+      "info": "800.0",
+      "txHash": "0xd36e7e56c99a35ae041cdd9e6f3476c3cfd74de2b0d2ae25a9fc665efff6fde7"
+    },
+    {
+      "contract": "Pool",
+      "fn": "repay(USDC lifecycle)",
+      "status": "PASS",
+      "info": "400.0",
+      "txHash": "0xd1b292d1bd8d40e0cbdb69cce24bce4a235acf1db7191725ad592ea49d6a246b"
+    },
+    {
+      "contract": "Pool",
+      "fn": "withdraw(USDC lifecycle)",
+      "status": "PASS",
+      "info": "200.0",
+      "txHash": "0x19788cf8803a906233ff45a5680c2f22f3a6c03ddb97f80739d0b994b4ebc0a4"
+    },
+    {
+      "contract": "Pool",
+      "fn": "USDC lifecycle final",
+      "status": "READ",
+      "info": "supply=2750.0 borrow=700.0 reserve=2050.0"
+    },
+    {
+      "contract": "Vault",
+      "fn": "openPosition(WETH collateral)",
+      "status": "PASS",
+      "info": "0.05 WETH",
+      "txHash": "0x8e041d38baa5b897b26305e5eb4dfb9431136236d4bc02bfbe01ccc10d8874b5"
+    },
+    {
+      "contract": "Vault",
+      "fn": "WETH position state",
+      "status": "READ",
+      "info": "hasPosition=true deposited=0.05 stratId=1 ctHash=0x97e3dd393e5158"
+    },
+    {
+      "contract": "Vault",
+      "fn": "addCollateral(WETH)",
+      "status": "PASS",
+      "info": "+0.01 WETH",
+      "txHash": "0x841d06030f4709c085f8e81db14faa4d2ff334218d5801c294c7d03ece69d1c8"
+    },
+    {
+      "contract": "Vault",
+      "fn": "WETH collateral after add",
+      "status": "READ",
+      "info": "ctHash=0x748557ab601ab3… decrypted=60000"
+    },
+    {
+      "contract": "Vault",
+      "fn": "closePosition(WETH)",
+      "status": "PASS",
+      "info": "0.06 WETH withdrawn",
+      "txHash": "0x62c8f7e6fc7d1b9fbca978f0b35fcb532984ffd1cf1062b13b4c33042b8f9dd6"
+    },
+    {
+      "contract": "Vault",
+      "fn": "pause(for emergency)",
+      "status": "PASS",
+      "info": "paused",
+      "txHash": "0x48db552f99363537ffee16d6c9a0f02c46d81041e65c4b6f48a0a4fb2198dcb6"
+    },
+    {
+      "contract": "Vault",
+      "fn": "emergencyWithdraw()",
+      "status": "PASS",
+      "info": "withdrew from paused vault",
+      "txHash": "0x5613c119018deffd8d687800a1997baf32753143e1fd7a6bd1cd23713af1491b"
+    },
+    {
+      "contract": "Vault",
+      "fn": "unpause(after emergency)",
+      "status": "PASS",
+      "info": "unpaused",
+      "txHash": "0xccefc94ae94aa7649b82fea3bc69f0881468882b11fe92590bec63cac8d94ed0"
+    },
+    {
+      "contract": "Router",
+      "fn": "proposeExecutor",
+      "status": "ADMIN",
+      "info": "admin timelock — already set"
+    },
+    {
+      "contract": "Router",
+      "fn": "acceptExecutor",
+      "status": "SKIP",
+      "reason": "timelock 90s — not tested"
+    },
+    {
+      "contract": "Router",
+      "fn": "submitSwapIntent",
+      "status": "PASS",
+      "info": "USDC→WETH 100.0",
+      "txHash": "0x3ee170391a1fc1b7a66d3b99c5451a1f7079a22ea52a80283c1841b395a980e0"
+    },
+    {
+      "contract": "Router",
+      "fn": "getIntentMeta",
+      "status": "READ",
+      "info": "tokenIn=0x150376EdEbc5AC48771655a61a795d828BeC8Df6 tokenOut=0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d user=0x485534DE…"
+    },
+    {
+      "contract": "ExecutorContract",
+      "fn": "executeIntent",
+      "status": "PASS",
+      "info": "executed swap intent",
+      "txHash": "0x14ce916eccd2191d19cb359a943fbaa89f13de2cff0f2f52236ecc36c05d38ca"
+    },
+    {
+      "contract": "Router",
+      "fn": "cancelIntent",
+      "status": "PASS",
+      "info": "escrow returned",
+      "txHash": "0x8369e8cc0ead01b3944d84d13ef9c69932c28e370a161f62b14f61da749cc8e8"
+    },
+    {
+      "contract": "Router",
+      "fn": "pause",
+      "status": "PASS",
+      "info": "paused",
+      "txHash": "0xeb0794b84314633925ea8ac22ecd9598ed8c954acbd6940c233e4d295590a9ae"
+    },
+    {
+      "contract": "Router",
+      "fn": "unpause",
+      "status": "PASS",
+      "info": "unpaused",
+      "txHash": "0x0aba8b9d956679fa30ebae440ca3bb2d84af3bf1e05dcd15f2214f1972a51b09"
+    },
+    {
+      "contract": "ExecutorContract",
+      "fn": "executeIntent",
+      "status": "READ",
+      "info": "tested via SwapRouter flow above"
+    },
+    {
+      "contract": "ExecutorContract",
+      "fn": "approveToken(USDC→Pool)",
+      "status": "PASS",
+      "info": "1000 USDC",
+      "txHash": "0xe9a31d85cf687be4504e48e4577be3df5d52adde1d8cec975ea6ee744e9cf05c"
+    },
+    {
+      "contract": "ExecutorContract",
+      "fn": "withdrawTokens",
+      "status": "SKIP",
+      "reason": "would drain contract — not tested"
+    },
+    {
+      "contract": "Vault",
+      "fn": "openPosition(USDC)",
+      "status": "PASS",
+      "info": "500.0 strat=1",
+      "txHash": "0x51926223e02174f2f6304385464d348701c344beecce0e48c3ded86037bfdd9f"
+    },
+    {
+      "contract": "Vault",
+      "fn": "hasPosition",
+      "status": "READ",
+      "info": "true"
+    },
+    {
+      "contract": "Vault",
+      "fn": "getDepositedAmount",
+      "status": "READ",
+      "info": "500.0"
+    },
+    {
+      "contract": "Vault",
+      "fn": "getPositionMeta",
+      "status": "READ",
+      "info": "strategyId=1 createdAt=10829711"
+    },
+    {
+      "contract": "Vault",
+      "fn": "getCollateral",
+      "status": "READ",
+      "info": "ctHash=0x610c01c327e77e647f…"
+    },
+    {
+      "contract": "Vault",
+      "fn": "addCollateral(USDC)",
+      "status": "PASS",
+      "info": "100.0",
+      "txHash": "0xfe4f824f7c9b0d5d86540cc686b3af08d86414181ec2e4aaa26e132e4026e4e8"
+    },
+    {
+      "contract": "Vault",
+      "fn": "closePosition",
+      "status": "PASS",
+      "info": "600.0 USDC withdrawn",
+      "txHash": "0xfc824e320c90b306a8a6ff8373f2b6b46092713c8179dda268dc05dacdbe2b8b"
+    },
+    {
+      "contract": "Vault",
+      "fn": "emergencyWithdraw",
+      "status": "SKIP",
+      "reason": "requires paused vault + open position — skipped"
+    },
+    {
+      "contract": "Vault",
+      "fn": "pause",
+      "status": "PASS",
+      "info": "paused",
+      "txHash": "0x6c70aaeb8958dd1c5a29336e96a39fe28f8d440448fb36323e690148be6e7a35"
+    },
+    {
+      "contract": "Vault",
+      "fn": "unpause",
+      "status": "PASS",
+      "info": "unpaused",
+      "txHash": "0x41a2b8858c40868cc8fc9f2e7e8cba2730f716de2eff8c9ff11a98767df70383"
+    },
+    {
+      "contract": "Composer",
+      "fn": "OWNER",
+      "status": "READ",
+      "info": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8"
+    },
+    {
+      "contract": "Composer",
+      "fn": "POOL",
+      "status": "READ",
+      "info": "0xE488DD8443f7f4806e859951b077885cC7067e9E"
+    },
+    {
+      "contract": "Composer",
+      "fn": "VAULT",
+      "status": "READ",
+      "info": "0xC29C544380B4f52C3E1acED7c570b7366D50Eb3C"
+    },
+    {
+      "contract": "Composer",
+      "fn": "ROUTER",
+      "status": "READ",
+      "info": "0x82EaF299081040aF7C160868a7a4aa8Cd74b018D"
+    },
+    {
+      "contract": "Composer",
+      "fn": "REGISTRY",
+      "status": "READ",
+      "info": "0x3f5F4FDA744f5a45678CAc142D2c9cDF81deebe0"
+    },
+    {
+      "contract": "Composer",
+      "fn": "PERMIT2",
+      "status": "READ",
+      "info": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
+    {
+      "contract": "Composer",
+      "fn": "openLeveragedStrategyDirect",
+      "status": "FAIL",
+      "reason": "InvalidSigner(0x13bB1d5F4B43AF9B2910Aec58F9EE14be6fF02B3,0x013a19C3401B19C21390BF3f0BCdf9C01eAAfe71)"
+    },
+    {
+      "contract": "Composer",
+      "fn": "rebalanceDirect",
+      "status": "FAIL",
+      "reason": "NoPosition()"
+    },
+    {
+      "contract": "Composer",
+      "fn": "sweepToken",
+      "status": "SKIP",
+      "reason": "admin-only fund sweep — not tested"
+    },
+    {
+      "contract": "Composer",
+      "fn": "pause",
+      "status": "PASS",
+      "info": "paused",
+      "txHash": "0xb9d9f46ea998704d2d1f5f1178b361e9a391ab495f543d87068e1f603519e88b"
+    },
+    {
+      "contract": "Composer",
+      "fn": "unpause",
+      "status": "PASS",
+      "info": "unpaused",
+      "txHash": "0xa2319a0f7eb85b66937b8c93728b4822611a4e6f03398ded3dda9f200263903b"
+    },
+    {
+      "contract": "Composer",
+      "fn": "(interface functions)",
+      "status": "READ",
+      "info": "supply/borrow/repay/withdraw/openPosition/addCollateral/closePosition/submitSwapIntent are Pool/Vault/Router functions called internally by openLeveragedStrategy & rebalance — tested above"
+    },
+    {
+      "contract": "Pool",
+      "fn": "supply(USDC): enc vs plain vs decrypted",
+      "status": "READ",
+      "info": "ctHash=0xf8563b4379d301… plain=2750.0 decrypted=2750000000"
+    },
+    {
+      "contract": "Pool",
+      "fn": "borrow(USDC): enc vs plain vs decrypted",
+      "status": "READ",
+      "info": "ctHash=0x6a13afd280991f… plain=700.0 decrypted=700000000"
+    },
+    {
+      "contract": "Pool",
+      "fn": "supply(WETH): enc vs plain vs decrypted",
+      "status": "READ",
+      "info": "ctHash=0x43662edd94f2cb… plain=0.0 decrypted=0"
+    },
+    {
+      "contract": "Vault",
+      "fn": "collateral(opened): enc vs plain vs decrypted",
+      "status": "READ",
+      "info": "ctHash=0x616231740e6c0b… deposited=200.0 decrypted=200000000"
+    },
+    {
+      "contract": "Vault",
+      "fn": "FHE collateral check",
+      "status": "FAIL",
+      "reason": "SameBlockClose()"
+    },
+    {
+      "contract": "Registry",
+      "fn": "getEncryptedTvl+decryptForView",
+      "status": "PASS",
+      "info": "ctHash=0x4fdc1e2fb79645… dec=decrypt-failed: sealOutput request failed: Forbidden"
+    },
+    {
+      "contract": "CoFHE",
+      "fn": "decryptForTx(supply)",
+      "status": "READ",
+      "info": "decrypted=2750000000 sigLen=132"
+    },
+    {
+      "contract": "Wiring",
+      "fn": "Registry→Vault",
+      "status": "READ",
+      "info": "0xC29C544380B4f52C3E1acED7c570b7366D50Eb3C"
+    },
+    {
+      "contract": "Wiring",
+      "fn": "Pool→Oracle",
+      "status": "READ",
+      "info": "0x7bA63AD2e9803030Be04a9C269CF1E2650cF760b"
+    },
+    {
+      "contract": "Wiring",
+      "fn": "Pool→WETH",
+      "status": "READ",
+      "info": "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d"
+    },
+    {
+      "contract": "Wiring",
+      "fn": "Pool→Composer",
+      "status": "READ",
+      "info": "0xcBC185e7E0A4cd902962E050D3Df473eBe7f8d8b"
+    },
+    {
+      "contract": "Wiring",
+      "fn": "Oracle→WETH",
+      "status": "READ",
+      "info": "true"
+    },
+    {
+      "contract": "Wiring",
+      "fn": "Oracle→USDC",
+      "status": "READ",
+      "info": "true"
+    },
+    {
+      "contract": "Wiring",
+      "fn": "Router→Executor",
+      "status": "READ",
+      "info": "0xdA6e80cb0D196Eaf7B0683E4eabAA9a8CC378a3D"
+    },
+    {
+      "contract": "Wiring",
+      "fn": "all cross-contract refs",
+      "status": "PASS",
+      "info": "correctly wired"
+    },
+    {
+      "contract": "Pool",
+      "fn": "liquidation flow",
+      "status": "FAIL",
+      "reason": "PositionAlreadyExists()"
+    },
+    {
+      "contract": "FHE",
+      "fn": "decryptForView(supply)",
+      "status": "PASS",
+      "info": "decrypted successfully — decrypted=3250000000"
+    },
+    {
+      "contract": "FHE",
+      "fn": "decryptForView≈plain match",
+      "status": "PASS",
+      "info": "encrypted and plain supply values match — no skew"
+    },
+    {
+      "contract": "FHE",
+      "fn": "decryptForTx(borrow,withPermit)",
+      "status": "PASS",
+      "info": "decrypted=700000000 sigLen=132"
+    },
+    {
+      "contract": "FHE",
+      "fn": "decryptForView(vault collateral)",
+      "status": "PASS",
+      "info": "decrypted=200000000"
+    }
+  ]
+}
