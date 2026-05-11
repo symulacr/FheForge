@@ -11,7 +11,7 @@ const ADDRS = {
   registry: "0x59d955dA6a678D140ce8379ae7175850B7481E76",
 };
 const USDC = "0x150376EdEbc5AC48771655a61a795d828BeC8Df6";
-const WETH = "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d";
+const WETH = "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32";
 
 async function main() {
   const [deployer] = await ethers.getSigners();

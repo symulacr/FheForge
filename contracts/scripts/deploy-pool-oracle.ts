@@ -25,7 +25,7 @@ async function main() {
   await composer.waitForDeployment();
   const compAddr = await composer.getAddress();
   console.log("Composer:", compAddr, "tx:", compTx?.hash);
-  const WETH = "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d";
+  const WETH = "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32";
   await (await pool.setWeth(WETH)).wait();
   console.log("Pool.setWeth done");
   await (await pool.setOracle(oracleAddr)).wait();

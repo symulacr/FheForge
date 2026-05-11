@@ -7,7 +7,7 @@ const ADDRS = {
   composer: "0xeF1EdEcB5Df34C732561685F5Efa788947Dd68b8",
 };
 const USDC = "0x150376EdEbc5AC48771655a61a795d828BeC8Df6";
-const WETH = "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d";
+const WETH = "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32";
 
 async function main() {
   const [deployer] = await ethers.getSigners();

@@ -15,7 +15,7 @@ import hre from "hardhat";
 import { Encryptable, FheTypes } from "@cofhe/sdk";
 import { createCofheClient, createCofheConfig } from "@cofhe/sdk/node";
 import { arbSepolia } from "@cofhe/sdk/chains";
-const WETH  = "0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d";
+const WETH  = "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32";
 const USDC  = "0x150376EdEbc5AC48771655a61a795d828BeC8Df6";
 
 const ADDRS = {

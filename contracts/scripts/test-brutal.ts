@@ -16,7 +16,7 @@ async function main(){
 const[d]=await ethers.getSigners();const a=d.address;
 const dep=JSON.parse(fs.readFileSync("deployments/421614.json","utf8"));
 const U="0x150376EdEbc5AC48771655a61a795d828BeC8Df6";
-const W="0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d";
+const W="0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32";
 const reg=await ethers.getContractAt("StrategyRegistry",dep.contracts.StrategyRegistry,d);
 const vlt=await ethers.getContractAt("StrategyVault",dep.contracts.StrategyVault,d);
 const pol=await ethers.getContractAt("LendingPool",dep.contracts.LendingPool,d);

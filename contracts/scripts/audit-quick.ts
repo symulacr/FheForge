@@ -62,6 +62,13 @@ async function main() {
     await (await pool.supply(USDC, amt, e)).wait();
   });
 
+  // 2b. Pool supplyEth
+  await test("Pool.supplyEth", async () => {
+    const amt = ethers.parseEther("0.01");
+    const [e] = await client.encryptInputs([Encryptable.uint64(BigInt(amt))]).execute();
+    await (await pool.supplyEth(e, { value: amt })).wait();
+  });
+
   // 3. Vault direct openPosition
   await test("Vault.openPosition (user direct)", async () => {
     await closeVaultIfOpen();
