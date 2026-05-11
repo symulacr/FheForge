@@ -90,6 +90,12 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         _ZERO = z;
     }
 
+    /// @dev Substitute _ZERO for uninitialized handles (bytes32(0)).
+    ///      See LendingPool._ensureInitialized for rationale.
+    function _ensureInitialized(euint128 handle) internal view returns (euint128) {
+        return FHE.isInitialized(handle) ? handle : _ZERO;
+    }
+
     /// @notice Opens a vault position for `user`. Caller (Composer) holds the tokens.
     ///         Equality verification ensures encrypted input matches claimed plain amount.
     function openPosition(
@@ -277,7 +283,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         address token = positionCollateralToken[positionId];
         uint256 strategyId = positionStrategyId[positionId];
         address user = _msgSender();
-        euint128 coll = positions[user][positionId].collateral;
+        euint128 coll = _ensureInitialized(positions[user][positionId].collateral);
 
         if (strategyId != 0) {
             FHE.allowTransient(coll, REGISTRY);
@@ -305,9 +311,10 @@ contract StrategyVault is ReentrancyGuard, Pausable {
 
     function getCollateral(bytes32 positionId) external returns (euint128) {
         if (!positionExists[positionId]) revert PositionNotFound();
-        FHE.allow(positions[_msgSender()][positionId].collateral, _msgSender());
-        FHE.allowSender(positions[_msgSender()][positionId].collateral);
-        return positions[_msgSender()][positionId].collateral;
+        euint128 coll = _ensureInitialized(positions[_msgSender()][positionId].collateral);
+        FHE.allow(coll, _msgSender());
+        FHE.allowSender(coll);
+        return coll;
     }
 
     function getPositionMeta(bytes32 positionId) external view returns (uint256 strategyId, uint256 createdAt) {

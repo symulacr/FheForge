@@ -119,6 +119,14 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _ZERO = z;
     }
 
+    /// @dev Substitute _ZERO for uninitialized handles (bytes32(0)).
+    ///      Default mapping values are not registered with the FHE coprocessor,
+    ///      so any ACL/FHE operation on them reverts with SenderNotAllowed(0xd0d25976).
+    ///      _ZERO is created in the constructor with FHE.allowThis — safe for all operations.
+    function _ensureInitialized(euint128 handle) internal view returns (euint128) {
+        return FHE.isInitialized(handle) ? handle : _ZERO;
+    }
+
     // ────────── User-facing shield / borrow / repay / unshield ──────────
 
     /// @notice Shield (deposit) tokens into the pool. Equality verification ensures
@@ -181,10 +189,10 @@ contract LendingPool is ReentrancyGuard, Pausable {
         // Oracle gates the plain transfer; encrypted check provides audit layer.
         // Product comparison avoids division overflow:
         //   isHealthy = (newBorrow * ltvDen) <= (supplyBal * ltvNum)
-        euint128 supplyBal = supplyBalances[collateralToken][_msgSender()];
-        euint128 borrowBal = borrowBalances[borrowToken][_msgSender()];
-        FHE.allowThis(supplyBal);
-        FHE.allowThis(borrowBal);
+        euint128 supplyBal = _ensureInitialized(supplyBalances[collateralToken][_msgSender()]);
+        euint128 borrowBal = _ensureInitialized(borrowBalances[borrowToken][_msgSender()]);
+        // Note: allowThis on these is now safe — _ensureInitialized guarantees valid handles.
+        // Persistent ACL from original store + _ZERO constructor allowThis = access preserved.
 
         // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 requested = FHE.asEuint128(encBorrowAmount);
@@ -293,7 +301,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
     function requestBalanceReveal(address token) external {
         if (token == address(0)) revert ZeroAddress();
-        FHE.allowPublic(supplyBalances[token][_msgSender()]);
+        FHE.allowPublic(_ensureInitialized(supplyBalances[token][_msgSender()]));
     }
 
     function withdrawPausedWithProof(
@@ -302,7 +310,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         bytes calldata balanceSig
     ) external nonReentrant whenPaused {
         if (token == address(0)) revert ZeroAddress();
-        if (!FHE.verifyDecryptResult(supplyBalances[token][_msgSender()], balanceProof, balanceSig)) {
+        if (!FHE.verifyDecryptResult(_ensureInitialized(supplyBalances[token][_msgSender()]), balanceProof, balanceSig)) {
             revert InvalidProof();
         }
         uint256 amount = uint256(balanceProof);
@@ -536,8 +544,8 @@ contract LendingPool is ReentrancyGuard, Pausable {
     ) external {
         if (user == address(0)) revert ZeroAddress();
         if (collateralToken == address(0) || debtToken == address(0)) revert ZeroAddress();
-        FHE.allowPublic(borrowBalances[debtToken][user]);
-        FHE.allowPublic(supplyBalances[collateralToken][user]);
+        FHE.allowPublic(_ensureInitialized(borrowBalances[debtToken][user]));
+        FHE.allowPublic(_ensureInitialized(supplyBalances[collateralToken][user]));
     }
 
     /// @notice Liquidate with proof-based decryption. Uses stored encrypted handles
@@ -559,10 +567,10 @@ contract LendingPool is ReentrancyGuard, Pausable {
         if (collateralToken == debtToken) revert TokenMismatch();
 
         // Verify decrypted balances via Threshold Network proof
-        if (!FHE.verifyDecryptResult(borrowBalances[debtToken][user], debtBalanceProof, debtSig)) {
+        if (!FHE.verifyDecryptResult(_ensureInitialized(borrowBalances[debtToken][user]), debtBalanceProof, debtSig)) {
             revert InvalidProof();
         }
-        if (!FHE.verifyDecryptResult(supplyBalances[collateralToken][user], supplyBalanceProof, supplySig)) {
+        if (!FHE.verifyDecryptResult(_ensureInitialized(supplyBalances[collateralToken][user]), supplyBalanceProof, supplySig)) {
             revert InvalidProof();
         }
 
@@ -590,7 +598,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         // Subtrahend is trivial (public by liquidation design) — unavoidable.
         // Minuend is the REAL stored handle → result stays encrypted.
         euint128 repayEnc = FHE.asEuint128(actualDebtCover);
-        euint128 storedDebt = borrowBalances[debtToken][user];
+        euint128 storedDebt = _ensureInitialized(borrowBalances[debtToken][user]);
         FHE.allowThis(storedDebt);
         (, euint128 newDebt) = FHESafeMath128.tryDecrease(storedDebt, repayEnc);
         borrowBalances[debtToken][user] = newDebt;
@@ -609,7 +617,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
         // ─── P-CRIT-2 FIX: Use stored encrypted handle as minuend ───
         euint128 seizeEnc = FHE.asEuint128(seizedCollateral);
-        euint128 storedColl = supplyBalances[collateralToken][user];
+        euint128 storedColl = _ensureInitialized(supplyBalances[collateralToken][user]);
         FHE.allowThis(storedColl);
         (, euint128 newCollateral) = FHESafeMath128.tryDecrease(storedColl, seizeEnc);
         supplyBalances[collateralToken][user] = newCollateral;
@@ -628,13 +636,13 @@ contract LendingPool is ReentrancyGuard, Pausable {
     // ────────── Encrypted balance getters (allowSender) ──────────
 
     function getSupplyBalance(address token) external returns (euint128) {
-        euint128 bal = supplyBalances[token][msg.sender];
+        euint128 bal = _ensureInitialized(supplyBalances[token][msg.sender]);
         FHE.allowSender(bal);
         return bal;
     }
 
     function getBorrowBalance(address token) external returns (euint128) {
-        euint128 bal = borrowBalances[token][msg.sender];
+        euint128 bal = _ensureInitialized(borrowBalances[token][msg.sender]);
         FHE.allowSender(bal);
         return bal;
     }

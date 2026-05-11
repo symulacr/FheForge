@@ -95,6 +95,12 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         _ZERO = z;
     }
 
+    /// @dev Substitute _ZERO for uninitialized handles (bytes32(0)).
+    ///      See LendingPool._ensureInitialized for rationale.
+    function _ensureInitialized(euint128 handle) internal view returns (euint128) {
+        return FHE.isInitialized(handle) ? handle : _ZERO;
+    }
+
     function setVault(address v) external onlyOwner {
         if (v == address(0)) revert ZeroAddress();
         if (vaultAddress != address(0)) revert VaultAlreadySet();
@@ -231,7 +237,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
 
     function _modifyTvl(uint256 strategyId, euint128 amount, bool isIncrement) internal {
         if (!FHE.isAllowed(amount, address(this))) revert FhePermissionDenied();
-        euint128 prev = encryptedTvls[strategyId];
+        euint128 prev = _ensureInitialized(encryptedTvls[strategyId]);
         FHE.allowThis(prev);
         euint128 result;
         if (isIncrement) {
@@ -246,7 +252,7 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
 
     /// @notice Returns the encrypted TVL for a strategy, ACL-granted to caller for decryptForView.
     function getEncryptedTvl(uint256 strategyId) external returns (euint128) {
-        euint128 v = encryptedTvls[strategyId];
+        euint128 v = _ensureInitialized(encryptedTvls[strategyId]);
         FHE.allow(v, msg.sender);
         FHE.allowSender(v);
         return v;
