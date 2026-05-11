@@ -134,8 +134,25 @@ export function useComposer() {
     });
   };
 
+  const openLeveragedStrategyDirect = async (
+    params: OpenStrategyParams,
+    encrypted: OpenStrategyEncrypted,
+  ): Promise<Hash> => {
+    if (!composerAddress) throw new Error("Composer address not configured");
+    if (!cofheState.permitReady)
+      throw new Error("CoFHE permit not ready");
+
+    return writeContractAsync({
+      address: composerAddress,
+      abi: ComposerABI,
+      functionName: "openLeveragedStrategyDirect",
+      args: [params, encrypted] as unknown as [OpenStrategyParams, OpenStrategyEncrypted],
+    });
+  };
+
   return {
     openLeveragedStrategy,
+    openLeveragedStrategyDirect,
     composerAddress,
     isPending,
     encrypt128,

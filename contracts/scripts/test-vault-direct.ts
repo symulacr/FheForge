@@ -7,7 +7,7 @@ import { arbSepolia } from "@cofhe/sdk/chains";
 const ADDRS = {
   pool:     "0x9E8bf7496a157b12cB1A1BC2E291D7eF55374BAb",
   vault:    "0x159d871ba54dA4D650853c57c6f61CF4EB9FFbBa",
-  composer: "0xbca2d4c7BC85F4594F2e531b64d7B87f3E772231",
+  composer: "0xeF1EdEcB5Df34C732561685F5Efa788947Dd68b8",
   registry: "0x59d955dA6a678D140ce8379ae7175850B7481E76",
 };
 const USDC = "0x150376EdEbc5AC48771655a61a795d828BeC8Df6";

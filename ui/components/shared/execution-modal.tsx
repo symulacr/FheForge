@@ -159,7 +159,7 @@ export function ExecutionModal({
 
   const { address: walletAddress, isConnected: isWalletConnected } =
     useFheWallet();
-  const { openLeveragedStrategy, encrypt128, encrypt64, isPending: isComposerPending } =
+  const { openLeveragedStrategy, encrypt128ForComposer, encrypt64ForComposer, isPending: isComposerPending } =
     useComposer();
   const { hasPosition, positionMeta, isLoading: isPortfolioLoading, refetch: refetchPortfolio } =
     usePortfolio();
@@ -304,16 +304,16 @@ export function ExecutionModal({
         10000n;
 
       setIsEncrypting(true);
-      let encCollateral: Awaited<ReturnType<typeof encrypt128>>;
-      let encSupply: Awaited<ReturnType<typeof encrypt64>>;
-      let encBorrow: Awaited<ReturnType<typeof encrypt64>>;
+      let encCollateral: Awaited<ReturnType<typeof encrypt128ForComposer>>;
+      let encSupply: Awaited<ReturnType<typeof encrypt64ForComposer>>;
+      let encBorrow: Awaited<ReturnType<typeof encrypt64ForComposer>>;
 
       try {
         [encCollateral, encSupply, encBorrow] =
           await Promise.all([
-            encrypt128(collateralAmount),
-            encrypt64(supplyAmount),
-            encrypt64(borrowAmount),
+            encrypt128ForComposer(collateralAmount),
+            encrypt64ForComposer(supplyAmount),
+            encrypt64ForComposer(borrowAmount),
           ]);
       } finally {
         setIsEncrypting(false);

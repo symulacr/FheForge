@@ -432,19 +432,17 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e
     ) external nonReentrant whenNotPaused returns (uint256 strategyId, bytes32 intentId) {
-        // Pull collateral directly from user (requires prior approval)
-        if (p.collateralAmount > 0) {
-            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), p.collateralAmount);
-        }
-        // Pull extra supply amount if needed
-        uint256 extraSupply = p.poolSupplyAmount > p.collateralAmount ? p.poolSupplyAmount - p.collateralAmount : 0;
-        if (extraSupply > 0) {
-            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), extraSupply);
+        // Pull total needed: max of collateralAmount and poolSupplyAmount from user
+        uint256 totalNeeded = p.collateralAmount > p.poolSupplyAmount ? p.collateralAmount : p.poolSupplyAmount;
+        if (totalNeeded > 0) {
+            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), totalNeeded);
         }
 
         strategyId = _resolveStrategyId(p);
+        // Split: vault gets collateralAmount, pool gets the remainder
+        uint256 vaultCovered = totalNeeded > p.collateralAmount ? p.collateralAmount : totalNeeded;
         _openVaultPositionDirect(p, e, strategyId);
-        _supplyToPoolDirect(p, e);
+        _supplyToPoolDirect(p, e, totalNeeded - vaultCovered);
         _borrowFromPool(p, e);
         intentId = _submitSwap(p, e);
 
@@ -467,11 +465,12 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
 
     function _supplyToPoolDirect(
         OpenStrategyParams calldata p,
-        OpenStrategyEncrypted calldata e
+        OpenStrategyEncrypted calldata e,
+        uint256 supplyAmount
     ) internal {
-        if (p.poolSupplyAmount == 0) return;
-        _ensureApproval(p.collateralToken, address(POOL), p.poolSupplyAmount);
-        POOL.supplyToLending(p.collateralToken, p.poolSupplyAmount, e.supplyEnc, _msgSender());
+        if (supplyAmount == 0) return;
+        _ensureApproval(p.collateralToken, address(POOL), supplyAmount);
+        POOL.supplyToLending(p.collateralToken, supplyAmount, e.supplyEnc, _msgSender());
     }
 
     /// @notice Direct-transferFrom variant of rebalance: no Permit2 needed.
