@@ -557,6 +557,19 @@
         "internalType": "address",
         "name": "token",
         "type": "address"
+      }
+    ],
+    "name": "removeSource",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
       },
       {
         "internalType": "uint16",

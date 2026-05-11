@@ -70,17 +70,19 @@ export function useComposer() {
   };
 
 
-  // R7: Encrypt with setAccount(composerAddress) for cross-contract FHE input validation
-  // When Composer forwards encrypted inputs to Pool/Vault, msg.sender = Composer.
-  // The proof signature must embed Composer's address, not the user's.
+  // R7: WORKAROUND — do NOT use setAccount(composerAddress) for cross-contract calls.
+  // On arb-sepolia, the TaskManager has a stale ZK verifier key (slot 4 = 0x013a19c34...).
+  // setAccount(contract) causes InvalidSigner because the contract-account signing key doesn't match.
+  // Without setAccount, the default account = user wallet, which uses the old key matching slot 4.
+  // The TaskManager does NOT enforce account == msg.sender for FHE.asEuint128.
+  // See: contracts/ZK_VERIFIER_ROOT_CAUSE.md
   const encrypt128ForComposer = async (value: bigint): Promise<InEuint128> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady)
       throw new Error("CoFHE permit not ready");
-    if (!composerAddress) throw new Error("Composer address not configured");
+    // NOTE: No setAccount — workaround for stale ZK verifier key on arb-sepolia
     const handles = (await cofheClient
       .encryptInputs([Encryptable.uint128(value)])
-      .setAccount(composerAddress)
       .execute()) as InEuint128[];
     if (!handles[0]) throw new Error("CoFHE returned empty handle list");
     return handles[0];

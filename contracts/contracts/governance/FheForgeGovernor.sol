@@ -2,6 +2,7 @@
 pragma solidity 0.8.25;
 
 import { Governor } from "@openzeppelin/contracts/governance/Governor.sol";
+import { GovernorSettings } from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import { GovernorCountingSimple } from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import { GovernorVotes } from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import { GovernorVotesQuorumFraction } from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
@@ -11,6 +12,7 @@ import { TimelockController } from "@openzeppelin/contracts/governance/TimelockC
 
 contract FheForgeGovernor is
     Governor,
+    GovernorSettings,
     GovernorCountingSimple,
     GovernorVotes,
     GovernorVotesQuorumFraction,
@@ -19,20 +21,15 @@ contract FheForgeGovernor is
     /// @dev 100 tokens threshold for proposal creation
     uint256 public constant PROPOSAL_THRESHOLD = 100e18;
 
-    /// @dev 1 day delay before voting starts
-    uint256 private _votingDelay;
-    /// @dev 3 day voting window
-    uint256 private _votingPeriod;
+    // GovernorSettings handles _votingDelay, _votingPeriod, _proposalThreshold internally
 
     constructor(IVotes token, TimelockController timelock, uint256 quorumBPS)
         Governor("FheForge Governor")
+        GovernorSettings(1 days, 3 days, PROPOSAL_THRESHOLD)
         GovernorVotes(token)
         GovernorVotesQuorumFraction(quorumBPS)
         GovernorTimelockControl(timelock)
-    {
-        _votingDelay = 1 days;
-        _votingPeriod = 3 days;
-    }
+    {}
 
     // Governor: must override due to conflict with GovernorTimelockControl
     function state(uint256 proposalId)
@@ -107,33 +104,16 @@ contract FheForgeGovernor is
         return super._executor();
     }
 
-    // GovernorSettings: manually implement to avoid conflict with Governor.proposalThreshold
-    function votingDelay()
-        public
-        view
-        override
-        returns (uint256)
-    {
-        return _votingDelay;
-    }
 
-    // GovernorSettings: manually implement to avoid conflict with Governor.proposalThreshold
-    function votingPeriod()
-        public
-        view
-        override
-        returns (uint256)
-    {
-        return _votingPeriod;
-    }
-
-    // GovernorSettings: manually implement to avoid conflict with Governor.proposalThreshold
+    // Governor + GovernorSettings both define proposalThreshold — must override explicitly
     function proposalThreshold()
         public
-        view
-        override
+        pure
+        override(Governor, GovernorSettings)
         returns (uint256)
     {
         return PROPOSAL_THRESHOLD;
     }
+
+    // GovernorSettings provides votingDelay, votingPeriod, proposalThreshold automatically
 }

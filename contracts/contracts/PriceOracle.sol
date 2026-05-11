@@ -91,6 +91,13 @@ contract PriceOracle {
         emit SourceSet(token, priceId_, decimals_, threshold_);
     }
 
+    function removeSource(address token) external onlyOwner {
+        if (token == address(0)) revert ZeroAddress();
+        delete priceId[token];
+        delete staleThreshold[token];
+        emit SourceSet(token, bytes32(0), 0, 0);
+    }
+
     function setCollateralFactor(
         address token,
         uint16 ltvBps,
@@ -189,7 +196,12 @@ contract PriceOracle {
     /// @return The price in WAD scale.
     function getPriceWithFallback(address token) public view returns (uint256) {
         bytes32 id = priceId[token];
-        if (id == bytes32(0)) revert NoPriceFeed();
+
+        // If no Pyth feed registered, try fallback immediately
+        if (id == bytes32(0)) {
+            if (hasFallback[token]) return fallbackPrices[token];
+            revert NoPriceFeed();
+        }
 
         // Check staleness using Pyth's publishTime or lastPriceUpdate
         bool stale = _isPythStale(id, token);
@@ -198,11 +210,14 @@ contract PriceOracle {
             // Fetch fresh Pyth price
             uint256 threshold = staleThreshold[token];
             if (threshold == 0) threshold = DEFAULT_STALE_THRESHOLD;
-            PythStructs.Price memory p = PYTH.getPriceNoOlderThan(id, threshold);
-            return _normalizePythPrice(p);
+            try PYTH.getPriceNoOlderThan(id, threshold) returns (PythStructs.Price memory p) {
+                return _normalizePythPrice(p);
+            } catch {
+                // Pyth call failed (e.g. feed exists but no data) — fall through to fallback
+            }
         }
 
-        // Stale — try fallback
+        // Stale or Pyth call failed — try fallback
         if (hasFallback[token]) {
             return fallbackPrices[token];
         }
