@@ -11,7 +11,6 @@ const VALID_TYPES: DefiOperationType[] = [
   "SWAP",
   "SUPPLY",
   "BORROW",
-  "JOIN_STRATEGY",
 ];
 
 function isValidType(value: unknown): value is DefiOperationType {
@@ -26,7 +25,6 @@ function resolveTypeFromName(name?: string): DefiOperationType | undefined {
 
   const upper = name.toUpperCase();
 
-  if (upper.includes("JOIN")) return "JOIN_STRATEGY";
   if (upper.includes("SUPPLY") || upper.includes("DEPOSIT")) return "SUPPLY";
   if (upper.includes("BORROW") || upper.includes("LOAN")) return "BORROW";
   if (upper.includes("SWAP") || upper.includes("EXCHANGE")) return "SWAP";
@@ -74,9 +72,6 @@ function getApy(
           (estimate as DefiEstimate)?.apy,
         0,
       );
-
-    case "JOIN_STRATEGY":
-      return toNumber((estimate as DefiEstimate)?.apy, 0);
 
     case "SWAP":
     default:

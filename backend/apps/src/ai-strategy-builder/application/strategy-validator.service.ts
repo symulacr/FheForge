@@ -94,18 +94,13 @@ export class StrategyValidatorService {
       'SWAP',
       'SUPPLY',
       'BORROW',
-      'JOIN_STRATEGY',
-      'ENABLE_E_MODE',
-      'BRIDGE',
-      'STAKE',
-      'UNSTAKE',
       'CLAIM_REWARDS',
     ];
     return validTypes.includes(type);
   }
 
   private requiresTokenValidation(type: string): boolean {
-    return ['SWAP', 'SUPPLY', 'BORROW', 'JOIN_STRATEGY'].includes(type);
+    return ['SWAP', 'SUPPLY', 'BORROW'].includes(type);
   }
 
   private async validateTokenPair(
@@ -123,16 +118,12 @@ export class StrategyValidatorService {
         case 'BORROW':
           operationType = OperationType.BORROW;
           break;
-        case 'JOIN_STRATEGY':
-          operationType = OperationType.JOIN_STRATEGY;
-          break;
         default:
           return { isValid: true };
       }
 
       if (
-        (operationType === OperationType.SWAP ||
-          operationType === OperationType.JOIN_STRATEGY) &&
+        (operationType === OperationType.SWAP) &&
         step.tokenIn &&
         step.tokenOut
       ) {
@@ -237,18 +228,10 @@ export class StrategyValidatorService {
     prevStepType: string,
     currentStepType: string,
   ): { isValid: boolean; warning?: string } {
-    if (
-      prevStepType === 'ENABLE_E_MODE' ||
-      currentStepType === 'ENABLE_E_MODE'
-    ) {
-      return { isValid: true };
-    }
-
     const allowedNextSteps: Record<string, string[]> = {
-      SWAP: ['SUPPLY', 'SWAP', 'JOIN_STRATEGY'],
-      JOIN_STRATEGY: ['SWAP', 'BORROW'],
+      SWAP: ['SUPPLY', 'SWAP'],
       SUPPLY: ['BORROW'],
-      BORROW: ['SWAP', 'JOIN_STRATEGY', 'SUPPLY'],
+      BORROW: ['SWAP', 'SUPPLY'],
     };
 
     const allowedNext = allowedNextSteps[prevStepType];
@@ -274,15 +257,6 @@ export class StrategyValidatorService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    const hasBorrow = steps.some((s) => s.type === 'BORROW');
-    const hasEMode = steps.some((s) => s.type === 'ENABLE_E_MODE');
-
-    if (hasBorrow && !hasEMode) {
-      warnings.push(
-        'Strategy includes BORROW but no ENABLE_E_MODE - consider adding it for better rates',
-      );
-    }
-
     const loopCount = steps.filter((s) => s.type === 'BORROW').length;
     if (loopCount > 10) {
       warnings.push(
@@ -291,9 +265,7 @@ export class StrategyValidatorService {
     }
 
     const firstBorrowIndex = steps.findIndex((s) => s.type === 'BORROW');
-    const firstSupplyIndex = steps.findIndex(
-      (s) => s.type === 'SUPPLY' || s.type === 'JOIN_STRATEGY',
-    );
+    const firstSupplyIndex = steps.findIndex((s) => s.type === 'SUPPLY');
 
     if (firstBorrowIndex !== -1 && firstSupplyIndex === -1) {
       errors.push('Cannot BORROW without first supplying collateral');
@@ -317,33 +289,26 @@ export class StrategyValidatorService {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    const nonEModeSteps = steps.filter((step) => step.type !== 'ENABLE_E_MODE');
-    if (nonEModeSteps.length === 0) {
-      errors.push(
-        'Strategy must contain at least one operational step besides ENABLE_E_MODE',
-      );
+    if (steps.length === 0) {
+      errors.push('Strategy must contain at least one step');
       return { errors, warnings };
     }
 
-    const stepTypes = nonEModeSteps.map((step) => step.type);
+    const stepTypes = steps.map((step) => step.type);
 
-    const hasSupply =
-      stepTypes.includes('SUPPLY') || stepTypes.includes('JOIN_STRATEGY');
+    const hasSupply = stepTypes.includes('SUPPLY');
     const hasBorrow = stepTypes.includes('BORROW');
 
     if (hasBorrow && !hasSupply) {
       errors.push(
-        'Cannot borrow without first supplying collateral (SUPPLY or JOIN_STRATEGY)',
+        'Cannot borrow without first supplying collateral (SUPPLY)',
       );
     }
 
     const borrowCount = stepTypes.filter((type) => type === 'BORROW').length;
     const supplyCount = stepTypes.filter((type) => type === 'SUPPLY').length;
-    const joinCount = stepTypes.filter(
-      (type) => type === 'JOIN_STRATEGY',
-    ).length;
 
-    if (borrowCount > supplyCount + joinCount) {
+    if (borrowCount > supplyCount) {
       warnings.push(
         'More BORROW operations than collateral operations - strategy may be unbalanced',
       );
@@ -355,9 +320,9 @@ export class StrategyValidatorService {
       );
     }
 
-    for (let i = 1; i < nonEModeSteps.length; i++) {
-      const prevStep = nonEModeSteps[i - 1];
-      const currentStep = nonEModeSteps[i];
+    for (let i = 1; i < steps.length; i++) {
+      const prevStep = steps[i - 1];
+      const currentStep = steps[i];
 
       const sequenceValidation = this.validateStepSequenceRules(
         prevStep.type,
@@ -373,10 +338,9 @@ export class StrategyValidatorService {
 
   getBusinessRules(): Record<string, string[]> {
     return {
-      SWAP: ['SUPPLY', 'SWAP', 'JOIN_STRATEGY'],
-      JOIN_STRATEGY: ['SWAP', 'BORROW'],
+      SWAP: ['SUPPLY', 'SWAP'],
       SUPPLY: ['BORROW'],
-      BORROW: ['SWAP', 'JOIN_STRATEGY', 'SUPPLY'],
+      BORROW: ['SWAP', 'SUPPLY'],
     };
   }
 

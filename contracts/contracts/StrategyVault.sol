@@ -65,9 +65,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         uint256 collateralAmount,
         bool fullClose
     );
-    event Paused();
-    event Unpaused();
-    event EmergencyWithdrawn(
+    event PausedWithdrawn(
         bytes32 indexed positionId,
         address indexed user,
         address indexed collateralToken,
@@ -253,7 +251,7 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         emit PositionClosed(positionId, user, token, collateralAmount, fullClose);
     }
 
-    function emergencyWithdraw(bytes32 positionId) external nonReentrant whenPaused {
+    function withdrawPaused(bytes32 positionId) external nonReentrant whenPaused {
         if (!positionExists[positionId]) revert PositionNotFound();
         uint256 amount = positionDepositedAmount[positionId];
         if (amount == 0) revert ZeroAmount();
@@ -275,17 +273,15 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         delete positions[user][positionId];
 
         IERC20(token).safeTransfer(user, amount);
-        emit EmergencyWithdrawn(positionId, user, token, amount);
+        emit PausedWithdrawn(positionId, user, token, amount);
     }
 
     function pause() external onlyOwner {
         _pause();
-        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        emit Unpaused();
     }
 
     function getCollateral(bytes32 positionId) external returns (euint128) {

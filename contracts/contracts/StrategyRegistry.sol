@@ -59,7 +59,6 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     event VaultProposed(address indexed newVault, uint256 indexed earliest);
     event TvlIncreased(uint256 indexed strategyId, address indexed caller);
     event TvlDecreased(uint256 indexed strategyId, address indexed caller);
-    event Paused();
     // ────────── P10: Cross-chain event interface ──────────
     event CrossChainMessage(
         uint256 indexed destinationDomain,
@@ -68,7 +67,6 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         bytes payload
     );
     uint256 public localDomain = block.chainid;
-    event Unpaused();
 
     modifier onlyVault() {
         _onlyVault();
@@ -121,12 +119,10 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
 
     function pause() external onlyOwner {
         _pause();
-        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        emit Unpaused();
     }
 
     function registerStrategy(

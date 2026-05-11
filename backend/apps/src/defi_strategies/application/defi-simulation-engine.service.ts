@@ -10,7 +10,6 @@ import { SwapSimulator } from './simulators/swap-simulator';
 import { SupplySimulator } from './simulators/supply-simulator';
 import { BorrowSimulator } from './simulators/borrow-simulator';
 import { JoinStrategySimulator } from './simulators/join-strategy-simulator';
-import { EnableEModeSimulator } from './simulators/enable-e-mode-simulator';
 
 @Injectable()
 export class DefiSimulationEngine extends SimulationEngine {
@@ -19,7 +18,6 @@ export class DefiSimulationEngine extends SimulationEngine {
     private readonly supplySimulator: SupplySimulator,
     private readonly borrowSimulator: BorrowSimulator,
     private readonly joinStrategySimulator: JoinStrategySimulator,
-    private readonly enableEModeSimulator: EnableEModeSimulator,
   ) {
     super();
   }
@@ -67,10 +65,6 @@ export class DefiSimulationEngine extends SimulationEngine {
         return this.supplySimulator;
       case 'BORROW':
         return this.borrowSimulator;
-      case 'JOIN_STRATEGY':
-        return this.joinStrategySimulator;
-      case 'ENABLE_E_MODE':
-        return this.enableEModeSimulator;
       default:
         return null;
     }

@@ -12,7 +12,7 @@ describe('MC-55: Event Indexer Service', () => {
     mockConfigService = {
       get: jest.fn((key: string) => {
         const config = {
-          FHENIX_RPC: 'https://test-rpc.example.com',
+          COFHE_RPC: 'https://test-rpc.example.com',
           STRATEGY_VAULT_ADDRESS: '0x1234567890123456789012345678901234567890',
           LENDING_POOL_ADDRESS: '0x0987654321098765432109876543210987654321',
         };
@@ -67,7 +67,7 @@ describe('MC-55: Event Indexer Service', () => {
   it('should accept configuration from environment variables', async () => {
     // MC-55: Verify the service can be configured with env vars
     await service.onModuleInit();
-    expect(mockConfigService.get).toHaveBeenCalledWith('FHENIX_RPC');
+    expect(mockConfigService.get).toHaveBeenCalledWith('COFHE_RPC');
     expect(mockConfigService.get).toHaveBeenCalledWith(
       'STRATEGY_VAULT_ADDRESS',
     );

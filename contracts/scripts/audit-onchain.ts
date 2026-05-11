@@ -390,7 +390,6 @@ async function main() {
     } catch (e: unknown) { fail("Pool", "supply(USDC)", decodeRevert(e)); }
   } else { skip("Pool", "supply(USDC)", "FHE required"); }
 
-  skip("Pool", "supplyWithPermit2", "requires Permit2 signature flow");
 
   // supplyEth
   if (cofheClient) {
@@ -448,8 +447,6 @@ async function main() {
       pass("Pool", "repay(USDC)", `${ethers.formatUnits(repayAmt,6)}`, tx.hash);
     } catch (e: unknown) { fail("Pool", "repay", decodeRevert(e)); }
   } else { skip("Pool", "repay", "FHE required"); }
-
-  skip("Pool", "repayWithPermit2", "requires Permit2 signature");
 
   // Repay more to create excess reserve for withdraw test
   const repayAmt2 = ethers.parseUnits("200", 6);
@@ -528,9 +525,6 @@ async function main() {
     const tx3 = await pool.unpause(); await tx3.wait();
     pass("Pool", "unpause", "unpaused", tx3.hash);
   } catch (e: unknown) { fail("Pool", "pause/unpause", decodeRevert(e)); }
-
-  // permitTransferFrom
-  skip("Pool", "permitTransferFrom", "onlyComposer — internal Permit2 flow");
 
   // ═══ DEEP ETH/WETH/USDC ROUNDTRIP ═══
   console.log("\n  ── Deep ETH/WETH/USDC Roundtrip ──");
@@ -932,22 +926,22 @@ async function main() {
 
   // Parallel: immutable getters
   try {
-    const [owner, pool, v, r, reg, p2] = await Promise.all([
+    const [owner, pool, v, r, reg] = await Promise.all([
       composer.OWNER(), composer.POOL(), composer.VAULT(),
-      composer.ROUTER(), composer.REGISTRY(), composer.PERMIT2(),
+      composer.ROUTER(), composer.REGISTRY(),
     ]);
     read("Composer", "OWNER", owner); read("Composer", "POOL", pool);
     read("Composer", "VAULT", v); read("Composer", "ROUTER", r);
-    read("Composer", "REGISTRY", reg); read("Composer", "PERMIT2", p2);
+    read("Composer", "REGISTRY", reg);
   } catch (e: unknown) { fail("Composer", "getters", decodeRevert(e)); }
 
-  // openLeveragedStrategyDirect — no Permit2 needed, uses direct transferFrom
+  // openLeveragedStrategy — uses direct transferFrom (no Permit2)
   if (cofheClient && strategyId > 0n) {
     try {
       // Ensure no existing vault position (Composer can't open if one exists)
       const hasPos = await vault.hasPosition(deployer.address);
       if (hasPos) {
-        dbg(`openLeveragedStrategyDirect: closing existing vault position first`);
+        dbg(`openLeveragedStrategy: closing existing vault position first`);
         const vDep = await vault.getDepositedAmount();
         if (vDep > 0n) {
           const eClose = await enc128(vDep);
@@ -961,7 +955,7 @@ async function main() {
       const eSupply = await enc64For(ethers.parseUnits("200", 6), composerAddr);
       const eBorrow = await enc64For(ethers.parseUnits("80", 6), composerAddr);
 
-      dbg(`openLeveragedStrategyDirect: using direct transferFrom (no Permit2)`);
+      dbg(`openLeveragedStrategy: using direct transferFrom (no Permit2)`);
       const params = {
         strategyName: "Leveraged Direct",
         workflowHash: ethers.zeroPadValue("0xd00d", 32),
@@ -983,17 +977,17 @@ async function main() {
         collateralPermit: { amount: 0n, deadline: 0, nonce: 0, signature: "0x" },  // unused for direct
       };
       const enc = { collateral: eColl2, supplyEnc: eSupply, borrowEnc: eBorrow };
-      const tx = await composer.openLeveragedStrategyDirect(params, enc);
+      const tx = await composer.openLeveragedStrategy(params, enc);
       await tx.wait();
-      pass("Composer", "openLeveragedStrategyDirect", "full leveraged flow without Permit2 + setAccount(composer)", tx.hash);
+      pass("Composer", "openLeveragedStrategy", "full leveraged flow without Permit2 + setAccount(composer)", tx.hash);
     } catch (e: unknown) {
       const decoded = decodeRevert(e);
-      fail("Composer", "openLeveragedStrategyDirect", decoded);
-      dbg(`openLeveragedStrategyDirect full: ${String(e).slice(0,500)}`);
+      fail("Composer", "openLeveragedStrategy", decoded);
+      dbg(`openLeveragedStrategy full: ${String(e).slice(0,500)}`);
     }
-  } else { skip("Composer", "openLeveragedStrategyDirect", cofheClient ? "no stratId" : "FHE required"); }
+  } else { skip("Composer", "openLeveragedStrategy", cofheClient ? "no stratId" : "FHE required"); }
 
-  // rebalanceDirect — no Permit2 needed
+  // rebalance — no Permit2 needed
   if (cofheClient) {
     try {
       const addCollAmt = ethers.parseUnits("50", 6);
@@ -1004,7 +998,7 @@ async function main() {
       const eRepay = await enc64For(repayAmt3, composerAddr2);
       const eNewBorrow = await enc64For(newBorrowAmt, composerAddr2);
 
-      dbg(`rebalanceDirect: using direct transferFrom (no Permit2)`);
+      dbg(`rebalance: using direct transferFrom (no Permit2)`);
       const rebParams = {
         collateralToken: USDC,
         addCollateralAmount: addCollAmt,
@@ -1019,15 +1013,15 @@ async function main() {
         repayPermit: { amount: 0n, deadline: 0, nonce: 0, signature: "0x" },
       };
       const rebEnc = { addCollateralEnc: eAddColl, repayEnc: eRepay, newBorrowEnc: eNewBorrow };
-      const tx = await composer.rebalanceDirect(rebParams, rebEnc);
+      const tx = await composer.rebalance(rebParams, rebEnc);
       await tx.wait();
-      pass("Composer", "rebalanceDirect", "full rebalance without Permit2", tx.hash);
+      pass("Composer", "rebalance", "full rebalance without Permit2", tx.hash);
     } catch (e: unknown) {
       const decoded = decodeRevert(e);
-      fail("Composer", "rebalanceDirect", decoded);
-      dbg(`rebalanceDirect full: ${String(e).slice(0,500)}`);
+      fail("Composer", "rebalance", decoded);
+      dbg(`rebalance full: ${String(e).slice(0,500)}`);
     }
-  } else { skip("Composer", "rebalanceDirect", "FHE required"); }
+  } else { skip("Composer", "rebalance", "FHE required"); }
 
   // sweepToken
   skip("Composer", "sweepToken", "admin-only fund sweep — not tested");
@@ -1184,11 +1178,6 @@ async function main() {
     "Uses euint64 for supply/borrow balances. USDC has 6 decimals; euint64 max ~1.84e19. With 6 decimals that's ~1.84e13 USDC ($18 trillion). Sufficient but if supporting tokens with 18 decimals, euint64 maxes at ~18.4 ETH. euint128 would be safer.",
     "Consider migrating to euint128 for balances (like Vault uses for collateral). More gas but prevents overflow with high-decimal tokens. Or cap amounts at safe thresholds.");
 
-  // Permit2 friction — major UX issue
-  fheIssue("Composer", "_pullViaPermit2", "HIGH",
-    "Composer requires Permit2 EIP-712 signatures for _pullViaPermit2 in openLeveragedStrategy and rebalance. Cannot be generated from scripts. Frontend must construct and sign these. This creates significant UX friction — users need wallet signing for Permit2 + FHE encryption + tx submission = 3 separate signing steps.",
-    "1) Add a direct-transferFrom path as alternative to Permit2 (user pre-approves Composer). 2) Bundle Permit2 signing with FHE encryption in the UI. 3) Use EIP-2612 permits (cheaper) instead of Permit2 where possible. 4) Consider meta-tx/relayer to reduce signing steps.");
-
   // No interest accrual — FHE operations needed
   fheIssue("LendingPool", "no interest model", "MEDIUM",
     "No interest accrual on supply/borrow. In a real FHE lending protocol, interest must be computed on encrypted balances using FHE.mul with encrypted rate. This requires careful FHE.select usage for health checks post-accrual.",
@@ -1226,10 +1215,6 @@ async function main() {
   console.log("       → Prevents overflow with 18-decimal tokens");
   console.log("       → Matches Vault's euint128 for collateral");
 
-  // Priority 5: Reduce Permit2 UX friction
-  console.log("  [P4] Composer: Add direct transferFrom path as alternative to _pullViaPermit2");
-  console.log("       → Reduces signing steps from 3 to 2 (approve + tx)");
-  console.log("       → Keep Permit2 as gas-efficient option for power users");
 
   // Priority 6: Add interest accrual (FHE-native)
   console.log("  [P5] LendingPool: Add encrypted interest index accrual");

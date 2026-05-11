@@ -419,7 +419,7 @@ export function useDefiBuilder() {
           );
         } else if (supplyNode) {
           const joinNodes = nodes.filter(
-            (n) => n.data?.config?.operationType === "JOIN_STRATEGY",
+            (n) => n.data?.config?.operationType === "SWAP",
           );
           const supplyConfig = supplyNode.data.config;
           const collateralEth = String(supplyConfig.amount ?? "0");

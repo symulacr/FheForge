@@ -2,6 +2,4 @@ export enum OperationType {
   SWAP = 'SWAP',
   SUPPLY = 'SUPPLY',
   BORROW = 'BORROW',
-  JOIN_STRATEGY = 'JOIN_STRATEGY',
-  ENABLE_E_MODE = 'ENABLE_E_MODE',
 }

@@ -27,7 +27,7 @@ export class FhenixStrategyService implements OnModuleInit {
   constructor(private readonly configService: ConfigService) {}
 
   onModuleInit(): void {
-    const rpcUrl = this.configService.get<string>('FHENIX_RPC');
+    const rpcUrl = this.configService.get<string>('COFHE_RPC');
     if (rpcUrl) {
       this.provider = new JsonRpcProvider(rpcUrl);
     }

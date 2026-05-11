@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
  * Demo component showing how to use the lending action hooks.
  * This component demonstrates MC-36/37/38/44/45 functionality:
  * - MC-36: liquidate
- * - MC-37: checkLtvAndBorrow
+ * - MC-37: borrowWithLtvCheck
  * - MC-38: borrowWithOracle
  * - MC-44: emergencyWithdraw (moved to Vault hook)
  * - MC-45: isSupported
@@ -21,7 +21,7 @@ export function LendingActionsDemo() {
   const { address } = useAccount();
   const {
     liquidateWithProof,
-    checkLtvAndBorrowWithEncrypt,
+    borrowWithLtvCheckWithEncrypt,
     borrowWithOracleWithEncrypt,
     isSupported,
     isEncrypting,
@@ -40,7 +40,7 @@ export function LendingActionsDemo() {
   const [isSupportedResult, setIsSupportedResult] = useState<boolean | null>(null);
 
   const handleLiquidate = async () => {
-    setResult("Use requestLiquidationCheck first, then liquidateWithProof with the decrypted balance proof");
+    setResult("Use requestLiquidityCheck first, then liquidateWithProof with the decrypted balance proof");
   };
 
   const handleCheckLtvAndBorrow = async () => {
@@ -49,8 +49,8 @@ export function LendingActionsDemo() {
       return;
     }
     try {
-      setResult("Processing checkLtvAndBorrow...");
-      const tx = await checkLtvAndBorrowWithEncrypt(
+      setResult("Processing borrowWithLtvCheck...");
+      const tx = await borrowWithLtvCheckWithEncrypt(
         collateralToken as `0x${string}`,
         borrowToken as `0x${string}`,
         borrowAmount,
@@ -58,9 +58,9 @@ export function LendingActionsDemo() {
         BigInt(ltvNum),
         BigInt(ltvDen),
       );
-      setResult(`checkLtvAndBorrow tx: ${tx}`);
+      setResult(`borrowWithLtvCheck tx: ${tx}`);
     } catch (error) {
-      setResult(`checkLtvAndBorrow failed: ${(error as Error).message}`);
+      setResult(`borrowWithLtvCheck failed: ${(error as Error).message}`);
     }
   };
 
@@ -104,7 +104,7 @@ export function LendingActionsDemo() {
         <CardHeader>
           <CardTitle>Lending Actions Demo</CardTitle>
           <CardDescription>
-            Demonstrates: liquidateWithProof, checkLtvAndBorrow, borrowWithOracle, isSupported
+            Demonstrates: liquidateWithProof, borrowWithLtvCheck, borrowWithOracle, isSupported
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -149,7 +149,7 @@ export function LendingActionsDemo() {
             </Button>
           </div>
 
-          {/* checkLtvAndBorrow (MC-37) */}
+          {/* borrowWithLtvCheck (MC-37) */}
           <div className="space-y-2 border p-4 rounded">
             <h3 className="font-semibold">MC-37: Check LTV and Borrow</h3>
             <div className="grid grid-cols-2 gap-2">

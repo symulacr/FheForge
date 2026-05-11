@@ -26,7 +26,7 @@ export function StrategyFlowPreview({
 
   const getInitialToken = () => {
     const firstStepWithToken = steps.find(
-      (step) => step.type !== "ENABLE_E_MODE" && step.tokenIn?.symbol,
+      (step) => step.tokenIn?.symbol,
     );
     return firstStepWithToken?.tokenIn?.symbol || selectedToken;
   };

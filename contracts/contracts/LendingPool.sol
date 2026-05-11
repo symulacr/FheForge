@@ -81,9 +81,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
     );
     event Repaid(address indexed user, address indexed token, uint256 indexed amount);
     event Withdrawn(address indexed user, address indexed token, uint256 indexed amount);
-    event EmergencyWithdrawn(address indexed user, address indexed token, uint256 indexed amount);
-    event Paused();
-    event Unpaused();
+    event PausedWithdrawn(address indexed user, address indexed token, uint256 indexed amount);
     event OracleSet(address indexed oracle);
     event OracleDisabled();
     event WethSet(address indexed weth);
@@ -119,9 +117,9 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _ZERO = z;
     }
 
-    // ────────── User-facing supply / borrow / repay / withdraw ──────────
+    // ────────── User-facing shield / borrow / repay / unshield ──────────
 
-    function supply(
+    function shield(
         address token,
         uint256 amount,
         InEuint128 calldata encAmount
@@ -153,7 +151,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _finalizeSupply(token, amount, encAmount);
     }
 
-    function checkLtvAndBorrow(
+    function borrowWithLtvCheck(
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
@@ -171,7 +169,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         return _finalizeBorrow(collateralToken, borrowToken, borrowAmount, encBorrowAmount);
     }
 
-    function repay(
+    function repayDebt(
         address token,
         uint256 amount,
         InEuint128 calldata encAmount
@@ -201,7 +199,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         _finalizeRepay(token, amount, encAmount);
     }
 
-    function withdraw(
+    function partialUnshield(
         address token,
         uint256 amount,
         InEuint128 calldata encAmount
@@ -230,12 +228,12 @@ contract LendingPool is ReentrancyGuard, Pausable {
         FHE.allow(newBalance, _msgSender());
     }
 
-    function requestEmergencyBalance(address token) external {
+    function requestBalanceReveal(address token) external {
         if (token == address(0)) revert ZeroAddress();
         FHE.allowPublic(supplyBalances[token][_msgSender()]);
     }
 
-    function emergencyWithdrawWithProof(
+    function withdrawPausedWithProof(
         address token,
         uint128 balanceProof,
         bytes calldata balanceSig
@@ -257,17 +255,15 @@ contract LendingPool is ReentrancyGuard, Pausable {
         borrowBalances[token][_msgSender()] = _ZERO;
 
         IERC20(token).safeTransfer(_msgSender(), amount);
-        emit EmergencyWithdrawn(msg.sender, token, amount);
+        emit PausedWithdrawn(msg.sender, token, amount);
     }
 
     function pause() external onlyOwner {
         _pause();
-        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        emit Unpaused();
     }
 
     function setOracle(address newOracle) external onlyOwner {
@@ -298,7 +294,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit ComposerSet(c);
     }
 
-    function supplyEth(InEuint128 calldata encAmount) external payable nonReentrant whenNotPaused {
+    function shieldEth(InEuint128 calldata encAmount) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         if (msg.value == 0) revert ZeroAmount();
         address tokenAddr = address(weth);
@@ -317,7 +313,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit Supplied(msg.sender, tokenAddr, msg.value);
     }
 
-    function withdrawEth(
+    function partialUnshieldEth(
         uint256 amount,
         InEuint128 calldata encAmount
     ) external nonReentrant whenNotPaused {
@@ -397,7 +393,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
 
     // ────────── Composer cross-contract (euint128 handles) ──────────
 
-    function supplyToLending(
+    function depositFor(
         address token,
         uint256 amount,
         euint128 handle,
@@ -417,7 +413,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit Supplied(user, token, amount);
     }
 
-    function borrowFromLending(
+    function borrowFor(
         address token,
         uint256 amount,
         euint128 handle,
@@ -439,7 +435,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit Borrowed(msg.sender, address(0), token, amount);
     }
 
-    function repayBorrow(
+    function repayFor(
         address token,
         uint256 amount,
         euint128 handle,
@@ -458,7 +454,7 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit Repaid(user, token, amount);
     }
 
-    function requestLiquidationCheck(
+    function requestLiquidityCheck(
         address user,
         address collateralToken,
         address debtToken
@@ -543,5 +539,21 @@ contract LendingPool is ReentrancyGuard, Pausable {
         emit Liquidated(
             msg.sender, user, collateralToken, debtToken, actualDebtCover, seizedCollateral
         );
+    }
+
+    // ────────── Encrypted balance getters (allowSender) ──────────
+
+    function getSupplyBalance(address token) external returns (euint128) {
+        euint128 bal = supplyBalances[token][msg.sender];
+        FHE.allowThis(bal);
+        FHE.allowSender(bal);
+        return bal;
+    }
+
+    function getBorrowBalance(address token) external returns (euint128) {
+        euint128 bal = borrowBalances[token][msg.sender];
+        FHE.allowThis(bal);
+        FHE.allowSender(bal);
+        return bal;
     }
 }

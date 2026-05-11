@@ -40,20 +40,20 @@ describe('Lending Action Hooks (liquidateWithProof, borrow, oracle, isSupported)
     // liquidate removed — Pool has no liquidate function, only liquidateWithProof
     expect(typeof result.current.liquidateWithProof).toBe('function');
     
-    // MC-37: checkLtvAndBorrow
-    expect(typeof result.current.checkLtvAndBorrow).toBe('function');
+    // MC-37: borrowWithLtvCheck
+    expect(typeof result.current.borrowWithLtvCheck).toBe('function');
     
     // MC-38: borrowWithOracle
     expect(typeof result.current.borrowWithOracle).toBe('function');
     
     // emergencyWithdraw moved to Vault hook — Pool has no emergencyWithdraw
-    expect(typeof result.current.requestLiquidationCheck).toBe('function');
+    expect(typeof result.current.requestLiquidityCheck).toBe('function');
     
     // MC-45: isSupported
     expect(typeof result.current.isSupported).toBe('function');
     
     // Convenience wrappers
-    expect(typeof result.current.checkLtvAndBorrowWithEncrypt).toBe('function');
+    expect(typeof result.current.borrowWithLtvCheckWithEncrypt).toBe('function');
     expect(typeof result.current.borrowWithOracleWithEncrypt).toBe('function');
     expect(typeof result.current.encrypt).toBe('function');
   });
@@ -77,13 +77,13 @@ describe('Lending Action Hooks (liquidateWithProof, borrow, oracle, isSupported)
   });
 
   describe('Convenience encryption wrappers', () => {
-    it('should provide checkLtvAndBorrowWithEncrypt that combines encryption and borrow', async () => {
+    it('should provide borrowWithLtvCheckWithEncrypt that combines encryption and borrow', async () => {
       const { result } = renderHook(() => useLendingActions());
       
       const collateralToken = '0x1234567890123456789012345678901234567890';
       const borrowToken = '0x0987654321098765432109876543210987654321';
       
-      const tx = await result.current.checkLtvAndBorrowWithEncrypt(
+      const tx = await result.current.borrowWithLtvCheckWithEncrypt(
         collateralToken as `0x${string}`,
         borrowToken as `0x${string}`,
         '1.0',

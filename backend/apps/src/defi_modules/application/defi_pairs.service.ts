@@ -59,12 +59,6 @@ export class DefiPairsService {
           dto.token_out_id!,
           dto.amount_in,
         );
-      case OperationType.JOIN_STRATEGY:
-        return this.estimateJoinStrategy(
-          dto.token_in_id,
-          dto.token_out_id!,
-          dto.amount_in,
-        );
       case OperationType.SUPPLY:
         return this.estimateSupply(dto.token_in_id, dto.amount_in);
       case OperationType.BORROW:
@@ -76,38 +70,6 @@ export class DefiPairsService {
       default:
         throw new Error(`Unsupported operation type: ${dto.operation_type}`);
     }
-  }
-
-  private async estimateJoinStrategy(
-    tokenInId: string,
-    tokenOutId: string,
-    amountIn: number,
-  ): Promise<EstimateDefiPairResponseDto> {
-    const [tokenIn, tokenOut] = await Promise.all([
-      this.defiTokenService.getDefiTokenById(tokenInId),
-      this.defiTokenService.getDefiTokenById(tokenOutId),
-    ]);
-
-    const spotPrice = await this.fhenixStrategy.getAssetPrice(
-      tokenIn.name,
-      tokenOut.name,
-    );
-    const amountOut = spotPrice * amountIn * 0.99;
-
-    const supplyApyBps = process.env.SUPPLY_APY_BPS;
-    if (!supplyApyBps)
-      throw new Error('SUPPLY_APY_BPS env variable is not set');
-    const supplyApy = Number(supplyApyBps) / 100;
-
-    return {
-      operation_type: OperationType.JOIN_STRATEGY,
-      token_in_id: tokenInId,
-      token_out_id: tokenOutId,
-      amount_in: amountIn,
-      amount_out: Number(amountOut.toFixed(6)),
-      slippage: 0.01,
-      supply_apy: supplyApy,
-    };
   }
 
   private async estimateSwap(

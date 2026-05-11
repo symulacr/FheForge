@@ -25,7 +25,7 @@ export class SupplySimulator extends BaseSimulator {
 
   constructor(private readonly configService: ConfigService) {
     super();
-    const rpcUrl = this.configService.get<string>('FHENIX_RPC');
+    const rpcUrl = this.configService.get<string>('COFHE_RPC');
     const registryAddress = this.configService.get<string>(
       'STRATEGY_REGISTRY_ADDRESS',
     );

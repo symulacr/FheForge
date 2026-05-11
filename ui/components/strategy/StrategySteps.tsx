@@ -26,16 +26,12 @@ export function StrategySteps({
 }: StrategyStepsProps) {
   const getStepIcon = (type: string) => {
     switch (type) {
-      case "ENABLE_E_MODE":
-        return <Zap className="h-4 w-4 text-warning" />;
       case "SWAP":
         return <RefreshCw className="h-4 w-4 text-accent" />;
       case "SUPPLY":
         return <TrendingUp className="h-4 w-4 text-success" />;
       case "BORROW":
         return <TrendingDown className="h-4 w-4 text-destructive" />;
-      case "JOIN_STRATEGY":
-        return <Target className="h-4 w-4 text-accent" />;
       default:
         return <AlertCircle className="h-4 w-4 text-muted" />;
     }
@@ -43,16 +39,12 @@ export function StrategySteps({
 
   const getStepColor = (type: string) => {
     switch (type) {
-      case "ENABLE_E_MODE":
-        return "border-warning/20 bg-warning/5";
       case "SWAP":
         return "border-accent/20 bg-accent/5";
       case "SUPPLY":
         return "border-success/20 bg-success/5";
       case "BORROW":
         return "border-destructive/20 bg-destructive/5";
-      case "JOIN_STRATEGY":
-        return "border-accent/20 bg-accent/5";
       default:
         return "border-border bg-card";
     }

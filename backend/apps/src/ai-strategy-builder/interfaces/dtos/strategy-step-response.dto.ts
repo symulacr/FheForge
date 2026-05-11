@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 class TokenInfo {
   @ApiProperty({
     example: '5',
-    description: 'Token address on Fhenix/Arbitrum',
+    description: 'Token address on Arbitrum',
   })
   assetId: string;
 
@@ -21,21 +21,11 @@ export class StrategyStepResponseDto {
   @ApiProperty({
     example: 'SWAP',
     description: 'Operation type',
-    enum: [
-      'SWAP',
-      'SUPPLY',
-      'BORROW',
-      'JOIN_STRATEGY',
-      'ENABLE_E_MODE',
-      'BRIDGE',
-      'STAKE',
-      'UNSTAKE',
-      'CLAIM_REWARDS',
-    ],
+    enum: ['SWAP', 'SUPPLY', 'BORROW', 'CLAIM_REWARDS'],
   })
   type: string;
 
-  @ApiProperty({ example: 'FHENIX', description: 'DeFi protocol/agent' })
+  @ApiProperty({ example: 'COFHE', description: 'DeFi protocol/agent' })
   agent: string;
 
   @ApiProperty({

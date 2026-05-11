@@ -69,9 +69,9 @@ export function useLendingActions() {
   };
 
 
-  // ────────── P2: requestLiquidationCheck ──────────
+  // ────────── P2: requestLiquidityCheck ──────────
 
-  const requestLiquidationCheck = async (
+  const requestLiquidityCheck = async (
     user: Address,
     collateralToken: Address,
     debtToken: Address,
@@ -80,7 +80,7 @@ export function useLendingActions() {
     return writeContractAsync({
       address: pool as `0x${string}`,
       abi: PoolABI,
-      functionName: "requestLiquidationCheck",
+      functionName: "requestLiquidityCheck",
       args: [user, collateralToken, debtToken],
     });
   };
@@ -106,9 +106,9 @@ export function useLendingActions() {
     });
   };
 
-  // ────────── MC-37: checkLtvAndBorrow ──────────
+  // ────────── MC-37: borrowWithLtvCheck ──────────
 
-  const checkLtvAndBorrow = async (
+  const borrowWithLtvCheck = async (
     collateralToken: Address,
     borrowToken: Address,
     borrowAmount: bigint,
@@ -121,7 +121,7 @@ export function useLendingActions() {
     return writeContractAsync({
       address: pool as `0x${string}`,
       abi: PoolABI,
-      functionName: "checkLtvAndBorrow",
+      functionName: "borrowWithLtvCheck",
       args: [collateralToken, borrowToken, borrowAmount, encBorrowAmount, ltvNum, ltvDen],
     });
   };
@@ -163,7 +163,7 @@ export function useLendingActions() {
 
   // ────────── Convenience: encrypt + borrow helpers ──────────
 
-  const checkLtvAndBorrowWithEncrypt = async (
+  const borrowWithLtvCheckWithEncrypt = async (
     collateralToken: Address,
     borrowToken: Address,
     borrowAmount: string,
@@ -176,7 +176,7 @@ export function useLendingActions() {
     setIsEncrypting(true);
     try {
       const enc = await encrypt(amt);
-      return checkLtvAndBorrow(collateralToken, borrowToken, amt, enc, ltvNum, ltvDen);
+      return borrowWithLtvCheck(collateralToken, borrowToken, amt, enc, ltvNum, ltvDen);
     } finally {
       setIsEncrypting(false);
     }
@@ -200,12 +200,12 @@ export function useLendingActions() {
   };
 
   return {
-    requestLiquidationCheck,
+    requestLiquidityCheck,
     liquidateWithProof,
-    checkLtvAndBorrow,
+    borrowWithLtvCheck,
     borrowWithOracle,
     isSupported,
-    checkLtvAndBorrowWithEncrypt,
+    borrowWithLtvCheckWithEncrypt,
     borrowWithOracleWithEncrypt,
     encrypt,
     isEncrypting,

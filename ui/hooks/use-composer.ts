@@ -87,7 +87,7 @@ export function useComposer() {
   };
 
 
-  const openLeveragedStrategy = async (
+  const openPosition = async (
     params: OpenStrategyParams,
     encrypted: OpenStrategyEncrypted,
   ): Promise<Hash> => {
@@ -98,13 +98,13 @@ export function useComposer() {
     return writeContractAsync({
       address: composerAddress,
       abi: ComposerABI,
-      functionName: "openLeveragedStrategy",
+      functionName: "openPosition",
       args: [params, encrypted] as unknown as [OpenStrategyParams, OpenStrategyEncrypted],
     });
   };
 
   return {
-    openLeveragedStrategy,
+    openPosition,
     composerAddress,
     isPending,
     encrypt128,

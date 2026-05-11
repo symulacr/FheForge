@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { StrategyStepResponseDto } from '../interfaces/dtos/strategy-step-response.dto';
 
 export interface StrategyTemplate {
@@ -26,7 +26,7 @@ export class StrategyTemplatesService {
         {
           step: 1,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_USDC || '',
             symbol: 'USDC',
@@ -47,7 +47,7 @@ export class StrategyTemplatesService {
         {
           step: 1,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_USDC || '',
             symbol: 'USDC',
@@ -57,7 +57,7 @@ export class StrategyTemplatesService {
         {
           step: 2,
           type: 'BORROW',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenOut: {
             assetId: process.env.TOKEN_WETH || '',
             symbol: 'WETH',
@@ -67,7 +67,7 @@ export class StrategyTemplatesService {
         {
           step: 3,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_WETH || '',
             symbol: 'WETH',
@@ -77,7 +77,7 @@ export class StrategyTemplatesService {
         {
           step: 4,
           type: 'BORROW',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenOut: {
             assetId: process.env.TOKEN_USDC || '',
             symbol: 'USDC',
@@ -98,7 +98,7 @@ export class StrategyTemplatesService {
         {
           step: 1,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_USDC || '',
             symbol: 'USDC',
@@ -108,7 +108,7 @@ export class StrategyTemplatesService {
         {
           step: 2,
           type: 'BORROW',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenOut: {
             assetId: process.env.TOKEN_WETH || '',
             symbol: 'WETH',
@@ -118,7 +118,7 @@ export class StrategyTemplatesService {
         {
           step: 3,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_WETH || '',
             symbol: 'WETH',
@@ -128,7 +128,7 @@ export class StrategyTemplatesService {
         {
           step: 4,
           type: 'BORROW',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenOut: {
             assetId: process.env.TOKEN_USDC || '',
             symbol: 'USDC',
@@ -138,7 +138,7 @@ export class StrategyTemplatesService {
         {
           step: 5,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_USDC || '',
             symbol: 'USDC',
@@ -148,7 +148,7 @@ export class StrategyTemplatesService {
         {
           step: 6,
           type: 'BORROW',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenOut: {
             assetId: process.env.TOKEN_WETH || '',
             symbol: 'WETH',
@@ -169,7 +169,7 @@ export class StrategyTemplatesService {
         {
           step: 1,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_USDT || '',
             symbol: 'USDT',
@@ -179,7 +179,7 @@ export class StrategyTemplatesService {
         {
           step: 2,
           type: 'BORROW',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenOut: {
             assetId: process.env.TOKEN_WETH || '',
             symbol: 'WETH',
@@ -189,7 +189,7 @@ export class StrategyTemplatesService {
         {
           step: 3,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_WETH || '',
             symbol: 'WETH',
@@ -210,7 +210,7 @@ export class StrategyTemplatesService {
         {
           step: 1,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: process.env.TOKEN_USDC || '',
             symbol: 'USDC',

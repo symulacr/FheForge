@@ -10,9 +10,6 @@ import DefiNodeDefault from "./nodes/defi-node-default";
 import DefiNodeSwap, { SwapRightLabel } from "./nodes/defi-node-swap";
 import DefiNodeSupply, { SupplyRightLabel } from "./nodes/defi-node-supply";
 import DefiNodeBorrow, { BorrowRightLabel } from "./nodes/defi-node-borrow";
-import DefiNodeJoinStrategy, {
-  JoinStrategyRightLabel,
-} from "./nodes/defi-node-join-strategy";
 import { DefiNodeProps } from "./nodes/defi-node.types";
 
 export default function DefiNode({ data, selected }: DefiNodeProps) {
@@ -53,16 +50,6 @@ export default function DefiNode({ data, selected }: DefiNodeProps) {
           rightLabel={<BorrowRightLabel apy={normalized.apy} />}
         >
           <DefiNodeBorrow data={normalized} />
-        </DefiNodeShell>
-      );
-
-    case "JOIN_STRATEGY":
-      return (
-        <DefiNodeShell
-          {...commonProps}
-          rightLabel={<JoinStrategyRightLabel apy={normalized.apy} />}
-        >
-          <DefiNodeJoinStrategy data={normalized} />
         </DefiNodeShell>
       );
 

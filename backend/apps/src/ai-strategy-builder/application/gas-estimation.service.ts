@@ -8,21 +8,16 @@ export class GasEstimationService {
   private provider: ethers.JsonRpcProvider | null = null;
 
   private readonly GAS_ESTIMATES: Record<string, number> = {
-    ENABLE_E_MODE: 50000,
     SWAP: 150000,
     SUPPLY: 100000,
     BORROW: 120000,
-    JOIN_STRATEGY: 180000,
-    BRIDGE: 200000,
-    STAKE: 100000,
-    UNSTAKE: 100000,
     CLAIM_REWARDS: 80000,
   };
 
   private readonly DEFAULT_GAS = 100000;
 
   constructor(private readonly configService: ConfigService) {
-    const rpcUrl = this.configService.get<string>('FHENIX_RPC');
+    const rpcUrl = this.configService.get<string>('COFHE_RPC');
     if (rpcUrl) {
       this.provider = new ethers.JsonRpcProvider(rpcUrl);
     }

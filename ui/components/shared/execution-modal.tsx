@@ -59,11 +59,7 @@ const mapStatusToBackend = (
 
 const getStepTitle = (s: StrategyStep) => {
   switch (s.type) {
-    case STEP_TYPE.ENABLE_BORROWING:
-      return "Enable Borrowing";
-    case STEP_TYPE.ENABLE_E_MODE:
-      return "Enable E-Mode";
-    case STEP_TYPE.JOIN_STRATEGY:
+    case STEP_TYPE.SWAP:
       return `Swap ${s.tokenIn?.symbol ?? ""} → ${s.tokenOut?.symbol ?? ""}`;
     case STEP_TYPE.BORROW:
       return `Borrow ${s.tokenOut?.symbol ?? ""}`;
@@ -74,11 +70,7 @@ const getStepTitle = (s: StrategyStep) => {
 
 const getStepDescription = (s: StrategyStep) => {
   switch (s.type) {
-    case STEP_TYPE.ENABLE_BORROWING:
-      return "Enable borrowing on protocol";
-    case STEP_TYPE.ENABLE_E_MODE:
-      return "Enable efficiency mode";
-    case STEP_TYPE.JOIN_STRATEGY:
+    case STEP_TYPE.SWAP:
       return `Swap ${formatAmt(s.tokenIn?.amount)} ${s.tokenIn?.symbol ?? ""} for ~${formatAmt(
         s.tokenOut?.amount,
       )} ${s.tokenOut?.symbol ?? ""}`;
@@ -159,7 +151,7 @@ export function ExecutionModal({
 
   const { address: walletAddress, isConnected: isWalletConnected } =
     useFheWallet();
-  const { openLeveragedStrategy, encrypt128ForComposer, isPending: isComposerPending } =
+  const { openPosition, encrypt128ForComposer, isPending: isComposerPending } =
     useComposer();
   const {
     hasPosition,
@@ -269,7 +261,7 @@ export function ExecutionModal({
       );
       const swapStep = strategy.steps.find(
         (s) =>
-          s.type === STEP_TYPE.SWAP || s.type === STEP_TYPE.JOIN_STRATEGY,
+          s.type === STEP_TYPE.SWAP,
       );
 
       const collateralSymbol =
@@ -357,7 +349,7 @@ export function ExecutionModal({
         borrowEnc: encBorrow,
       };
 
-      const txHash = await openLeveragedStrategy(params, encrypted);
+      const txHash = await openPosition(params, encrypted);
 
       let receiptOk = false;
       if (txHash) {

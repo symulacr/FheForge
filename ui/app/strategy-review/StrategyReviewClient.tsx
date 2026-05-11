@@ -41,7 +41,7 @@ export default function StrategyReviewClient() {
   const searchParams = useSearchParams();
   const [executing, setExecuting] = useState(false);
   const [slippage, setSlippage] = useState(SLIPPAGE_TOLERANCE);
-  const { openLeveragedStrategy, encrypt128ForComposer, isPending: composerPending } = useComposer();
+  const { openPosition, encrypt128ForComposer, isPending: composerPending } = useComposer();
 
   const encodedData = searchParams.get("data");
   const strategyIdParam = searchParams.get("strategyId");
@@ -153,10 +153,10 @@ export default function StrategyReviewClient() {
         borrowEnc: encBorrow,
       };
 
-      await openLeveragedStrategy(params, encrypted);
+      await openPosition(params, encrypted);
       router.push("/execute");
     } catch (e: unknown) {
-      console.warn("openLeveragedStrategy failed:", e);
+      console.warn("openPosition failed:", e);
       displayToast("error", "Strategy execution failed. Please try again.");
     } finally {
       setExecuting(false);

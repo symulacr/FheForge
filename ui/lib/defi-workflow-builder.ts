@@ -62,12 +62,12 @@ export const buildWorkflowJson = (nodes: Node<DefiNodeData>[]) => {
     };
   });
 
-  const joinStrategyCount = nodes.filter(
-    (node) => node.data?.action?.operation_type === "JOIN_STRATEGY",
+  const swapCount = nodes.filter(
+    (node) => node.data?.action?.operation_type === "SWAP",
   ).length;
 
   return {
-    loops: String(joinStrategyCount || 1),
+    loops: String(swapCount || 1),
     fee: 0,
     steps,
   };

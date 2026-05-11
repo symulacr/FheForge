@@ -61,16 +61,16 @@ interface IStrategyVault {
 }
 
 interface ILendingPool {
-    function supply(address token, uint256 amount, InEuint128 calldata encAmount) external;
+    function shield(address token, uint256 amount, InEuint128 calldata encAmount) external;
 
-    function supplyToLending(
+    function depositFor(
         address token,
         uint256 amount,
         euint128 handle,
         address user
     ) external;
 
-    function checkLtvAndBorrow(
+    function borrowWithLtvCheck(
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
@@ -86,23 +86,23 @@ interface ILendingPool {
         InEuint128 calldata encBorrowAmount
     ) external returns (euint128);
 
-    function borrowFromLending(
+    function borrowFor(
         address token,
         uint256 amount,
         euint128 handle,
         address user
     ) external;
 
-    function repay(address token, uint256 amount, InEuint128 calldata encAmount) external;
+    function repayDebt(address token, uint256 amount, InEuint128 calldata encAmount) external;
 
-    function repayBorrow(
+    function repayFor(
         address token,
         uint256 amount,
         euint128 handle,
         address user
     ) external;
 
-    function withdraw(address token, uint256 amount, InEuint128 calldata encAmount) external;
+    function partialUnshield(address token, uint256 amount, InEuint128 calldata encAmount) external;
 }
 
 interface ISwapRouter {
@@ -140,8 +140,6 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         uint256 indexed repayAmount,
         uint256 newBorrowAmount
     );
-    event Paused();
-    event Unpaused();
 
     modifier onlyOwner() {
         _onlyOwner();
@@ -171,12 +169,10 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
 
     function pause() external onlyOwner {
         _pause();
-        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        emit Unpaused();
     }
 
     struct OpenStrategyParams {
@@ -206,7 +202,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     }
 
     /// @notice Open a leveraged strategy. User pre-approves Composer via direct transferFrom.
-    function openLeveragedStrategy(
+    function openPosition(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e
     ) external nonReentrant whenNotPaused returns (uint256 strategyId, bytes32 intentId) {
@@ -222,7 +218,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         uint256 vaultCovered =
             totalNeeded > p.collateralAmount ? p.collateralAmount : totalNeeded;
         _openVaultPosition(p, e, strategyId);
-        _supplyToPool(p, e, totalNeeded - vaultCovered);
+        _depositToPool(p, e, totalNeeded - vaultCovered);
         _borrowFromPool(p, e);
         intentId = _submitSwap(p, e);
 
@@ -249,11 +245,11 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         euint128 incomingColl = FHE.asEuint128(e.collateral);
         FHE.allowTransient(incomingColl, address(VAULT));
         return VAULT.openPosition(
-            p.collateralToken, p.collateralAmount, e.collateral, strategyId, _msgSender()
+            p.collateralToken, p.collateralAmount, incomingColl, strategyId, _msgSender()
         );
     }
 
-    function _supplyToPool(
+    function _depositToPool(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e,
         uint256 supplyAmount
@@ -263,7 +259,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         // P0: Grant Pool ACL to use encrypted supply handle
         euint128 incomingSupply = FHE.asEuint128(e.supplyEnc);
         FHE.allowTransient(incomingSupply, address(POOL));
-        POOL.supplyToLending(p.collateralToken, supplyAmount, incomingSupply, _msgSender());
+        POOL.depositFor(p.collateralToken, supplyAmount, incomingSupply, _msgSender());
     }
 
     function _borrowFromPool(
@@ -274,7 +270,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         // P0: Grant Pool ACL to use encrypted borrow handle
         euint128 incomingBorrow = FHE.asEuint128(e.borrowEnc);
         FHE.allowTransient(incomingBorrow, address(POOL));
-        POOL.borrowFromLending(p.borrowToken, p.poolBorrowAmount, incomingBorrow, _msgSender());
+        POOL.borrowFor(p.borrowToken, p.poolBorrowAmount, incomingBorrow, _msgSender());
         // P0: Keep borrowed tokens in Composer for potential swap escrow.
         // Do NOT send to user here — _submitSwap handles forwarding.
     }
@@ -352,14 +348,14 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
             // P0: Grant Pool ACL to use encrypted repay handle
             euint128 repayEnc = FHE.asEuint128(e.repayEnc);
             FHE.allowTransient(repayEnc, address(POOL));
-            POOL.repayBorrow(p.repayToken, p.repayAmount, repayEnc, _msgSender());
+            POOL.repayFor(p.repayToken, p.repayAmount, repayEnc, _msgSender());
         }
 
         if (p.newBorrowAmount > 0) {
             // P0: Grant Pool ACL to use encrypted borrow handle
             euint128 newBorrowEnc = FHE.asEuint128(e.newBorrowEnc);
             FHE.allowTransient(newBorrowEnc, address(POOL));
-            POOL.borrowFromLending(
+            POOL.borrowFor(
                 p.borrowToken, p.newBorrowAmount, newBorrowEnc, _msgSender()
             );
             // P0: Keep borrowed tokens in Composer (consistent with openLeveragedStrategy)

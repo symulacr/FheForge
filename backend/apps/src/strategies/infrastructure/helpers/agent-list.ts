@@ -1,3 +1,3 @@
 export enum AGENT {
-  FHENIX = 'FHENIX',
+  COFHE = 'COFHE',
 }

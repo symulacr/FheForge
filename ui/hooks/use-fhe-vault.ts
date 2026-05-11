@@ -181,7 +181,7 @@ export function useFheVault() {
 
   // MC-07/08: supplyToLending and borrowFromLending REMOVED.
   // These are onlyComposer-gated on LendingPool — user calls revert.
-  // Use useComposer().openLeveragedStrategy or useRebalance() instead.
+  // Use useComposer().openPosition or useRebalance() instead.
 
   // MC-23/28: Pool repay uses InEuint64 (renamed from repayBorrow — same function)
   const repay = async (token: string, amount: string, decimals = 18) => {
@@ -194,7 +194,7 @@ export function useFheVault() {
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
-        functionName: "repay",
+        functionName: "repayDebt",
         args: [token, amt, enc],
       });
     } finally {
@@ -217,7 +217,7 @@ export function useFheVault() {
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
-        functionName: "withdraw",
+        functionName: "partialUnshield",
         args: [token, amt, enc],
       });
     } finally {
@@ -272,7 +272,7 @@ export function useFheVault() {
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
-        functionName: "supplyEth",
+        functionName: "shieldEth",
         args: [enc],
         value: amount,
       });
@@ -287,7 +287,7 @@ export function useFheVault() {
     return writeContractAsync({
       address: pool as `0x${string}`,
       abi: PoolABI,
-      functionName: "withdrawEth",
+      functionName: "partialUnshieldEth",
       args: [amount, encAmount],
     });
   };

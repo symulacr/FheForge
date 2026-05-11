@@ -16,7 +16,5 @@
     "SwapRouter::submitSwapIntent": 342777,
     "SwapRouter::cancelIntent": 43080,
     "USDC::approve": 55826,
-    "LendingPool::supplyWithPermit2": 284576,
-    "LendingPool::repayWithPermit2": 257498
   }
 }

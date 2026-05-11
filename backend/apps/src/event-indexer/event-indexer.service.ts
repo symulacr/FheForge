@@ -59,14 +59,14 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    const rpcUrl = this.configService.get<string>('FHENIX_RPC');
+    const rpcUrl = this.configService.get<string>('COFHE_RPC');
     const vaultAddress = this.configService.get<string>(
       'STRATEGY_VAULT_ADDRESS',
     );
     const poolAddress = this.configService.get<string>('LENDING_POOL_ADDRESS');
 
     if (!rpcUrl) {
-      this.logger.warn('FHENIX_RPC not set — event indexing disabled');
+      this.logger.warn('COFHE_RPC not set — event indexing disabled');
       return;
     }
 

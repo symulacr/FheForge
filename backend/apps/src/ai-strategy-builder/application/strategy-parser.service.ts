@@ -179,11 +179,6 @@ export class StrategyParserService {
         'SWAP',
         'SUPPLY',
         'BORROW',
-        'JOIN_STRATEGY',
-        'ENABLE_E_MODE',
-        'BRIDGE',
-        'STAKE',
-        'UNSTAKE',
         'CLAIM_REWARDS',
       ];
 
@@ -239,7 +234,7 @@ export class StrategyParserService {
 
   private isStructuredStepsFormat(input: string): boolean {
     const numberedStepsPattern =
-      /\d+\.\s*(supply|lend|borrow|swap|join|stake)/i;
+      /\d+\.\s*(supply|lend|borrow|swap)/i;
     const hasMultipleSteps = (input.match(/\d+\./g) || []).length >= 2;
 
     return numberedStepsPattern.test(input) && hasMultipleSteps;
@@ -329,35 +324,9 @@ export class StrategyParserService {
               step.tokenOut.amount;
           }
         }
-      } else if (
-        normalizedStep.includes('join') ||
-        normalizedStep.includes('stake')
-      ) {
-        const step = this.parseJoinStrategyStepFromIntent(
-          stepMatch,
-          stepNumber,
-          inputToken,
-          finalAmount,
-        );
-        if (step) steps.push(step);
       }
 
       stepNumber++;
-    }
-
-    const hasJoinStrategy = steps.some((s) => s.type === 'JOIN_STRATEGY');
-    const explicitEMode = /enable\s+e\s*mode/i.test(input);
-
-    if (hasJoinStrategy || explicitEMode) {
-      steps.unshift({
-        step: 0,
-        type: 'ENABLE_E_MODE',
-        agent: 'FHENIX',
-      });
-
-      steps.forEach((step, index) => {
-        step.step = index + 1;
-      });
     }
 
     return steps;
@@ -386,7 +355,7 @@ export class StrategyParserService {
     return {
       step: stepNumber,
       type: 'SUPPLY',
-      agent: 'FHENIX',
+      agent: 'COFHE',
       tokenIn: {
         assetId: this.getAssetIdBySymbol(token),
         symbol: token,
@@ -458,7 +427,7 @@ export class StrategyParserService {
     return {
       step: stepNumber,
       type: 'SUPPLY',
-      agent: 'FHENIX',
+      agent: 'COFHE',
       tokenIn: {
         assetId: this.getAssetIdBySymbol(token),
         symbol: token,
@@ -496,7 +465,7 @@ export class StrategyParserService {
     return {
       step: stepNumber,
       type: 'BORROW',
-      agent: 'FHENIX',
+      agent: 'COFHE',
       tokenOut: {
         assetId: this.getAssetIdBySymbol(borrowToken),
         symbol: borrowToken,
@@ -532,7 +501,7 @@ export class StrategyParserService {
     return {
       step: stepNumber,
       type: 'SWAP',
-      agent: 'FHENIX',
+      agent: 'COFHE',
       tokenIn: {
         assetId: this.getAssetIdBySymbol(tokenIn),
         symbol: tokenIn,
@@ -541,37 +510,6 @@ export class StrategyParserService {
       tokenOut: {
         assetId: this.getAssetIdBySymbol(tokenOut),
         symbol: tokenOut,
-        amount: Number(outputAmount.toFixed(6)),
-      },
-    };
-  }
-
-  private parseJoinStrategyStepFromIntent(
-    stepLine: string,
-    stepNumber: number,
-    defaultInputToken: string,
-    finalAmount: number,
-  ): StrategyStepResponseDto | null {
-    const joinMatch = stepLine.match(/(weth|usdc|usdt)/i);
-
-    if (!joinMatch) return null;
-
-    const strategyToken = joinMatch[1].toUpperCase();
-    const amount = finalAmount;
-    const outputAmount = amount * 0.99;
-
-    return {
-      step: stepNumber,
-      type: 'JOIN_STRATEGY',
-      agent: 'FHENIX',
-      tokenIn: {
-        assetId: this.getAssetIdBySymbol('WETH'),
-        symbol: 'WETH',
-        amount: Number(amount.toFixed(6)),
-      },
-      tokenOut: {
-        assetId: this.getAssetIdBySymbol(strategyToken),
-        symbol: strategyToken,
         amount: Number(outputAmount.toFixed(6)),
       },
     };
@@ -594,7 +532,7 @@ export class StrategyParserService {
     return {
       step: stepNumber,
       type: 'BORROW',
-      agent: 'FHENIX',
+      agent: 'COFHE',
       tokenOut: {
         assetId: this.getAssetIdBySymbol(borrowToken),
         symbol: borrowToken,
@@ -629,7 +567,7 @@ export class StrategyParserService {
     return {
       step: stepNumber,
       type: 'SWAP',
-      agent: 'FHENIX',
+      agent: 'COFHE',
       tokenIn: {
         assetId: this.getAssetIdBySymbol(tokenIn),
         symbol: tokenIn,
@@ -638,36 +576,6 @@ export class StrategyParserService {
       tokenOut: {
         assetId: this.getAssetIdBySymbol(tokenOut),
         symbol: tokenOut,
-        amount: Number(outputAmount.toFixed(6)),
-      },
-    };
-  }
-
-  private parseJoinStrategyStep(
-    stepLine: string,
-    stepNumber: number,
-    inputToken: { symbol: string; amount: number; assetId?: string },
-  ): StrategyStepResponseDto | null {
-    const joinMatch = stepLine.match(/(weth|usdc|usdt)/i);
-
-    if (!joinMatch) return null;
-
-    const strategyToken = joinMatch[1].toUpperCase();
-    const amount = inputToken.amount;
-    const outputAmount = amount * 0.99;
-
-    return {
-      step: stepNumber,
-      type: 'JOIN_STRATEGY',
-      agent: 'FHENIX',
-      tokenIn: {
-        assetId: this.getAssetIdBySymbol('WETH'),
-        symbol: 'WETH',
-        amount: Number(amount.toFixed(6)),
-      },
-      tokenOut: {
-        assetId: this.getAssetIdBySymbol(strategyToken),
-        symbol: strategyToken,
         amount: Number(outputAmount.toFixed(6)),
       },
     };
@@ -687,7 +595,6 @@ export class StrategyParserService {
       intent.includes('swap') ||
       intent.includes('supply') ||
       intent.includes('borrow') ||
-      intent.includes('stake') ||
       intent.includes('diversif') ||
       intent.includes('arbitrage') ||
       intent.includes('trade')
@@ -710,7 +617,7 @@ export class StrategyParserService {
         steps.push({
           step: stepNumber++,
           type: 'SWAP',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: assetId,
             symbol: inputToken.symbol,
@@ -726,7 +633,7 @@ export class StrategyParserService {
         steps.push({
           step: stepNumber++,
           type: 'SUPPLY',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenIn: {
             assetId: assetId,
             symbol: inputToken.symbol,
@@ -737,7 +644,7 @@ export class StrategyParserService {
         steps.push({
           step: stepNumber++,
           type: 'BORROW',
-          agent: 'FHENIX',
+          agent: 'COFHE',
           tokenOut: {
             assetId: op.tokenOutId || this.getAssetIdBySymbol('WETH'),
             symbol: op.tokenOutSymbol || 'WETH',
@@ -853,7 +760,7 @@ export class StrategyParserService {
       {
         step: 1,
         type: 'SUPPLY',
-        agent: 'FHENIX',
+        agent: 'COFHE',
         tokenIn: {
           assetId: assetId,
           symbol: inputToken.symbol.toUpperCase(),

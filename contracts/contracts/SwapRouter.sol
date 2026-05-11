@@ -60,8 +60,6 @@ contract SwapRouter is Pausable {
     event IntentCancelled(bytes32 indexed intentId, address indexed user);
     event ExecutorProposed(address indexed newExecutor, uint256 indexed earliest);
     event ExecutorRotated(address indexed previousExecutor, address indexed newExecutor);
-    event Paused();
-    event Unpaused();
 
     modifier onlyOwner() {
         _onlyOwner();
@@ -107,12 +105,10 @@ contract SwapRouter is Pausable {
 
     function pause() external onlyOwner {
         _pause();
-        emit Paused();
     }
 
     function unpause() external onlyOwner {
         _unpause();
-        emit Unpaused();
     }
 
     function submitSwapIntent(

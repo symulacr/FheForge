@@ -56,7 +56,6 @@ const normalizeOperationType = (value: unknown): DefiOperationType => {
     "SWAP",
     "SUPPLY",
     "BORROW",
-    "JOIN_STRATEGY",
   ];
 
   if (validTypes.includes(normalized as DefiOperationType)) {
@@ -129,7 +128,6 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
   const isSwap = resolvedType === "SWAP";
   const isSupply = resolvedType === "SUPPLY";
   const isBorrow = resolvedType === "BORROW";
-  const isJoinStrategy = resolvedType === "JOIN_STRATEGY";
 
   const { address: walletAddress } = useAccount();
 
@@ -166,7 +164,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
     }
   };
 
-  const requiresTokenOut = isSwap || isBorrow || isJoinStrategy;
+  const requiresTokenOut = isSwap || isBorrow;
 
   
 
@@ -432,7 +430,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
             null
           );
 
-        case "JOIN_STRATEGY":
+        case "SWAP":
           return (
             estimate?.amount_out ??
             estimate?.output_amount ??
@@ -580,7 +578,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
       );
     }
 
-    if (isJoinStrategy) {
+    if (isSwap) {
       return (
         <div className={`${cardBaseStyle} bg-primary/10 border-primary/30`}>
           <p className="text-[10px] uppercase tracking-widest text-primary font-bold">

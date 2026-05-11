@@ -139,13 +139,6 @@ export class StrategyConstraintsService {
           tokenOut,
           supported: true,
         });
-
-        operations.push({
-          type: OperationType.JOIN_STRATEGY,
-          tokenIn: this.getTokenById(tokenId),
-          tokenOut,
-          supported: true,
-        });
       }
 
       for (const pair of asOutput) {
@@ -162,11 +155,6 @@ export class StrategyConstraintsService {
       operations.push({
         type: OperationType.SUPPLY,
         tokenIn: this.getTokenById(tokenId),
-        supported: true,
-      });
-
-      operations.push({
-        type: OperationType.ENABLE_E_MODE,
         supported: true,
       });
 
@@ -284,8 +272,7 @@ export class StrategyConstraintsService {
   ): Promise<boolean> {
     try {
       switch (operationType) {
-        case OperationType.SWAP:
-        case OperationType.JOIN_STRATEGY: {
+        case OperationType.SWAP: {
           if (!tokenInId || !tokenOutId) return false;
           const swapPairs =
             await this.defiPairsService.getAvailableOperationsForTokenPair(
@@ -308,9 +295,6 @@ export class StrategyConstraintsService {
             await this.defiPairsService.getAvailablePairsForToken(tokenOutId);
           return asOutput.length > 0;
         }
-
-        case OperationType.ENABLE_E_MODE:
-          return true;
 
         default:
           return false;
