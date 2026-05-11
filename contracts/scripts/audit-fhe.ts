@@ -246,12 +246,13 @@ async function main() {
   });
   await test("pool.partialUnshield(USDC) — equality + tryDecrease", async () => {
     const reserve = await pool.liquidReserve(USDC);
-    // Use small amount that's within reserve bounds
-    const withdrawAmt = reserve > ethers.parseUnits("10", 6) ? ethers.parseUnits("10", 6) : 0n;
-    if (withdrawAmt === 0n) { console.log("    skipped — insufficient reserve"); return; }
+    const totalBorrow = await pool.totalPlainBorrow(USDC);
+    const maxWithdraw = reserve > totalBorrow ? reserve - totalBorrow : 0n;
+    const withdrawAmt = maxWithdraw > ethers.parseUnits("5", 6) ? ethers.parseUnits("5", 6) : maxWithdraw > 0n ? maxWithdraw : 0n;
+    if (withdrawAmt === 0n) { console.log(`    skipped — insufficient reserve (reserve=${ethers.formatUnits(reserve,6)}, borrow=${ethers.formatUnits(totalBorrow,6)})`); return; }
     const e = await enc128ForPool(BigInt(withdrawAmt));
     await (await pool.partialUnshield(USDC, withdrawAmt, e)).wait();
-    console.log(`    unshielded ${ethers.formatUnits(withdrawAmt, 6)} USDC (reserve was ${ethers.formatUnits(reserve, 6)})`);
+    console.log(`    unshielded ${ethers.formatUnits(withdrawAmt, 6)} USDC`);
   });
 
   // ══════════════════════════════════════════════════════════
@@ -578,15 +579,13 @@ async function main() {
   // 19g: Partial unshield — withdraw some supply (conservative: account for drift)
   await test("pool.partialUnshield(USDC) — reserve-safe withdraw", async () => {
     const reserve = await pool.liquidReserve(USDC);
-    // Be conservative: mismatched operations (19h/19i) drain plain reserves
-    // without matching encrypted state, so leave extra margin
-    const safetyMargin = ethers.parseUnits("200", 6);
-    const maxWithdraw = reserve > safetyMargin ? reserve - safetyMargin : 0n;
-    const withdrawAmt = maxWithdraw > ethers.parseUnits("50", 6) ? ethers.parseUnits("50", 6) : maxWithdraw;
-    if (withdrawAmt === 0n) { console.log("    skipped — insufficient reserve after drift margin"); return; }
+    const totalBorrow = await pool.totalPlainBorrow(USDC);
+    const maxWithdrawable = reserve > totalBorrow ? reserve - totalBorrow : 0n;
+    const withdrawAmt = maxWithdrawable > ethers.parseUnits("5", 6) ? ethers.parseUnits("5", 6) : maxWithdrawable > 0n ? maxWithdrawable : 0n;
+    if (withdrawAmt === 0n) { console.log(`    skipped — insufficient reserve (reserve=${ethers.formatUnits(reserve,6)}, borrow=${ethers.formatUnits(totalBorrow,6)})`); return; }
     const e = await enc128ForPool(BigInt(withdrawAmt));
     await (await pool.partialUnshield(USDC, withdrawAmt, e)).wait();
-    console.log(`    unshielded ${ethers.formatUnits(withdrawAmt, 6)} USDC (reserve was ${ethers.formatUnits(reserve, 6)})`);
+    console.log(`    unshielded ${ethers.formatUnits(withdrawAmt, 6)} USDC`);
   });
 
   // 19h: Equality verification MISMATCH on borrow — encrypted zero stored
