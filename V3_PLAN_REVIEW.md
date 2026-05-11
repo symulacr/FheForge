@@ -393,3 +393,118 @@ V3-8  → deploy Wave19 + full test     [FINAL]
 ---
 
 *Grounded on: systematic full read of OceanFin (547 source files across ui/ + backend/) and FheForge (6 core contracts 2,081 lines, all UI hooks/services/types, backend NestJS DDD). Cross-referenced against FHERC20 reference (FHERC20.sol 394 lines, FHERC20ERC20Wrapper.sol 229 lines, FHERC20WrapperClaimHelper.sol 89 lines), CoFHE FHE.sol v0.1.3 API, and CoFHE official docs.*
+
+## 8. Missing Items — Found in Systematic Cross-Check
+
+### MISS-1: `withdrawEth` not renamed in review
+
+LendingPool has `withdrawEth(uint256 amount, InEuint128 calldata encAmount)` at line 320.
+The review renames `withdraw` to `partialUnshield` but DOES NOT rename `withdrawEth`.
+
+**Fix**: `withdrawEth` -> `partialUnshieldEth` (parallel with `shieldEth`).
+
+### MISS-2: `EMODE_CATEGORY` enum still in FheForge frontend
+
+`ui/utils/constant.ts` has `EMODE_CATEGORY { STABLECOIN = 1, ETH_CORRELATED = 3 }` — direct OceanFin port (`DOT_CORRELATED = 2` became `ETH_CORRELATED = 3`). CoFHE has no E-Mode. Dead code.
+
+**Fix**: V3-0g should also REMOVE `EMODE_CATEGORY` enum entirely.
+
+### MISS-3: Backend `OperationType` still has `ENABLE_E_MODE`
+
+`backend/apps/src/defi_modules/domain/operation-type.enum.ts` has `ENABLE_E_MODE = 'ENABLE_E_MODE'`. Ported from OceanFin, no FHE equivalent.
+
+**Fix**: Remove `ENABLE_E_MODE` from backend enum. Remove `EnableEModeSimulator` and its registration in `DefiSimulationEngine`. Remove `shouldAddEnableEMode`, `filterInvalidEnableEMode` from `GeminiAiService`. Update Gemini prompts to never reference `ENABLE_E_MODE`.
+
+### MISS-4: Backend `step-list.ts` has `ENABLE_BORROWING` and `ENABLE_E_MODE`
+
+`backend/apps/src/strategies/infrastructure/helpers/step-list.ts` defines a STEP_TYPE enum with both `ENABLE_BORROWING` and `ENABLE_E_MODE`. Dead code.
+
+**Fix**: Replace with FheForge-specific types: `SHIELD`, `UNSHIELD`, `BORROW`, `SWAP`, `REPAY`, `LIQUIDATE`.
+
+### MISS-5: Backend `strategy-validator.service.ts` warns about missing E-Mode
+
+Lines 277-283: warns "Strategy includes BORROW but no ENABLE_E_MODE - consider adding it for better rates". This is wrong for FheForge — LTV check is on-chain via `borrowWithLtvCheck`.
+
+**Fix**: Remove the E-Mode warning entirely.
+
+### MISS-6: Backend Gemini AI prompts still reference `ENABLE_E_MODE` heavily
+
+`gemini-ai.service.ts` has ~30 references to `ENABLE_E_MODE` in prompt templates. The AI spends tokens reasoning about E-Mode when FheForge doesn't have it. Methods: `shouldAddEnableEMode()`, `filterInvalidEnableEMode()`, `needsEMode` param.
+
+**Fix**: Remove all E-Mode references from Gemini prompts and helper methods.
+
+### MISS-7: Frontend `defi-connection-rules.ts` has OceanFin connection rules
+
+`ui/lib/defi-connection-rules.ts` defines step sequences: `SWAP -> [SUPPLY, SWAP, JOIN_STRATEGY]`, `SUPPLY -> [BORROW]`, etc. These are for OceanFin's step-by-step model. In FheForge, Composer atomically composes all steps.
+
+**Fix**: Replace with Composer-aware rules or remove if the builder UI is Composer-first.
+
+### MISS-8: Frontend `DefiOperationType` still has `JOIN_STRATEGY`
+
+`ui/types/defi.ts`: `DefiOperationType = "JOIN_STRATEGY" | "SWAP" | "SUPPLY" | "BORROW"`. OceanFin separates JOIN_STRATEGY (swap+supply via join pool) from SWAP. FheForge has no join pool — both are just SWAP.
+
+**Fix**: Remove `JOIN_STRATEGY` from `DefiOperationType`. Update ConfigPanel, DefiNode, defi-node-utils, etc.
+
+### MISS-9: Backend sets `agent: 'FHENIX'` for E-Mode steps but frontend uses `AGENT.COFHE = 'COFHE'`
+
+`strategy-parser.service.ts` sets `agent: 'FHENIX'` for ENABLE_E_MODE steps. Frontend `AGENT` enum uses `COFHE`. Inconsistency.
+
+**Fix**: Align backend agent value to `'COFHE'` matching frontend enum.
+
+### MISS-10: `gas-estimation.service.ts` has `ENABLE_E_MODE` gas estimate
+
+`ENABLE_E_MODE: 50000` in gas estimates.
+
+**Fix**: Remove `ENABLE_E_MODE` entry. Add `SHIELD`, `UNSHIELD`, `LIQUIDATE` estimates.
+
+### MISS-11: `strategy-constraints.service.ts` lists `ENABLE_E_MODE` as supported
+
+Lines 168-171: pushes `OperationType.ENABLE_E_MODE` with `supported: true`.
+
+**Fix**: Remove `ENABLE_E_MODE` from supported operations.
+
+### MISS-12: `requestUnshield`/`unshieldWithProof`/`requestBorrowReveal` are commented-out stubs
+
+`use-lending-actions.ts` lines 33-36: these are commented out. Frontend CANNOT call these functions yet. Review mentions "stub" but doesn't call out they're fully disabled.
+
+**Fix**: V3-7 must uncomment AND implement these hooks, not just sync ABIs.
+
+### MISS-13: LendingPool `repay` (user-facing) not addressed in naming
+
+Pool has both `repay(token, amount, InEuint128)` (user-facing) and `repayBorrow(token, amount, euint128)` (Composer-facing). Review renames `repayBorrow` -> `repayFor` but doesn't address `repay`.
+
+**Fix**: Rename `repay` -> `repayDebt` for clarity vs `repayFor`.
+
+### MISS-14: `openLeveragedStrategyDirect` not mentioned — should be the ONLY variant
+
+Composer has both `openLeveragedStrategy` (Permit2-based, dead since P6) and `openLeveragedStrategyDirect` (transferFrom-based, current path). Since P6 removed Permit2, the non-Direct variant is dead.
+
+**Fix**: Remove `openLeveragedStrategy` (Permit2 path). Rename `openLeveragedStrategyDirect` -> `openLeveragedPosition`. Update `useComposer` to only call the Direct variant.
+
+### MISS-15: `RebalanceParams` still references Permit2 structs
+
+Composer's `rebalance` takes `RebalanceParams` with `collateralPermit`/`repayPermit` — Permit2 transfer structs. Dead since P6.
+
+**Fix**: Remove Permit2 fields from `RebalanceParams`. Replace with plain `transferFrom` approach.
+
+### MISS-16: Audit scripts still have Permit2 test cases
+
+`audit-onchain.ts` and `audit-quick.ts` still reference `supplyWithPermit2`, `repayWithPermit2`, `PERMIT2`, `permitTransferFrom` — all dead since P6. All are SKIP.
+
+**Fix**: Remove Permit2 test cases from audit scripts.
+
+### MISS-17: `.gas-baseline.json` still has `supplyWithPermit2`/`repayWithPermit2`
+
+Dead Permit2 gas entries in `contracts/.gas-baseline.json`.
+
+**Fix**: Remove dead Permit2 entries from gas baseline.
+
+### MISS-18: Backend `strategy-parser.service.ts` has `BRIDGE`, `STAKE`, `UNSTAKE` step types
+
+Lines 182-186: accepts `BRIDGE`, `STAKE`, `UNSTAKE` as valid step types. These don't exist in FheForge contracts. No bridging, no staking.
+
+**Fix**: Remove `BRIDGE`, `STAKE`, `UNSTAKE` from accepted step types in parser, validator, and DTO.
+
+---
+
+*18 missing items added after systematic cross-check of all function signatures, frontend enums, backend enums, AI prompts, and dead code.*
