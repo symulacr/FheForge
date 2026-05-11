@@ -1,302 +1,395 @@
 # V3 Plan Review — OceanFin Cross-Reference + Naming + Gaps
 
-## 1. OceanFin Architecture (Original Port Source)
+Grounded on systematic full read of both codebases.
 
-OceanFin has **no Solidity contracts** — it's a Polkadot/Hydration app.
+## 1. OceanFin "Contract Logic" — Polkadot Extrinsic Map
 
-**Execution model** (from `strategy-step-service.ts`):
-```
-buildStepTx(step, userAddress) → switch(step.type)
-  JOIN_STRATEGY → swap()
-  SWAP           → swap()
-  SUPPLY         → supply()
-  BORROW         → borrow()
-  ENABLE_E_MODE  → setUserEmode()
-```
+OceanFin has no Solidity. Its "contracts" are **Hydration pallet extrinsics** invoked via Polkadot JS API. The equivalent of Solidity function signatures:
 
-Each step = **one extrinsic**. Steps execute sequentially, 2s delays. No atomic composer.
+| OceanFin Step | Pallet Call | Aave V3 Helper | Plain Params | Returns |
+|---|---|---|---|---|
+| `JOIN_STRATEGY` | `swap.execute` | `@galacticcouncil/sdk` | `(assetIn, assetOut, amountIn)` | SubmittableExtrinsic |
+| `SWAP` | `swap.execute` | same | same | same |
+| `SUPPLY` | `lendingPool.supply` | `LPSupplyParamsType` | `(assetSupply, amountSupply)` | SubmittableExtrinsic |
+| `BORROW` | `lendingPool.borrow` | `LPBorrowParamsType` | `(assetBorrow, amountBorrow)` | SubmittableExtrinsic |
+| `ENABLE_E_MODE` | `lendingPool.setUserEmode` | `setUserEmode` | `(categoryId)` | SubmittableExtrinsic |
+| `ENABLE_BORROWING` | — (no-op, not implemented) | — | — | — |
 
-**What FheForge changed**:
-- 4 sequential txs → 1 atomic `openLeveragedStrategy` via Composer
-- Added FHE encryption (encryptInputs + setAccount)
-- Removed E-Mode (no Aave E-Mode on custom pool)
-- Added `EncryptProgress` UI component
+**Key OceanFin backend concepts (from systematic read):**
 
----
+- **Looping strategies**: `gDOT-looping` and `vDOT-looping` — generate steps programmatically:
+  ```
+  ENABLE_E_MODE → [SWAP + SUPPLY + BORROW] × N loops
+  ```
+  Each iteration: collateral → swap → supply → borrow (LTV=0.9)
+- **LTV calculation**: `getMaxBorrow(assetId, amount) = amount × maxLTV` (hardcoded 0.9)
+- **APY model**: `sumPow(0,N,ltv) × supplyRate - sumPow(1,N,ltv) × borrowRate` — geometric series
+- **Interest rate**: fetched from Aave V3 on-chain data (liquidityRate, variableBorrowRate in RAY)
+- **Price**: `getBestSpotPrice` from Hydration SDK router
+- **Slippage**: hardcoded 3% (`SLIPPAGE_TOLERANCE = 0.03`)
+- **E-Mode**: `DOT_CORRELATED` (category 2) — same-category assets get higher LTV
+- **Execution**: Sequential — each step is one extrinsic, 2-second delays between steps
+- **Rewards**: Includes vDOT staking APY from Bifrost API (`https://dapi.bifrost.io/api/site`)
+- **Simulation**: Backend-side per-step simulators (SupplySimulator, BorrowSimulator, JoinStrategySimulator, SwapSimulator, EnableEModeSimulator)
 
-## 2. Naming Review — Current vs Proposed
+## 2. What FheForge Ported vs Changed vs Added
 
-### Contract Names
+| Concept | OceanFin | FheForge | Change Type |
+|---|---|---|---|
+| Step execution | Sequential extrinsics (4+ txs) | Atomic Composer (1 tx) | **Architectural rewrite** |
+| Supply | `lendingPool.supply(asset, amt)` | `supply(token, amt, InEuint128)` + `transferFrom` | **FHE encryption added** |
+| Borrow | `lendingPool.borrow(asset, amt)` | `checkLtvAndBorrow(coll, debt, amt, enc, ltvNum, ltvDen)` | **FHE + LTV check merged** |
+| Swap | `swap.execute(assetIn, assetOut, amt)` | `SwapRouter.submitIntent` / `executeIntent` | **Intent-based model** |
+| E-Mode | `setUserEmode(DOT_CORRELATED)` | **Removed** — no Aave E-Mode on custom pool | **Deleted** |
+| Enable Borrowing | No-op | **Removed** | **Deleted** |
+| Looping | Backend-generated step array | `openLeveragedStrategy(params, encrypted)` with `loopCount` param | **Contract-side looping** |
+| LTV | Hardcoded 0.9 via `getMaxBorrow` | Encrypted `ltvNum/ltvDen` (70/100 default) | **FHE + configurable** |
+| Interest | Aave V3 on-chain rates | Shares-based with InterestIndex (P3) | **Custom model** |
+| Price | Hydration SDK `getBestSpotPrice` | Pyth oracle + admin fallback prices | **Oracle rewrite** |
+| Rewards | Bifrost vDOT staking APY | Not implemented | **Missing** |
+| Simulation | Backend per-step simulators | AI strategy service (Gemini) | **Rewritten** |
+| APY calculation | `sumPow` geometric series | Not implemented | **Missing** |
+| Activity tracking | Create → update per step → final | Same pattern (preserved from OceanFin) | **Ported** |
+| Wallet | Luno/polkadot.js (Substrate) | wagmi/viem (EVM) | **Chain change** |
+
+## 3. Naming Audit — Grounded on Actual Function Signatures
+
+### 3.1 Contract Names
+
+| Current | OceanFin Equivalent | Issue | Proposed | Rationale |
+|---|---|---|---|---|
+| `LendingPool` | Aave V3 Pool (external) | Generic — same name as Aave, but this is NOT Aave | `ShieldedPool` | Signals FHE + avoids Aave confusion |
+| `FheForgeComposer` | OceanFin has no equivalent (step-by-step execution) | Inconsistent prefix — other contracts don't have it | `Composer` | All contracts are FheForge; prefix is noise |
+| `StrategyVault` | No equivalent — OceanFin uses Aave positions directly | "Strategy" in name but stores **positions**, not strategies | `ShieldedVault` | Signals FHE + accurate (vault of positions) |
+| `StrategyRegistry` | No equivalent — strategies are backend-only in OceanFin | OK — actually stores strategy metadata | `StrategyRegistry` | Keep — no FHE state visible to users |
+| `SwapRouter` | Hydration `swap.execute` (pallet) | OK | `SwapRouter` | Keep — no FHE |
+| `PriceOracle` | Hydration `getBestSpotPrice` (SDK) | OK | `PriceOracle` | Keep — no FHE |
+| `FheForgeGovernor` | No equivalent | Redundant prefix | `Governor` | Already in FheForge namespace |
+| `FheForgeTimelock` | No equivalent | Redundant prefix | `Timelock` | Same |
+
+### 3.2 Function Names — ShieldedPool (was LendingPool)
+
+**OceanFin calls**: `lendingPool.supply(asset, amount)` / `lendingPool.borrow(asset, amount)` — these are direct Aave V3 pallet calls.
+
+| Current | OceanFin Source | Issue | Proposed | Rationale |
+|---|---|---|---|---|
+| `supply` | Aave `supply(asset, amt)` | Same name as Aave but different semantics — Aave tracks plain balances, ours tracks encrypted | `shield` | FHERC20 pattern; "supply" implies Aave compat we don't have |
+| `supplyEth` | No equivalent (Hydration has no ETH) | Unclear what "Eth" variant means | `shieldEth` | ETH variant of shield |
+| `withdraw` | Aave `withdraw(asset, amt)` | Aave's withdraw = full exit. Ours = partial encrypted subtract + plain transfer | `partialUnshield` | Accurately describes: encrypted subtract + partial ERC20 unlock |
+| `supplyToLending` | No equivalent (Composer-only path) | "toLending" = OceanFin relic name; Pool IS the lending | `depositFor` | Composer deposits on behalf; "For" = behalf |
+| `borrowFromLending` | No equivalent (Composer-only path) | "fromLending" = same relic | `borrowFor` | Composer borrows for user |
+| `repayBorrow` | No equivalent (Composer-only path) | "Borrow" is redundant — what else would you repay? | `repayFor` | Composer repays for user |
+| `checkLtvAndBorrow` | OceanFin: `getMaxBorrow()` = `amt × 0.9` | Merges LTV check + borrow; OceanFin keeps these separate | `borrowWithLtvCheck` | Verb-first: borrow (with check) |
+| `borrowWithOracle` | No equivalent | OK | `borrowWithOracle` | Fine |
+| `requestEmergencyBalance` | No equivalent | "Emergency" misnomer — this is just `allowPublic` | `requestBalanceReveal` | "Reveal" = CoFHE decryption term |
+| `emergencyWithdrawWithProof` | No equivalent | Paused-state only, not really emergency | `withdrawPausedWithProof` | More accurate |
+| `requestLiquidationCheck` | No equivalent | OK-ish | `requestLiquidityCheck` | More accurate (checking if liquidatable) |
+| `liquidateWithProof` | No equivalent | OK | `liquidateWithProof` | Fine |
+| `requestUnshield` (stub) | No equivalent | — | `requestUnshield` | FHERC20 pattern |
+| `unshieldWithProof` (stub) | No equivalent | — | `unshieldWithProof` | FHERC20 pattern |
+| NO getter | Aave: `getUserAccountData()` returns all balances | Missing entirely | `getShieldedSupply` | euint128 + allowSender for decryptForView |
+| NO getter | Aave: `getUserAccountData()` | Missing entirely | `getShieldedBorrow` | Same |
+
+### 3.3 Function Names — ShieldedVault (was StrategyVault)
 
 | Current | Issue | Proposed | Rationale |
 |---|---|---|---|
-| `LendingPool` | Generic, no FHE signal | `ShieldedPool` | Shorter than ShieldedLendingPool; signals FHE |
-| `FheForgeComposer` | Inconsistent prefix | `Composer` | All contracts are FheForge; prefix is noise |
-| `StrategyVault` | No FHE signal | `ShieldedVault` | Parallel with ShieldedPool |
-| `StrategyRegistry` | OK | `StrategyRegistry` | No user-visible FHE state |
-| `SwapRouter` | OK | `SwapRouter` | No FHE |
-| `PriceOracle` | OK | `PriceOracle` | No FHE |
-| `FheForgeGovernor` | Redundant prefix | `Governor` | Already in FheForge namespace |
-| `FheForgeTimelock` | Redundant prefix | `Timelock` | Same |
+| `openPosition` (InEuint128) | Dead overload — Composer uses euint128 only | REMOVE | Cross-contract path = euint128 only |
+| `openPosition` (euint128) | OK | `openPosition` | Clean |
+| `addCollateral` (InEuint128) | Dead overload | REMOVE | Same |
+| `addCollateral` (euint128) | OK | `addCollateral` | Clean |
+| `closePosition` | OK — always user-facing | `closePosition` | Fine |
+| `getCollateral` | Doesn't signal encrypted | `getShieldedCollateral` | Signals encrypted return |
+| `emergencyWithdraw` | Paused-state only | `withdrawPaused` | More accurate |
 
-### Function Names — ShieldedPool (was LendingPool)
-
-| Current | Issue | Proposed | Rationale |
-|---|---|---|---|
-| `supply` | Vague | `shield` | FHERC20 pattern: lock ERC20 → mint encrypted balance |
-| `supplyEth` | Unclear | `shieldEth` | ETH variant |
-| `withdraw` | Doesn't signal partial vs full | `partialUnshield` | Encrypted subtract + plain transfer = partial exit |
-| `supplyToLending` | Confusing POV | `depositFor` | Composer deposits on behalf of user |
-| `borrowFromLending` | Inverted POV | `borrowFor` | Composer borrows for user |
-| `repayBorrow` | Redundant | `repayFor` | Composer repays for user |
-| `requestEmergencyBalance` | Not really emergency | `requestBalanceReveal` | "Reveal" = CoFHE decryption term |
-| `emergencyWithdrawWithProof` | Paused-state only | `withdrawPausedWithProof` | More accurate |
-| `requestLiquidationCheck` | OK-ish | `requestLiquidityCheck` | More accurate |
-| `checkLtvAndBorrow` | LTV check + borrow in one | `borrowWithLtvCheck` | Verb-first |
-| `borrowWithOracle` | OK | `borrowWithOracle` | Fine |
-| `requestUnshield` | Good | `requestUnshield` | FHERC20 pattern |
-| `unshieldWithProof` | Good | `unshieldWithProof` | FHERC20 pattern |
-| NO getter | Missing | `getShieldedSupply` | euint128 + allowSender for decryptForView |
-| NO getter | Missing | `getShieldedBorrow` | Same |
-
-### Function Names — ShieldedVault (was StrategyVault)
-
-| Current | Proposed | Rationale |
-|---|---|---|
-| `openPosition` (InEuint128) | REMOVE | Composer uses euint128 only |
-| `openPosition` (euint128) | `openPosition` | Clean |
-| `addCollateral` (InEuint128) | REMOVE | Same |
-| `addCollateral` (euint128) | `addCollateral` | Clean |
-| `closePosition` | `closePosition` | Fine — always user-facing |
-| `getCollateral` | `getShieldedCollateral` | Signals encrypted return |
-| `emergencyWithdraw` | `withdrawPaused` | More accurate |
-
-### Function Names — Registry
+### 3.4 Function Names — Registry
 
 | Current | Proposed | Rationale |
 |---|---|---|
 | `incrementTvl` (InEuint128) | REMOVE | Dead overload |
-| `incrementTvl` (euint128) | `increaseTvl` | More natural |
+| `incrementTvl` (euint128) | `increaseTvl` | More natural English |
 | `decrementTvl` (InEuint128) | REMOVE | Dead overload |
-| `decrementTvl` (euint128) | `decreaseTvl` | More natural |
-| `getEncryptedTvl` | `getShieldedTvl` | Consistent naming |
+| `decrementTvl` (euint128) | `decreaseTvl` | More natural English |
+| `getEncryptedTvl` | `getShieldedTvl` | Consistent with Shielded naming |
 
-### Function Names — Composer
+### 3.5 Function Names — Composer
+
+| Current | OceanFin Equivalent | Proposed | Rationale |
+|---|---|---|---|
+| `openLeveragedStrategy` | Backend `simulateGDOTStrategy()` → step array | `openLeveragedPosition` | "Position" = Vault's term; more concrete |
+| `rebalance` | No equivalent | `rebalancePosition` | Specific |
+
+### 3.6 Error Names
 
 | Current | Proposed | Rationale |
 |---|---|---|
-| `openLeveragedStrategy` | `openLeveragedPosition` | "Position" = vault's term |
-| `rebalance` | `rebalancePosition` | Specific |
+| `OnlyOwner()` / `NotOwner()` | `Unauthorized()` | One error in FheForgeBase; address in revert data |
+| `NotComposer()` | `Unauthorized()` | Same pattern |
+| `ZeroAddress()` | `ZeroAddress()` | Keep |
+| `ZeroAmount()` | `ZeroAmount()` | Keep |
 
-### Error Names
+### 3.7 Step Type Naming — Frontend
 
-| Current | Proposed | Rationale |
-|---|---|---|
-| `OnlyOwner()` / `NotOwner()` | `Unauthorized()` | One error in FheForgeBase |
-| `NotComposer()` | `Unauthorized()` | Same pattern — address in revert data |
-
----
-
-## 3. Gaps Found — What V3 Plan Misses
-
-### GAP-1: No Claim Helper for asynchronous unshield
-
-FHERC20's unshield is **asynchronous**:
-1. `unshield()` → `FHE.allowPublic()` → creates `Claim` struct with `ctHash`
-2. Off-chain: `decryptForTx(ctHash)` → plaintext + Threshold Network signature
-3. On-chain: `claimUnshielded(ctHash, amount, proof)` → verify → transfer ERC20
-
-FheForge's current model is **synchronous**: `requestUnshield` + `unshieldWithProof` in one call. Works but:
-- No batch claiming (FHERC20 has `claimUnshieldedBatch`)
-- No partial claims (user must unshield entire position)
-- No claim enumeration (user can't list pending claims)
-
-**Recommendation**: Port `FHERC20WrapperClaimHelper` pattern into ShieldedPool. Add:
+OceanFin defines `STEP_TYPE` enum:
 ```
-struct Claim { address to; bytes32 ctHash; uint128 requestedAmount; uint128 decryptedAmount; bool claimed; }
-mapping(bytes32 => Claim) private _claims;
-mapping(address => Bytes32Set) private _userClaims;
-
-function requestUnshield(token) → allowPublic + createClaim
-function claimUnshielded(ctHash, amount, proof) → verify + transfer
-function claimUnshieldedBatch(ctHashes[], amounts[], proofs[]) → batch
-function getUnshieldClaims(user) → Claim[] view
+JOIN_STRATEGY, BORROW, ENABLE_BORROWING, ENABLE_E_MODE, SWAP, SUPPLY
 ```
 
-### GAP-2: No confidential transfer between users (FHERC20 operator model)
+FheForge currently mirrors this exactly in `ui/utils/constant.ts` but:
+- `JOIN_STRATEGY` and `SWAP` are the same thing in OceanFin (both call `swap()`)
+- `ENABLE_BORROWING` is a no-op in OceanFin
+- `ENABLE_E_MODE` doesn't exist in FheForge (no Aave E-Mode)
 
-FHERC20 has `confidentialTransfer(to, encryptedAmount)` and `confidentialTransferFrom(from, to, encryptedAmount)` via time-bound operators.
-
-FheForge has NO way to transfer encrypted balances between users without unshielding first. A user with 1000 eUSDC in ShieldedPool cannot send 500 eUSDC to another user privately.
-
-**Recommendation**: Add to ShieldedPool:
+**Proposed FheForge STEP_TYPE**:
 ```
-function transferShielded(token, to, InEuint128 encAmount) → encrypted debit + credit
-function transferShieldedFrom(token, from, to, euint128 amount) → operator-based (Composer)
+SHIELD, BORROW, SWAP, UNSHIELD, REPAY, LIQUIDATE
 ```
+Remove: `JOIN_STRATEGY` (just `SWAP`), `ENABLE_BORROWING` (no-op), `ENABLE_E_MODE` (no Aave).
+Add: `UNSHIELD`, `REPAY`, `LIQUIDATE` (FHE-specific actions).
 
-### GAP-3: No encrypted total supply / total borrow (protocol-level privacy)
+## 4. Gaps — Cross-Referencing OceanFin Logic vs FheForge Contracts
 
-V2 P2 says `totalPlainBorrow` and `liquidReserve` stay plain (protocol-level). This is correct for solvency checks, but:
-- `totalPlainBorrow` leaks aggregate user debt — any observer can see total protocol debt
-- For a privacy-focused protocol, this is a design tension
+### GAP-1: No APY Calculation (OceanFin has `sumPow` geometric series)
 
-**Recommendation**: Keep plain for now (correct per CoFHE docs — "protocol-level state can be public"). But add `getShieldedTotalSupply(token)` and `getShieldedTotalBorrow(token)` that return encrypted totals with `allowSender` for governance/auditor use.
-
-### GAP-4: No FHERC20 integration — reinventing encrypted balances
-
-ShieldedPool and ShieldedVault each independently implement encrypted balance mappings:
-```
-mapping(address => mapping(address => euint128)) supplyBalances;  // Pool
-mapping(address => mapping(bytes32 => Position)) positions;       // Vault
+OceanFin backend calculates leveraged APY:
+```typescript
+supplyExposure = sumPow(0, loops, ltv)  // 1 + ltv + ltv² + ... + ltv^N
+borrowExposure = sumPow(1, loops, ltv)  // ltv + ltv² + ... + ltv^N
+apy = (supplyRate × supplyExposure - borrowRate × borrowExposure) × 100
 ```
 
-FHERC20 already has `mapping(address => euint64) _balances` with full ACL, transfer, operator, and indicator support. If Pool/Vault used FHERC20 tokens internally (one per deposited token), they'd get:
-- Confidential transfers between users for free
-- Operator model (Composer = operator, no need for `onlyComposer` modifier)
-- Indicator system for wallet compatibility
-- FHESafeMath overflow protection
+FheForge has NO APY calculation anywhere. The `apyTarget` param in `OpenStrategyParams` is hardcoded `0`.
 
-**Recommendation**: Long-term (V4), consider making ShieldedPool a FHERC20ERC20Wrapper per token. Each deposited token (WETH, USDC) gets a corresponding `eWETH`, `eUSDC` FHERC20 token minted on shield and burned on unshield. The Pool then becomes a lender of eTokens rather than raw encrypted mappings.
+**Impact**: Users cannot compare strategies by yield. The strategy page shows no APY.
 
-For V3: too large a change. Document as V4 target.
+**Recommendation**: Add APY estimation to FheForge backend `strategy-simulation.service.ts`:
+- Port `sumPow` geometric series formula
+- Replace `liquidityRate/borrowRate` with FheForge's interest index rates
+- Display on strategy cards + execution modal subtitle
 
-### GAP-5: Composer operator model vs FHERC20 operator model
+### GAP-2: No Rewards Accounting (OceanFin has Bifrost staking + LP fees)
 
-FHERC20 uses time-bound operators: `setOperator(spender, deadline)`. Composer currently uses `onlyComposer` modifier which is permanent access.
+OceanFin `RewardsService`:
+- vDOT staking APY from Bifrost API
+- gDOT LP fee from Hydration pool data
+- Both added to supply APY in the geometric series
 
-**Issue**: If Composer is compromised or has a bug, it has unlimited access to all user positions. FHERC20 operators expire.
+FheForge has NO rewards. No staking, no LP fees, no reward tokens.
 
-**Recommendation**: Replace `onlyComposer` with operator pattern:
+**Recommendation**: Add `RewardsAccrued` event to ShieldedPool. Initially zero — but the event + getter should exist for future reward token distribution. Add `getPendingRewards(token) → euint128` with `allowSender`.
+
+### GAP-3: No Simulated Step Generation (OceanFin generates steps backend-side)
+
+OceanFin `simulateGDOTStrategy()`:
 ```
-mapping(address => uint48) public composerDeadline;
-modifier onlyActiveComposer() {
-    if (block.timestamp > composerDeadline[msg.sender]) revert ComposerExpired();
-    _;
-}
-function setComposer(address c, uint48 deadline) external onlyOwner
+ENABLE_E_MODE → [SWAP(DOT→gDOT) + BORROW(DOT)] × N
 ```
-
-### GAP-6: No batch operations (FHERC20 has batch claim/decrypt)
-
-FHERC20 supports:
-- `claimUnshieldedBatch(ctHashes[], amounts[], proofs[])`
-- `verifyDecryptResultBatch` (CoFHE API)
-
-FheForge has no batch functions. A liquidator unwinding multiple positions or a user unshielding from multiple tokens must call individually.
-
-**Recommendation**: Add batch variants in V3-5:
-- `claimUnshieldedBatch` on ShieldedPool
-- `liquidateBatch` for multi-position liquidation
-
-### GAP-7: Cross-contract ACL not using `FHE.isAllowed` checks
-
-CoFHE docs: "Always verify ACL before using a handle." Pattern:
+`simulateVDOTStrategy()`:
 ```
-if (!FHE.isAllowed(amount, address(this))) revert FhePermissionDenied();
+ENABLE_E_MODE → [SWAP(DOT→vDOT) + SUPPLY(vDOT) + BORROW(DOT)] × N
 ```
 
-Registry does this in `_modifyTvl`. Pool does NOT check `isAllowed` in any function. It assumes handles received via `InEuint128` (user-facing) or `euint128` (Composer) are already authorized.
+FheForge's `openLeveragedStrategy` takes `loopCount` as param and loops internally in the Composer contract. This is better (atomic), but there's NO backend-side step simulation for the frontend to preview.
 
-**Risk**: If a handle is passed without proper `allowTransient`, the real coprocessor will revert. On mock coprocessor, it may silently pass with wrong values.
+**Impact**: The frontend `execution-modal.tsx` shows steps from `strategy.steps` but these come from the AI service, not from a proper simulation. No slippage estimation, no price impact, no APY preview.
 
-**Recommendation**: Add `FHE.isAllowed` checks in ShieldedPool cross-contract functions:
+**Recommendation**: Add `simulateStrategy(params)` to FheForge backend that mirrors Composer's loop logic and returns `StrategySimulate` with estimated amounts, slippage, and APY.
+
+### GAP-4: No Aave-style `getUserAccountData` (OceanFin gets all balances in one call)
+
+OceanFin uses Aave V3 `UI_POOL_DATA_PROVIDER.getUserAccountData()` which returns:
+- totalCollateralBase, totalDebtBase, availableBorrowsBase, currentLiquidationThreshold, ltv, healthFactor
+
+FheForge has NO equivalent. Users must call:
+- `getShieldedSupply(token)` for each token (doesn't exist yet)
+- `getShieldedBorrow(token)` for each token (doesn't exist yet)
+- `getShieldedCollateral()` on Vault
+- `getShieldedTvl()` on Registry
+- NO health factor calculation
+
+**Recommendation**: Add `getHealthFactor(user) → ebool` to ShieldedPool:
 ```
-function depositFor(token, amount, euint128 handle, user) external onlyComposer {
-    if (!FHE.isAllowed(handle, address(this))) revert FhePermissionDenied();
-    ...
-}
+ebool healthy = FHE.gte(totalCollateralValue, totalDebtValue)
+FHE.allowSender(healthy)
+return healthy
 ```
+This requires encrypted price conversion (multiply supply by price, sum across tokens).
 
-### GAP-8: No indicator system for wallet compatibility
+### GAP-5: No `supply` step in FheForge Composer (OceanFin vDOT has explicit SUPPLY)
 
-FHERC20 has an indicator system: `balanceOf` returns 7984.xxxx (activity indicator, not real balance). This lets wallets detect balance changes without revealing amounts.
-
-FheForge has no such system. Wallets see 0 balance for all FHE tokens (no ERC20 balance).
-
-**Recommendation**: Add minimal indicator to ShieldedPool (per-token, per-user):
+In OceanFin's vDOT strategy, `SUPPLY` is a separate step AFTER swap:
 ```
-mapping(address => mapping(address => uint32)) private _indicatedBalances;
-function balanceOf(address token, address account) external view returns (uint256) {
-    return uint256(_indicatedBalances[token][account]); // indicator, not real
-}
-```
-
-### GAP-9: Frontend still uses step-by-step model
-
-OceanFin's execution modal executes steps one-by-one. FheForge's Composer should collapse all steps into one atomic tx, but the `execution-modal.tsx` still renders individual steps (supply, borrow, swap) as separate visual items, then executes them all in one `openLeveragedStrategy` call.
-
-**Issue**: The UI shows 4 steps but only 1 tx fires. This is confusing — steps show "processing" → all jump to "completed" at once. No intermediate state.
-
-**Recommendation**: Redesign execution modal for atomic Composer flow:
-1. Step 1: "Encrypt inputs" (client-side, off-chain)
-2. Step 2: "Execute strategy" (1 on-chain tx)
-3. Step 3: "Confirm receipt" (poll for receipt)
-
-Remove the 4-step breakdown. It's a holdover from OceanFin that doesn't match the Composer architecture.
-
-### GAP-10: No `decryptForView` in frontend for balance display
-
-Users cannot see their encrypted balances in the UI. The current flow:
-- `ConfigPanel.tsx` calls `getCollateral` on Vault → gets euint128 → needs `decryptForView`
-- No equivalent for Pool supply/borrow balances (no getters exist)
-
-**Recommendation**: Add `decryptForView` flow in V3-7:
-```
-const supplyBal = await pool.getShieldedSupply(token); // returns euint128 with allowSender
-const decrypted = await cofheClient.decryptForView(supplyBal);
+SWAP(DOT→vDOT) → SUPPLY(vDOT) → BORROW(DOT)
 ```
 
----
+In FheForge's `openLeveragedStrategy`, supply is done inside `supplyToLending` called by the Composer. There's no separate supply step exposed to the user.
 
-## 4. Revised V3 Plan — Updated Phases
+For gDOT, OceanFin uses `JOIN_STRATEGY` which is swap+supply in one step (via Hydration's join pool).
 
-### V3-0: Bug fixes + getters (unchanged)
-### V3-1: Shared abstractions (unchanged)
-### V3-2: Shield/Unshield + ClaimHelper (expanded)
+**This is actually CORRECT** — Composer's atomic flow absorbs the SUPPLY step. But the frontend still shows `SUPPLY` as a separate visual step (OceanFin relic).
 
-Add `FHERC20WrapperClaimHelper` pattern:
+**Recommendation**: Remove `SUPPLY` step from frontend execution modal. Show only: SHIELD → SWAP → BORROW (or just "Open Position" as one step since Composer makes it atomic).
+
+### GAP-6: No Claim Helper for async unshield (FHERC20 pattern)
+
+OceanFin's "withdraw" is instant — Aave V3 `withdraw(asset, amount)` returns tokens immediately.
+FheForge's unshield MUST be async because encrypted balances require `allowPublic` → off-chain decrypt → on-chain `verifyDecryptResult`.
+
+**Recommendation**: Port `FHERC20WrapperClaimHelper` pattern:
 - `Claim` struct + `_claims` mapping + `_userClaims` set
 - `requestUnshield` → `allowPublic` + `_createClaim`
 - `claimUnshielded` / `claimUnshieldedBatch`
 - `getUnshieldClaims(user)` view
 
-### V3-3: Borrow reveal + operator model (expanded)
+### GAP-7: No Confidential Transfer Between Users
 
-Replace `onlyComposer` with time-bound operator:
-- `setComposer(address, uint48 deadline)` replaces permanent `composer` address
-- `onlyActiveComposer` modifier checks deadline
-- Add `requestBorrowReveal` + `repayWithProof`
+OceanFin has no inter-user transfers — all operations go through Aave/Hydration pallet.
+FheForge COULD support private peer-to-peer encrypted balance transfers (FHERC20 `confidentialTransfer`), which would be a unique feature vs OceanFin.
+
+**Recommendation**: V3: `transferShielded(token, to, InEuint128 encAmount)`. V4: full FHERC20 integration.
+
+### GAP-8: Composer Operator Model (time-bound vs permanent)
+
+OceanFin has no Composer — each step executes directly as the user. No third-party access.
+FheForge's `onlyComposer` gives permanent access. FHERC20 uses time-bound operators.
+
+**Recommendation**: Replace `onlyComposer` with `setComposer(address, uint48 deadline)` + `onlyActiveComposer` modifier.
+
+### GAP-9: No `FHE.isAllowed` Guards on Cross-Contract Handle Reception
+
+Registry has it, Pool/Vault don't. If a handle is passed without proper `allowTransient`, the real coprocessor will revert.
+
+**Recommendation**: Add `FHE.isAllowed(handle, address(this))` checks in all cross-contract functions.
+
+### GAP-10: No `decryptForView` for Balance Display
+
+OceanFin shows balances directly from Aave V3 data provider — all plain.
+FheForge users currently CANNOT see their own encrypted balances.
+
+**Recommendation**: Add `decryptForView` flow: getter with `allowSender` → off-chain `decryptForView` → display plaintext.
+
+### GAP-11: Frontend Step-by-Step Model Mismatch
+
+OceanFin's execution modal: `for (let i = 0; i < steps.length; i++) { await executeStep(i); await sleep(2000); }` — one tx per step.
+
+FheForge's execution modal: renders 4 steps visually, then fires ONE `openLeveragedStrategy` tx. All steps show "processing" → all jump to "completed" at once.
+
+**This is a direct OceanFin port that doesn't match the Composer architecture.**
+
+**Recommendation**: Redesign for atomic Composer flow:
+1. "Encrypt inputs" (client-side, shows progress per handle)
+2. "Execute strategy" (1 on-chain tx — show as single step)
+3. "Confirm receipt" (poll for confirmation)
+
+### GAP-12: No Interest Rate Simulation
+
+OceanFin's `BorrowSimulator` and `SupplySimulator` fetch real rates:
+- `getInterestRate(assetId)` — hardcoded fallbacks per asset
+- `getSupplyApy(assetId)` — hardcoded fallbacks per asset
+- `getExchangeRate(assetIn, assetOut)` — from Hydration SDK
+
+FheForge's interest rate comes from `InterestIndex` shares-based system (P3), but there's NO frontend display or simulation.
+
+**Recommendation**: Add `getSupplyRate(token) → uint256` and `getBorrowRate(token) → uint256` view functions to ShieldedPool. These are plain (protocol-level, not per-user).
+
+### GAP-13: LTV Hardcoded 0.9 vs Configurable
+
+OceanFin: `getMaxLTV() = 0.9` hardcoded.
+OceanFin BorrowSimulator: `collateralRatio = step.collateralRatio || 0.7` — different value!
+FheForge: `ltvNum/ltvDen` passed as params (default 70/100 = 0.7).
+
+**OceanFin itself has an inconsistency** — the backend simulation uses 0.7 LTV but `getMaxBorrow` uses 0.9.
+FheForge correctly uses configurable LTV, but the frontend hardcodes `70n/100n`.
+
+**Recommendation**: Make LTV token-pair-specific in ShieldedPool:
+```
+mapping(address => mapping(address => uint256)) public ltvConfig; // collateralToken → borrowToken → LTV basis points
+function setLtvConfig(collateral, borrow, bps) external onlyOwner
+```
+Replace `ltvNum/ltmDen` params in Composer with on-chain config lookup.
+
+## 5. Revised V3 Plan — Updated Phases
+
+### V3-0: Bug fixes + getters + step type cleanup (expanded)
+
+| # | Change | Detail |
+|---|--------|--------|
+| V3-0a | Fix Composer→Vault InEuint128 bug | `_openVaultPosition`: pass `incomingColl` (euint128) not `e.collateral` (InEuint128) |
+| V3-0b | Add Pool `getShieldedSupply(token)` | euint128 with `allow+allowSender` |
+| V3-0c | Add Pool `getShieldedBorrow(token)` | Same |
+| V3-0d | Remove Vault InEuint128 overloads | Keep only euint128 variants |
+| V3-0e | Remove Registry InEuint128 overloads | Same |
+| V3-0f | Remove custom Paused/Unpaused events | Use OZ events |
+| V3-0g | Update `STEP_TYPE` enum in frontend | Remove `JOIN_STRATEGY`, `ENABLE_BORROWING`, `ENABLE_E_MODE`. Add `SHIELD`, `UNSHIELD`, `REPAY`, `LIQUIDATE` |
+
+### V3-1: Shared abstractions (unchanged)
+
+### V3-2: Shield/Unshield + ClaimHelper + APY + LTV config (expanded)
+
+| # | Change | Detail |
+|---|--------|--------|
+| V3-2a | Rename `supply` → `shield` | With `supply` as backwards-compat alias |
+| V3-2b | Add `requestUnshield(token)` | `allowPublic` + emit `UnshieldRequested` |
+| V3-2c | Add `unshieldWithProof(token, proof, sig)` | `verifyDecryptResult` → zero balance → unlock ERC20 |
+| V3-2d | Add ClaimHelper pattern | `Claim` struct, `_claims`, `_userClaims`, `claimUnshielded`, `claimUnshieldedBatch` |
+| V3-2e | Add `getSupplyRate(token) → uint256` | Plain view — protocol-level rate |
+| V3-2f | Add `getBorrowRate(token) → uint256` | Plain view — protocol-level rate |
+| V3-2g | Add LTV config mapping | `ltvConfig[collateral][borrow] → bps`, `setLtvConfig` |
+
+### V3-3: Borrow reveal + operator model + health factor (expanded)
+
+| # | Change | Detail |
+|---|--------|--------|
+| V3-3a | Add `requestBorrowReveal(token)` | `allowPublic` for user's own debt |
+| V3-3b | Add `repayWithProof(token, proof, sig, amount)` | Verify + encrypted sub |
+| V3-3c | Replace `onlyComposer` with operator model | `setComposer(addr, uint48 deadline)` + `onlyActiveComposer` |
+| V3-3d | Add `getHealthFactor(user) → ebool` | `FHE.gte(totalCollateralValue, totalDebtValue)` + `allowSender` |
+| V3-3e | Add `getPendingRewards(token) → euint128` | Placeholder (returns _ZERO) + `allowSender` for future rewards |
 
 ### V3-4: Remove InEuint128 overloads (unchanged)
-### V3-5: FHESafeMath + ACL checks (expanded)
 
-Add `FHE.isAllowed` guards on all cross-contract handle reception:
-- `depositFor`, `borrowFor`, `repayFor` in ShieldedPool
-- `openPosition`, `addCollateral` in ShieldedVault (euint128 variant)
-- `increaseTvl`, `decreaseTvl` in Registry
+### V3-5: FHESafeMath + ACL checks (unchanged)
 
-### V3-6: Interest with enc index (DEFER — unchanged)
+### V3-6: Interest with encrypted index (DEFER — unchanged)
 
 ### V3-7: Frontend alignment (expanded)
 
-- Drop 4-step OceanFin model → 3-step atomic model (encrypt → execute → confirm)
-- Add `decryptForView` for balance display
-- Add `claimUnshielded` UI flow
-- Add batch liquidation support
+| # | Change | Detail |
+|---|--------|--------|
+| V3-7a | Redesign execution modal for atomic flow | 3 steps: encrypt → execute → confirm (not 4-step OceanFin model) |
+| V3-7b | Add `decryptForView` for balance display | `getShieldedSupply`/`getShieldedBorrow` + decryptForView |
+| V3-7c | Add `claimUnshielded` UI flow | Async claim list + claim button |
+| V3-7d | Add APY estimation in backend | Port `sumPow` geometric series from OceanFin |
+| V3-7e | Add `simulateStrategy` to backend | Mirrors Composer loop logic for frontend preview |
+| V3-7f | Add `getHealthFactor` display | Encrypted health check → decryptForView → badge |
+| V3-7g | ABIs synced after Wave18 | ui/abis/ |
+| V3-7h | Remove `ENABLE_E_MODE` / `ENABLE_BORROWING` from UI | OceanFin relics that don't apply |
 
-### V3-8: Deploy + test (unchanged)
+### V3-8: Deploy + full integration test (unchanged)
 
----
-
-## 5. V4 Target (documented, not executed)
+## 6. V4 Target (documented, not executed)
 
 - ShieldedPool becomes FHERC20ERC20Wrapper per token (eWETH, eUSDC)
 - Confidential transfers between users via FHERC20 `confidentialTransfer`
 - Indicator system for wallet compatibility
 - P8 integration: AccessControl + UUPS proxy + governance
 - Encrypted total supply/borrow for governance auditors
+- Rewards distribution with encrypted per-user accrual
+
+## 7. Execution Priority (Micro-Change Order)
+
+```
+V3-0  → compile + audit-quick         [LOW RISK, immediate]
+V3-1  → compile + audit-quick + tsc   [MEDIUM RISK, structural]
+V3-2  → compile + deploy Wave18      [HIGH RISK, new FHE flows]
+V3-3  → compile + deploy             [MEDIUM RISK, reveal+operator]
+V3-4  → compile (already done in V3-0) [LOW RISK]
+V3-5  → compile + test                [MEDIUM RISK, FHESafeMath]
+V3-6  → DEFER                         [COMPLEX, ship after V3-5]
+V3-7  → tsc + manual UI test          [LOW RISK, frontend only]
+V3-8  → deploy Wave19 + full test     [FINAL]
+```
 
 ---
 
-*Grounded on: all 6 FheForge contracts (2,081 lines), OceanFin UI source, FHERC20 reference implementation (FHERC20.sol 394 lines, FHERC20ERC20Wrapper.sol 229 lines, FHERC20WrapperClaimHelper.sol 89 lines, FHERC20Errors.sol 29 lines, FHESafeMath.sol 74 lines), CoFHE FHE.sol v0.1.3 API, CoFHE official docs.*
+*Grounded on: systematic full read of OceanFin (547 source files across ui/ + backend/) and FheForge (6 core contracts 2,081 lines, all UI hooks/services/types, backend NestJS DDD). Cross-referenced against FHERC20 reference (FHERC20.sol 394 lines, FHERC20ERC20Wrapper.sol 229 lines, FHERC20WrapperClaimHelper.sol 89 lines), CoFHE FHE.sol v0.1.3 API, and CoFHE official docs.*
