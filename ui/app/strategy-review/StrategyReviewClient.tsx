@@ -15,7 +15,6 @@ import type { BuildStrategyResponse } from "@/services/ai-strategy-service";
 import { StrategySteps } from "@/components/strategy/StrategySteps";
 import { useComposer } from "@/hooks/use-composer";
 import type { OpenStrategyParams, OpenStrategyEncrypted } from "@/hooks/use-composer";
-import { usePermit2 } from "@/hooks/use-permit2";
 import { SLIPPAGE_TOLERANCE } from "@/lib/constants";
 import { TOKEN_SYMBOL_MAP } from "@/utils/addresses";
 import { parseUnits, type Address } from "viem";
@@ -42,7 +41,7 @@ export default function StrategyReviewClient() {
   const searchParams = useSearchParams();
   const [executing, setExecuting] = useState(false);
   const [slippage, setSlippage] = useState(SLIPPAGE_TOLERANCE);
-  const { openLeveragedStrategy, encrypt128ForComposer, encrypt64ForComposer, isPending: composerPending } = useComposer();
+  const { openLeveragedStrategy, encrypt128ForComposer, isPending: composerPending } = useComposer();
 
   const encodedData = searchParams.get("data");
   const strategyIdParam = searchParams.get("strategyId");
@@ -78,10 +77,6 @@ export default function StrategyReviewClient() {
 
   const isTokenValid = resolvedTokenAddress != null && resolvedTokenAddress !== ZERO_ADDRESS;
 
-  const { sign: signPermit, isPending: permitPending } = usePermit2(
-    resolvedTokenAddress,
-    useComposer().composerAddress as Address | undefined,
-  );
 
   const handleBack = () => {
     router.push("/prompt");
@@ -128,11 +123,9 @@ export default function StrategyReviewClient() {
       const [encCollateral, encSupply, encBorrow] =
         await Promise.all([
           encrypt128ForComposer(collateralWei),
-          encrypt64ForComposer(supplyWei),
-          encrypt64ForComposer(borrowWei),
+          encrypt128ForComposer(supplyWei),
+          encrypt128ForComposer(borrowWei),
         ]);
-
-      const permit2Auth = await signPermit();
 
       const params: OpenStrategyParams = {
         strategyName: strategy.name,
@@ -152,7 +145,6 @@ export default function StrategyReviewClient() {
         loopCount: 1,
         swapAmountIn: borrowWei,
         swapMinOut: minOutWei,
-        collateralPermit: permit2Auth,
       };
 
       const encrypted: OpenStrategyEncrypted = {
@@ -214,7 +206,7 @@ export default function StrategyReviewClient() {
     aiGenerated: false,
   };
 
-  const isExecuting = executing || composerPending || permitPending;
+  const isExecuting = executing || composerPending;
   const submitDisabled = !safeValidation.isValid || isExecuting || !isTokenValid;
 
   return (

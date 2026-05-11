@@ -159,11 +159,23 @@ export function ExecutionModal({
 
   const { address: walletAddress, isConnected: isWalletConnected } =
     useFheWallet();
-  const { openLeveragedStrategy, encrypt128ForComposer, encrypt64ForComposer, isPending: isComposerPending } =
+  const { openLeveragedStrategy, encrypt128ForComposer, isPending: isComposerPending } =
     useComposer();
-  const { hasPosition, positionMeta, isLoading: isPortfolioLoading, refetch: refetchPortfolio } =
-    usePortfolio();
+  const {
+    hasPosition,
+    primaryPositionId,
+    userPositions,
+    getPositionMeta,
+    getDepositedAmount,
+    getCollateral,
+    isLoading: isPortfolioLoading,
+    refetch: refetchPortfolio,
+  } = usePortfolio();
+
   const { getIntentMeta, cancelIntent, isCancelling } = useSwapRouter();
+  // P7: position meta — getPositionMeta returns { data } shape, handle undefined gracefully
+  const { data: positionMetaData } = getPositionMeta(primaryPositionId ?? "");
+  const positionMeta = (positionMetaData ?? undefined) as { strategyId: bigint; createdAt: bigint } | undefined;
   const activeChainId = useChainId();
   const createActivityMutation = useCreateActivity();
   const updateActivityMutation = useUpdateActivity();
@@ -305,15 +317,15 @@ export function ExecutionModal({
 
       setIsEncrypting(true);
       let encCollateral: Awaited<ReturnType<typeof encrypt128ForComposer>>;
-      let encSupply: Awaited<ReturnType<typeof encrypt64ForComposer>>;
-      let encBorrow: Awaited<ReturnType<typeof encrypt64ForComposer>>;
+      let encSupply: Awaited<ReturnType<typeof encrypt128ForComposer>>;
+      let encBorrow: Awaited<ReturnType<typeof encrypt128ForComposer>>;
 
       try {
         [encCollateral, encSupply, encBorrow] =
           await Promise.all([
             encrypt128ForComposer(collateralAmount),
-            encrypt64ForComposer(supplyAmount),
-            encrypt64ForComposer(borrowAmount),
+            encrypt128ForComposer(supplyAmount),
+            encrypt128ForComposer(borrowAmount),
           ]);
       } finally {
         setIsEncrypting(false);
@@ -337,12 +349,6 @@ export function ExecutionModal({
         loopCount: strategy.loops ?? 1,
         swapAmountIn,
         swapMinOut,
-        collateralPermit: {
-          amount: 0n,
-          deadline: 0n,
-          nonce: 0n,
-          signature: "0x",
-        }, 
       };
 
       const encrypted: OpenStrategyEncrypted = {

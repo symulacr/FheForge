@@ -31,7 +31,6 @@
     "verify:env": "node scripts/verify-env-vars.js"
   },
   "dependencies": {
-
     "@google/generative-ai": "^0.24.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",

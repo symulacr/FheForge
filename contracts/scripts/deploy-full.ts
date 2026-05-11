@@ -29,7 +29,7 @@ import * as path from "path";
 // CONFIG — edit these for your network / wave
 // ═══════════════════════════════════════════════════════════
 
-const WAVE = 15;
+const WAVE = 17;
 const NETWORK_ID = 421614; // arb-sepolia
 
 // External addresses (Arbitrum Sepolia)

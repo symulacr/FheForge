@@ -4,9 +4,7 @@ pragma solidity 0.8.25;
 import {
     FHE,
     InEuint128,
-    InEuint64,
-    euint128,
-    euint64
+    euint128
 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
@@ -23,20 +21,21 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         euint128 debt;
     }
 
-    mapping(address => Position) private positions;
-    mapping(address => bool) public hasPosition;
-    mapping(address => address) private collateralTokens;
-    mapping(address => uint256) private depositedAmounts;
-    mapping(address => uint256) private positionStrategyIds;
-
-    mapping(address => uint256) private positionOpenedAtBlock;
+    mapping(address => mapping(bytes32 => Position)) private positions;
+    mapping(address => bytes32[]) private userPositionIds;
+    mapping(bytes32 => address) private positionCollateralToken;
+    mapping(bytes32 => uint256) private positionDepositedAmount;
+    mapping(bytes32 => uint256) private positionStrategyId;
+    mapping(bytes32 => uint256) private positionOpenedAtBlock;
+    mapping(bytes32 => bool) private positionExists;
+    mapping(address => uint256) private userPositionNonce;
 
     address public immutable REGISTRY;
     address public immutable OWNER;
 
     euint128 private immutable _ZERO;
 
-    error PositionAlreadyExists();
+    error PositionNotFound();
     error InvalidStrategyId();
     error NoPosition();
     error ExceedsDeposit();
@@ -47,28 +46,32 @@ contract StrategyVault is ReentrancyGuard, Pausable {
     error SameBlockClose();
 
     event PositionOpened(
+        bytes32 indexed positionId,
         address indexed user,
         address indexed collateralToken,
         uint256 collateralAmount,
-        uint256 indexed strategyId
+        uint256 strategyId
     );
     event CollateralAdded(
+        bytes32 indexed positionId,
         address indexed user,
         address indexed collateralToken,
-        uint256 indexed amount
+        uint256 amount
     );
     event PositionClosed(
+        bytes32 indexed positionId,
         address indexed user,
         address indexed collateralToken,
-        uint256 indexed collateralAmount,
+        uint256 collateralAmount,
         bool fullClose
     );
     event Paused();
     event Unpaused();
     event EmergencyWithdrawn(
+        bytes32 indexed positionId,
         address indexed user,
         address indexed collateralToken,
-        uint256 indexed amount
+        uint256 amount
     );
 
     modifier onlyOwner() {
@@ -100,26 +103,28 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         InEuint128 calldata encAmount,
         uint256 strategyId,
         address user
-    ) external nonReentrant whenNotPaused {
-        if (hasPosition[user]) revert PositionAlreadyExists();
+    ) external nonReentrant whenNotPaused returns (bytes32 positionId) {
         if (amount == 0) revert ZeroAmount();
         if (token == address(0)) revert ZeroAddress();
 
-        depositedAmounts[user] = amount;
-        collateralTokens[user] = token;
-        positionOpenedAtBlock[user] = block.number;
-        hasPosition[user] = true;
-        positionStrategyIds[user] = strategyId;
+        positionId = keccak256(abi.encode(user, userPositionNonce[user]++));
+
+        positionDepositedAmount[positionId] = amount;
+        positionCollateralToken[positionId] = token;
+        positionOpenedAtBlock[positionId] = block.number;
+        positionStrategyId[positionId] = strategyId;
+        positionExists[positionId] = true;
+        userPositionIds[user].push(positionId);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         euint128 c = FHE.asEuint128(encAmount);
 
-        positions[user] = Position({ collateral: c, debt: _ZERO });
+        positions[user][positionId] = Position({ collateral: c, debt: _ZERO });
 
         SharedStrategyMeta.grantPositionAcl(user, c, _ZERO);
 
-        emit PositionOpened(user, token, amount, strategyId);
+        emit PositionOpened(positionId, user, token, amount, strategyId);
     }
 
     /// @notice Zero-copy overload: caller already holds a verified euint128 handle.
@@ -129,101 +134,101 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         euint128 encAmount,
         uint256 strategyId,
         address user
-    ) external nonReentrant whenNotPaused {
-        if (hasPosition[user]) revert PositionAlreadyExists();
+    ) external nonReentrant whenNotPaused returns (bytes32 positionId) {
         if (amount == 0) revert ZeroAmount();
         if (token == address(0)) revert ZeroAddress();
 
-        depositedAmounts[user] = amount;
-        collateralTokens[user] = token;
-        positionOpenedAtBlock[user] = block.number;
-        hasPosition[user] = true;
-        positionStrategyIds[user] = strategyId;
+        positionId = keccak256(abi.encode(user, userPositionNonce[user]++));
+
+        positionDepositedAmount[positionId] = amount;
+        positionCollateralToken[positionId] = token;
+        positionOpenedAtBlock[positionId] = block.number;
+        positionStrategyId[positionId] = strategyId;
+        positionExists[positionId] = true;
+        userPositionIds[user].push(positionId);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        positions[user] = Position({ collateral: encAmount, debt: _ZERO });
+        positions[user][positionId] = Position({ collateral: encAmount, debt: _ZERO });
 
         SharedStrategyMeta.grantPositionAcl(user, encAmount, _ZERO);
 
-        emit PositionOpened(user, token, amount, strategyId);
+        emit PositionOpened(positionId, user, token, amount, strategyId);
     }
 
     /// @notice Adds collateral to an existing position on behalf of `user`.
-    ///         Uses euint64 for collateral amounts (L3: < 18.4B * 1e18).
     function addCollateral(
+        bytes32 positionId,
         address collateralToken,
         uint256 amount,
-        InEuint64 calldata encAmount,
+        InEuint128 calldata encAmount,
         address user
     ) external nonReentrant whenNotPaused {
-        if (!hasPosition[user]) revert NoPosition();
+        if (!positionExists[positionId]) revert PositionNotFound();
         if (amount == 0) revert ZeroAmount();
-        if (collateralTokens[user] != collateralToken) revert TokenMismatch();
+        if (positionCollateralToken[positionId] != collateralToken) revert TokenMismatch();
 
-        depositedAmounts[user] += amount;
+        positionDepositedAmount[positionId] += amount;
 
         IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        euint64 incoming64 = FHE.asEuint64(encAmount);
-        euint128 newCollateral = FHE.add(positions[user].collateral, FHE.asEuint128(incoming64));
-        positions[user].collateral = newCollateral;
+        euint128 newCollateral = FHE.add(positions[user][positionId].collateral, FHE.asEuint128(encAmount));
+        positions[user][positionId].collateral = newCollateral;
 
         SharedStrategyMeta.grantUpdatedHandle(user, newCollateral);
 
-        emit CollateralAdded(user, collateralToken, amount);
+        emit CollateralAdded(positionId, user, collateralToken, amount);
     }
 
     /// @notice euint128 overload: caller already holds a verified euint128 handle.
     ///         Skips FHE.asEuint128() conversion, saving ~150k gas.
     function addCollateral(
+        bytes32 positionId,
         address collateralToken,
         uint256 amount,
         euint128 encAmount,
         address user
     ) external nonReentrant whenNotPaused {
-        if (!hasPosition[user]) revert NoPosition();
+        if (!positionExists[positionId]) revert PositionNotFound();
         if (amount == 0) revert ZeroAmount();
-        if (collateralTokens[user] != collateralToken) revert TokenMismatch();
+        if (positionCollateralToken[positionId] != collateralToken) revert TokenMismatch();
 
-        depositedAmounts[user] += amount;
+        positionDepositedAmount[positionId] += amount;
 
         IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), amount);
 
-        euint128 newCollateral = FHE.add(positions[user].collateral, encAmount);
-        positions[user].collateral = newCollateral;
+        euint128 newCollateral = FHE.add(positions[user][positionId].collateral, encAmount);
+        positions[user][positionId].collateral = newCollateral;
 
         SharedStrategyMeta.grantUpdatedHandle(user, newCollateral);
 
-        emit CollateralAdded(user, collateralToken, amount);
+        emit CollateralAdded(positionId, user, collateralToken, amount);
     }
 
     function closePosition(
+        bytes32 positionId,
         uint256 collateralAmount,
         InEuint128 calldata encCollateralAmount
     ) external nonReentrant whenNotPaused {
-        if (!hasPosition[_msgSender()]) revert NoPosition();
+        if (!positionExists[positionId]) revert PositionNotFound();
         if (collateralAmount == 0) revert ZeroAmount();
-        uint256 deposited = depositedAmounts[_msgSender()];
+        uint256 deposited = positionDepositedAmount[positionId];
         if (collateralAmount > deposited) revert ExceedsDeposit();
-        if (positionOpenedAtBlock[_msgSender()] + 1 > block.number) revert SameBlockClose();
+        if (positionOpenedAtBlock[positionId] + 1 > block.number) revert SameBlockClose();
 
-        address token = collateralTokens[_msgSender()];
-        uint256 strategyId = positionStrategyIds[_msgSender()];
+        address token = positionCollateralToken[positionId];
+        uint256 strategyId = positionStrategyId[positionId];
+        address user = _msgSender();
 
         uint256 remaining = deposited - collateralAmount;
-        depositedAmounts[_msgSender()] = remaining;
+        positionDepositedAmount[positionId] = remaining;
 
-        Position storage pos = positions[_msgSender()];
+        Position storage pos = positions[user][positionId];
         euint128 currentCollateral = pos.collateral;
         bool fullClose = remaining == 0;
 
         if (fullClose) {
-            delete positions[_msgSender()];
-            delete collateralTokens[_msgSender()];
-            delete positionStrategyIds[_msgSender()];
-            delete positionOpenedAtBlock[_msgSender()];
-            hasPosition[_msgSender()] = false;
+            _deletePosition(user, positionId);
         }
 
         if (strategyId != 0) {
@@ -239,37 +244,38 @@ contract StrategyVault is ReentrancyGuard, Pausable {
                 );
                 pos.collateral = newCollateral;
                 FHE.allowThis(newCollateral);
-                FHE.allow(newCollateral, _msgSender());
+                FHE.allow(newCollateral, user);
             }
         }
 
-        IERC20(token).safeTransfer(_msgSender(), collateralAmount);
+        IERC20(token).safeTransfer(user, collateralAmount);
 
-        emit PositionClosed(msg.sender, token, collateralAmount, fullClose);
+        emit PositionClosed(positionId, user, token, collateralAmount, fullClose);
     }
 
-    function emergencyWithdraw() external nonReentrant whenPaused {
-        if (!hasPosition[_msgSender()]) revert NoPosition();
-        uint256 amount = depositedAmounts[_msgSender()];
+    function emergencyWithdraw(bytes32 positionId) external nonReentrant whenPaused {
+        if (!positionExists[positionId]) revert PositionNotFound();
+        uint256 amount = positionDepositedAmount[positionId];
         if (amount == 0) revert ZeroAmount();
-        address token = collateralTokens[_msgSender()];
-        uint256 strategyId = positionStrategyIds[_msgSender()];
-        euint128 coll = positions[_msgSender()].collateral;
+        address token = positionCollateralToken[positionId];
+        uint256 strategyId = positionStrategyId[positionId];
+        address user = _msgSender();
+        euint128 coll = positions[user][positionId].collateral;
 
         if (strategyId != 0) {
             FHE.allowTransient(coll, REGISTRY);
             IStrategyRegistry(REGISTRY).decrementTvl(strategyId, coll);
         }
 
-        depositedAmounts[_msgSender()] = 0;
-        hasPosition[_msgSender()] = false;
-        delete collateralTokens[_msgSender()];
-        delete positionStrategyIds[_msgSender()];
-        delete positionOpenedAtBlock[_msgSender()];
-        delete positions[_msgSender()];
+        positionDepositedAmount[positionId] = 0;
+        positionExists[positionId] = false;
+        delete positionCollateralToken[positionId];
+        delete positionStrategyId[positionId];
+        delete positionOpenedAtBlock[positionId];
+        delete positions[user][positionId];
 
-        IERC20(token).safeTransfer(_msgSender(), amount);
-        emit EmergencyWithdrawn(msg.sender, token, amount);
+        IERC20(token).safeTransfer(user, amount);
+        emit EmergencyWithdrawn(positionId, user, token, amount);
     }
 
     function pause() external onlyOwner {
@@ -282,19 +288,44 @@ contract StrategyVault is ReentrancyGuard, Pausable {
         emit Unpaused();
     }
 
-    function getCollateral() external returns (euint128) {
-        if (!hasPosition[_msgSender()]) revert NoPosition();
-        FHE.allow(positions[_msgSender()].collateral, _msgSender());
-        FHE.allowSender(positions[_msgSender()].collateral);
-        return positions[_msgSender()].collateral;
+    function getCollateral(bytes32 positionId) external returns (euint128) {
+        if (!positionExists[positionId]) revert PositionNotFound();
+        FHE.allow(positions[_msgSender()][positionId].collateral, _msgSender());
+        FHE.allowSender(positions[_msgSender()][positionId].collateral);
+        return positions[_msgSender()][positionId].collateral;
     }
 
-    function getPositionMeta() external view returns (uint256 strategyId, uint256 createdAt) {
-        if (!hasPosition[_msgSender()]) revert NoPosition();
-        return (positionStrategyIds[_msgSender()], positionOpenedAtBlock[_msgSender()]);
+    function getPositionMeta(bytes32 positionId) external view returns (uint256 strategyId, uint256 createdAt) {
+        if (!positionExists[positionId]) revert PositionNotFound();
+        return (positionStrategyId[positionId], positionOpenedAtBlock[positionId]);
     }
 
-    function getDepositedAmount() external view returns (uint256) {
-        return depositedAmounts[_msgSender()];
+    function getDepositedAmount(bytes32 positionId) external view returns (uint256) {
+        return positionDepositedAmount[positionId];
+    }
+
+    function getUserPositions(address user) external view returns (bytes32[] memory) {
+        return userPositionIds[user];
+    }
+
+    /// @dev Deletes all state for a single position by positionId, then swaps-and-pops
+    ///      the id from userPositionIds[user]. Does NOT clear positionExists — caller sets
+    ///      that to false after this call.
+    function _deletePosition(address user, bytes32 positionId) private {
+        delete positions[user][positionId];
+        delete positionCollateralToken[positionId];
+        delete positionDepositedAmount[positionId];
+        delete positionStrategyId[positionId];
+        delete positionOpenedAtBlock[positionId];
+
+        bytes32[] storage ids = userPositionIds[user];
+        uint256 len = ids.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (ids[i] == positionId) {
+                ids[i] = ids[len - 1];
+                ids.pop();
+                break;
+            }
+        }
     }
 }

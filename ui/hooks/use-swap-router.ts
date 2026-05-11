@@ -1,8 +1,10 @@
 import { useChainId, useWriteContract, usePublicClient } from "wagmi";
+import type { Abi } from "viem";
 import type { Hash, Address } from "viem";
 import { useMemo, useState, useCallback } from "react";
 
-import SwapRouterABI from "@/abis/SwapRouter.json";
+import SwapRouterArtifact from "@/abis/SwapRouter.json";
+const SwapRouterABI = SwapRouterArtifact.abi as unknown as Abi;
 import { getContractAddresses } from "@/utils/addresses";
 import { useCofheState } from "@/providers/fhenix-provider";
 

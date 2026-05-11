@@ -12,7 +12,6 @@ export class DefiStrategiesRepositoryImplement implements DefiStrategiesReposito
   // before saving. Current code stores workflow_json without cross-checking the
   // on-chain commitment. A mismatch means backend shows wrong strategy composition.
 
-
   public async save(defiStrategy: DefiStrategy): Promise<DefiStrategy> {
     const { data, error } = await this.supabase
       .getClient()

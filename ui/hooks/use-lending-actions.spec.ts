@@ -55,7 +55,7 @@ describe('MC-36/37/38/44/45: Lending Action Hooks', () => {
     // Convenience wrappers
     expect(typeof result.current.checkLtvAndBorrowWithEncrypt).toBe('function');
     expect(typeof result.current.borrowWithOracleWithEncrypt).toBe('function');
-    expect(typeof result.current.encrypt64).toBe('function');
+    expect(typeof result.current.encrypt).toBe('function');
   });
 
   it('should provide encryption state', () => {

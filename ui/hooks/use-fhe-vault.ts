@@ -1,12 +1,16 @@
 import { useWriteContract, useChainId, useAccount } from "wagmi";
+import type { Abi } from "viem";
 import { Encryptable, FheTypes } from "@cofhe/sdk";
-import { parseUnits, formatUnits, type Hash } from "viem";
+import { parseUnits, formatUnits, keccak256, toHex, type Hash } from "viem";
 import { useMemo, useRef, useState } from "react";
 
-import VaultABI from "@/abis/StrategyVault.json";
-import PoolABI from "@/abis/LendingPool.json";
-import RouterABI from "@/abis/SwapRouter.json";
-import { getContractAddresses, validateEuint128, validateEuint64 } from "@/utils/addresses";
+import VaultArtifact from "@/abis/StrategyVault.json";
+const VaultABI = VaultArtifact.abi as unknown as Abi;
+import PoolArtifact from "@/abis/LendingPool.json";
+const PoolABI = PoolArtifact.abi as unknown as Abi;
+import RouterArtifact from "@/abis/SwapRouter.json";
+const RouterABI = RouterArtifact.abi as unknown as Abi;
+import { getContractAddresses, validateEuint128 } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { SLIPPAGE_TOLERANCE } from "@/lib/constants";
 
@@ -19,15 +23,8 @@ interface EncryptedHandle {
 
 export type EncryptedUint128Input = EncryptedHandle;
 
-// MC-41/42: Permit2 types for supplyWithPermit2 / repayWithPermit2
-export interface PermitTransferFrom {
-  permitted: {
-    token: `0x${string}`;
-    amount: bigint;
-  };
-  nonce: bigint;
-  deadline: bigint;
-}
+// P7: multi-position — position IDs are stored in local state
+export type PositionId = `0x${string}`;
 
 export function useFheVault() {
   const cofheClient = useCofheClient();
@@ -43,6 +40,8 @@ export function useFheVault() {
     }
   }, [chainId]);
   const [isEncrypting, setIsEncrypting] = useState(false);
+  // P7: track the user's active position IDs (set when openPosition succeeds)
+  const [userPositionIds, setUserPositionIds] = useState<PositionId[]>([]);
 
   const lastEncryptedSupply = useRef<EncryptedHandle | null>(null);
   const lastEncryptedBorrow = useRef<EncryptedHandle | null>(null);
@@ -64,20 +63,10 @@ export function useFheVault() {
     return handles[0];
   };
 
-  // MC-28: Pool functions (repay, withdraw, supplyEth, withdrawEth) + Vault.addCollateral use InEuint64
-  const encrypt64 = async (value: bigint): Promise<EncryptedHandle> => {
-    if (!cofheClient) throw new Error("CoFHE client not ready");
-    if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");
-    const handles = (await cofheClient
-      .encryptInputs([Encryptable.uint64(value)])
-      .execute()) as EncryptedHandle[];
-    if (!handles[0]) throw new Error("CoFHE returned empty handle list");
-    return handles[0];
-  };
 
   const decryptForView = async (
     handle: EncryptedHandle,
-    fheType: typeof FheTypes.Uint128 | typeof FheTypes.Uint64 = FheTypes.Uint128,
+    fheType: typeof FheTypes.Uint128 = FheTypes.Uint128,
   ): Promise<string> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");
@@ -85,7 +74,7 @@ export function useFheVault() {
       cofheClient as {
         decryptForView: (
           hash: bigint,
-          fheType: typeof FheTypes.Uint128 | typeof FheTypes.Uint64,
+          fheType: typeof FheTypes.Uint128,
         ) => { execute: () => Promise<bigint> };
       }
     )
@@ -103,20 +92,29 @@ export function useFheVault() {
   const revealBorrow = async (): Promise<string> => {
     const handle = lastEncryptedBorrow.current;
     if (!handle) throw new Error("No encrypted borrow stored — open a position first");
-    return decryptForView(handle, FheTypes.Uint64);
+    return decryptForView(handle, FheTypes.Uint128);
   };
 
   const revealSwapIntent = async (encryptedAmount: EncryptedUint128Input): Promise<string> => {
     return decryptForView(encryptedAmount);
   };
 
-  // F-01/MC-09: Single amount param — plain and encrypted must match.
-  // StrategyVault.openPosition(token, amount, InEuint128, strategyId, user)
+  // P7: auto-generate positionIds when not provided
+  let _positionNonce = 0;
+  const _generatePositionId = (): PositionId => {
+    if (!userAddress) return `0x${"0".repeat(64)}` as PositionId;
+    return keccak256(
+      new TextEncoder().encode(`${userAddress}-${_positionNonce++}-${Date.now()}`)
+    ).slice(0, 42) as PositionId;
+  };
+
   const openPosition = async (
     collateralToken: string,
     collateralAmount: string,
     strategyId: bigint = 0n,
-  ) => {
+    positionId?: PositionId,
+  ): Promise<Hash> => {
+    const pid = positionId ?? _generatePositionId();
     const { vault } = requireAddresses();
     const amountWei = parseUnits(collateralAmount, 18);
     validateEuint128(amountWei);
@@ -128,11 +126,12 @@ export function useFheVault() {
     try {
       const encColl = await encrypt128(amountWei);
       lastEncryptedSupply.current = encColl;
-      return writeContractAsync({
+      const txHash = await writeContractAsync({
         address: vault as `0x${string}`,
         abi: VaultABI,
         functionName: "openPosition",
         args: [
+          pid,
           collateralToken,
           amountWei,
           encColl,
@@ -140,33 +139,40 @@ export function useFheVault() {
           userAddr,
         ],
       });
+      setUserPositionIds(prev => {
+        if (prev.includes(pid)) return prev;
+        return [...prev, pid];
+      });
+      return txHash;
     } finally {
       setIsEncrypting(false);
     }
   };
 
-  // MC-13: addCollateral — StrategyVault.addCollateral(address, uint256, InEuint64, address)
-  // MC-28: uses encrypt64 (InEuint64)
+  // P7: addCollateral — positionId falls back to first owned position
   const addCollateral = async (
     collateralToken: string,
     amount: string,
     decimals = 18,
-  ) => {
+    positionId?: PositionId,
+  ): Promise<Hash> => {
+    const pid = positionId ?? userPositionIds[0];
+    if (!pid) throw new Error("No position found — open a position first");
     const { vault } = requireAddresses();
     const amt = parseUnits(amount, decimals);
-    validateEuint64(amt);
+    validateEuint128(amt);
 
     const userAddr = userAddress;
     if (!userAddr) throw new Error("Wallet not connected");
 
     setIsEncrypting(true);
     try {
-      const enc = await encrypt64(amt);
+      const enc = await encrypt128(amt);
       return writeContractAsync({
         address: vault as `0x${string}`,
         abi: VaultABI,
         functionName: "addCollateral",
-        args: [collateralToken, amt, enc, userAddr],
+        args: [pid, collateralToken, amt, enc, userAddr],
       });
     } finally {
       setIsEncrypting(false);
@@ -181,10 +187,10 @@ export function useFheVault() {
   const repay = async (token: string, amount: string, decimals = 18) => {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
-    validateEuint64(amt);
+    validateEuint128(amt);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt64(amt);
+      const enc = await encrypt128(amt);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
@@ -204,10 +210,10 @@ export function useFheVault() {
   ) => {
     const { pool } = requireAddresses();
     const amt = parseUnits(amount, decimals);
-    validateEuint64(amt);
+    validateEuint128(amt);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt64(amt);
+      const enc = await encrypt128(amt);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
@@ -241,8 +247,9 @@ export function useFheVault() {
     });
   };
 
-  // MC-27: Vault closePosition uses InEuint128
+  // P7: closePosition(positionId, collateralAmount, encCollateralAmount)
   const closePosition = async (
+    positionId: PositionId,
     collateralAmount: bigint,
     encryptedCollateralAmount: EncryptedUint128Input,
   ): Promise<Hash> => {
@@ -251,17 +258,17 @@ export function useFheVault() {
       address: vault as `0x${string}`,
       abi: VaultABI,
       functionName: "closePosition",
-      args: [collateralAmount, encryptedCollateralAmount] as unknown as [bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
+      args: [positionId, collateralAmount, encryptedCollateralAmount] as unknown as [`0x${string}`, bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
     });
   };
 
   // MC-20/28: Pool supplyEth uses InEuint64
   const supplyEth = async (amount: bigint): Promise<Hash> => {
     const { pool } = requireAddresses();
-    validateEuint64(amount);
+    validateEuint128(amount);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt64(amount);
+      const enc = await encrypt128(amount);
       return writeContractAsync({
         address: pool as `0x${string}`,
         abi: PoolABI,
@@ -285,54 +292,25 @@ export function useFheVault() {
     });
   };
 
-  // MC-41: supplyWithPermit2 — LendingPool.supplyWithPermit2(address, uint256, InEuint64, PermitTransferFrom, bytes)
-  const supplyWithPermit2 = async (
-    token: string,
-    amount: string,
-    permit: PermitTransferFrom,
-    signature: `0x${string}`,
-    decimals = 18,
-  ): Promise<Hash> => {
-    const { pool } = requireAddresses();
-    const amt = parseUnits(amount, decimals);
-    validateEuint64(amt);
-    setIsEncrypting(true);
-    try {
-      const enc = await encrypt64(amt);
-      return writeContractAsync({
-        address: pool as `0x${string}`,
-        abi: PoolABI,
-        functionName: "supplyWithPermit2",
-        args: [token, amt, enc, permit, signature],
-      });
-    } finally {
-      setIsEncrypting(false);
+  // P7: getUserPositions(user) → bytes32[] — returns all position IDs for a user
+  const getUserPositions = async (user: `0x${string}`): Promise<PositionId[]> => {
+    const { vault } = requireAddresses();
+    if (cofheClient) {
+      const raw = (cofheClient as unknown as {
+        contractView: (address: `0x${string}`, abi: Abi, functionName: string, args: unknown[]) => { execute: () => Promise<unknown> };
+      })
+        .contractView(vault, VaultABI, "getUserPositions", [user])
+        .execute();
+      return (await raw) as PositionId[];
     }
+    return [];
   };
 
-  // MC-42: repayWithPermit2 — LendingPool.repayWithPermit2(address, uint256, InEuint64, PermitTransferFrom, bytes)
-  const repayWithPermit2 = async (
-    token: string,
-    amount: string,
-    permit: PermitTransferFrom,
-    signature: `0x${string}`,
-    decimals = 18,
-  ): Promise<Hash> => {
-    const { pool } = requireAddresses();
-    const amt = parseUnits(amount, decimals);
-    validateEuint64(amt);
-    setIsEncrypting(true);
-    try {
-      const enc = await encrypt64(amt);
-      return writeContractAsync({
-        address: pool as `0x${string}`,
-        abi: PoolABI,
-        functionName: "repayWithPermit2",
-        args: [token, amt, enc, permit, signature],
-      });
-    } finally {
-      setIsEncrypting(false);
-    }
+  // P7: sync local positionIds from on-chain getUserPositions
+  const syncUserPositions = async () => {
+    if (!userAddress) return;
+    const positions = await getUserPositions(userAddress);
+    setUserPositionIds(positions);
   };
 
   return {
@@ -344,11 +322,12 @@ export function useFheVault() {
     closePosition,
     supplyEth,
     withdrawEth,
-    supplyWithPermit2,
-    repayWithPermit2,
     revealCollateral,
     revealBorrow,
     revealSwapIntent,
+    getUserPositions,
+    syncUserPositions,
+    userPositionIds,
     isEncrypting,
     isPending,
   };

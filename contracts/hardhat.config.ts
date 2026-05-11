@@ -7,6 +7,7 @@ const config = {
   solidity: {
     version: "0.8.25",
     settings: {
+      viaIR: true,
       evmVersion: "cancun",
       optimizer: { enabled: true, runs: 200 },
     },

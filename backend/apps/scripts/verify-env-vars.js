@@ -15,23 +15,20 @@ const requiredVars = [
   'PRICE_ORACLE_ADDRESS',
 ];
 
-const optionalVars = [
-  'MAX_LTV',
-  'EXCHANGE_RATE_WETH_USDC',
-];
+const optionalVars = ['MAX_LTV', 'EXCHANGE_RATE_WETH_USDC'];
 
 console.log('Checking Railway environment variables...\n');
 
 let missingRequired = [];
 let missingOptional = [];
 
-requiredVars.forEach(varName => {
+requiredVars.forEach((varName) => {
   if (!process.env[varName]) {
     missingRequired.push(varName);
   }
 });
 
-optionalVars.forEach(varName => {
+optionalVars.forEach((varName) => {
   if (!process.env[varName]) {
     missingOptional.push(varName);
   }

@@ -4,10 +4,11 @@ import { useMemo, useRef, useState, useCallback } from "react";
 import { useConfigPanelForm } from "@/hooks/use-config-panel-form";
 import { X } from "lucide-react";
 import { useReadContract, useAccount } from "wagmi";
-import { formatUnits } from "viem";
+import { formatUnits, type Abi } from "viem";
+import VaultArtifact from "@/abis/StrategyVault.json";
+const VaultABI = VaultArtifact.abi as unknown as Abi;
 import { FheTypes } from "@cofhe/sdk";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
-import VaultABI from "@/abis/StrategyVault.json";
 import { FHENIX_CONTRACT_ADDRESSES } from "@/utils/addresses";
 import {
   estimateDefiOperation,

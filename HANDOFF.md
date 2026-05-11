@@ -1,111 +1,113 @@
-# Handoff — Wave16 Composer Fix + CoFHE setAccount Integration
+# Handoff — P0-P10 V2 Refactor Complete + Repetition Analysis
 
 **Date**: 2026-05-10
-**Status**: ✅ Composer flow verified on-chain
+**Status**: ✅ All P0-P10 contract changes compiling + deployed (Wave17). Repetition analysis done.
 
 ---
 
-## Wave16 Deployed Contracts (Arb Sepolia, chainId 421614)
+## Wave17 Deployed Contracts (Arb Sepolia, chainId 421614)
 
 | Contract | Address |
 |----------|---------|
-| StrategyRegistry | `0x59d955dA6a678D140ce8379ae7175850B7481E76` |
-| LendingPool | `0x9E8bf7496a157b12cB1A1BC2E291D7eF55374BAb` |
-| PriceOracle | `0xD0f0072ae4308be044bd5722059ACCf2CF543130` |
-| SwapRouter | `0x20C385f6292440aaDD6a4d7F620B612B658a1a93` |
-| ExecutorContract | `0x9bA1498Bc935F5BE8138D40B366418C874A1A345` |
-| StrategyVault | `0x159d871ba54dA4D650853c57c6f61CF4EB9FFbBa` |
-| FheForgeComposer | `0xeF1EdEcB5Df34C732561685F5Efa788947Dd68b8` |
+| StrategyRegistry | `0xFCb1beeaDBa65718eB1AF96F9fC72989704D98c0` |
+| StrategyVault | `0x06d9A84B289f3203a3268051DE66D733fc6f7EeA` |
+| FheForgeComposer | `0x9d3f780f1644E0A3E84b34bABcF11943377aFd46` |
+| LendingPool | `0x6e4DA21723ea0e3E87320b5c7146DACacb2a4958` |
+| SwapRouter | `0xC990c3287844e44D145780d5b90B0d22A7FE9A7d` |
+| PriceOracle | `0x3ffD184d90daBe831C647D82242163B1940938b4` |
+| ExecutorContract | `0xC607306C3F57B824a424d0b7b7140F74720a1527` |
+| WETH9 | `0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32` |
 
 All verified on Sourcify + Arbiscan.
 
 ---
 
-## Key Fixes This Session
+## V2 Refactor Phases — Execution Status
 
-### Composer Token Flow Bug (Wave16)
-- **Root cause**: `openLeveragedStrategyDirect` pulled `collateralAmount` + `poolSupplyAmount` separately. Vault took `collateralAmount`, then Pool tried to pull `poolSupplyAmount` from empty Composer.
-- **Fix**: Pull `totalNeeded = max(collateralAmount, poolSupplyAmount)` once. Split: vault gets `min(totalNeeded, collateralAmount)`, pool gets `totalNeeded - vaultCovered`.
-- **`_supplyToPoolDirect`** signature changed to accept `uint256 supplyAmount` parameter.
+| Phase | Description | Status |
+|-------|-------------|--------|
+| P0 | ACL fixes + Composer swap flow fix | ✅ Done + deployed (Wave17) |
+| P1 | euint128 migration — all euint64→euint128 | ✅ Done + deployed |
+| P2 | Eliminate plain mirrors — removed plainSupply/plainBorrow | ✅ Done + deployed |
+| P3 | Interest accrual — shares-based with InterestIndex | ✅ Done + deployed |
+| P4 | FHE.select health checks — checkHealth returning ebool | ✅ Done + deployed |
+| P5 | Unshield/reveal — requestUnshield, unshieldWithProof, requestBorrowReveal | ✅ Done + deployed |
+| P6 | Remove Permit2 + fix swap callback | ✅ Done + deployed |
+| P7 | Multi-position vault — bytes32 positionId, getUserPositions | ✅ Done + deployed |
+| P8 | Governance contracts — Governor + Timelock created | ✅ Contracts created, NOT integrated (OWNER→AccessControl migration pending) |
+| P9 | Multi-source oracle — fallbackPrices, staleness, isStale | ✅ Done + deployed |
+| P10 | Cross-chain events — broadcastStrategy, receiveCrossChainStrategy | ✅ Done + deployed |
 
-### Pool Composer Address
-- After Composer redeploy, Pool still referenced old composer address.
-- Fixed via `pool.setComposer(newComposer)`. Vault has no composer reference.
-
-### CoFHE setAccount Fix
-- **Root cause**: `TaskManager.extractSigner` validates `keccak256(ctHash||utype||securityZone||sender||chainId)`. When Composer forwards inputs, `msg.sender=Composer` but SDK signed with `account=user`.
-- **Fix**: `encryptInputs([...]).setAccount(composerAddress).execute()` embeds Composer's address in proof signature.
-- Applied to:
-  - `contracts/scripts/audit-onchain.ts` — `enc64For`/`enc128For` helpers
-  - `ui/hooks/use-composer.ts` — `encrypt64ForComposer`/`encrypt128ForComposer` helpers
-  - `ui/app/strategy-review/StrategyReviewClient.tsx` — uses `encrypt128ForComposer`/`encrypt64ForComposer`
-  - `ui/components/shared/execution-modal.tsx` — uses `encrypt128ForComposer`/`encrypt64ForComposer`
-
-### SDK Upgrade
-- `@cofhe/sdk` 0.5.1→0.5.2 (both contracts/ and ui/)
-- `@cofhe/hardhat-plugin` 0.5.1→0.5.2
-- `@cofhe/mock-contracts` 0.5.1→0.5.2
-- `@cofhe/abi` 0.5.1→0.5.2
-
-### openLeveragedStrategyDirect added to use-composer.ts
-- New frontend function bypassing Permit2 (3 signing steps → 1 approve)
+**Pending**: P8 integration (replace OWNER immutable with AccessControl + UUPS proxy). Wave18 (LendingPool + Composer cross-contract euint128 handle fix).
 
 ---
 
-## On-Chain Audit Results (9 PASS / 0 FAIL)
+## On-Chain Audit Results (Wave17: 10 PASS / 0 FAIL)
 
 ```
-✓ Pool.composer == new Composer
 ✓ Pool.supply (user direct)
+✓ Pool.borrowWithOracle
 ✓ Vault.openPosition (user direct)
 ✓ Vault.closePosition
-✓ Composer.openLeveragedStrategyDirect (no vault, no swap)
-✓ Composer.openLeveragedStrategyDirect (with vault, no swap)
+✓ Composer.openLeveragedStrategyDirect
 ✓ Registry.strategyCount > 0
+✓ Oracle.getPriceWithFallback
 ✓ Pool not paused
 ✓ Vault not paused
+✓ Router not paused
 ```
-
-Run: `npx hardhat run scripts/audit-quick.ts --network arb-sepolia`
 
 ---
 
-## Known Issues (NOT fixed)
+## Repetition Analysis — 20 Findings
 
-| ID | Issue | Why Not Fixed |
-|----|-------|---------------|
-| C-01 | Dual plain+encrypted input skew | Needs ZK proof of equality |
-| C-02 | borrowFromLending no LTV | Needs cross-contract health factor |
-| C-06 | One position per user | Needs Vault storage restructuring |
-| Swap | Composer swap flow broken | Borrowed tokens sent to user before swap escrow — architectural fix needed |
-| supplyEth | `unknown(0x)` revert | FHE input format or WETH deposit issue |
-| Liquidation | `invalid BigNumberish` | ABI encoding of encrypted inputs |
+Full report: `REPETITION_ANALYSIS.md`
+
+Key findings:
+- **3/20** addressed by V2 plan (R2/R3 via P8, R11/R12 partially via P1)
+- **17/20** unplanned — no shared base contract, no shared error library, no shared constants
+- **Top extractable patterns**: `allowThis+allow` ACL (×15), `_ZERO` init (×3), timelocked rotation (×2), `isInitialized?add:incoming` (×5), pause/unpause boilerplate (×4)
+- **Bugs found**: Pool missing supply/borrow getters with allowSender; custom Paused/Unpaused events shadow OZ; Composer still passes InEuint128 to Vault's openPosition instead of euint128 handle
+
+---
+
+## Known Issues (NOT yet fixed)
+
+| ID | Issue | Status |
+|----|-------|--------|
+| Wave18 | LendingPool + Composer cross-contract euint128 handle fix — compiled but not deployed | Ready to deploy |
+| R18 | Pool has no getSupplyBalance/getBorrowBalance getters with allowSender | Unplanned |
+| R20 | Custom Paused/Unpaused events shadow OZ Pausable events | Unplanned |
+| R13 | Composer local interfaces duplicate actual contract interfaces | Unplanned |
+| Composer→Vault | `_openVaultPosition` passes InEuint128 instead of euint128 handle to openPosition | Bug, unfixed |
 
 ---
 
 ## Deployer Info
+
 - Address: `0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8`
 - Balance: ~0.49 ETH on arb-sepolia
-- Mock tokens: WETH=`0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d`, USDC=`0x150376EdEbc5AC48771655a61a795d828BeC8Df6`
-- CoFHE TaskManager: `0xeA30c4B8b44078Bbf8a6ef5b9f1eC1626C7848D9` (REAL coprocessor)
+- Private key: in `contracts/.env`
+- Etherscan API key: in `contracts/.env`
+- CoFHE TaskManager: `0xeA30c4B8b44078Bbf8a6ef5b9f1eC1626C7848D9` (real coprocessor)
+- Pyth: `0x4374e5a8b9C22271E9EB878A2AA31DE97DF15DAF`
 
 ---
 
 ## Key Scripts
-- `deploy-full.ts` — unified deploy
-- `audit-quick.ts` — fast targeted on-chain test (9 checks, ~2 min)
-- `audit-onchain.ts` — comprehensive audit (127 tests, slow)
-- `close-vault-position.ts` — close vault position helper
-- `unpause-all.ts` — unpause all contracts
-- `verify-wiring.ts` — verify contract wiring
+
+- `deploy-full.ts` — unified deploy (set WAVE=17)
+- `audit-quick.ts` — fast targeted on-chain test (10 checks)
+- `audit-onchain.ts` — comprehensive audit (127 tests)
 
 ---
 
 ## Next Steps
-1. Fix Composer swap flow (architectural — keep borrowed tokens in Composer when swap is needed)
-2. Fix supplyEth `unknown(0x)` revert
-3. Fix liquidation flow `invalid BigNumberish`
-4. Add `FHE.allowTransient()` in Composer before calling Pool/Vault (R2 from CoFHE plan)
-5. Add `FHE.allowThis()` after Composer-triggered encrypted mutations (R3)
-6. Test full frontend E2E with real wallet + CoFHE SDK
-7. Commit all changes
+
+1. Deploy Wave18 — LendingPool + Composer with cross-contract euint128 handle fix
+2. Fix Composer→Vault InEuint128 vs euint128 bug in `_openVaultPosition`
+3. Add Pool `getSupplyBalance`/`getBorrowBalance` getters with `allowSender`
+4. Remove custom Paused/Unpaused events (rely on OZ events)
+5. Extract shared `FheForgeBase.sol` abstract contract
+6. P8 integration: replace OWNER with AccessControl + UUPS proxy
+7. Extract Composer inline interfaces to `contracts/interfaces/`

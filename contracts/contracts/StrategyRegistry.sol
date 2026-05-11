@@ -60,6 +60,14 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     event TvlIncreased(uint256 indexed strategyId, address indexed caller);
     event TvlDecreased(uint256 indexed strategyId, address indexed caller);
     event Paused();
+    // ────────── P10: Cross-chain event interface ──────────
+    event CrossChainMessage(
+        uint256 indexed destinationDomain,
+        bytes32 indexed intentId,
+        address indexed sender,
+        bytes payload
+    );
+    uint256 public localDomain = block.chainid;
     event Unpaused();
 
     modifier onlyVault() {
@@ -270,5 +278,53 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
     ) external view returns (uint16 apyTarget, uint8 loopCount) {
         Strategy storage s = strategies[strategyId];
         return (s.apyTarget, s.loopCount);
+    }
+
+    // ────────── P10: Cross-chain broadcast ──────────
+
+    /// @notice Broadcast strategy metadata to a destination domain.
+    /// Off-chain relayer watches CrossChainMessage events and delivers via Hyperlane/AMB.
+    function broadcastStrategy(uint256 strategyId, uint256 destinationDomain) external {
+        if (strategyId >= strategyCount) revert InvalidStrategyId();
+        Strategy storage s = strategies[strategyId];
+        bytes memory payload = abi.encode(
+            localDomain,
+            strategyId,
+            s.name,
+            s.workflowHash,
+            s.creator,
+            s.apyTarget,
+            s.loopCount
+        );
+        bytes32 intentId = keccak256(payload);
+        emit CrossChainMessage(destinationDomain, intentId, msg.sender, payload);
+    }
+
+    /// @notice Receive a cross-chain strategy registration.
+    /// Called by relayer after verifying Hyperlane/AMB proof.
+    function receiveCrossChainStrategy(
+        uint256 sourceDomain,
+        uint256 sourceStrategyId,
+        string calldata name,
+        bytes32 workflowHash,
+        address creator,
+        uint16 apyTarget,
+        uint8 loopCount
+    ) external onlyOwner {
+        bytes32 contentHash = keccak256(abi.encode(name, workflowHash, apyTarget, loopCount));
+        if (idByContentHash[contentHash] != 0) revert StrategyAlreadyExists();
+        uint256 id = strategyCount++;
+        strategies[id] = Strategy({
+            workflowHash: workflowHash,
+            creator: creator,
+            active: true,
+            createdAt: uint64(block.timestamp),
+            name: name,
+            apyTarget: apyTarget,
+            loopCount: loopCount
+        });
+        idByContentHash[contentHash] = id;
+        emit StrategyRegistered(id, creator, name);
+        emit CrossChainMessage(sourceDomain, bytes32(sourceStrategyId), creator, "");
     }
 }

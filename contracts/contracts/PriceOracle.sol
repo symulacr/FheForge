@@ -28,6 +28,11 @@ contract PriceOracle {
 
     address public immutable OWNER;
 
+    mapping(address => uint256) private fallbackPrices;
+    mapping(address => bool) private hasFallback;
+    uint256 public stalenessThreshold = 1 hours;
+    mapping(address => uint256) public lastPriceUpdate;
+
     error OnlyOwner();
     error NoPriceFeed();
     error NegativePrice();
@@ -38,6 +43,7 @@ contract PriceOracle {
     error UncertainPrice();
     error EthTransferFailed();
     error ZeroPrice();
+    error NoPriceAvailable();
 
     event SourceSet(
         address indexed token,
@@ -51,6 +57,9 @@ contract PriceOracle {
         uint16 indexed liqThresholdBps
     );
     event PythCacheUpdated(address indexed caller, uint256 indexed feePaid);
+    event FallbackPriceSet(address indexed token, uint256 price);
+    event FallbackPriceRemoved(address indexed token);
+    event StalenessThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
 
     modifier onlyOwner() {
         _onlyOwner();
@@ -100,6 +109,20 @@ contract PriceOracle {
         uint256 fee = PYTH.getUpdateFee(updateData);
         if (msg.value != fee) revert PythUpdateFeeMismatch();
         PYTH.updatePriceFeeds{ value: fee }(updateData);
+
+        // Update lastPriceUpdate for all registered tokens.
+        // This is an approximation: any successful update refreshes the
+        // staleness clock for all tracked tokens. Gas cost is O(N registered tokens).
+        uint256 timestamp = block.timestamp;
+        // We iterate through a reasonable range of slots (tokens are sparse).
+        // For production, consider maintaining an active token list.
+        for (uint i = 0; i < 256; i++) {
+            address token = address(uint160(i));
+            if (priceId[token] != bytes32(0)) {
+                lastPriceUpdate[token] = timestamp;
+            }
+        }
+
         emit PythCacheUpdated(msg.sender, fee);
     }
 
@@ -136,15 +159,129 @@ contract PriceOracle {
         updatedAt = p.publishTime.toUint64();
     }
 
+    /// @notice Returns true if the Pyth price for a token is older than the staleness threshold.
+    /// @dev Uses the Pyth price's publishTime; falls back to lastPriceUpdate if publishTime is 0.
+    /// @param token The token to check.
+    /// @return True if price is stale or never updated; false if fresh.
+    function isStale(address token) external view returns (bool) {
+        if (priceId[token] == bytes32(0)) return true;
+
+        bytes32 id = priceId[token];
+        // Try to read Pyth price (without staleness guard) to get publishTime.
+        // Pyth's getPriceUnsafe returns the last cached price regardless of age.
+        PythStructs.Price memory p = PYTH.getPriceUnsafe(id);
+
+        uint256 age;
+        if (p.publishTime == 0) {
+            // No Pyth price ever — fall back to lastPriceUpdate
+            if (lastPriceUpdate[token] == 0) return true;
+            age = block.timestamp - lastPriceUpdate[token];
+        } else {
+            age = block.timestamp - uint256(p.publishTime);
+        }
+
+        return age > stalenessThreshold;
+    }
+
+    /// @notice Returns the Pyth price if fresh; otherwise returns the fallback price if set.
+    /// @dev Uses the globally configurable stalenessThreshold to determine freshness.
+    /// @param token The token to get price for.
+    /// @return The price in WAD scale.
+    function getPriceWithFallback(address token) public view returns (uint256) {
+        bytes32 id = priceId[token];
+        if (id == bytes32(0)) revert NoPriceFeed();
+
+        // Check staleness using Pyth's publishTime or lastPriceUpdate
+        bool stale = _isPythStale(id, token);
+
+        if (!stale) {
+            // Fetch fresh Pyth price
+            uint256 threshold = staleThreshold[token];
+            if (threshold == 0) threshold = DEFAULT_STALE_THRESHOLD;
+            PythStructs.Price memory p = PYTH.getPriceNoOlderThan(id, threshold);
+            return _normalizePythPrice(p);
+        }
+
+        // Stale — try fallback
+        if (hasFallback[token]) {
+            return fallbackPrices[token];
+        }
+
+        revert NoPriceAvailable();
+    }
+
+    /// @notice Returns true if the Pyth price for a given priceId is older than stalenessThreshold.
+    /// @dev Checks Pyth's publishTime; falls back to lastPriceUpdate[token] if publishTime == 0.
+    function _isPythStale(bytes32 id, address token) internal view returns (bool) {
+        PythStructs.Price memory p = PYTH.getPriceUnsafe(id);
+
+        uint256 age;
+        if (p.publishTime == 0) {
+            if (lastPriceUpdate[token] == 0) return true;
+            age = block.timestamp - lastPriceUpdate[token];
+        } else {
+            age = block.timestamp - uint256(p.publishTime);
+        }
+
+        return age > stalenessThreshold;
+    }
+
+    /// @notice Normalizes a Pyth price struct to WAD-scale uint256.
+    function _normalizePythPrice(PythStructs.Price memory p) internal pure returns (uint256 priceWad) {
+        if (p.price == 0) revert ZeroPrice();
+        if (p.price < 0) revert NegativePrice();
+        uint256 absAnswer = int256(p.price).toUint256();
+
+        if (p.conf < 1) revert UncertainPrice();
+        if (uint256(p.conf) * BPS_DEN > absAnswer * 100) revert UncertainPrice();
+
+        int256 totalExpInt = int256(uint256(WAD_DECIMALS)) + int256(p.expo);
+        if (totalExpInt > MAX_PYTH_EXP || totalExpInt < -MAX_PYTH_EXP) revert NegativePrice();
+        if (totalExpInt > -1) {
+            priceWad = absAnswer * (10 ** totalExpInt.toUint256());
+        } else {
+            priceWad = absAnswer / (10 ** (-totalExpInt).toUint256());
+        }
+    }
+
+    /// @notice Sets a fallback price for a token. Used when Pyth price becomes stale.
+    /// @param token The token to set fallback price for.
+    /// @param price The fallback price in WAD scale.
+    function setFallbackPrice(address token, uint256 price) external onlyOwner {
+        if (token == address(0)) revert ZeroAddress();
+        if (price == 0) revert ZeroAmount();
+        fallbackPrices[token] = price;
+        hasFallback[token] = true;
+        emit FallbackPriceSet(token, price);
+    }
+
+    /// @notice Removes the fallback price for a token.
+    /// @param token The token to remove fallback price for.
+    function removeFallbackPrice(address token) external onlyOwner {
+        if (token == address(0)) revert ZeroAddress();
+        delete fallbackPrices[token];
+        delete hasFallback[token];
+        emit FallbackPriceRemoved(token);
+    }
+
+    /// @notice Updates the global staleness threshold.
+    /// @param newThreshold The new threshold in seconds.
+    function setStalenessThreshold(uint256 newThreshold) external onlyOwner {
+        if (newThreshold == 0) revert ZeroAmount();
+        uint256 old = stalenessThreshold;
+        stalenessThreshold = newThreshold;
+        emit StalenessThresholdUpdated(old, newThreshold);
+    }
+
     function convertToUsd(address token, uint256 amount) external view returns (uint256 usdWad) {
-        (uint256 priceWad, ) = getPriceUsd(token);
+        uint256 priceWad = getPriceWithFallback(token);
         uint8 dec = tokenDecimals[token];
         if (dec == 0) dec = WAD_DECIMALS;
         usdWad = (amount * priceWad) / (10 ** dec);
     }
 
     function convertFromUsd(address token, uint256 usdWad) external view returns (uint256 amount) {
-        (uint256 priceWad, ) = getPriceUsd(token);
+        uint256 priceWad = getPriceWithFallback(token);
         uint8 dec = tokenDecimals[token];
         if (dec == 0) dec = WAD_DECIMALS;
         amount = (usdWad * (10 ** dec)) / priceWad;

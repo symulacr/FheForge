@@ -75,7 +75,10 @@ export class FhenixStrategyService implements OnModuleInit {
       } catch (err) {
         const msg = (err as Error).message;
         // B-01: Detect stale oracle and warn explicitly (not silent fallback)
-        const isStale = msg.includes('PythNoOlderThan') || msg.includes('NoPriceFeed') || msg.includes('UncertainPrice');
+        const isStale =
+          msg.includes('PythNoOlderThan') ||
+          msg.includes('NoPriceFeed') ||
+          msg.includes('UncertainPrice');
         if (isStale) {
           this.logger.error(
             `Oracle STALE for ${token}: ${msg} — using static rate. Call updatePriceFeeds to refresh.`,

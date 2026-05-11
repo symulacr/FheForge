@@ -1,8 +1,10 @@
 import { useReadContract, useWriteContract, useChainId, usePublicClient } from "wagmi";
+import type { Abi } from "viem";
 import { useMemo } from "react";
 import type { Address, Hash } from "viem";
 import { getContractAddresses } from "@/utils/addresses";
-import StrategyRegistryABI from "@/abis/StrategyRegistry.json";
+import StrategyRegistryArtifact from "@/abis/StrategyRegistry.json";
+const StrategyRegistryABI = StrategyRegistryArtifact.abi as unknown as Abi;
 
 export interface StrategyMeta {
   name: string;

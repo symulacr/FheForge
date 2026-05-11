@@ -1,8 +1,10 @@
 import { useReadContract, useChainId, usePublicClient, useWriteContract } from "wagmi";
+import type { Abi } from "viem";
 import { useMemo } from "react";
 import type { Address, Hash } from "viem";
 import { getContractAddresses } from "@/utils/addresses";
-import PriceOracleABI from "@/abis/PriceOracle.json";
+import PriceOracleArtifact from "@/abis/PriceOracle.json";
+const PriceOracleABI = PriceOracleArtifact.abi as unknown as Abi;
 
 export function usePriceOracle() {
   const chainId = useChainId();
@@ -101,6 +103,50 @@ export function usePriceOracle() {
     return result as boolean;
   };
 
+  // ────────── P9: staleness ──────────
+
+  const isStale = async (token: Address): Promise<boolean> => {
+    if (!publicClient) throw new Error("Public client not available");
+    if (!oracleAddress) throw new Error("PriceOracle address not configured");
+
+    const result = await publicClient.readContract({
+      address: oracleAddress,
+      abi: PriceOracleABI,
+      functionName: "isStale",
+      args: [token],
+    });
+
+    return result as boolean;
+  };
+
+  const lastPriceUpdate = async (token: Address): Promise<bigint> => {
+    if (!publicClient) throw new Error("Public client not available");
+    if (!oracleAddress) throw new Error("PriceOracle address not configured");
+
+    const result = await publicClient.readContract({
+      address: oracleAddress,
+      abi: PriceOracleABI,
+      functionName: "lastPriceUpdate",
+      args: [token],
+    });
+
+    return result as bigint;
+  };
+
+  const getStalenessThreshold = async (): Promise<bigint> => {
+    if (!publicClient) throw new Error("Public client not available");
+    if (!oracleAddress) throw new Error("PriceOracle address not configured");
+
+    const result = await publicClient.readContract({
+      address: oracleAddress,
+      abi: PriceOracleABI,
+      functionName: "stalenessThreshold",
+      args: [],
+    });
+
+    return result as bigint;
+  };
+
   const { isLoading, refetch } = useReadContract({
     address: oracleAddress,
     abi: PriceOracleABI,
@@ -118,6 +164,9 @@ export function usePriceOracle() {
     convertToUsd,
     convertFromUsd,
     isSupported,
+    isStale,
+    lastPriceUpdate,
+    getStalenessThreshold,
     isLoading,
     refetch,
   };

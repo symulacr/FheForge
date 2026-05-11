@@ -1,12 +1,15 @@
 import { useWriteContract } from "wagmi";
 import { useChainId } from "wagmi";
+import type { Abi } from "viem";
 import type { Hash } from "viem";
-import FheForgeComposerAbi from "@/abis/FheForgeComposer.json";
+import FheForgeComposerArtifact from "@/abis/FheForgeComposer.json";
+const FheForgeComposerAbi = FheForgeComposerArtifact.abi as unknown as Abi;
 import { getContractAddresses } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { Encryptable } from "@cofhe/sdk";
 
 export interface RebalanceParams {
+  positionId: `0x${string}`; // P7: multi-position — bytes32 positionId is first field
   collateralToken: `0x${string}`;
   addCollateralAmount: bigint;
   repayAmount: bigint;
@@ -16,18 +19,6 @@ export interface RebalanceParams {
   useOracleBorrow: boolean;
   ltvNum: bigint;
   ltvDen: bigint;
-  collateralPermit: {
-    amount: bigint;
-    deadline: bigint;
-    nonce: bigint;
-    signature: `0x${string}`;
-  };
-  repayPermit: {
-    amount: bigint;
-    deadline: bigint;
-    nonce: bigint;
-    signature: `0x${string}`;
-  };
 }
 
 export interface InEuint128 {

@@ -1,8 +1,10 @@
 import { useWriteContract, useChainId } from "wagmi";
+import type { Abi } from "viem";
 import { useMemo } from "react";
 import type { Hash } from "viem";
+import ComposerArtifact from "@/abis/FheForgeComposer.json";
+const ComposerABI = ComposerArtifact.abi as unknown as Abi;
 
-import ComposerABI from "@/abis/FheForgeComposer.json";
 import { getContractAddresses } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 import { Encryptable } from "@cofhe/sdk";
@@ -14,15 +16,6 @@ interface InEuint128 {
   signature: string;
 }
 
-// InEuint64 has identical ABI shape as InEuint128 for TypeScript purposes
-type InEuint64 = InEuint128;
-
-interface Permit2Authorization {
-  amount: bigint;
-  deadline: bigint;
-  nonce: bigint;
-  signature: string;
-}
 
 export interface OpenStrategyParams {
   strategyName: string;
@@ -42,13 +35,12 @@ export interface OpenStrategyParams {
   loopCount: number;
   swapAmountIn: bigint;
   swapMinOut: bigint;
-  collateralPermit: Permit2Authorization;
 }
 
 export interface OpenStrategyEncrypted {
   collateral: InEuint128;
-  supplyEnc: InEuint64;
-  borrowEnc: InEuint64;
+  supplyEnc: InEuint128;
+  borrowEnc: InEuint128;
 }
 
 export function useComposer() {
@@ -77,17 +69,6 @@ export function useComposer() {
     return handles[0];
   };
 
-  // MC-28: Composer supplyEnc/borrowEnc use InEuint64
-  const encrypt64 = async (value: bigint): Promise<InEuint64> => {
-    if (!cofheClient) throw new Error("CoFHE client not ready");
-    if (!cofheState.permitReady)
-      throw new Error("CoFHE permit not ready");
-    const handles = (await cofheClient
-      .encryptInputs([Encryptable.uint64(value)])
-      .execute()) as InEuint64[];
-    if (!handles[0]) throw new Error("CoFHE returned empty handle list");
-    return handles[0];
-  };
 
   // R7: Encrypt with setAccount(composerAddress) for cross-contract FHE input validation
   // When Composer forwards encrypted inputs to Pool/Vault, msg.sender = Composer.
@@ -105,18 +86,6 @@ export function useComposer() {
     return handles[0];
   };
 
-  const encrypt64ForComposer = async (value: bigint): Promise<InEuint64> => {
-    if (!cofheClient) throw new Error("CoFHE client not ready");
-    if (!cofheState.permitReady)
-      throw new Error("CoFHE permit not ready");
-    if (!composerAddress) throw new Error("Composer address not configured");
-    const handles = (await cofheClient
-      .encryptInputs([Encryptable.uint64(value)])
-      .setAccount(composerAddress)
-      .execute()) as InEuint64[];
-    if (!handles[0]) throw new Error("CoFHE returned empty handle list");
-    return handles[0];
-  };
 
   const openLeveragedStrategy = async (
     params: OpenStrategyParams,
@@ -156,8 +125,6 @@ export function useComposer() {
     composerAddress,
     isPending,
     encrypt128,
-    encrypt64,
     encrypt128ForComposer,
-    encrypt64ForComposer,
   };
 }

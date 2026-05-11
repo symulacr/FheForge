@@ -1,10 +1,13 @@
 import { useWriteContract, useChainId, usePublicClient } from "wagmi";
+import type { Abi } from "viem";
 import { Encryptable } from "@cofhe/sdk";
 import { parseUnits, type Address, type Hash } from "viem";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
+import PoolArtifact from "@/abis/LendingPool.json";
+const PoolABI = PoolArtifact.abi as unknown as Abi;
+import PriceOracleArtifact from "@/abis/PriceOracle.json";
+const PriceOracleABI = PriceOracleArtifact.abi as unknown as Abi;
 
-import PoolABI from "@/abis/LendingPool.json";
-import PriceOracleABI from "@/abis/PriceOracle.json";
 import { getContractAddresses, validateEuint128 } from "@/utils/addresses";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
 
@@ -15,7 +18,23 @@ export interface EncryptedHandle {
   signature: string;
 }
 
-export type EncryptedUint64Input = EncryptedHandle;
+// P2: proof-based liquidation
+export interface LiquidateWithProofParams {
+  user: Address;
+  collateralToken: Address;
+  debtToken: Address;
+  debtToCover: bigint;
+  debtBalanceProof: bigint; // decrypted borrow balance
+  debtSig: `0x${string}`;
+  supplyBalanceProof: bigint; // decrypted collateral supply balance
+  supplySig: `0x${string}`;
+}
+
+// P5: pending contract update — stub until contract ABI is synced
+// export const requestUnshield = ...
+// export const unshieldWithProof = ...
+// export const requestBorrowReveal = ...
+
 
 export function useLendingActions() {
   const cofheClient = useCofheClient();
@@ -39,13 +58,13 @@ export function useLendingActions() {
     return addresses;
   };
 
-  // MC-36/37/38: Pool borrow functions use InEuint64
-  const encrypt64 = async (value: bigint): Promise<EncryptedHandle> => {
+  // encrypt input for uint128 borrow amounts
+  const encrypt = async (value: bigint): Promise<EncryptedHandle> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
     if (!cofheState.permitReady)
       throw new Error("CoFHE permit not ready — please wait or reconnect");
     const handles = (await cofheClient
-      .encryptInputs([Encryptable.uint64(value)])
+      .encryptInputs([Encryptable.uint128(value)])
       .execute()) as EncryptedHandle[];
     if (!handles[0]) throw new Error("CoFHE returned empty handle list");
     return handles[0];
@@ -65,6 +84,43 @@ export function useLendingActions() {
       abi: PoolABI,
       functionName: "liquidate",
       args: [user, collateralToken, debtToken, debtToCover],
+    });
+  };
+
+  // ────────── P2: requestLiquidationCheck ──────────
+
+  const requestLiquidationCheck = async (
+    user: Address,
+    collateralToken: Address,
+    debtToken: Address,
+  ): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    return writeContractAsync({
+      address: pool as `0x${string}`,
+      abi: PoolABI,
+      functionName: "requestLiquidationCheck",
+      args: [user, collateralToken, debtToken],
+    });
+  };
+
+  // ────────── P2: liquidateWithProof ──────────
+
+  const liquidateWithProof = async (params: LiquidateWithProofParams): Promise<Hash> => {
+    const { pool } = requireAddresses();
+    return writeContractAsync({
+      address: pool as `0x${string}`,
+      abi: PoolABI,
+      functionName: "liquidateWithProof",
+      args: [
+        params.user,
+        params.collateralToken,
+        params.debtToken,
+        params.debtToCover,
+        params.debtBalanceProof,
+        params.debtSig,
+        params.supplyBalanceProof,
+        params.supplySig,
+      ],
     });
   };
 
@@ -148,7 +204,7 @@ export function useLendingActions() {
     validateEuint128(amt);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt64(amt);
+      const enc = await encrypt(amt);
       return checkLtvAndBorrow(collateralToken, borrowToken, amt, enc, ltvNum, ltvDen);
     } finally {
       setIsEncrypting(false);
@@ -165,7 +221,7 @@ export function useLendingActions() {
     validateEuint128(amt);
     setIsEncrypting(true);
     try {
-      const enc = await encrypt64(amt);
+      const enc = await encrypt(amt);
       return borrowWithOracle(collateralToken, borrowToken, amt, enc);
     } finally {
       setIsEncrypting(false);
@@ -174,13 +230,15 @@ export function useLendingActions() {
 
   return {
     liquidate,
+    requestLiquidationCheck,
+    liquidateWithProof,
     checkLtvAndBorrow,
     borrowWithOracle,
     emergencyWithdraw,
     isSupported,
     checkLtvAndBorrowWithEncrypt,
     borrowWithOracleWithEncrypt,
-    encrypt64,
+    encrypt,
     isEncrypting,
     isPending,
   };

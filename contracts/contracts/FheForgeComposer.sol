@@ -1,36 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { InEuint64, InEuint128, euint128, euint64 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, InEuint128, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
-
-interface IPermit2 {
-    struct TokenPermissions {
-        address token;
-        uint256 amount;
-    }
-
-    struct PermitTransferFrom {
-        TokenPermissions permitted;
-        uint256 nonce;
-        uint256 deadline;
-    }
-
-    struct SignatureTransferDetails {
-        address to;
-        uint256 requestedAmount;
-    }
-
-    function permitTransferFrom(
-        PermitTransferFrom calldata permit,
-        SignatureTransferDetails calldata transferDetails,
-        address owner,
-        bytes calldata signature
-    ) external;
-}
 
 interface IRegistry {
     function registerStrategy(
@@ -50,7 +25,7 @@ interface IStrategyVault {
         InEuint128 calldata encAmount,
         uint256 strategyId,
         address user
-    ) external;
+    ) external returns (bytes32);
 
     function openPosition(
         address token,
@@ -58,22 +33,18 @@ interface IStrategyVault {
         euint128 encAmount,
         uint256 strategyId,
         address user
-    ) external;
+    ) external returns (bytes32);
 
     function addCollateral(
+        bytes32 positionId,
         address collateralToken,
         uint256 amount,
-        InEuint64 calldata encAmount
-    ) external;
-
-    function addCollateral(
-        address collateralToken,
-        uint256 amount,
-        InEuint64 calldata encAmount,
+        InEuint128 calldata encAmount,
         address user
     ) external;
 
     function addCollateral(
+        bytes32 positionId,
         address collateralToken,
         uint256 amount,
         euint128 encAmount,
@@ -81,27 +52,21 @@ interface IStrategyVault {
     ) external;
 
     function closePosition(
+        bytes32 positionId,
         uint256 collateralAmount,
         InEuint128 calldata encCollateralAmount
     ) external;
 
-    function hasPosition(address user) external view returns (bool);
+    function positionExists(bytes32 positionId) external view returns (bool);
 }
 
 interface ILendingPool {
-    function supply(address token, uint256 amount, InEuint64 calldata encAmount) external;
+    function supply(address token, uint256 amount, InEuint128 calldata encAmount) external;
 
     function supplyToLending(
         address token,
         uint256 amount,
-        InEuint64 calldata encAmount,
-        address user
-    ) external;
-
-    function supplyToLending(
-        address token,
-        uint256 amount,
-        euint64 encAmount,
+        euint128 handle,
         address user
     ) external;
 
@@ -109,44 +74,35 @@ interface ILendingPool {
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
-        InEuint64 calldata encBorrowAmount,
+        InEuint128 calldata encBorrowAmount,
         uint128 ltvNum,
         uint128 ltvDen
-    ) external returns (euint64);
+    ) external returns (euint128);
 
     function borrowWithOracle(
         address collateralToken,
         address borrowToken,
         uint256 borrowAmount,
-        InEuint64 calldata encBorrowAmount
-    ) external returns (euint64);
+        InEuint128 calldata encBorrowAmount
+    ) external returns (euint128);
 
     function borrowFromLending(
         address token,
         uint256 amount,
-        InEuint64 calldata encAmount,
+        euint128 handle,
         address user
     ) external;
 
-    function borrowFromLending(
-        address token,
-        uint256 amount,
-        euint64 encAmount,
-        address user
-    ) external;
-
-    function repay(address token, uint256 amount, InEuint64 calldata encAmount) external;
+    function repay(address token, uint256 amount, InEuint128 calldata encAmount) external;
 
     function repayBorrow(
         address token,
         uint256 amount,
-        InEuint64 calldata encAmount,
+        euint128 handle,
         address user
     ) external;
 
-    function repayBorrow(address token, uint256 amount, euint64 encAmount, address user) external;
-
-    function withdraw(address token, uint256 amount, InEuint64 calldata encAmount) external;
+    function withdraw(address token, uint256 amount, InEuint128 calldata encAmount) external;
 }
 
 interface ISwapRouter {
@@ -167,8 +123,6 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     ILendingPool public immutable POOL;
     ISwapRouter public immutable ROUTER;
     address public immutable OWNER;
-
-    address public constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     error ZeroAddress();
     error NotOwner();
@@ -225,13 +179,6 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         emit Unpaused();
     }
 
-    struct Permit2Authorization {
-        uint256 amount;
-        uint256 deadline;
-        uint256 nonce;
-        bytes signature;
-    }
-
     struct OpenStrategyParams {
         string strategyName;
         bytes32 workflowHash;
@@ -250,34 +197,37 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         bool useOracleBorrow;
         uint16 apyTarget;
         uint8 loopCount;
-        Permit2Authorization collateralPermit;
     }
 
     struct OpenStrategyEncrypted {
         InEuint128 collateral;
-        InEuint64 supplyEnc;
-        InEuint64 borrowEnc;
+        InEuint128 supplyEnc;
+        InEuint128 borrowEnc;
     }
 
+    /// @notice Open a leveraged strategy. User pre-approves Composer via direct transferFrom.
     function openLeveragedStrategy(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e
     ) external nonReentrant whenNotPaused returns (uint256 strategyId, bytes32 intentId) {
-        uint256 pulled = _pullViaPermit2(p.collateralToken, p.collateralPermit);
-        strategyId = _resolveStrategyId(p);
+        // Pull total needed: max of collateralAmount and poolSupplyAmount from user
+        uint256 totalNeeded =
+            p.collateralAmount > p.poolSupplyAmount ? p.collateralAmount : p.poolSupplyAmount;
+        if (totalNeeded > 0) {
+            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), totalNeeded);
+        }
 
-        uint256 vaultCovered = pulled > p.collateralAmount ? p.collateralAmount : pulled;
-        _openVaultPosition(p, e, vaultCovered, strategyId);
-        _supplyToPool(p, e, pulled - vaultCovered);
+        strategyId = _resolveStrategyId(p);
+        // Split: vault gets collateralAmount, pool gets the remainder
+        uint256 vaultCovered =
+            totalNeeded > p.collateralAmount ? p.collateralAmount : totalNeeded;
+        _openVaultPosition(p, e, strategyId);
+        _supplyToPool(p, e, totalNeeded - vaultCovered);
         _borrowFromPool(p, e);
         intentId = _submitSwap(p, e);
 
         emit LeveragedStrategyOpened(
-            msg.sender,
-            strategyId,
-            intentId,
-            p.poolSupplyAmount,
-            p.poolBorrowAmount
+            msg.sender, strategyId, intentId, p.poolSupplyAmount, p.poolBorrowAmount
         );
     }
 
@@ -292,37 +242,28 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     function _openVaultPosition(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e,
-        uint256 permitCovered,
         uint256 strategyId
-    ) internal {
-        if (p.collateralAmount == 0) return;
-        uint256 needsPull = p.collateralAmount - permitCovered;
-        if (needsPull > 0) {
-            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), needsPull);
-        }
+    ) internal returns (bytes32) {
+        if (p.collateralAmount == 0) return bytes32(0);
         _ensureApproval(p.collateralToken, address(VAULT), p.collateralAmount);
-        VAULT.openPosition(
-            p.collateralToken,
-            p.collateralAmount,
-            e.collateral,
-            strategyId,
-            _msgSender()
+        euint128 incomingColl = FHE.asEuint128(e.collateral);
+        FHE.allowTransient(incomingColl, address(VAULT));
+        return VAULT.openPosition(
+            p.collateralToken, p.collateralAmount, e.collateral, strategyId, _msgSender()
         );
     }
 
     function _supplyToPool(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e,
-        uint256 permitCovered
+        uint256 supplyAmount
     ) internal {
-        if (p.poolSupplyAmount == 0) return;
-        uint256 needsPull =
-            p.poolSupplyAmount > permitCovered ? p.poolSupplyAmount - permitCovered : 0;
-        if (needsPull > 0) {
-            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), needsPull);
-        }
-        _ensureApproval(p.collateralToken, address(POOL), p.poolSupplyAmount);
-        POOL.supplyToLending(p.collateralToken, p.poolSupplyAmount, e.supplyEnc, _msgSender());
+        if (supplyAmount == 0) return;
+        _ensureApproval(p.collateralToken, address(POOL), supplyAmount);
+        // P0: Grant Pool ACL to use encrypted supply handle
+        euint128 incomingSupply = FHE.asEuint128(e.supplyEnc);
+        FHE.allowTransient(incomingSupply, address(POOL));
+        POOL.supplyToLending(p.collateralToken, supplyAmount, incomingSupply, _msgSender());
     }
 
     function _borrowFromPool(
@@ -330,21 +271,31 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         OpenStrategyEncrypted calldata e
     ) internal {
         if (p.poolBorrowAmount == 0) return;
-        POOL.borrowFromLending(p.borrowToken, p.poolBorrowAmount, e.borrowEnc, _msgSender());
-        uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
-        if (received > 0) {
-            IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
-        }
+        // P0: Grant Pool ACL to use encrypted borrow handle
+        euint128 incomingBorrow = FHE.asEuint128(e.borrowEnc);
+        FHE.allowTransient(incomingBorrow, address(POOL));
+        POOL.borrowFromLending(p.borrowToken, p.poolBorrowAmount, incomingBorrow, _msgSender());
+        // P0: Keep borrowed tokens in Composer for potential swap escrow.
+        // Do NOT send to user here — _submitSwap handles forwarding.
     }
 
     function _submitSwap(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata /* e */
     ) internal returns (bytes32) {
-        if (p.swapTokenOut == address(0)) return bytes32(0);
+        if (p.swapTokenOut == address(0)) {
+            // No swap — forward borrowed tokens to user
+            uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
+            if (received > 0) {
+                IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
+            }
+            return bytes32(0);
+        }
+        // Swap needed — escrow from Composer to Router
+        _ensureApproval(p.borrowToken, address(ROUTER), p.swapAmountIn);
         return
             ROUTER.submitSwapIntent(
-                p.collateralToken,
+                p.borrowToken,
                 p.swapTokenOut,
                 p.swapAmountIn,
                 p.swapMinOut,
@@ -353,6 +304,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     }
 
     struct RebalanceParams {
+        bytes32 positionId;
         address collateralToken;
         uint256 addCollateralAmount;
         uint256 repayAmount;
@@ -362,125 +314,24 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         bool useOracleBorrow;
         uint128 ltvNum;
         uint128 ltvDen;
-        Permit2Authorization collateralPermit;
-        Permit2Authorization repayPermit;
     }
 
     struct RebalanceEncrypted {
-        InEuint64 addCollateralEnc;
-        InEuint64 repayEnc;
-        InEuint64 newBorrowEnc;
+        InEuint128 addCollateralEnc;
+        InEuint128 repayEnc;
+        InEuint128 newBorrowEnc;
     }
 
+    /// @notice Rebalance a strategy position. User pre-approves Composer via direct transferFrom.
     function rebalance(
-        RebalanceParams calldata p,
-        RebalanceEncrypted calldata e
-    ) external nonReentrant whenNotPaused {
-        uint256 collateralPulled = 0;
-        if (p.addCollateralAmount > 0) {
-            collateralPulled = _pullViaPermit2(p.collateralToken, p.collateralPermit);
-        }
-        uint256 repayPulled = 0;
-        if (p.repayAmount > 0) {
-            repayPulled = _pullViaPermit2(p.repayToken, p.repayPermit);
-        }
-        if (p.addCollateralAmount > 0) {
-            uint256 needsPull =
-                p.addCollateralAmount > collateralPulled
-                    ? p.addCollateralAmount - collateralPulled
-                    : 0;
-            if (needsPull > 0) {
-                IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), needsPull);
-            }
-            _ensureApproval(p.collateralToken, address(VAULT), p.addCollateralAmount);
-            VAULT.addCollateral(
-                p.collateralToken,
-                p.addCollateralAmount,
-                e.addCollateralEnc,
-                _msgSender()
-            );
-        }
-
-        if (p.repayAmount > 0) {
-            uint256 needsPull = p.repayAmount > repayPulled ? p.repayAmount - repayPulled : 0;
-            if (needsPull > 0) {
-                IERC20(p.repayToken).safeTransferFrom(_msgSender(), address(this), needsPull);
-            }
-            _ensureApproval(p.repayToken, address(POOL), p.repayAmount);
-            POOL.repay(p.repayToken, p.repayAmount, e.repayEnc);
-        }
-
-        if (p.newBorrowAmount > 0) {
-            POOL.borrowFromLending(p.borrowToken, p.newBorrowAmount, e.newBorrowEnc, _msgSender());
-            uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
-            if (received > 0) {
-                IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
-            }
-        }
-
-        emit StrategyRebalanced(
-            msg.sender,
-            p.addCollateralAmount,
-            p.repayAmount,
-            p.newBorrowAmount
-        );
-    }
-
-    /// @notice Direct-transferFrom variant: user pre-approves Composer, no Permit2 needed.
-    ///         Reduces signing steps from 3→2 (encrypt + tx).
-    function openLeveragedStrategyDirect(
-        OpenStrategyParams calldata p,
-        OpenStrategyEncrypted calldata e
-    ) external nonReentrant whenNotPaused returns (uint256 strategyId, bytes32 intentId) {
-        // Pull total needed: max of collateralAmount and poolSupplyAmount from user
-        uint256 totalNeeded = p.collateralAmount > p.poolSupplyAmount ? p.collateralAmount : p.poolSupplyAmount;
-        if (totalNeeded > 0) {
-            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), totalNeeded);
-        }
-
-        strategyId = _resolveStrategyId(p);
-        // Split: vault gets collateralAmount, pool gets the remainder
-        uint256 vaultCovered = totalNeeded > p.collateralAmount ? p.collateralAmount : totalNeeded;
-        _openVaultPositionDirect(p, e, strategyId);
-        _supplyToPoolDirect(p, e, totalNeeded - vaultCovered);
-        _borrowFromPool(p, e);
-        intentId = _submitSwap(p, e);
-
-        emit LeveragedStrategyOpened(
-            msg.sender, strategyId, intentId, p.poolSupplyAmount, p.poolBorrowAmount
-        );
-    }
-
-    function _openVaultPositionDirect(
-        OpenStrategyParams calldata p,
-        OpenStrategyEncrypted calldata e,
-        uint256 strategyId
-    ) internal {
-        if (p.collateralAmount == 0) return;
-        _ensureApproval(p.collateralToken, address(VAULT), p.collateralAmount);
-        VAULT.openPosition(
-            p.collateralToken, p.collateralAmount, e.collateral, strategyId, _msgSender()
-        );
-    }
-
-    function _supplyToPoolDirect(
-        OpenStrategyParams calldata p,
-        OpenStrategyEncrypted calldata e,
-        uint256 supplyAmount
-    ) internal {
-        if (supplyAmount == 0) return;
-        _ensureApproval(p.collateralToken, address(POOL), supplyAmount);
-        POOL.supplyToLending(p.collateralToken, supplyAmount, e.supplyEnc, _msgSender());
-    }
-
-    /// @notice Direct-transferFrom variant of rebalance: no Permit2 needed.
-    function rebalanceDirect(
         RebalanceParams calldata p,
         RebalanceEncrypted calldata e
     ) external nonReentrant whenNotPaused {
         // Pull collateral directly
         if (p.addCollateralAmount > 0) {
-            IERC20(p.collateralToken).safeTransferFrom(_msgSender(), address(this), p.addCollateralAmount);
+            IERC20(p.collateralToken).safeTransferFrom(
+                _msgSender(), address(this), p.addCollateralAmount
+            );
         }
         // Pull repay token directly
         if (p.repayAmount > 0) {
@@ -488,42 +339,35 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         }
         if (p.addCollateralAmount > 0) {
             _ensureApproval(p.collateralToken, address(VAULT), p.addCollateralAmount);
-            VAULT.addCollateral(p.collateralToken, p.addCollateralAmount, e.addCollateralEnc, _msgSender());
+            // P0: Grant Vault ACL to use encrypted collateral handle
+            euint128 addCollEnc = FHE.asEuint128(e.addCollateralEnc);
+            FHE.allowTransient(addCollEnc, address(VAULT));
+            VAULT.addCollateral(
+                p.positionId, p.collateralToken, p.addCollateralAmount, e.addCollateralEnc, _msgSender()
+            );
         }
+
         if (p.repayAmount > 0) {
             _ensureApproval(p.repayToken, address(POOL), p.repayAmount);
-            POOL.repay(p.repayToken, p.repayAmount, e.repayEnc);
+            // P0: Grant Pool ACL to use encrypted repay handle
+            euint128 repayEnc = FHE.asEuint128(e.repayEnc);
+            FHE.allowTransient(repayEnc, address(POOL));
+            POOL.repayBorrow(p.repayToken, p.repayAmount, repayEnc, _msgSender());
         }
-        if (p.newBorrowAmount > 0) {
-            POOL.borrowFromLending(p.borrowToken, p.newBorrowAmount, e.newBorrowEnc, _msgSender());
-            uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
-            if (received > 0) {
-                IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
-            }
-        }
-        emit StrategyRebalanced(msg.sender, p.addCollateralAmount, p.repayAmount, p.newBorrowAmount);
-    }
 
-    function _pullViaPermit2(
-        address token,
-        Permit2Authorization calldata auth
-    ) internal returns (uint256 pulled) {
-        // C-10: deadline==0 means "skip Permit2, use safeTransferFrom fallback" instead.
-        // This overloads the Permit2 deadline field — a real Permit2 signature with
-        // deadline=0 is invalid. Callers must ensure deadline=0 is only used to
-        // signal "no Permit2 auth", not as an actual Permit2 deadline.
-        if (auth.deadline == 0) return 0;
-        IPermit2(PERMIT2).permitTransferFrom(
-            IPermit2.PermitTransferFrom({
-                permitted: IPermit2.TokenPermissions({ token: token, amount: auth.amount }),
-                nonce: auth.nonce,
-                deadline: auth.deadline
-            }),
-            IPermit2.SignatureTransferDetails({ to: address(this), requestedAmount: auth.amount }),
-            _msgSender(),
-            auth.signature
+        if (p.newBorrowAmount > 0) {
+            // P0: Grant Pool ACL to use encrypted borrow handle
+            euint128 newBorrowEnc = FHE.asEuint128(e.newBorrowEnc);
+            FHE.allowTransient(newBorrowEnc, address(POOL));
+            POOL.borrowFromLending(
+                p.borrowToken, p.newBorrowAmount, newBorrowEnc, _msgSender()
+            );
+            // P0: Keep borrowed tokens in Composer (consistent with openLeveragedStrategy)
+        }
+
+        emit StrategyRebalanced(
+            msg.sender, p.addCollateralAmount, p.repayAmount, p.newBorrowAmount
         );
-        return auth.amount;
     }
 
     function sweepToken(address token, address to) external onlyOwner {
