@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { FHE, InEuint128, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, InEuint128, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -130,15 +130,10 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
     event LeveragedStrategyOpened(
         address indexed user,
         uint256 indexed strategyId,
-        bytes32 indexed intentId,
-        uint256 supplyAmount,
-        uint256 borrowAmount
+        bytes32 indexed intentId
     );
     event StrategyRebalanced(
-        address indexed user,
-        uint256 indexed addAmount,
-        uint256 indexed repayAmount,
-        uint256 newBorrowAmount
+        address indexed user
     );
 
     modifier onlyOwner() {
@@ -223,7 +218,7 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         intentId = _submitSwap(p, e);
 
         emit LeveragedStrategyOpened(
-            msg.sender, strategyId, intentId, p.poolSupplyAmount, p.poolBorrowAmount
+            msg.sender, strategyId, intentId
         );
     }
 
@@ -243,9 +238,12 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         if (p.collateralAmount == 0) return bytes32(0);
         _ensureApproval(p.collateralToken, address(VAULT), p.collateralAmount);
         euint128 incomingColl = FHE.asEuint128(e.collateral);
-        FHE.allowTransient(incomingColl, address(VAULT));
+        euint128 claimedCollPlain = FHE.asEuint128(p.collateralAmount);
+        ebool collMatch = FHE.eq(incomingColl, claimedCollPlain);
+        euint128 verifiedColl = FHE.select(collMatch, incomingColl, FHE.asEuint128(0));
+        FHE.allowTransient(verifiedColl, address(VAULT));
         return VAULT.openPosition(
-            p.collateralToken, p.collateralAmount, incomingColl, strategyId, _msgSender()
+            p.collateralToken, p.collateralAmount, verifiedColl, strategyId, _msgSender()
         );
     }
 
@@ -258,8 +256,11 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         _ensureApproval(p.collateralToken, address(POOL), supplyAmount);
         // P0: Grant Pool ACL to use encrypted supply handle
         euint128 incomingSupply = FHE.asEuint128(e.supplyEnc);
-        FHE.allowTransient(incomingSupply, address(POOL));
-        POOL.depositFor(p.collateralToken, supplyAmount, incomingSupply, _msgSender());
+        euint128 claimedSupplyPlain = FHE.asEuint128(supplyAmount);
+        ebool supplyMatch = FHE.eq(incomingSupply, claimedSupplyPlain);
+        euint128 verifiedSupply = FHE.select(supplyMatch, incomingSupply, FHE.asEuint128(0));
+        FHE.allowTransient(verifiedSupply, address(POOL));
+        POOL.depositFor(p.collateralToken, supplyAmount, verifiedSupply, _msgSender());
     }
 
     function _borrowFromPool(
@@ -269,8 +270,11 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
         if (p.poolBorrowAmount == 0) return;
         // P0: Grant Pool ACL to use encrypted borrow handle
         euint128 incomingBorrow = FHE.asEuint128(e.borrowEnc);
-        FHE.allowTransient(incomingBorrow, address(POOL));
-        POOL.borrowFor(p.borrowToken, p.poolBorrowAmount, incomingBorrow, _msgSender());
+        euint128 claimedBorrowPlain = FHE.asEuint128(p.poolBorrowAmount);
+        ebool borrowMatch = FHE.eq(incomingBorrow, claimedBorrowPlain);
+        euint128 verifiedBorrow = FHE.select(borrowMatch, incomingBorrow, FHE.asEuint128(0));
+        FHE.allowTransient(verifiedBorrow, address(POOL));
+        POOL.borrowFor(p.borrowToken, p.poolBorrowAmount, verifiedBorrow, _msgSender());
         // P0: Keep borrowed tokens in Composer for potential swap escrow.
         // Do NOT send to user here — _submitSwap handles forwarding.
     }
@@ -337,9 +341,12 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
             _ensureApproval(p.collateralToken, address(VAULT), p.addCollateralAmount);
             // P0: Grant Vault ACL to use encrypted collateral handle
             euint128 addCollEnc = FHE.asEuint128(e.addCollateralEnc);
-            FHE.allowTransient(addCollEnc, address(VAULT));
+            euint128 claimedAddCollPlain = FHE.asEuint128(p.addCollateralAmount);
+            ebool addCollMatch = FHE.eq(addCollEnc, claimedAddCollPlain);
+            euint128 verifiedAddColl = FHE.select(addCollMatch, addCollEnc, FHE.asEuint128(0));
+            FHE.allowTransient(verifiedAddColl, address(VAULT));
             VAULT.addCollateral(
-                p.positionId, p.collateralToken, p.addCollateralAmount, e.addCollateralEnc, _msgSender()
+                p.positionId, p.collateralToken, p.addCollateralAmount, verifiedAddColl, _msgSender()
             );
         }
 
@@ -347,22 +354,28 @@ contract FheForgeComposer is ReentrancyGuard, Pausable {
             _ensureApproval(p.repayToken, address(POOL), p.repayAmount);
             // P0: Grant Pool ACL to use encrypted repay handle
             euint128 repayEnc = FHE.asEuint128(e.repayEnc);
-            FHE.allowTransient(repayEnc, address(POOL));
-            POOL.repayFor(p.repayToken, p.repayAmount, repayEnc, _msgSender());
+            euint128 claimedRepayPlain = FHE.asEuint128(p.repayAmount);
+            ebool repayMatch = FHE.eq(repayEnc, claimedRepayPlain);
+            euint128 verifiedRepay = FHE.select(repayMatch, repayEnc, FHE.asEuint128(0));
+            FHE.allowTransient(verifiedRepay, address(POOL));
+            POOL.repayFor(p.repayToken, p.repayAmount, verifiedRepay, _msgSender());
         }
 
         if (p.newBorrowAmount > 0) {
             // P0: Grant Pool ACL to use encrypted borrow handle
             euint128 newBorrowEnc = FHE.asEuint128(e.newBorrowEnc);
-            FHE.allowTransient(newBorrowEnc, address(POOL));
+            euint128 claimedNewBorrowPlain = FHE.asEuint128(p.newBorrowAmount);
+            ebool newBorrowMatch = FHE.eq(newBorrowEnc, claimedNewBorrowPlain);
+            euint128 verifiedNewBorrow = FHE.select(newBorrowMatch, newBorrowEnc, FHE.asEuint128(0));
+            FHE.allowTransient(verifiedNewBorrow, address(POOL));
             POOL.borrowFor(
-                p.borrowToken, p.newBorrowAmount, newBorrowEnc, _msgSender()
+                p.borrowToken, p.newBorrowAmount, verifiedNewBorrow, _msgSender()
             );
             // P0: Keep borrowed tokens in Composer (consistent with openLeveragedStrategy)
         }
 
         emit StrategyRebalanced(
-            msg.sender, p.addCollateralAmount, p.repayAmount, p.newBorrowAmount
+            msg.sender
         );
     }
 

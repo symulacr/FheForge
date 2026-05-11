@@ -2,6 +2,7 @@
 pragma solidity 0.8.25;
 
 import { FHE, ebool, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHESafeMath128 } from "./libraries/FHESafeMath128.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 import { IStrategyRegistry } from "./IStrategyRegistry.sol";
@@ -234,10 +235,9 @@ contract StrategyRegistry is IStrategyRegistry, ReentrancyGuard, Pausable {
         FHE.allowThis(prev);
         euint128 result;
         if (isIncrement) {
-            result = FHE.add(prev, amount);
+            (, result) = FHESafeMath128.tryIncrease(prev, amount);
         } else {
-            ebool hasEnough = FHE.gte(prev, amount);
-            result = FHE.select(hasEnough, FHE.sub(prev, amount), prev);
+            (, result) = FHESafeMath128.tryDecrease(prev, amount);
         }
         encryptedTvls[strategyId] = result;
         FHE.allowThis(result);

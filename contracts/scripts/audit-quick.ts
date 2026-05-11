@@ -51,11 +51,11 @@ async function main() {
     if (c.toLowerCase() !== C.toLowerCase()) throw new Error(`got ${c}`);
   });
 
-  // ── 2. Pool.supplyEth (WETH, always works) ──
-  await test("Pool.supplyEth works", async () => {
+  // ── 2. Pool.shieldEth (WETH, always works) ──
+  await test("Pool.shieldEth works", async () => {
     const amt = ethers.parseEther("0.001");
     const [e] = await client.encryptInputs([Encryptable.uint128(BigInt(amt))]).execute();
-    await (await pool.supplyEth(e, { value: amt })).wait();
+    await (await pool.shieldEth(e, { value: amt })).wait();
   });
 
   // ── 3. Pool not paused ──
