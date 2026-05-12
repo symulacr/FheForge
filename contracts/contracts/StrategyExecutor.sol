@@ -29,6 +29,7 @@ contract StrategyExecutor is FheForgeBase {
     struct Action {
         bytes4 actionType;
         bytes params;
+        InEuint128 encAmount; // encrypted amount for FHE operations
     }
 
     struct Checkpoint {
@@ -81,10 +82,10 @@ contract StrategyExecutor is FheForgeBase {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
             _ensureApproval(token, address(POOL), amount);
-            POOL.depositFor(token, amount, FHE.asEuint128(amount), _msgSender());
+            POOL.depositFor(token, amount, FHE.asEuint128(action.encAmount), _msgSender());
         } else if (action.actionType == BORROW_LTV) {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
-            POOL.borrowFor(token, amount, FHE.asEuint128(amount), _msgSender());
+            POOL.borrowFor(token, amount, FHE.asEuint128(action.encAmount), _msgSender());
         } else if (action.actionType == SWAP_INTENT) {
             (address tokenIn, address tokenOut, uint256 amountIn, uint256 minOut, uint256 deadline) =
                 abi.decode(action.params, (address, address, uint256, uint256, uint256));
@@ -95,7 +96,7 @@ contract StrategyExecutor is FheForgeBase {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
             _ensureApproval(token, address(POOL), amount);
-            POOL.repayFor(token, amount, FHE.asEuint128(amount), _msgSender());
+            POOL.repayFor(token, amount, FHE.asEuint128(action.encAmount), _msgSender());
         } else if (action.actionType == SWAP_UNISWAP_V3) {
             (address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint256 minOut) =
                 abi.decode(action.params, (address, address, uint24, uint256, uint256));
@@ -107,13 +108,17 @@ contract StrategyExecutor is FheForgeBase {
                 abi.decode(action.params, (address, uint256, uint256));
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
             _ensureApproval(token, address(VAULT), amount);
-            VAULT.openPosition(token, amount, FHE.asEuint128(amount), strategyId_, _msgSender());
+            VAULT.openPosition(token, amount, FHE.asEuint128(action.encAmount), strategyId_, _msgSender());
         } else if (action.actionType == ADD_COLLATERAL) {
             (bytes32 positionId, address token, uint256 amount) =
                 abi.decode(action.params, (bytes32, address, uint256));
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
             _ensureApproval(token, address(VAULT), amount);
-            VAULT.addCollateral(positionId, token, amount, FHE.asEuint128(amount), _msgSender());
+            VAULT.addCollateral(positionId, token, amount, FHE.asEuint128(action.encAmount), _msgSender());
+        } else if (action.actionType == WITHDRAW_VAULT) {
+            (bytes32 positionId, uint256 amount) =
+                abi.decode(action.params, (bytes32, uint256));
+            VAULT.closePosition(positionId, amount, FHE.asEuint128(action.encAmount));
         }
     }
 

@@ -129,7 +129,7 @@ contract StrategyVault is FheForgeBase {
     function closePosition(
         bytes32 positionId,
         uint256 collateralAmount,
-        InEuint128 calldata encCollateralAmount
+        euint128 encCollateralAmount
     ) external nonReentrant whenNotPaused {
         if (!positionExists[positionId]) revert PositionNotFound();
         if (collateralAmount == 0) revert ZeroAmount();
@@ -154,7 +154,7 @@ contract StrategyVault is FheForgeBase {
 
         if (strategyId != 0) {
             // ─── P-CRIT-4 FIX: Equality verification ───
-            euint128 encClosed = FHE.asEuint128(encCollateralAmount);
+            euint128 encClosed = encCollateralAmount;
             euint128 verifiedClosed = _verifyEquality(encClosed, collateralAmount);
 
             FHE.allowThis(verifiedClosed);

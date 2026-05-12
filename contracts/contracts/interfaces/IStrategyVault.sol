@@ -23,7 +23,7 @@ interface IStrategyVault {
     function closePosition(
         bytes32 positionId,
         uint256 collateralAmount,
-        InEuint128 calldata encCollateralAmount
+        euint128 encCollateralAmount
     ) external;
 
     function withdrawPaused(bytes32 positionId) external;
