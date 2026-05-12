@@ -2,19 +2,19 @@
   "network": "arb-sepolia",
   "chainId": 421614,
   "deployer": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
-  "deployedAt": "2026-05-11T20:42:23.113Z",
-  "mode": "wave25",
-  "wave": 25,
+  "deployedAt": "2026-05-12T01:30:28.561Z",
+  "mode": "wave28",
+  "wave": 28,
   "contracts": {
-    "StrategyRegistry": "0x771B4B30651980a52d3f8D079a1Fa588E89a395d",
-    "StrategyVault": "0xEb7d6ada0d8faf3f30772a1BEe4477c711BB305A",
-    "FheForgeComposer": "0x8bF0293102B7C56e3a9b6484Ddd925e315d11365",
-    "LendingPool": "0xe28Dab2e83e45a547acb1994915391FF365596A4",
-    "SwapRouter": "0x7557acd95E539426d845545d0932fB51e17c8958",
-    "PriceOracle": "0x6Bf2d313c5D8A7951861Bd863d9B667231EdcFb1",
-    "ExecutorContract": "0x5Eccead475Fb186be19765bD6FCD91BFc396df24",
-    "TokenRegistry": "0x982957b02D9032d2363006A87a7DCd3dBcA99324",
-    "StrategyExecutor": "0xd3B7178627D3d364918842D78c10a55c545e6479"
+    "StrategyRegistry": "0x319A0F65661DC665Fb853F93877a9A0a9d630f8A",
+    "StrategyVault": "0x36272335961F02693da76C40E9519E228fAcA1d2",
+    "FheForgeComposer": "0xE3E690e7dA490DCfc3e631924326a2B3CB72AE08",
+    "LendingPool": "0x9E000Cff87c81886130C3Eb1D12331D9b9e95a3B",
+    "SwapRouter": "0x7daf75f7c7A648C11Fe5Cb400B3312c1459f38a8",
+    "PriceOracle": "0x3816dC4D01654Cbc6715Ae18FC13C20C33bEe155",
+    "ExecutorContract": "0x86822356377639F268b60D35fee7De2E7Ba9A969",
+    "TokenRegistry": "0xc9065f3a2C50F9c0422cCA64Db5EE49f7cc03023",
+    "StrategyExecutor": "0x6E03284b03a7e37Ab37E969f0a53d5FE0D6A2552"
   },
   "deploymentTxs": {
     "StrategyRegistry": "0x35b2775f994cbb3842f6a6c838ddcfe9bacc01f46c28832022ba7f21100d7857",
@@ -26,8 +26,8 @@
     "setVault": "wave10",
     "setComposer": "wave10"
   },
-  "notes": "Wave 25: C-03 minAmountOut, C-04 escrow, C-08 ZeroPrice, C-12 overflow guard, H-06 ComposerSet, full redeploy",
-  "swapExecutor": "0x5Eccead475Fb186be19765bD6FCD91BFc396df24",
+  "notes": "Wave 28: C-03 minAmountOut, C-04 escrow, C-08 ZeroPrice, C-12 overflow guard, H-06 ComposerSet, full redeploy",
+  "swapExecutor": "0x86822356377639F268b60D35fee7De2E7Ba9A969",
   "weth": "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32",
   "waveDescription": "New PriceOracle with real Pyth + stablecoin fallback"
 }

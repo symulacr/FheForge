@@ -8,6 +8,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { PriceOracle } from "./PriceOracle.sol";
 import { FheForgeBase } from "./FheForgeBase.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
+import { IERC3156FlashBorrower } from "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
 
 contract LendingPool is FheForgeBase {
     using SafeERC20 for IERC20;
@@ -54,6 +55,8 @@ contract LendingPool is FheForgeBase {
     error NotLiquidatable();
     error InvalidProof();
     error InsufficientCollateralEncrypted();
+    error FlashLoanNotRepaid();
+    error FlashLoanUnsupportedToken();
 
     // ─── P-HIGH-6 FIX: Events no longer emit plain amounts ───
     // Liquidated event retains amounts (public by design in liquidation)
@@ -592,5 +595,64 @@ contract LendingPool is FheForgeBase {
         euint128 bal = _ensureInitialized(borrowBalances[token][msg.sender]);
         FHE.allowSender(bal);
         return bal;
+    }
+
+    // ────────── Flash Loan (ERC-3156 compatible) ──────────
+
+    uint256 public constant FLASH_FEE_BPS = 5; // 0.05% flash loan fee
+
+    event FlashLoan(address indexed receiver, address indexed token, uint256 amount, uint256 fee);
+
+    /// @notice ERC-3156: max flash loanable amount for a token.
+    function maxFlashLoan(address token) external view returns (uint256) {
+        uint256 reserve = liquidReserve[token];
+        uint256 borrowed = totalPlainBorrow[token];
+        return reserve > borrowed ? reserve - borrowed : 0;
+    }
+
+    /// @notice ERC-3156: flash loan fee for a given amount.
+    function flashFee(address token, uint256 amount) external view returns (uint256) {
+        if (liquidReserve[token] == 0 && totalPlainBorrow[token] == 0) revert FlashLoanUnsupportedToken();
+        return (amount * FLASH_FEE_BPS) / 10000;
+    }
+
+    /// @notice Execute a flash loan. Borrower must implement IERC3156FlashBorrower.
+    ///         Repayment = amount + fee, transferred back within the callback.
+    function flashLoan(
+        address receiver,
+        address token,
+        uint256 amount,
+        bytes calldata params
+    ) external nonReentrant whenNotPaused returns (bool) {
+        if (amount == 0) revert ZeroAmount();
+        uint256 fee = (amount * FLASH_FEE_BPS) / 10000;
+        uint256 reserve = liquidReserve[token];
+        if (reserve < amount) revert InsufficientReserve();
+
+        // Transfer tokens to borrower
+        liquidReserve[token] = reserve - amount;
+        IERC20(token).safeTransfer(receiver, amount);
+
+        // Call borrower callback
+        bytes memory callbackData = abi.encodeWithSelector(
+            IERC3156FlashBorrower.onFlashLoan.selector,
+            msg.sender,
+            token,
+            amount,
+            fee,
+            params
+        );
+        (bool success, bytes memory returnData) = receiver.call(callbackData);
+        if (!success || returnData.length < 32 || abi.decode(returnData, (bytes32)) != keccak256("ERC3156FlashBorrower.onFlashLoan")) {
+            revert FlashLoanNotRepaid();
+        }
+
+        // Collect repayment: amount + fee
+        uint256 totalDebt = amount + fee;
+        IERC20(token).safeTransferFrom(receiver, address(this), totalDebt);
+        liquidReserve[token] += totalDebt;
+
+        emit FlashLoan(receiver, token, amount, fee);
+        return true;
     }
 }

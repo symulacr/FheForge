@@ -13,6 +13,7 @@ interface IUniswapV3SwapRouter {
         address tokenOut;
         uint24 fee;
         address recipient;
+        uint256 deadline;
         uint256 amountIn;
         uint256 amountOutMinimum;
         uint160 sqrtPriceLimitX96;
@@ -20,6 +21,7 @@ interface IUniswapV3SwapRouter {
     struct ExactInputParams {
         bytes path;
         address recipient;
+        uint256 deadline;
         uint256 amountIn;
         uint256 amountOutMinimum;
     }
@@ -196,6 +198,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
                 tokenOut: tokenOut,
                 fee: fee,
                 recipient: _msgSender(),
+                deadline: block.timestamp,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: 0
@@ -223,6 +226,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
             IUniswapV3SwapRouter.ExactInputParams({
                 path: path,
                 recipient: _msgSender(),
+                deadline: block.timestamp,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum
             })
