@@ -126,7 +126,7 @@ export class StrategyParserService {
           parsed &&
           typeof parsed === 'object' &&
           'steps' in parsed &&
-          Array.isArray((parsed as { steps: unknown }).steps)
+          Array.isArray(parsed.steps)
         ) {
           const steps = (parsed as { steps: StrategyStepResponseDto[] }).steps;
           this.logger.debug('Parsed JSON string to object with steps', {
@@ -175,12 +175,7 @@ export class StrategyParserService {
 
       const stepNumber = rawStep.step || index + 1;
 
-      const validTypes = [
-        'SWAP',
-        'SUPPLY',
-        'BORROW',
-        'CLAIM_REWARDS',
-      ];
+      const validTypes = ['SWAP', 'SUPPLY', 'BORROW', 'CLAIM_REWARDS'];
 
       if (!validTypes.includes(rawStep.type)) {
         throw new Error(
@@ -233,8 +228,7 @@ export class StrategyParserService {
   }
 
   private isStructuredStepsFormat(input: string): boolean {
-    const numberedStepsPattern =
-      /\d+\.\s*(supply|lend|borrow|swap)/i;
+    const numberedStepsPattern = /\d+\.\s*(supply|lend|borrow|swap)/i;
     const hasMultipleSteps = (input.match(/\d+\./g) || []).length >= 2;
 
     return numberedStepsPattern.test(input) && hasMultipleSteps;

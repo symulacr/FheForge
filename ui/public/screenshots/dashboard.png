@@ -1,0 +1,10 @@
+PLACEHOLDER — Dashboard screenshot at 1440×900
+
+To capture: 
+1. Open https://ui-chi-ashy.vercel.app
+2. Connect wallet (MetaMask on Arbitrum Sepolia)
+3. Take full-page screenshot at 1440×900
+4. Replace this file
+
+Actual screenshot should show: wallet-connected dashboard with portfolio overview, 
+encrypted balance indicators, and strategy list.

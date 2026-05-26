@@ -1,6 +1,6 @@
-import { DefiOperationType } from "@/app/builder/components/nodes/defi-node.types";
-import { CreateStrategyRequest } from "@/types/defi";
-import { DefiStrategy } from "@/types/defi.strategy";
+import type { DefiOperationType } from "@/app/builder/components/nodes/defi-node.types";
+import type { CreateStrategyRequest } from "@/types/defi";
+import type { DefiStrategy } from "@/types/defi.strategy";
 import { SLIPPAGE_TOLERANCE } from "@/lib/constants";
 import { api } from "@/services/api";
 

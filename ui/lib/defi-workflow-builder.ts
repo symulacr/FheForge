@@ -1,5 +1,5 @@
-import { Node } from "reactflow";
-import { DefiNodeData } from "@/app/builder/components/nodes/defi-node.types";
+import type { Node } from "reactflow";
+import type { DefiNodeData } from "@/app/builder/components/nodes/defi-node.types";
 
 export const buildWorkflowJson = (nodes: Node<DefiNodeData>[]) => {
   let stepNumber = 1;
@@ -30,7 +30,7 @@ export const buildWorkflowJson = (nodes: Node<DefiNodeData>[]) => {
         };
       }
     } else {
-      const prevConfig = nodes[index - 1].data.config;
+      const prevConfig = nodes[index - 1]?.data.config;
 
       if (prevConfig?.tokenOutId) {
         tokenIn = {

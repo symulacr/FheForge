@@ -13,13 +13,14 @@ describe('MC-56: Backend Simulators On-Chain APY Reads', () => {
 
   beforeEach(async () => {
     mockConfigService = {
-      get: jest.fn((key: string) => {
-        const config = {
-          COFHE_RPC: 'https://test-rpc.example.com',
-          STRATEGY_REGISTRY_ADDRESS:
-            '0x1234567890123456789012345678901234567890',
+      get: jest.fn((key: string, defaultValue?: number) => {
+        const config: Record<string, string | number | null> = {
+          COFHE_RPC: null,
+          STRATEGY_REGISTRY_ADDRESS: null,
+          SUPPLY_APY_BPS: 500,
+          BORROW_APY_BPS: 600,
         };
-        return config[key as keyof typeof config];
+        return key in config ? config[key] : defaultValue;
       }),
     };
 

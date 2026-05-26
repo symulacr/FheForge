@@ -22,7 +22,6 @@ export function BorrowRightLabel({ apy }: { apy?: number }) {
 export default function DefiNodeBorrow({ data }: Props) {
   return (
     <div className="pt-2">
-      
       <div className="flex min-h-[64px] items-center justify-center">
         <div className="flex items-center gap-3">
           <div className="text-[30px] font-semibold leading-none text-white">
@@ -38,10 +37,8 @@ export default function DefiNodeBorrow({ data }: Props) {
         </div>
       </div>
 
-      
       <div className="mt-3 h-px bg-white/20" />
 
-      
       <div className="mt-2 flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
           <span className="shrink-0 text-[13px] text-white/75">Collateral</span>

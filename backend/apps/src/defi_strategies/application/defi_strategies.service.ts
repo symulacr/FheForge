@@ -44,6 +44,14 @@ export class DefiStrategiesService {
     return this.defiStrategiesRepository.save(strategy);
   }
 
+  public async getById(id: string): Promise<DefiStrategy> {
+    const strategy = await this.defiStrategiesRepository.getById(id);
+    if (!strategy) {
+      throw new NotFoundException(`DefiStrategy with id ${id} not found`);
+    }
+    return strategy;
+  }
+
   public async getAll(owner_id?: string) {
     if (owner_id) {
       await this.userService.getUser(owner_id);

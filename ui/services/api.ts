@@ -1,5 +1,6 @@
-import { ActivityFilter } from "@/types/activity.interface";
-import axios, { AxiosResponse } from "axios";
+import type { ActivityFilter } from "@/types/activity.interface";
+import axios from "axios";
+import type { AxiosResponse } from "axios";
 import { API_TIMEOUT } from "@/lib/constants";
 
 export const API_BASE_URL =

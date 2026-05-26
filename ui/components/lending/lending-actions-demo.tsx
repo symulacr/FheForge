@@ -6,7 +6,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 /**
  * Demo component showing how to use the lending action hooks.
@@ -20,7 +26,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export function LendingActionsDemo() {
   const { address } = useAccount();
   const {
-    liquidateWithProof,
     borrowWithLtvCheckWithEncrypt,
     borrowWithOracleWithEncrypt,
     isSupported,
@@ -31,16 +36,21 @@ export function LendingActionsDemo() {
   const [userAddress, setUserAddress] = useState("");
   const [collateralToken, setCollateralToken] = useState("");
   const [borrowToken, setBorrowToken] = useState("");
+  const [collateralAmount, setCollateralAmount] = useState("");
   const [borrowAmount, setBorrowAmount] = useState("");
   const [ltvNum, setLtvNum] = useState("75");
   const [ltvDen, setLtvDen] = useState("100");
   const [tokenToCheck, setTokenToCheck] = useState("");
 
   const [result, setResult] = useState<string>("");
-  const [isSupportedResult, setIsSupportedResult] = useState<boolean | null>(null);
+  const [isSupportedResult, setIsSupportedResult] = useState<boolean | null>(
+    null,
+  );
 
   const handleLiquidate = async () => {
-    setResult("Use requestLiquidityCheck first, then liquidateWithProof with the decrypted balance proof");
+    setResult(
+      "Use requestLiquidityCheck first, then liquidateWithProof with the decrypted balance proof",
+    );
   };
 
   const handleCheckLtvAndBorrow = async () => {
@@ -65,7 +75,12 @@ export function LendingActionsDemo() {
   };
 
   const handleBorrowWithOracle = async () => {
-    if (!collateralToken || !borrowToken || !borrowAmount) {
+    if (
+      !collateralToken ||
+      !borrowToken ||
+      !collateralAmount ||
+      !borrowAmount
+    ) {
       setResult("Please fill in all borrow fields");
       return;
     }
@@ -74,6 +89,7 @@ export function LendingActionsDemo() {
       const tx = await borrowWithOracleWithEncrypt(
         collateralToken as `0x${string}`,
         borrowToken as `0x${string}`,
+        collateralAmount,
         borrowAmount,
         18, // decimals
       );
@@ -82,7 +98,6 @@ export function LendingActionsDemo() {
       setResult(`borrowWithOracle failed: ${(error as Error).message}`);
     }
   };
-
 
   const handleIsSupported = async () => {
     if (!tokenToCheck) {
@@ -104,7 +119,8 @@ export function LendingActionsDemo() {
         <CardHeader>
           <CardTitle>Lending Actions Demo</CardTitle>
           <CardDescription>
-            Demonstrates: liquidateWithProof, borrowWithLtvCheck, borrowWithOracle, isSupported
+            Demonstrates: liquidateWithProof, borrowWithLtvCheck,
+            borrowWithOracle, isSupported
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -189,6 +205,24 @@ export function LendingActionsDemo() {
           {/* borrowWithOracle (MC-38) */}
           <div className="space-y-2 border p-4 rounded">
             <h3 className="font-semibold">MC-38: Borrow with Oracle</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Collateral Amount</Label>
+                <Input
+                  placeholder="1.0"
+                  value={collateralAmount}
+                  onChange={(e) => setCollateralAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Borrow Amount</Label>
+                <Input
+                  placeholder="1.0"
+                  value={borrowAmount}
+                  onChange={(e) => setBorrowAmount(e.target.value)}
+                />
+              </div>
+            </div>
             <Button
               onClick={handleBorrowWithOracle}
               disabled={isPending || isEncrypting}
@@ -196,7 +230,6 @@ export function LendingActionsDemo() {
               Borrow with Oracle
             </Button>
           </div>
-
 
           {/* isSupported (MC-45) */}
           <div className="space-y-2 border p-4 rounded">

@@ -27,7 +27,6 @@ interface StrategyCardProps {
 }
 
 export function StrategyCard({ strategy }: StrategyCardProps) {
-  
   const isActive = "Active";
   const router = useRouter();
   const handleClick = () => {
@@ -35,14 +34,11 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
   };
   return (
     <Card className="group p-4 cursor-default">
-      
       <div className="hidden" />
 
       <div className="relative z-10 flex flex-col md:flex-row gap-3">
         <div className="grid grid-cols-4 gap-3">
-          
           <div className="flex-1 min-w-0 col-span-3">
-            
             <div className="flex items-start justify-between mb-3">
               <div className="flex gap-1.5 flex-wrap">
                 {strategy.tags?.map((tag) => (
@@ -74,7 +70,6 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
               </div>
             </div>
 
-            
             <div className="mb-3">
               <h3 className="text-lg font-black text-foreground group-hover:text-accent transition-colors leading-tight mb-2 tracking-tight">
                 {strategy.title}
@@ -89,9 +84,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
               </p>
             </div>
 
-            
             <div className="flex items-center gap-5 pt-3 border-t border-accent/15">
-              
               <div className="flex items-center gap-2 group/item">
                 <p className="text-xs font-bold text-foreground/70 uppercase tracking-wide">
                   Asset
@@ -119,7 +112,6 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
                 </div>
               </div>
 
-              
               <div className="flex items-center gap-2 group/item">
                 <p className="text-xs font-bold text-foreground/70 uppercase tracking-wide">
                   Agent
@@ -142,7 +134,6 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
                 </div>
               </div>
 
-              
               <div className="flex items-center gap-2 group/item">
                 <p className="text-xs font-bold text-foreground/70 uppercase tracking-wide">
                   Chain
@@ -167,7 +158,6 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
             </div>
           </div>
 
-          
           <div className="flex md:flex-col items-center md:items-end justify-between md:justify-start text-right flex-shrink-0 md:min-w-[120px] md:border-l border-accent/10 md:pl-4 gap-3">
             <div className="flex-1">
               <p className="text-[10px] text-muted-foreground mb-1 uppercase tracking-wide font-semibold">

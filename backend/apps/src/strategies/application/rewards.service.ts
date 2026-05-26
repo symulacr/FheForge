@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotImplementedException } from '@nestjs/common';
 
 @Injectable()
 export class RewardsService {
@@ -6,7 +6,7 @@ export class RewardsService {
   // which returns (apyTarget, loopCount). Once the StrategyRegistry contract is deployed,
   // read apyTarget directly instead of throwing.
   calculateAPY(_strategistName: string): never {
-    throw new Error(
+    throw new NotImplementedException(
       'Rewards service requires Fhenix oracle integration — not available on testnet',
     );
   }

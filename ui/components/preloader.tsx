@@ -39,13 +39,15 @@ export function Preloader() {
   if (!visible) return null;
 
   return (
-    <div ref={containerCallbackRef} className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background">
+    <div
+      ref={containerCallbackRef}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background"
+    >
       <div className="w-64 space-y-3 font-mono">
         <div className="text-xs text-muted mb-4">
           <span className="text-accent">$</span> init fheforge...
         </div>
 
-        
         <div className="h-px bg-border w-full overflow-hidden">
           <div
             ref={barRef}

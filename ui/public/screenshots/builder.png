@@ -1,0 +1,11 @@
+PLACEHOLDER — Builder screenshot at 1440×900
+
+To capture:
+1. Open https://ui-chi-ashy.vercel.app/builder
+2. Connect wallet
+3. Place SWAP → SUPPLY → BORROW nodes on canvas
+4. Take screenshot at 1440×900
+5. Replace this file
+
+Actual screenshot should show: ReactFlow canvas with connected DeFi nodes,
+config panel open for one node.

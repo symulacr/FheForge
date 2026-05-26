@@ -68,7 +68,9 @@ export class DefiPairsService {
           dto.amount_in,
         );
       default:
-        throw new Error(`Unsupported operation type: ${dto.operation_type}`);
+        throw new Error(
+          `Unsupported operation type: ${String(dto.operation_type)}`,
+        );
     }
   }
 

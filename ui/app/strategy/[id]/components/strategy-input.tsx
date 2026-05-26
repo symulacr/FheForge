@@ -52,7 +52,9 @@ export function StrategyInput({
 
   const params = useParams<{ id: string | string[] }>();
   const strategyId = useMemo(() => {
-    const raw = Array.isArray(params?.id) ? params.id[0] : params?.id || "";
+    const raw = Array.isArray(params?.id)
+      ? (params.id[0] ?? "")
+      : params?.id || "";
     try {
       return decodeURIComponent(raw);
     } catch {

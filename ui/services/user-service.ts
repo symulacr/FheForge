@@ -1,4 +1,4 @@
-import { User } from "@/types/user.interface";
+import type { User } from "@/types/user.interface";
 import { api, API_ENDPOINTS } from "./api";
 
 function extractError(err: unknown): string {

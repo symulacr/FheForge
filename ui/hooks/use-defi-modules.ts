@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getDefiModules } from "@/services/defi-module-service";
 import { mapModuleFromBE } from "@/utils/defi-mapper";
-import { Module } from "@/types/defi";
+import type { Module } from "@/types/defi";
 
 export const useDefiModules = () => {
   return useQuery<Module[]>({

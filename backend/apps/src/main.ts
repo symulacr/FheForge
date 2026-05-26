@@ -1,8 +1,18 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+import * as Sentry from '@sentry/node';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe, Logger } from '@nestjs/common';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN || '',
+  environment: process.env.NODE_ENV || 'development',
+  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 0.0,
+});
 
 const DEV_ORIGINS = [
   'http://localhost:3000',
@@ -28,7 +38,14 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin: string | undefined, callback: CorsOriginCallback) => {
-      if (!origin) return callback(null, true);
+      // In production, refuse requests without Origin (prevents CSRF from arbitrary clients).
+      // In development, allow Origin-less requests for local tooling (curl, Postman).
+      if (!origin) {
+        if (nodeEnv === 'production') {
+          return callback(new Error('Origin header required'));
+        }
+        return callback(null, true);
+      }
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -49,7 +66,10 @@ async function bootstrap() {
   if (nodeEnv === 'development') {
     swaggerConfig.addServer(`http://localhost:${port}`, 'Local server');
   } else if (nodeEnv === 'staging') {
-    swaggerConfig.addServer('https://api.test.com', 'Staging server');
+    swaggerConfig.addServer(
+      'https://fheforge-api-staging.up.railway.app',
+      'Staging server',
+    );
   } else {
     swaggerConfig.addServer(
       'https://fheforge-api-production.up.railway.app',

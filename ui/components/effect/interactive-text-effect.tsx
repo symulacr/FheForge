@@ -85,19 +85,12 @@ class ParticleClass {
       this.oy = this.baseY + floatAmount;
     }
 
-    if (
-      hasPointer &&
-      pointer.x !== undefined &&
-      pointer.y !== undefined
-    ) {
+    if (hasPointer && pointer.x !== undefined && pointer.y !== undefined) {
       const dx = this.cx - pointer.x;
       const dy = this.cy - pointer.y;
       const dist = Math.hypot(dx, dy);
       if (dist < interactionRadius && dist > 0) {
-        const force = Math.min(
-          this.f,
-          ((interactionRadius - dist) / dist) * 2,
-        );
+        const force = Math.min(this.f, ((interactionRadius - dist) / dist) * 2);
         this.cx += (dx / dist) * force;
         this.cy += (dy / dist) * force;
         moved = true;
@@ -237,7 +230,7 @@ const ParticleTextEffect: React.FC<ParticleTextEffectProps> = ({
     const canvas = canvasRef.current;
     if (!ctx || !canvas) return;
 
-    timeRef.current += 1; 
+    timeRef.current += 1;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particlesRef.current.forEach((p) =>
       p.move(
@@ -304,8 +297,6 @@ const ParticleTextEffect: React.FC<ParticleTextEffectProps> = ({
     initializeRef.current();
   }, []);
 
-  
-  
   const depsKey = `${text}|${colors.join(",")}|${animationForce}|${particleDensity}`;
   if (prevDepsRef.current !== "" && prevDepsRef.current !== depsKey) {
     if (animationIdRef.current) {

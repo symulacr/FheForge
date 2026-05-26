@@ -20,7 +20,6 @@ import {
   validateConnection,
 } from "@/lib/defi-connection-rules";
 
-
 const ReactFlow = dynamic(
   () => import("reactflow").then((mod) => mod.ReactFlow),
   { ssr: false, loading: () => <div>Loading builder...</div> },
@@ -43,7 +42,6 @@ const MiniMap = dynamic(() => import("reactflow").then((mod) => mod.MiniMap), {
 });
 
 const addEdge = (params: Edge | Connection, edges: Edge[]) => {
-  
   const id = (params as Edge).id ?? `e${edges.length + 1}`;
   if (
     edges.find((e) => e.source === params.source && e.target === params.target)
@@ -63,7 +61,8 @@ function Builder() {
   const prevFetching = useRef(isFetching);
   if (isFetching !== prevFetching.current) {
     prevFetching.current = isFetching;
-    if (isFetching) show(); else hide();
+    if (isFetching) show();
+    else hide();
   }
 
   const {
@@ -182,12 +181,10 @@ function Builder() {
 
   return (
     <div className="flex flex-1 text-white px-6 pb-6 pt-4 min-h-0 gap-6">
-      
       <div className="w-80 custom-scroll pr-2">
         <Sidebar modules={modules} onSelect={handleAddNode} />
       </div>
 
-      
       <div
         className="
           flex-1
@@ -209,13 +206,13 @@ function Builder() {
           onNodeClick={(_, node) => setSelectedNode(node)}
           fitView
         >
-          
           <button
             onClick={() => {
               if (!validateWorkflow()) return;
               setShowModal(true);
             }}
             className="defi-btn-glass defi-create-btn active:scale-95 transition-transform"
+            aria-label="Create strategy from current workflow"
           >
             Create Strategy
           </button>
@@ -239,7 +236,6 @@ function Builder() {
         </ReactFlow>
       </div>
 
-      
       {selectedNode && (
         <ConfigPanel
           node={selectedNode}

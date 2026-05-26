@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ActivityRepository } from '../domain/activity.repository';
 import { Activity, ActivityStatus } from '../domain/activity.entity';
 import { SupabaseService } from 'src/shared/infrastructure/supabase.service';
@@ -6,6 +6,7 @@ import type { ActivityRow } from 'src/shared/infrastructure/database.types';
 
 @Injectable()
 export class ActivityRepositoryImplement implements ActivityRepository {
+  private readonly logger = new Logger(ActivityRepositoryImplement.name);
   constructor(private readonly supabase: SupabaseService) {}
 
   async findAll(): Promise<Activity[]> {
@@ -38,7 +39,7 @@ export class ActivityRepositoryImplement implements ActivityRepository {
         ascending: false,
       });
       if (error) {
-        console.warn(
+        this.logger.warn(
           `No activities found with filters: ${JSON.stringify(filters)}, error: ${error.message}`,
         );
         return [];
@@ -50,7 +51,7 @@ export class ActivityRepositoryImplement implements ActivityRepository {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      console.warn(
+      this.logger.warn(
         `Error fetching activities with filters: ${JSON.stringify(filters)}`,
         errorMessage,
       );
@@ -73,7 +74,7 @@ export class ActivityRepositoryImplement implements ActivityRepository {
 
       return this.mapRowToEntity(data as ActivityRow);
     } catch (error) {
-      console.warn(`Error fetching activity by id: ${id}`, error);
+      this.logger.warn(`Error fetching activity by id: ${id}`, error);
       return null;
     }
   }

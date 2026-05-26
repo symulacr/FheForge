@@ -7,11 +7,7 @@ import type {
   DefiEstimate,
 } from "./defi-node.types";
 
-const VALID_TYPES: DefiOperationType[] = [
-  "SWAP",
-  "SUPPLY",
-  "BORROW",
-];
+const VALID_TYPES: DefiOperationType[] = ["SWAP", "SUPPLY", "BORROW"];
 
 function isValidType(value: unknown): value is DefiOperationType {
   return (

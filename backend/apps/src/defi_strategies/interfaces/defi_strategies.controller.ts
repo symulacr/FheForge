@@ -15,8 +15,10 @@ import { DefiStrategyVersionService } from '../application/defi_strategy_version
 import { CreateDefiStrategyVersionDto } from './dto/create_defi_strategy_version.dto';
 import { UpdateDefiStrategyVersionDto } from './dto/update_defi_strategy_version.dto';
 import { DefiStrategiesService } from '../application/defi_strategies.service';
+import { DefiSimulationEngine } from '../application/defi-simulation-engine.service';
 import { CreateDefiStrategyDto } from './dto/create_defi_strategy.dto';
 import { UpdateDefiStrategyDto } from './dto/update_defi_strategy.dto';
+import { SimulateStrategyDto } from './dtos/simulate-strategy.dto';
 
 @ApiTags('DeFi Strategies')
 @Controller('defi-strategies')
@@ -24,6 +26,7 @@ export class DefiStrategiesController {
   constructor(
     private readonly defiStrategyVersionService: DefiStrategyVersionService,
     private readonly defiStrategiesService: DefiStrategiesService,
+    private readonly defiSimulationEngine: DefiSimulationEngine,
   ) {}
 
   @ApiOperation({ summary: 'Create a new DeFi strategy version' })
@@ -38,6 +41,26 @@ export class DefiStrategiesController {
   @Post()
   public async createStrategy(@Body() body: CreateDefiStrategyDto) {
     return this.defiStrategiesService.create(body);
+  }
+
+  @Post('simulate')
+  @ApiOperation({ summary: 'Simulate a DeFi strategy' })
+  async simulate(@Body() dto: SimulateStrategyDto) {
+    return this.defiSimulationEngine.simulate(
+      dto.workflow_json,
+      dto.amount_in,
+      {
+        slippage_tolerance: dto.slippage_tolerance,
+        gas_price: dto.gas_price,
+      },
+    );
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a DeFi strategy by ID' })
+  @ApiParam({ name: 'id', description: 'The ID of the DeFi strategy' })
+  async getById(@Param('id') id: string) {
+    return this.defiStrategiesService.getById(id);
   }
 
   @Get()

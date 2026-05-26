@@ -26,7 +26,8 @@ export default function Home() {
   const prevFetching = useRef(isFetching);
   if (isFetching !== prevFetching.current) {
     prevFetching.current = isFetching;
-    if (isFetching) show(); else hide();
+    if (isFetching) show();
+    else hide();
   }
 
   const displayStrategies = useMemo(
@@ -52,9 +53,9 @@ export default function Home() {
                 <span className="text-accent">leveraged strategies</span>
               </h2>
               <p className="text-base sm:text-lg text-muted max-w-xl leading-relaxed mb-8">
-                FheForge is an FHE-powered strategy builder. Compose supply, borrow,
-                and swap intents with encrypted inputs — your position data stays
-                private on-chain.
+                FheForge is an FHE-powered strategy builder. Compose supply,
+                borrow, and swap intents with encrypted inputs — your position
+                data stays private on-chain.
               </p>
               <div className="flex flex-wrap items-center gap-4">
                 <Link
@@ -71,16 +72,18 @@ export default function Home() {
 
             <div className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 w-80">
               <div className="forge-card p-4 mb-3 opacity-60">
-                <div className="text-[10px] text-muted mb-2">encrypt(uint128)</div>
+                <div className="text-[10px] text-muted mb-2">
+                  encrypt(uint128)
+                </div>
                 <div className="text-xs text-accent font-mono break-all">
                   0x7f3a...b2e9
                 </div>
               </div>
               <div className="forge-card p-4 opacity-40 translate-x-4">
-                <div className="text-[10px] text-muted mb-2">decrypt(ctHash)</div>
-                <div className="text-xs text-success font-mono">
-                  1420.00
+                <div className="text-[10px] text-muted mb-2">
+                  decrypt(ctHash)
                 </div>
+                <div className="text-xs text-success font-mono">1420.00</div>
               </div>
             </div>
           </div>
@@ -91,7 +94,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr] gap-6 min-h-[600px]">
             <div className="w-full pr-2">
-<FeaturedStrategies strategies={displayStrategies} />
+              <FeaturedStrategies strategies={displayStrategies} />
             </div>
             <div className="w-full mt-15 pr-2">
               <StrategyList strategies={displayStrategies} />

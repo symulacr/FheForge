@@ -1,4 +1,4 @@
-import { Action, Module } from "@/types/defi";
+import type { Action, Module } from "@/types/defi";
 
 export const createDefiNode = ({
   module,
@@ -44,8 +44,8 @@ export const createDefiEdge = (sourceId: string, targetId: string) => ({
   },
 });
 
-import { Node } from "reactflow";
-import { DefiNodeData } from "@/app/builder/components/nodes/defi-node.types";
+import type { Node } from "reactflow";
+import type { DefiNodeData } from "@/app/builder/components/nodes/defi-node.types";
 
 export const markLastNode = (nodes: Node<DefiNodeData>[]) =>
   nodes.map((node, index) => ({

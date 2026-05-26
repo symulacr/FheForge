@@ -22,7 +22,9 @@ registerToast((status, message) => {
   }, TOAST_AUTO_DISMISS_DELAY);
 });
 
-let registeredSetToasts: React.Dispatch<React.SetStateAction<Toast[]>> = () => [];
+let registeredSetToasts: React.Dispatch<
+  React.SetStateAction<Toast[]>
+> = () => [];
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

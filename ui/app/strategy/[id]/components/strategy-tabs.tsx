@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StrategyOverview } from "./strategy-overview";
 import { StrategyFlow } from "./strategy-flow";
 import StrategyPromptDetails from "./strategy-prompt-details";
+import { StrategyRebalance } from "./strategy-rebalance";
 import { MyActivityTable } from "./activity/strategy-my-activity-table";
 import { AllActivityTable } from "./activity/strategy-all-activity-table";
 import {
@@ -14,6 +15,7 @@ import {
   Users,
   ExternalLink,
   Bot,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useState } from "react";
 import { DefiStrategy } from "@/types/defi.strategy";
@@ -35,6 +37,7 @@ export function StrategyTabs({ strategy, simulateData }: StrategyTabsProps) {
     { value: "prompt", label: "Strategy Prompt", icon: FileText },
     { value: "activities", label: "My Activities", icon: Activity },
     { value: "all", label: "All Activities", icon: Users },
+    { value: "rebalance", label: "Rebalance", icon: ArrowLeftRight },
   ];
 
   return (
@@ -69,7 +72,6 @@ export function StrategyTabs({ strategy, simulateData }: StrategyTabsProps) {
         })}
       </TabsList>
 
-      
       <TabsContent value="overview">
         <StrategyOverview strategy={strategy} simulateData={simulateData} />
       </TabsContent>
@@ -131,6 +133,10 @@ export function StrategyTabs({ strategy, simulateData }: StrategyTabsProps) {
         <div className="glass p-6">
           <AllActivityTable />
         </div>
+      </TabsContent>
+
+      <TabsContent value="rebalance">
+        <StrategyRebalance strategy={strategy} />
       </TabsContent>
     </Tabs>
   );

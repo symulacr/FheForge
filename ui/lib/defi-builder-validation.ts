@@ -1,11 +1,11 @@
-import { Action } from "@/types/defi";
+import type { Action } from "@/types/defi";
 import {
   canBeFirstStep,
   validateConnection,
 } from "@/lib/defi-connection-rules";
 
-import { Node } from "reactflow";
-import { DefiNodeData } from "@/app/builder/components/nodes/defi-node.types";
+import type { Node } from "reactflow";
+import type { DefiNodeData } from "@/app/builder/components/nodes/defi-node.types";
 
 export const isNodeConfigured = (node: Node<DefiNodeData>) => {
   const config = node?.data?.config;

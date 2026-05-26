@@ -177,6 +177,6 @@ export class DefiModulesRepositoryImplement implements DefiModulesRepository {
       throw new NotFoundException('Defi Module not found');
     }
 
-    return mapModule(data as unknown as ModuleJoinRow);
+    return mapModule(data);
   }
 }

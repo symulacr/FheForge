@@ -3,11 +3,9 @@
 import type { StrategyStep } from "@/services/ai-strategy-service";
 import {
   ArrowRight,
-  Zap,
   RefreshCw,
   TrendingUp,
   TrendingDown,
-  Target,
   AlertCircle,
 } from "lucide-react";
 

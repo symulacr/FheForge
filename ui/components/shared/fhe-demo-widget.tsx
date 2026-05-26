@@ -19,7 +19,8 @@ export function FheDemoWidget() {
   const cofheState = useCofheState();
 
   const [inputValue, setInputValue] = useState("");
-  const [encryptedHandle, setEncryptedHandle] = useState<EncryptedUint128Input | null>(null);
+  const [encryptedHandle, setEncryptedHandle] =
+    useState<EncryptedUint128Input | null>(null);
   const [decryptedValue, setDecryptedValue] = useState<string | null>(null);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [isDecrypting, setIsDecrypting] = useState(false);
@@ -99,8 +100,12 @@ export function FheDemoWidget() {
   if (!address) {
     return (
       <div className="forge-card p-6">
-        <h3 className="text-sm font-medium text-foreground mb-2">FHE Encryption Demo</h3>
-        <p className="text-xs text-muted">Connect wallet to try FHE encryption.</p>
+        <h3 className="text-sm font-medium text-foreground mb-2">
+          FHE Encryption Demo
+        </h3>
+        <p className="text-xs text-muted">
+          Connect wallet to try FHE encryption.
+        </p>
       </div>
     );
   }
@@ -108,7 +113,9 @@ export function FheDemoWidget() {
   return (
     <div className="forge-card p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-foreground">FHE Encryption Demo</h3>
+        <h3 className="text-sm font-medium text-foreground">
+          FHE Encryption Demo
+        </h3>
         {isReady ? (
           <span className="text-[10px] uppercase tracking-wider text-success border border-success/30 px-2 py-0.5">
             Ready
@@ -147,9 +154,13 @@ export function FheDemoWidget() {
 
       {encryptedHandle && (
         <div className="mb-4 p-3 bg-secondary border border-border">
-          <div className="text-[10px] uppercase tracking-wider text-muted mb-1">Encrypted Handle</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted mb-1">
+            Encrypted Handle
+          </div>
           <div className="flex items-center justify-between gap-3">
-            <code className="text-xs text-accent break-all">{truncateHash(encryptedHandle.ctHash)}</code>
+            <code className="text-xs text-accent break-all">
+              {truncateHash(encryptedHandle.ctHash)}
+            </code>
             <button
               onClick={handleDecrypt}
               disabled={!isReady || isDecrypting}
@@ -170,14 +181,14 @@ export function FheDemoWidget() {
 
       {decryptedValue !== null && (
         <div className="p-3 bg-secondary border border-border">
-          <div className="text-[10px] uppercase tracking-wider text-muted mb-1">Decrypted Value</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted mb-1">
+            Decrypted Value
+          </div>
           <div className="text-sm text-success font-mono">{decryptedValue}</div>
         </div>
       )}
 
-      {error && (
-        <p className="mt-3 text-xs text-destructive">{error}</p>
-      )}
+      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
     </div>
   );
 }

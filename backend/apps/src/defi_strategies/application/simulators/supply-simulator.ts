@@ -82,10 +82,15 @@ export class SupplySimulator extends BaseSimulator {
     };
   }
 
+  private getFallbackSupplyApy(): number {
+    const bps = this.configService.get<number>('SUPPLY_APY_BPS', 650);
+    return bps / 100;
+  }
+
   private async getSupplyApy(strategyId: bigint): Promise<number> {
     if (!this.strategyRegistry) {
       this.logger.warn('StrategyRegistry not configured, using fallback APY');
-      return 5.0;
+      return this.getFallbackSupplyApy();
     }
 
     try {
@@ -99,7 +104,7 @@ export class SupplySimulator extends BaseSimulator {
         `Failed to fetch strategy params for ID ${strategyId}:`,
         error,
       );
-      return 5.0; // Fallback to default
+      return this.getFallbackSupplyApy();
     }
   }
 }

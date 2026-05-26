@@ -45,10 +45,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message =
         typeof responseShape === 'string'
           ? responseShape
-          : this.extractMessage(
-              responseShape as HttpResponseShape,
-              exception.message,
-            );
+          : this.extractMessage(responseShape, exception.message);
     } else if (exception instanceof Error) {
       const text = exception.message;
       if (

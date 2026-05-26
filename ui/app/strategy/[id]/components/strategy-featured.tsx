@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ParticleTextEffect } from "@/components/effect/interactive-text-effect";
 import type { Strategy } from "@/types/strategy.interface";
 
@@ -68,7 +69,6 @@ export function FeaturedStrategies({ strategies }: Props) {
 
   return (
     <div className="h-full w-full space-y-6 -mt-4">
-      
       <div className="text-center space-y-3 py-4">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
@@ -92,7 +92,6 @@ export function FeaturedStrategies({ strategies }: Props) {
         </motion.p>
       </div>
 
-      
       <div className="space-y-4">
         <TooltipProvider>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -165,7 +164,6 @@ export function FeaturedStrategies({ strategies }: Props) {
         </TooltipProvider>
       </div>
 
-      
       <div className="space-y-3">
         <div className="flex items-center justify-center gap-2">
           <h2 className="text-xl md:text-2xl font-semibold text-center text-primary">
@@ -179,9 +177,9 @@ export function FeaturedStrategies({ strategies }: Props) {
         {!trendingStrategy ? (
           <div className="p-8 border border-border text-center text-muted text-sm">
             no strategies yet —{" "}
-            <a href="/builder" className="text-accent hover:underline">
+            <Link href="/builder" className="text-accent hover:underline">
               build one →
-            </a>
+            </Link>
           </div>
         ) : (
           <motion.div
@@ -200,9 +198,7 @@ export function FeaturedStrategies({ strategies }: Props) {
               }
             >
               <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center">
-                
                 <div className="space-y-2.5">
-                  
                   <div className="flex items-center gap-2 pt-1 flex-wrap">
                     {trendingStrategy.tags
                       ?.slice(0, 3)
@@ -216,7 +212,6 @@ export function FeaturedStrategies({ strategies }: Props) {
                       ))}
                   </div>
 
-                  
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1.5">
                       {trendingStrategy.agents
@@ -251,9 +246,8 @@ export function FeaturedStrategies({ strategies }: Props) {
                       {trendingStrategy.strategistName}
                     </p>
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-4 pt-3 border-t border-accent/20">
-                    
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-foreground/70 uppercase tracking-wide">
                         Assets
@@ -281,7 +275,7 @@ export function FeaturedStrategies({ strategies }: Props) {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-foreground/70 uppercase tracking-wide">
                         Agents
@@ -304,7 +298,7 @@ export function FeaturedStrategies({ strategies }: Props) {
                           ))}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-foreground/70 uppercase tracking-wide">
                         Chains
@@ -330,7 +324,6 @@ export function FeaturedStrategies({ strategies }: Props) {
                   </div>
                 </div>
 
-                
                 <div className="hidden md:flex items-center gap-3 md:border-l border-border md:pl-4">
                   <motion.div
                     className="text-center px-5 py-4 bg-primary/5 border border-primary/20 relative overflow-hidden group/apy"
@@ -355,7 +348,6 @@ export function FeaturedStrategies({ strategies }: Props) {
                   </motion.div>
                 </div>
 
-                
                 <div className="md:hidden space-y-3 pt-2">
                   <div className="flex items-center justify-between gap-3">
                     <motion.div

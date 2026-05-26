@@ -23,7 +23,6 @@ export function StrategyStepsSkeleton({
             compact ? "py-2" : "py-3"
           }`}
         >
-          
           <div
             className={`flex-shrink-0 bg-accent/10 flex items-center justify-center ${
               compact ? "w-5 h-5" : "w-6 h-6"
@@ -40,7 +39,6 @@ export function StrategyStepsSkeleton({
             />
           </div>
 
-          
           <div className="flex-1 space-y-1.5">
             <motion.div
               animate={{ opacity: [0.3, 0.7, 0.3] }}
@@ -64,14 +62,12 @@ export function StrategyStepsSkeleton({
             )}
           </div>
 
-          
           <motion.div
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity, delay: index * 0.3 }}
             className={`flex-shrink-0 bg-white/10 ${compact ? "w-5 h-5" : "w-6 h-6"}`}
           />
 
-          
           {index < stepCount - 1 && (
             <motion.div
               animate={{ opacity: [0.3, 0.6, 0.3] }}

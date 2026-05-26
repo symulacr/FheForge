@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DefiPairsService } from '../../defi_modules/application/defi_pairs.service';
 import { DefiTokenService } from '../../defi_token/application/defi_token.service';
@@ -40,6 +40,7 @@ export interface StrategyConstraints {
 
 @Injectable()
 export class StrategyConstraintsService {
+  private readonly logger = new Logger(StrategyConstraintsService.name);
   private readonly wethTokenId: string;
   private readonly usdcTokenId: string;
   private readonly usdtTokenId: string;
@@ -160,7 +161,7 @@ export class StrategyConstraintsService {
 
       return operations;
     } catch (error) {
-      console.error('Failed to get available operations:', error);
+      this.logger.error('Failed to get available operations:', error);
       return [];
     }
   }
@@ -300,7 +301,7 @@ export class StrategyConstraintsService {
           return false;
       }
     } catch (error) {
-      console.error('Failed to validate operation support:', error);
+      this.logger.error('Failed to validate operation support:', error);
       return false;
     }
   }

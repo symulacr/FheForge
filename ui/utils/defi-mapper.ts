@@ -1,4 +1,4 @@
-import { ModuleFromBE, Module } from "@/types/defi";
+import type { ModuleFromBE, Module } from "@/types/defi";
 
 export const mapModuleFromBE = (data: ModuleFromBE[]): Module[] => {
   return data.map((m) => ({

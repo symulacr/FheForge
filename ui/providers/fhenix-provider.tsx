@@ -15,7 +15,11 @@ import { arbitrumSepolia } from "viem/chains";
 import { createContext, useContext, useState, useRef } from "react";
 import { createCofheConfig, CofheProvider } from "@cofhe/react";
 import { arbSepolia } from "@cofhe/sdk/chains";
-import { QUERY_STALE_TIME, DEFAULT_RETRY_COUNT, ARBITRUM_SEPOLIA_CHAIN_ID } from "@/lib/constants";
+import {
+  QUERY_STALE_TIME,
+  DEFAULT_RETRY_COUNT,
+  ARBITRUM_SEPOLIA_CHAIN_ID,
+} from "@/lib/constants";
 
 const wagmiConfig = createConfig({
   chains: [arbitrumSepolia],
@@ -37,7 +41,10 @@ interface CofheClient {
   connect: (publicClient: unknown, walletClient: unknown) => Promise<void>;
   disconnect: () => Promise<void>;
   permits: { getOrCreateSelfPermit: () => Promise<unknown> };
-  encryptInputs: (inputs: unknown[]) => { setAccount: (account: string) => { execute: () => Promise<unknown> }; execute: () => Promise<unknown> };
+  encryptInputs: (inputs: unknown[]) => {
+    setAccount: (account: string) => { execute: () => Promise<unknown> };
+    execute: () => Promise<unknown>;
+  };
   decryptForView: (
     ctHash: bigint,
     fheType: number,

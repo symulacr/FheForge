@@ -1,4 +1,9 @@
-import { AGENT, ASSET_ID, ASSET_SYMBOL, STEP_TYPE } from "@/utils/constant";
+import type {
+  AGENT,
+  ASSET_ID,
+  ASSET_SYMBOL,
+  STEP_TYPE,
+} from "@/utils/constant";
 
 export interface Step {
   step: number;

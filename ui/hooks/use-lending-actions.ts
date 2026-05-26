@@ -2,7 +2,7 @@ import { useWriteContract, useChainId, usePublicClient } from "wagmi";
 import type { Abi } from "viem";
 import { Encryptable } from "@cofhe/sdk";
 import { parseUnits, type Address, type Hash } from "viem";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import PoolArtifact from "@/abis/LendingPool.json";
 const PoolABI = PoolArtifact as unknown as Abi;
 import PriceOracleArtifact from "@/abis/PriceOracle.json";
@@ -67,7 +67,6 @@ export function useLendingActions() {
     return handles[0];
   };
 
-
   // ────────── P2: requestLiquidityCheck ──────────
 
   const requestLiquidityCheck = async (
@@ -86,7 +85,9 @@ export function useLendingActions() {
 
   // ────────── P2: liquidateWithProof ──────────
 
-  const liquidateWithProof = async (params: LiquidateWithProofParams): Promise<Hash> => {
+  const liquidateWithProof = async (
+    params: LiquidateWithProofParams,
+  ): Promise<Hash> => {
     const { pool } = requireAddresses();
     return writeContractAsync({
       address: pool as `0x${string}`,
@@ -121,7 +122,14 @@ export function useLendingActions() {
       address: pool as `0x${string}`,
       abi: PoolABI,
       functionName: "borrowWithLtvCheck",
-      args: [collateralToken, borrowToken, borrowAmount, encBorrowAmount, ltvNum, ltvDen],
+      args: [
+        collateralToken,
+        borrowToken,
+        borrowAmount,
+        encBorrowAmount,
+        ltvNum,
+        ltvDen,
+      ],
     });
   };
 
@@ -130,19 +138,26 @@ export function useLendingActions() {
   const borrowWithOracle = async (
     collateralToken: Address,
     borrowToken: Address,
+    collateralAmount: bigint,
     borrowAmount: bigint,
     encBorrowAmount: EncryptedHandle,
   ): Promise<Hash> => {
     const { pool } = requireAddresses();
+    validateEuint128(collateralAmount);
     validateEuint128(borrowAmount);
     return writeContractAsync({
       address: pool as `0x${string}`,
       abi: PoolABI,
       functionName: "borrowWithOracle",
-      args: [collateralToken, borrowToken, borrowAmount, encBorrowAmount],
+      args: [
+        collateralToken,
+        borrowToken,
+        collateralAmount,
+        borrowAmount,
+        encBorrowAmount,
+      ],
     });
   };
-
 
   // ────────── MC-45: isSupported (PriceOracle read) ──────────
 
@@ -175,7 +190,14 @@ export function useLendingActions() {
     setIsEncrypting(true);
     try {
       const enc = await encrypt(amt);
-      return borrowWithLtvCheck(collateralToken, borrowToken, amt, enc, ltvNum, ltvDen);
+      return borrowWithLtvCheck(
+        collateralToken,
+        borrowToken,
+        amt,
+        enc,
+        ltvNum,
+        ltvDen,
+      );
     } finally {
       setIsEncrypting(false);
     }
@@ -184,15 +206,18 @@ export function useLendingActions() {
   const borrowWithOracleWithEncrypt = async (
     collateralToken: Address,
     borrowToken: Address,
+    collateralAmount: string,
     borrowAmount: string,
     decimals: number,
   ): Promise<Hash> => {
+    const colAmt = parseUnits(collateralAmount, decimals);
     const amt = parseUnits(borrowAmount, decimals);
+    validateEuint128(colAmt);
     validateEuint128(amt);
     setIsEncrypting(true);
     try {
       const enc = await encrypt(amt);
-      return borrowWithOracle(collateralToken, borrowToken, amt, enc);
+      return borrowWithOracle(collateralToken, borrowToken, colAmt, amt, enc);
     } finally {
       setIsEncrypting(false);
     }

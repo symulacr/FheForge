@@ -16,7 +16,6 @@ interface InEuint128 {
   signature: string;
 }
 
-
 export interface OpenStrategyParams {
   strategyName: string;
   workflowHash: string;
@@ -60,15 +59,13 @@ export function useComposer() {
   // MC-27: Composer collateral uses InEuint128
   const encrypt128 = async (value: bigint): Promise<InEuint128> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
-    if (!cofheState.permitReady)
-      throw new Error("CoFHE permit not ready");
+    if (!cofheState.permitReady) throw new Error("CoFHE permit not ready");
     const handles = (await cofheClient
       .encryptInputs([Encryptable.uint128(value)])
       .execute()) as InEuint128[];
     if (!handles[0]) throw new Error("CoFHE returned empty handle list");
     return handles[0];
   };
-
 
   // R7: WORKAROUND — do NOT use setAccount(composerAddress) for cross-contract calls.
   // On arb-sepolia, the TaskManager has a stale ZK verifier key (slot 4 = 0x013a19c34...).
@@ -78,8 +75,7 @@ export function useComposer() {
   // See: contracts/ZK_VERIFIER_ROOT_CAUSE.md
   const encrypt128ForComposer = async (value: bigint): Promise<InEuint128> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
-    if (!cofheState.permitReady)
-      throw new Error("CoFHE permit not ready");
+    if (!cofheState.permitReady) throw new Error("CoFHE permit not ready");
     // NOTE: No setAccount — workaround for stale ZK verifier key on arb-sepolia
     const handles = (await cofheClient
       .encryptInputs([Encryptable.uint128(value)])
@@ -88,20 +84,21 @@ export function useComposer() {
     return handles[0];
   };
 
-
   const openPosition = async (
     params: OpenStrategyParams,
     encrypted: OpenStrategyEncrypted,
   ): Promise<Hash> => {
     if (!composerAddress) throw new Error("Composer address not configured");
-    if (!cofheState.permitReady)
-      throw new Error("CoFHE permit not ready");
+    if (!cofheState.permitReady) throw new Error("CoFHE permit not ready");
 
     return writeContractAsync({
       address: composerAddress,
       abi: ComposerABI,
       functionName: "openPosition",
-      args: [params, encrypted] as unknown as [OpenStrategyParams, OpenStrategyEncrypted],
+      args: [params, encrypted] as unknown as [
+        OpenStrategyParams,
+        OpenStrategyEncrypted,
+      ],
     });
   };
 

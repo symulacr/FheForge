@@ -16,7 +16,11 @@ import type { ExecutionStatus, ExecutionStep } from "./types";
 import { STEP_TYPE } from "@/utils/constant";
 import { TOKEN_SYMBOL_MAP } from "@/utils/addresses";
 import { useFheWallet } from "@/hooks/use-fhe-wallet";
-import { useComposer, type OpenStrategyParams, type OpenStrategyEncrypted } from "@/hooks/use-composer";
+import {
+  useComposer,
+  type OpenStrategyParams,
+  type OpenStrategyEncrypted,
+} from "@/hooks/use-composer";
 import { usePortfolio } from "@/hooks/use-portfolio";
 import { useSwapRouter, type IntentMeta } from "@/hooks/use-swap-router";
 import { EncryptProgress } from "@/components/shared/encrypt-progress";
@@ -31,7 +35,11 @@ import {
   useCreateActivity,
   useUpdateActivity,
 } from "@/hooks/use-activity-service";
-import { TX_POLLING_INTERVAL, SWAP_DEADLINE_OFFSET, SLIPPAGE_TOLERANCE } from "@/lib/constants";
+import {
+  TX_POLLING_INTERVAL,
+  SWAP_DEADLINE_OFFSET,
+  SLIPPAGE_TOLERANCE,
+} from "@/lib/constants";
 import { parseUnits } from "viem";
 
 interface ExecutionModalProps {
@@ -89,14 +97,14 @@ const buildExecutionSteps = (strategy?: StrategySimulate): ExecutionStep[] => {
   return strategy.steps.map((s, i) => {
     const fromToken = s.tokenIn
       ? {
-          icon: assetIcons[s.tokenIn.symbol],
+          icon: assetIcons[s.tokenIn.symbol] ?? "/icons/default-token.svg",
           symbol: s.tokenIn.symbol,
         }
       : undefined;
 
     const toToken = s.tokenOut
       ? {
-          icon: assetIcons[s.tokenOut.symbol],
+          icon: assetIcons[s.tokenOut.symbol] ?? "/icons/default-token.svg",
           symbol: s.tokenOut.symbol,
         }
       : undefined;
@@ -128,16 +136,19 @@ export function ExecutionModal({
   activityId: initialActivityId = null,
   onStatusChange,
 }: ExecutionModalProps) {
-  
   const initialSteps = useMemo(() => {
     const steps = buildExecutionSteps(strategy);
     return steps.map((step, idx) => ({
       ...step,
-      status: idx < startFromStep ? ("completed" as ExecutionStatus) : ("pending" as ExecutionStatus),
+      status:
+        idx < startFromStep
+          ? ("completed" as ExecutionStatus)
+          : ("pending" as ExecutionStatus),
     }));
   }, [strategy, startFromStep]);
 
-  const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>(initialSteps);
+  const [executionSteps, setExecutionSteps] =
+    useState<ExecutionStep[]>(initialSteps);
   const [isExecuting, setIsExecuting] = useState(false);
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(startFromStep);
@@ -151,23 +162,27 @@ export function ExecutionModal({
 
   const { address: walletAddress, isConnected: isWalletConnected } =
     useFheWallet();
-  const { openPosition, encrypt128ForComposer, isPending: isComposerPending } =
-    useComposer();
+  const {
+    openPosition,
+    encrypt128ForComposer,
+    isPending: isComposerPending,
+  } = useComposer();
   const {
     hasPosition,
     primaryPositionId,
-    userPositions,
     getPositionMeta,
-    getDepositedAmount,
-    getCollateral,
     isLoading: isPortfolioLoading,
     refetch: refetchPortfolio,
   } = usePortfolio();
 
   const { getIntentMeta, cancelIntent, isCancelling } = useSwapRouter();
   // P7: position meta — getPositionMeta returns { data } shape, handle undefined gracefully
-  const { data: positionMetaData } = getPositionMeta(primaryPositionId ?? "");
-  const positionMeta = (positionMetaData ?? undefined) as { strategyId: bigint; createdAt: bigint } | undefined;
+  const { data: positionMetaData } = primaryPositionId
+    ? getPositionMeta(primaryPositionId)
+    : { data: undefined };
+  const positionMeta = positionMetaData as
+    | { strategyId: bigint; createdAt: bigint }
+    | undefined;
   const activeChainId = useChainId();
   const createActivityMutation = useCreateActivity();
   const updateActivityMutation = useUpdateActivity();
@@ -259,15 +274,10 @@ export function ExecutionModal({
       const borrowStep = strategy.steps.find(
         (s) => s.type === STEP_TYPE.BORROW,
       );
-      const swapStep = strategy.steps.find(
-        (s) =>
-          s.type === STEP_TYPE.SWAP,
-      );
+      const swapStep = strategy.steps.find((s) => s.type === STEP_TYPE.SWAP);
 
       const collateralSymbol =
-        supplyStep?.tokenIn?.symbol ??
-        strategy.initialCapital?.symbol ??
-        "";
+        supplyStep?.tokenIn?.symbol ?? strategy.initialCapital?.symbol ?? "";
       const borrowSymbol = borrowStep?.tokenOut?.symbol ?? "";
       const swapOutSymbol = swapStep?.tokenOut?.symbol ?? borrowSymbol;
 
@@ -286,10 +296,7 @@ export function ExecutionModal({
         String(strategy.initialCapital?.amount ?? 0),
         collateralTokenInfo.decimals,
       );
-      const supplyAmount = parseUnits(
-        String(strategy.totalSupply ?? 0),
-        18,
-      );
+      const supplyAmount = parseUnits(String(strategy.totalSupply ?? 0), 18);
       const borrowAmount = parseUnits(
         String(strategy.totalBorrow ?? 0),
         borrowTokenInfo.decimals,
@@ -303,8 +310,7 @@ export function ExecutionModal({
         swapOutTokenInfo.decimals,
       );
       const swapMinOut =
-        (swapMinOutRaw *
-          BigInt(Math.round((1 - SLIPPAGE_TOLERANCE) * 10000))) /
+        (swapMinOutRaw * BigInt(Math.round((1 - SLIPPAGE_TOLERANCE) * 10000))) /
         10000n;
 
       setIsEncrypting(true);
@@ -313,19 +319,18 @@ export function ExecutionModal({
       let encBorrow: Awaited<ReturnType<typeof encrypt128ForComposer>>;
 
       try {
-        [encCollateral, encSupply, encBorrow] =
-          await Promise.all([
-            encrypt128ForComposer(collateralAmount),
-            encrypt128ForComposer(supplyAmount),
-            encrypt128ForComposer(borrowAmount),
-          ]);
+        [encCollateral, encSupply, encBorrow] = await Promise.all([
+          encrypt128ForComposer(collateralAmount),
+          encrypt128ForComposer(supplyAmount),
+          encrypt128ForComposer(borrowAmount),
+        ]);
       } finally {
         setIsEncrypting(false);
       }
 
       const params: OpenStrategyParams = {
         strategyName: strategyId,
-        workflowHash: "", 
+        workflowHash: "",
         collateralToken: collateralTokenInfo.address,
         collateralAmount,
         poolSupplyAmount: supplyAmount,
@@ -337,7 +342,7 @@ export function ExecutionModal({
         swapTokenOut: swapOutTokenInfo.address,
         swapDeadlineOffset: BigInt(SWAP_DEADLINE_OFFSET),
         strategyId: BigInt(strategyId),
-        apyTarget: 0, 
+        apyTarget: 0,
         loopCount: strategy.loops ?? 1,
         swapAmountIn,
         swapMinOut,
@@ -391,9 +396,7 @@ export function ExecutionModal({
                   receiptOk = true;
                   break;
                 }
-              } catch {
-                
-              }
+              } catch {}
               await new Promise((r) => setTimeout(r, TX_POLLING_INTERVAL));
             }
           } else {
@@ -442,10 +445,7 @@ export function ExecutionModal({
         );
         if (currentActivityId)
           await syncActivityProgress(currentActivityId, 1, "failed");
-        displayToast(
-          "error",
-          "Transaction receipt not confirmed",
-        );
+        displayToast("error", "Transaction receipt not confirmed");
       }
     } catch (err) {
       setExecutionSteps((prev) =>
@@ -549,12 +549,16 @@ export function ExecutionModal({
             transition={{ duration: 0.4, delay: 0.2 }}
             className="mx-6 p-3 bg-muted/50 border border-border"
           >
-            <p className="text-xs font-medium text-foreground/80 mb-1">Position Opened</p>
+            <p className="text-xs font-medium text-foreground/80 mb-1">
+              Position Opened
+            </p>
             <div className="flex gap-4 text-xs text-muted-foreground">
               <span>Strategy ID: {positionMeta.strategyId.toString()}</span>
               <span>
                 Created:{" "}
-                {new Date(Number(positionMeta.createdAt) * 1000).toLocaleString()}
+                {new Date(
+                  Number(positionMeta.createdAt) * 1000,
+                ).toLocaleString()}
               </span>
             </div>
           </motion.div>
@@ -574,7 +578,9 @@ export function ExecutionModal({
             transition={{ duration: 0.3 }}
             className="mx-6 p-3 bg-muted/30 border border-border"
           >
-            <p className="text-xs font-medium text-foreground/80 mb-2">Swap Intent</p>
+            <p className="text-xs font-medium text-foreground/80 mb-2">
+              Swap Intent
+            </p>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
@@ -582,10 +588,15 @@ export function ExecutionModal({
                 className="text-xs"
                 onClick={async () => {
                   try {
-                    const meta = await getIntentMeta(swapIntentId as `0x${string}`);
+                    const meta = await getIntentMeta(
+                      swapIntentId as `0x${string}`,
+                    );
                     setIntentMeta(meta);
                   } catch (err) {
-                    displayToast("error", `Failed to fetch intent: ${err instanceof Error ? err.message : String(err)}`);
+                    displayToast(
+                      "error",
+                      `Failed to fetch intent: ${err instanceof Error ? err.message : String(err)}`,
+                    );
                   }
                 }}
               >
@@ -602,7 +613,10 @@ export function ExecutionModal({
                     displayToast("success", "Swap intent cancelled");
                     setSwapIntentId(null);
                   } catch (err) {
-                    displayToast("error", `Failed to cancel: ${err instanceof Error ? err.message : String(err)}`);
+                    displayToast(
+                      "error",
+                      `Failed to cancel: ${err instanceof Error ? err.message : String(err)}`,
+                    );
                   }
                 }}
               >
@@ -613,7 +627,9 @@ export function ExecutionModal({
               <div className="mt-2 text-xs text-muted-foreground">
                 <span>Token In: {intentMeta.tokenIn}</span>
                 <span className="ml-3">Token Out: {intentMeta.tokenOut}</span>
-                <span className="ml-3">Deadline: {intentMeta.deadline.toString()}</span>
+                <span className="ml-3">
+                  Deadline: {intentMeta.deadline.toString()}
+                </span>
               </div>
             )}
           </motion.div>
@@ -641,7 +657,11 @@ export function ExecutionModal({
                 <Button
                   className="flex-1 bg-accent hover:bg-accent/90 text-white font-semibold"
                   onClick={startExecution}
-                  disabled={!executionSteps.length || !isWalletConnected || isComposerPending}
+                  disabled={
+                    !executionSteps.length ||
+                    !isWalletConnected ||
+                    isComposerPending
+                  }
                 >
                   {!isWalletConnected ? "Connect Wallet" : "Start Execution"}
                 </Button>

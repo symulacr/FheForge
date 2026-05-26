@@ -20,7 +20,7 @@ function getErrorMessage(error: unknown): string {
 
 function getErrorStatus(error: unknown): number | undefined {
   return typeof error === 'object' && error !== null && 'status' in error
-    ? Number((error as { status: unknown }).status)
+    ? Number(error.status)
     : undefined;
 }
 
@@ -43,7 +43,7 @@ export class GeminiAiService {
   ) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn('GEMINI_API_KEY not set — AI strategy builder disabled');
+      this.logger.warn('GEMINI_API_KEY not set — AI strategy builder disabled');
       return;
     }
 
@@ -146,7 +146,7 @@ export class GeminiAiService {
 
         return steps;
       } catch (error) {
-        console.error(
+        this.logger.error(
           `Gemini API error (attempt ${retryCount + 1}/${maxRetries + 1}):`,
           error,
         );
@@ -177,7 +177,7 @@ export class GeminiAiService {
     const errorStatusText = getErrorProperty(error, 'statusText');
     const errorMessage = getErrorMessage(error);
     const errorDetails = getErrorProperty(error, 'errorDetails');
-    console.error('Full Gemini error details:', {
+    this.logger.error('Full Gemini error details:', {
       status: errorStatus,
       statusText: errorStatusText,
       message: errorMessage,
@@ -311,9 +311,7 @@ export class GeminiAiService {
       return steps;
     }
 
-    const firstStepWithToken = steps.find(
-      (step) => step.tokenIn?.symbol,
-    );
+    const firstStepWithToken = steps.find((step) => step.tokenIn?.symbol);
 
     if (!firstStepWithToken || !firstStepWithToken.tokenIn) {
       return steps;

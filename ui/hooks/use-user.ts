@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "@/services/user-service";
-import { User } from "@/types/user.interface";
+import type { User } from "@/types/user.interface";
 import { QUERY_STALE_TIME_LONG, DEFAULT_RETRY_COUNT } from "@/lib/constants";
 
 export const useCurrentUser = (

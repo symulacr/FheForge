@@ -1,7 +1,7 @@
 import {
   Injectable,
   NotFoundException,
-  BadRequestException,
+  NotImplementedException,
 } from '@nestjs/common';
 import { UserRepository } from '../domain/user.repository';
 import { User } from '../domain/user.entity';
@@ -45,16 +45,21 @@ export class UserService {
     return user;
   }
 
-  checkEvmBinding(substrateAddress: string): {
-    isBound: boolean;
-    evmAddress: string;
-  } {
-    return { isBound: true, evmAddress: substrateAddress };
+  async checkEvmBinding(
+    walletAddress: string,
+  ): Promise<{ isBound: boolean; evmAddress: string | null }> {
+    const user = await this.userRepo
+      .findByWalletAddress(walletAddress)
+      .catch(() => null);
+    if (!user) {
+      return { isBound: false, evmAddress: null };
+    }
+    return { isBound: true, evmAddress: walletAddress };
   }
 
   getUserTokenBalance(_account: string, _tokenId: string): never {
-    throw new BadRequestException(
-      'Use wagmi useBalance on the frontend instead of calling this endpoint',
+    throw new NotImplementedException(
+      'On-chain balance lookup not implemented. Use wagmi useBalance on the frontend.',
     );
   }
 

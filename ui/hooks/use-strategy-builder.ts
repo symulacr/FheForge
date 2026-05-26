@@ -41,18 +41,12 @@ interface DefiPair {
   token_out: { id: string; asset_id?: string };
 }
 
-import {
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  Connection,
-  Edge,
-  Node,
-} from "reactflow";
+import { useNodesState, useEdgesState, addEdge } from "reactflow";
+import type { Connection, Edge, Node } from "reactflow";
 import { useCallback, useState } from "react";
 
-import { Module, Action, CreateStrategyPayload } from "@/types/defi";
-import {
+import type { Module, Action, CreateStrategyPayload } from "@/types/defi";
+import type {
   DefiNodeData,
   DefiEstimate,
 } from "@/app/builder/components/nodes/defi-node.types";
@@ -236,6 +230,7 @@ export function useDefiBuilder() {
 
         if (updatedNodes.length > 0) {
           const prevNode = updatedNodes[updatedNodes.length - 1];
+          if (!prevNode) return [...updatedNodes, newNode];
           setEdges((eds) => [...eds, createDefiEdge(prevNode.id, newNode.id)]);
         }
 
@@ -403,7 +398,9 @@ export function useDefiBuilder() {
           (n) => n.data?.config?.operationType === "ADD_COLLATERAL",
         );
         if (!supplyNode && !addCollateralNode) {
-          console.warn("No SUPPLY or ADD_COLLATERAL node found, skipping vault call");
+          console.warn(
+            "No SUPPLY or ADD_COLLATERAL node found, skipping vault call",
+          );
         } else if (addCollateralNode) {
           // MC-19: addCollateral wired — user already has a position and wants to top up
           const cfg = addCollateralNode.data.config;
@@ -411,7 +408,10 @@ export function useDefiBuilder() {
           const tokenSymbol = cfg.tokenInSymbol?.toUpperCase() ?? "WETH";
           const collateralToken = TOKEN_SYMBOL_MAP[tokenSymbol]?.address;
           if (!collateralToken) {
-            displayToast("error", `No contract address for token ${tokenSymbol}`);
+            displayToast(
+              "error",
+              `No contract address for token ${tokenSymbol}`,
+            );
             return;
           }
           addCollateral(collateralToken, amount).catch((e: unknown) =>

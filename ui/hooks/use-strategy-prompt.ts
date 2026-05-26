@@ -90,7 +90,9 @@ export function useStrategyPrompt() {
         tokenAmount,
         prompt,
       };
-      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(strategyData))));
+      const encoded = btoa(
+        unescape(encodeURIComponent(JSON.stringify(strategyData))),
+      );
       router.push(`/strategy-review?data=${encodeURIComponent(encoded)}`);
     } catch (error: unknown) {
       console.error("Strategy generation failed:", error);

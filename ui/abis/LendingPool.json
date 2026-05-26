@@ -915,7 +915,8 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "@dev": "Cross-domain: Read by LendingPool liquidation logic. Returns the liquid reserve amount for a given token. Used off-chain by liquidation bots and monitoring services to determine available protocol liquidity. Frontend reads this ABI to support liquidation/rebalance workflows via use-lending-actions.ts and use-portfolio.ts."
   },
   {
     "inputs": [
@@ -1373,7 +1374,8 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
+    "type": "function",
+    "@dev": "Cross-domain: Read by LendingPool to track total unencrypted borrow per token. Used in portfolio views (use-portfolio.ts getPlainBorrowBalance is the frontend read path) and by risk monitoring services to assess protocol health."
   },
   {
     "inputs": [],

@@ -60,7 +60,6 @@ export function StrategyFlow({
 
   return (
     <div className="p-3">
-      
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold text-foreground flex items-center gap-2">
           <Workflow className="w-5 h-5 text-primary" />
@@ -74,9 +73,7 @@ export function StrategyFlow({
         </Badge>
       </div>
 
-      
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
         <div className="lg:col-span-7 flex flex-col items-center gap-6 relative max-h-[350px] overflow-y-auto pr-2">
           {nodes.map((step, idx) => {
             const hasIn = !!step.tokenIn;
@@ -94,7 +91,6 @@ export function StrategyFlow({
                            border-border shadow-lg hover:border-accent/50
                            transition-colors duration-300 p-3 flex flex-col min-h-[120px]"
               >
-                
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2">
                     <div
@@ -115,9 +111,7 @@ export function StrategyFlow({
                   </div>
                 </div>
 
-                
                 <div className="flex flex-col flex-1">
-                  
                   <div
                     className="flex-1 flex justify-between items-center text-xs 
                                   text-card-foreground border-t border-border pt-1 px-1"
@@ -153,7 +147,6 @@ export function StrategyFlow({
                     )}
                   </div>
 
-                  
                   <div className="flex-1 flex justify-center items-center">
                     {hasBoth ? (
                       <ArrowDown className="w-3 h-3 text-primary animate-bounce" />
@@ -162,7 +155,6 @@ export function StrategyFlow({
                     )}
                   </div>
 
-                  
                   <div
                     className="flex-1 flex justify-between items-center text-xs 
                                   text-card-foreground border-t border-border pt-1 px-1"
@@ -199,7 +191,6 @@ export function StrategyFlow({
                   </div>
                 </div>
 
-                
                 {idx < nodes.length - 1 && (
                   <div className="absolute left-1/2 -bottom-5 transform -translate-x-1/2">
                     <ArrowDown className="w-4 h-4 text-primary/60 animate-bounce" />
@@ -210,7 +201,6 @@ export function StrategyFlow({
           })}
         </div>
 
-        
         <div className="lg:col-span-5">
           <motion.div
             initial={{ opacity: 0, x: 40 }}
@@ -292,6 +282,5 @@ export function StrategyFlow({
     </div>
   );
 }
-
 
 export default React.memo(StrategyFlow);

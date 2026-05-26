@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { StrategyStepResponseDto } from '../interfaces/dtos/strategy-step-response.dto';
 
 export interface StrategyTemplate {

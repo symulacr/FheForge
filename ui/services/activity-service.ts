@@ -1,6 +1,6 @@
 import { AxiosError } from "axios";
 import { api, API_ENDPOINTS } from "./api";
-import {
+import type {
   ActivityFilter,
   CreateActivityPayload,
   UpdateActivityPayload,

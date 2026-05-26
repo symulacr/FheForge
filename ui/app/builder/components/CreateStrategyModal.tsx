@@ -42,7 +42,6 @@ export default function CreateStrategyModal({
         </button>
 
         <div className="p-8">
-          
           <div className="flex flex-col items-center text-center space-y-3 mb-8">
             <div className="w-14 h-14 bg-accent/10 border border-accent/30 flex items-center justify-center">
               <Target className="w-7 h-7 text-accent" />
@@ -55,7 +54,6 @@ export default function CreateStrategyModal({
             </p>
           </div>
 
-          
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] ml-1">

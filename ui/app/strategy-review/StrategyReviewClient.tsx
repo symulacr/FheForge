@@ -14,7 +14,10 @@ import { displayToast } from "@/components/shared/toast-manager";
 import type { BuildStrategyResponse } from "@/services/ai-strategy-service";
 import { StrategySteps } from "@/components/strategy/StrategySteps";
 import { useComposer } from "@/hooks/use-composer";
-import type { OpenStrategyParams, OpenStrategyEncrypted } from "@/hooks/use-composer";
+import type {
+  OpenStrategyParams,
+  OpenStrategyEncrypted,
+} from "@/hooks/use-composer";
 import { SLIPPAGE_TOLERANCE } from "@/lib/constants";
 import { TOKEN_SYMBOL_MAP } from "@/utils/addresses";
 import { parseUnits, type Address } from "viem";
@@ -30,7 +33,9 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 function decodeStrategyData(encoded: string): StoredStrategy | null {
   try {
-    return JSON.parse(decodeURIComponent(escape(atob(encoded)))) as StoredStrategy;
+    return JSON.parse(
+      decodeURIComponent(escape(atob(encoded))),
+    ) as StoredStrategy;
   } catch {
     return null;
   }
@@ -41,42 +46,47 @@ export default function StrategyReviewClient() {
   const searchParams = useSearchParams();
   const [executing, setExecuting] = useState(false);
   const [slippage, setSlippage] = useState(SLIPPAGE_TOLERANCE);
-  const { openPosition, encrypt128ForComposer, isPending: composerPending } = useComposer();
+  const {
+    openPosition,
+    encrypt128ForComposer,
+    isPending: composerPending,
+  } = useComposer();
 
   const encodedData = searchParams.get("data");
   const strategyIdParam = searchParams.get("strategyId");
 
-  const { data: strategy, isLoading: loading } = useQuery<StoredStrategy | null>({
-    queryKey: ["generatedStrategy", encodedData],
-    queryFn: () => {
-      if (!encodedData) {
-        displayToast(
-          "error",
-          "No strategy found. Please generate a strategy first.",
-        );
-        router.push("/prompt");
-        return null;
-      }
-      const parsed = decodeStrategyData(encodedData);
-      if (!parsed) {
-        displayToast("error", "Failed to load strategy data.");
-        router.push("/prompt");
-        return null;
-      }
-      return parsed;
-    },
-  });
+  const { data: strategy, isLoading: loading } =
+    useQuery<StoredStrategy | null>({
+      queryKey: ["generatedStrategy", encodedData],
+      queryFn: () => {
+        if (!encodedData) {
+          displayToast(
+            "error",
+            "No strategy found. Please generate a strategy first.",
+          );
+          router.push("/prompt");
+          return null;
+        }
+        const parsed = decodeStrategyData(encodedData);
+        if (!parsed) {
+          displayToast("error", "Failed to load strategy data.");
+          router.push("/prompt");
+          return null;
+        }
+        return parsed;
+      },
+    });
 
   const resolvedTokenAddress = useMemo<Address | undefined>(() => {
     if (!strategy) return undefined;
     const token = strategy.selectedToken;
     if (token?.startsWith("0x")) return token as Address;
     const entry = TOKEN_SYMBOL_MAP[token ?? ""];
-    return (entry?.address ?? "") as Address || undefined;
+    return ((entry?.address ?? "") as Address) || undefined;
   }, [strategy]);
 
-  const isTokenValid = resolvedTokenAddress != null && resolvedTokenAddress !== ZERO_ADDRESS;
-
+  const isTokenValid =
+    resolvedTokenAddress != null && resolvedTokenAddress !== ZERO_ADDRESS;
 
   const handleBack = () => {
     router.push("/prompt");
@@ -85,7 +95,10 @@ export default function StrategyReviewClient() {
   const handleExecute = async () => {
     if (!strategy) return;
     if (!resolvedTokenAddress || !isTokenValid) {
-      displayToast("error", "Invalid token selection. Please select a valid token.");
+      displayToast(
+        "error",
+        "Invalid token selection. Please select a valid token.",
+      );
       return;
     }
     const { steps } = strategy.result;
@@ -101,7 +114,9 @@ export default function StrategyReviewClient() {
     );
     const collateralEth = String(supplyStep.amount ?? "0");
     const debtEth = String(borrowStep?.amount ?? "0");
-    const storedStrategyId = strategyIdParam ? parseInt(strategyIdParam, 10) : 0;
+    const storedStrategyId = strategyIdParam
+      ? parseInt(strategyIdParam, 10)
+      : 0;
     if (storedStrategyId <= 0) {
       displayToast(
         "error",
@@ -115,21 +130,20 @@ export default function StrategyReviewClient() {
     const supplyWei = collateralWei;
     const borrowWei = debtWei;
     const minOutWei =
-      (borrowWei * BigInt(Math.round((1 - slippage) * 10000))) /
-      10000n;
+      (borrowWei * BigInt(Math.round((1 - slippage) * 10000))) / 10000n;
 
     setExecuting(true);
     try {
-      const [encCollateral, encSupply, encBorrow] =
-        await Promise.all([
-          encrypt128ForComposer(collateralWei),
-          encrypt128ForComposer(supplyWei),
-          encrypt128ForComposer(borrowWei),
-        ]);
+      const [encCollateral, encSupply, encBorrow] = await Promise.all([
+        encrypt128ForComposer(collateralWei),
+        encrypt128ForComposer(supplyWei),
+        encrypt128ForComposer(borrowWei),
+      ]);
 
       const params: OpenStrategyParams = {
         strategyName: strategy.name,
-        workflowHash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+        workflowHash:
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
         collateralToken: resolvedTokenAddress,
         collateralAmount: collateralWei,
         poolSupplyAmount: supplyWei,
@@ -207,7 +221,8 @@ export default function StrategyReviewClient() {
   };
 
   const isExecuting = executing || composerPending;
-  const submitDisabled = !safeValidation.isValid || isExecuting || !isTokenValid;
+  const submitDisabled =
+    !safeValidation.isValid || isExecuting || !isTokenValid;
 
   return (
     <div className="min-h-screen bg-background px-6 py-8">
@@ -253,10 +268,8 @@ export default function StrategyReviewClient() {
               </div>
             </div>
 
-            
             <StrategySteps steps={steps} />
 
-            
             {result.fhe_note && (
               <div className="border border-accent/20 bg-accent/5 p-4 text-sm text-accent">
                 🔒 {result.fhe_note}
@@ -264,9 +277,7 @@ export default function StrategyReviewClient() {
             )}
           </div>
 
-          
           <div className="space-y-6">
-            
             <div className="border border-border bg-card p-6">
               <h3 className="mb-4 text-lg font-semibold text-foreground">
                 Slippage Tolerance
@@ -294,7 +305,6 @@ export default function StrategyReviewClient() {
               </div>
             </div>
 
-            
             <div className="border border-border bg-card p-6">
               <h3 className="mb-4 text-lg font-semibold text-foreground">
                 Validation
@@ -347,7 +357,6 @@ export default function StrategyReviewClient() {
               </div>
             </div>
 
-            
             <div className="border border-border bg-card p-6">
               <h3 className="mb-4 text-lg font-semibold text-foreground">
                 Strategy Info
@@ -382,7 +391,6 @@ export default function StrategyReviewClient() {
               </div>
             </div>
 
-            
             {aiAnalysis && (
               <div className="border border-border bg-card p-6">
                 <h3 className="mb-4 text-lg font-semibold text-foreground">

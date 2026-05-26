@@ -35,7 +35,6 @@ export default function DefiNodeShell({
         ${selected ? "border-accent" : "border-border"}
       `}
     >
-      
       <Handle
         type="target"
         position={Position.Top}
@@ -43,7 +42,6 @@ export default function DefiNodeShell({
         className="!w-4 !h-4 !bg-accent !border-2 !border-border"
       />
 
-      
       {onDelete && (
         <button
           onClick={(e) => {
@@ -56,7 +54,6 @@ export default function DefiNodeShell({
         </button>
       )}
 
-      
       <div className="px-5 pt-4 pb-3">
         <div className="flex items-start justify-between pr-8">
           <div>
@@ -71,7 +68,7 @@ export default function DefiNodeShell({
             </div>
 
             <div className="mt-3 flex items-center gap-2">
-              <ProtocolIcon />
+              <ProtocolIcon protocolName={protocolName} />
               <span className="text-[14px] text-muted leading-none">
                 {protocolName}
               </span>
@@ -88,10 +85,8 @@ export default function DefiNodeShell({
         <div className="mt-4 h-px bg-border" />
       </div>
 
-      
       <div className="px-5 pb-4">{children}</div>
 
-      
       <Handle
         type="source"
         position={Position.Bottom}

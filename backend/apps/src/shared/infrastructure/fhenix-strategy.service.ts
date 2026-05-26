@@ -1,8 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Contract } from 'ethers';
-import { JsonRpcProvider } from 'ethers/providers';
-import { formatUnits } from 'ethers/utils';
+import { Contract, JsonRpcProvider, formatUnits } from 'ethers';
 
 const PRICE_ORACLE_ABI = [
   'function getPriceUsd(address token) external view returns (uint256 priceWad, uint64 updatedAt)',

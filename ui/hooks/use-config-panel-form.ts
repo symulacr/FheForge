@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DefiEstimate } from "@/app/builder/components/nodes/defi-node.types";
+import type { DefiEstimate } from "@/app/builder/components/nodes/defi-node.types";
 
 export function useConfigPanelForm() {
   const [tokenIn, setTokenIn] = useState("");

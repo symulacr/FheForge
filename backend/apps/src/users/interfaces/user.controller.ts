@@ -24,12 +24,14 @@ import { UserResponseDto } from './dtos/user-response.dto';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UpdateUsernameDto } from './dtos/update-username.dto';
 import { UserMapper } from '../application/mappers/user.mapper';
+import { Public } from '../../auth/public.decorator';
 
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
+  @Public()
   @Post()
   @ApiOperation({ summary: 'Create a new user' })
   @ApiResponse({
@@ -44,6 +46,7 @@ export class UserController {
     return UserMapper.toResponse(user);
   }
 
+  @Public()
   @Get('me')
   @ApiOperation({ summary: 'Get current user by wallet address' })
   @ApiQuery({
@@ -127,10 +130,9 @@ export class UserController {
   @ApiOperation({ summary: 'Check if an address has a bound EVM account' })
   @ApiParam({ name: 'address', description: 'EVM wallet address' })
   @ApiResponse({ status: 200, description: 'Binding status returned' })
-  checkEvmBinding(@Param('address') address: string): {
-    isBound: boolean;
-    evmAddress: string;
-  } {
+  async checkEvmBinding(
+    @Param('address') address: string,
+  ): Promise<{ isBound: boolean; evmAddress: string | null }> {
     return this.userService.checkEvmBinding(address);
   }
 

@@ -106,10 +106,15 @@ export class BorrowSimulator extends BaseSimulator {
     };
   }
 
+  private getFallbackBorrowApy(): number {
+    const bps = this.configService.get<number>('BORROW_APY_BPS', 550);
+    return bps / 100;
+  }
+
   private async getInterestRate(strategyId: bigint): Promise<number> {
     if (!this.strategyRegistry) {
       this.logger.warn('StrategyRegistry not configured, using fallback APY');
-      return 6.0;
+      return this.getFallbackBorrowApy();
     }
 
     try {
@@ -123,7 +128,7 @@ export class BorrowSimulator extends BaseSimulator {
         `Failed to fetch strategy params for ID ${strategyId}:`,
         error,
       );
-      return 6.0; // Fallback to default
+      return this.getFallbackBorrowApy();
     }
   }
 

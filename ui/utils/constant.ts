@@ -21,5 +21,4 @@ export enum STEP_TYPE {
   SUPPLY = "SUPPLY",
 }
 
-
 // CONSTANTS

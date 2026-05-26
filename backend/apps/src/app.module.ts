@@ -12,9 +12,11 @@ import { AiStrategyBuilderModule } from './ai-strategy-builder/ai-strategy-build
 import { EventIndexerModule } from './event-indexer/event-indexer.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AppController } from './app.controller';
+import { MetricsController } from './metrics.controller';
 import { FhenixStrategyService } from './shared/infrastructure/fhenix-strategy.service';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -34,7 +36,7 @@ import { AuthModule } from './auth/auth.module';
     AiStrategyBuilderModule,
     EventIndexerModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, MetricsController],
   providers: [
     FhenixStrategyService,
     {
@@ -44,6 +46,10 @@ import { AuthModule } from './auth/auth.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
     },
   ],
 })

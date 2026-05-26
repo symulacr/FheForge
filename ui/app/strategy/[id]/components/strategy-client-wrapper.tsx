@@ -19,7 +19,6 @@ export function StrategyClientWrapper({
 
   return (
     <div className="flex h-[calc(100vh-60px)] overflow-hidden bg-[--background] text-[--foreground]">
-      
       <div
         className={`flex flex-col  transition-all duration-300 ease-in-out
           ${isCollapsed ? "w-[60px]" : "w-1/4"}
@@ -29,9 +28,10 @@ export function StrategyClientWrapper({
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-2 hover:bg-secondary"
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             title={isCollapsed ? "Expand" : "Collapse"}
           >
-            <Menu size={20} />
+            <Menu size={20} aria-hidden />
           </button>
         </div>
         {!isCollapsed && (
@@ -43,7 +43,7 @@ export function StrategyClientWrapper({
           </div>
         )}
       </div>
-      
+
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ease-in-out
           ${isCollapsed ? "w-[calc(100%-60px)]" : "w-[75%]"}

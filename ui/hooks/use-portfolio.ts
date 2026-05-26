@@ -1,6 +1,11 @@
-import { useAccount, useChainId, useReadContract } from "wagmi";
+import {
+  useAccount,
+  useChainId,
+  useReadContract,
+  useReadContracts,
+} from "wagmi";
 import type { Abi } from "viem";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Address } from "viem";
 import VaultArtifact from "@/abis/StrategyVault.json";
 const VaultABI = VaultArtifact as unknown as Abi;
@@ -9,6 +14,25 @@ const PoolABI = PoolArtifact as unknown as Abi;
 import { getContractAddresses } from "@/utils/addresses";
 
 export type PositionId = `0x${string}`;
+
+function isPositionIdArray(data: unknown): data is PositionId[] {
+  return (
+    Array.isArray(data) &&
+    data.every(
+      (item): item is PositionId =>
+        typeof item === "string" && item.startsWith("0x"),
+    )
+  );
+}
+
+function isPositionMetaTuple(data: unknown): data is readonly [bigint, bigint] {
+  return (
+    Array.isArray(data) &&
+    data.length === 2 &&
+    typeof data[0] === "bigint" &&
+    typeof data[1] === "bigint"
+  );
+}
 
 export interface PositionMeta {
   strategyId: bigint;
@@ -51,35 +75,6 @@ export function usePortfolio(account?: Address) {
   // callers can use: const hasPosition = (userPositionsData as PositionId[])?.length > 0
 
   // P7: getPositionMeta(positionId) → (strategyId, createdAt)
-  // caller must pass a specific positionId; we expose it but do not auto-read without one
-  const getPositionMeta = (positionId: PositionId) =>
-    useReadContract({
-      address: vaultAddress,
-      abi: VaultABI,
-      functionName: "getPositionMeta",
-      args: [positionId],
-      query: { enabled: !!vaultAddress && !!positionId },
-    });
-
-  // P7: getDepositedAmount(positionId) → uint256
-  const getDepositedAmount = (positionId: PositionId) =>
-    useReadContract({
-      address: vaultAddress,
-      abi: VaultABI,
-      functionName: "getDepositedAmount",
-      args: [positionId],
-      query: { enabled: !!vaultAddress && !!positionId },
-    });
-
-  // P7: getCollateral(positionId) → euint128 (encrypted, returns handle)
-  const getCollateral = (positionId: PositionId) =>
-    useReadContract({
-      address: vaultAddress,
-      abi: VaultABI,
-      functionName: "getCollateral",
-      args: [positionId],
-      query: { enabled: !!vaultAddress && !!positionId },
-    });
 
   // MC-26: Pool plain balance reads (non-FHE, no ACL needed)
   const wethAddress = addresses
@@ -96,7 +91,7 @@ export function usePortfolio(account?: Address) {
   } = useReadContract({
     address: poolAddress,
     abi: PoolABI,
-    functionName: "getPlainSupplyBalance",
+    functionName: "getSupplyBalance",
     args: wethAddress ? [wethAddress] : undefined,
     query: {
       enabled: !!poolAddress && !!wethAddress,
@@ -110,7 +105,7 @@ export function usePortfolio(account?: Address) {
   } = useReadContract({
     address: poolAddress,
     abi: PoolABI,
-    functionName: "getPlainBorrowBalance",
+    functionName: "getBorrowBalance",
     args: wethAddress ? [wethAddress] : undefined,
     query: {
       enabled: !!poolAddress && !!wethAddress,
@@ -118,16 +113,44 @@ export function usePortfolio(account?: Address) {
   });
 
   // P7: derived from getUserPositions
-  const userPositions = (userPositionsData as PositionId[]) ?? [];
+  const userPositions: PositionId[] = isPositionIdArray(userPositionsData)
+    ? userPositionsData
+    : [];
   const hasPosition = userPositions.length > 0;
   // First position as default (caller can pass a specific one)
   const primaryPositionId = userPositions[0];
+
+  const {
+    data: allPositionsMetaData,
+    isLoading: allPositionsMetaLoading,
+    refetch: refetchAllPositionsMeta,
+  } = useReadContracts({
+    contracts: userPositions.map((posId) => ({
+      address: vaultAddress!,
+      abi: VaultABI,
+      functionName: "getPositionMeta",
+      args: [posId],
+    })),
+    query: { enabled: !!vaultAddress && userPositions.length > 0 },
+  });
+
+  const getPositionMeta = (_positionId: PositionId) => {
+    const index = userPositions.findIndex((id) => id === _positionId);
+    const result = index >= 0 ? allPositionsMetaData?.[index] : undefined;
+    const raw = result?.result;
+    return {
+      data: isPositionMetaTuple(raw) ? raw : undefined,
+      isLoading: allPositionsMetaLoading,
+      refetch: refetchAllPositionsMeta,
+    };
+  };
 
   const refetch = async () => {
     await Promise.all([
       refetchUserPositions(),
       refetchPlainSupply(),
       refetchPlainBorrow(),
+      refetchAllPositionsMeta(),
     ]);
   };
 
@@ -137,14 +160,9 @@ export function usePortfolio(account?: Address) {
     userPositions,
     primaryPositionId,
     getPositionMeta,
-    getDepositedAmount,
-    getCollateral,
     plainSupplyBalance: plainSupplyData as bigint | undefined,
     plainBorrowBalance: plainBorrowData as bigint | undefined,
-    isLoading:
-      userPositionsLoading ||
-      plainSupplyLoading ||
-      plainBorrowLoading,
+    isLoading: userPositionsLoading || plainSupplyLoading || plainBorrowLoading,
     vaultAddress,
     poolAddress,
     refetch,

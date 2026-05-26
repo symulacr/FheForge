@@ -1,7 +1,32 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsObject,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { StrategyStepResponseDto } from '../../../ai-strategy-builder/interfaces/dtos/strategy-step-response.dto';
+import type { WorkflowJson } from '../../domain/simulation-engine.interface';
+
+class WorkflowStepsDto {
+  @ValidateNested({ each: true })
+  @Type(() => StrategyStepResponseDto)
+  steps: StrategyStepResponseDto[];
+}
 
 export class SimulateStrategyDto {
+  @ApiProperty({
+    description: 'Workflow JSON defining the strategy steps',
+  })
+  @IsNotEmpty()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => WorkflowStepsDto)
+  workflow_json: WorkflowJson;
+
   @ApiProperty({
     description: 'Input amount to simulate',
     example: 1000,

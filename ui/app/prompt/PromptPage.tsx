@@ -83,24 +83,20 @@ export default function PromptPage() {
   return (
     <div className="flex flex-1 min-h-[calc(100vh-120px)] items-center justify-center px-6 py-5 text-white">
       <div className="flex w-full max-w-7xl items-start justify-center gap-6">
-        
         <div className="flex w-full max-w-[820px] flex-col relative overflow-hidden bg-card text-card-foreground border border-border p-6 shadow-lg transition-colors duration-300 hover:border-accent/50">
           <div className="space-y-5">
-            
             <div className="space-y-1">
               <h1 className="text-2xl font-semibold tracking-tight text-white">
                 Create Prompt Strategy
               </h1>
             </div>
 
-            
             <section className="space-y-2">
               <h2 className="text-sm font-medium text-white">
                 Starting Token & Amount
               </h2>
 
               <div className="flex gap-3">
-                
                 <div className="relative w-32">
                   <input
                     type="number"
@@ -130,7 +126,6 @@ export default function PromptPage() {
                   />
                 </div>
 
-                
                 <div className="relative flex-1 token-dropdown">
                   <div
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -180,7 +175,6 @@ export default function PromptPage() {
                     />
                   </div>
 
-                  
                   {isDropdownOpen && (
                     <>
                       <div
@@ -188,38 +182,37 @@ export default function PromptPage() {
                         onClick={() => setIsDropdownOpen(false)}
                       />
                       <div className="absolute top-full left-0 right-0 mt-2 z-50  border border-border bg-card   overflow-hidden">
-                      {tokens.map((token) => (
-                        <div
-                          key={token.value}
-                          onClick={() => {
-                            setSelectedToken(token.value);
-                            setIsDropdownOpen(false);
-                          }}
-                          className="flex items-center gap-3 px-5 py-3 text-sm text-white hover:bg-secondary cursor-pointer transition-colors"
-                        >
-                          <Image
-                            src={
-                              assetIcons[token.value] ||
-                              assetIcons[token.value?.toUpperCase()] ||
-                              assetIcons[token.value?.toLowerCase()] ||
-                              "/icons/default.png"
-                            }
-                            alt={token.value}
-                            width={20}
-                            height={20}
-                            className="w-5 h-5  object-contain bg-card border border-border"
-                          />
-                          <span>{token.label}</span>
-                        </div>
-                      ))}
-                    </div>
+                        {tokens.map((token) => (
+                          <div
+                            key={token.value}
+                            onClick={() => {
+                              setSelectedToken(token.value);
+                              setIsDropdownOpen(false);
+                            }}
+                            className="flex items-center gap-3 px-5 py-3 text-sm text-white hover:bg-secondary cursor-pointer transition-colors"
+                          >
+                            <Image
+                              src={
+                                assetIcons[token.value] ||
+                                assetIcons[token.value?.toUpperCase()] ||
+                                assetIcons[token.value?.toLowerCase()] ||
+                                "/icons/default.png"
+                              }
+                              alt={token.value}
+                              width={20}
+                              height={20}
+                              className="w-5 h-5  object-contain bg-card border border-border"
+                            />
+                            <span>{token.label}</span>
+                          </div>
+                        ))}
+                      </div>
                     </>
                   )}
                 </div>
               </div>
             </section>
 
-            
             <section className="space-y-2">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-sm font-medium text-white">
@@ -250,7 +243,6 @@ export default function PromptPage() {
             </section>
           </div>
 
-          
           <div className="mt-5 flex items-center justify-end gap-3">
             <button
               onClick={onCancel}
@@ -284,29 +276,23 @@ export default function PromptPage() {
           </div>
         </div>
 
-        
         <div className="w-[320px] shrink-0">
           {submitting ? (
-            
             <StrategyFlowSkeleton />
           ) : strategyResult ? (
-            
             <StrategyFlowPreview
               strategy={strategyResult}
               selectedToken={selectedToken}
               onRunStrategy={handleRunStrategyClick}
             />
           ) : (
-            
             <div className="relative overflow-hidden  bg-card text-card-foreground  border border-border p-5 shadow-lg  transition-all duration-300 hover:border-accent/50  ">
               <div className="space-y-5">
-                
                 <div className="flex items-center gap-2 text-yellow-400">
                   <Lightbulb className="h-4 w-4" />
                   <span className="text-sm font-semibold">Strategy Guide</span>
                 </div>
 
-                
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <h3 className="text-xs font-medium text-muted">

@@ -90,12 +90,7 @@ export class StrategyValidatorService {
   }
 
   private isValidOperationType(type: string): boolean {
-    const validTypes = [
-      'SWAP',
-      'SUPPLY',
-      'BORROW',
-      'CLAIM_REWARDS',
-    ];
+    const validTypes = ['SWAP', 'SUPPLY', 'BORROW', 'CLAIM_REWARDS'];
     return validTypes.includes(type);
   }
 
@@ -123,7 +118,7 @@ export class StrategyValidatorService {
       }
 
       if (
-        (operationType === OperationType.SWAP) &&
+        operationType === OperationType.SWAP &&
         step.tokenIn &&
         step.tokenOut
       ) {
@@ -300,9 +295,7 @@ export class StrategyValidatorService {
     const hasBorrow = stepTypes.includes('BORROW');
 
     if (hasBorrow && !hasSupply) {
-      errors.push(
-        'Cannot borrow without first supplying collateral (SUPPLY)',
-      );
+      errors.push('Cannot borrow without first supplying collateral (SUPPLY)');
     }
 
     const borrowCount = stepTypes.filter((type) => type === 'BORROW').length;

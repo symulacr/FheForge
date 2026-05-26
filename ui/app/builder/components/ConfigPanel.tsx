@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useCallback } from "react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { useConfigPanelForm } from "@/hooks/use-config-panel-form";
 import { X } from "lucide-react";
 import { useReadContract, useAccount } from "wagmi";
@@ -25,6 +25,7 @@ import {
 import { SaveConfigPayload } from "@/hooks/use-strategy-builder";
 import Image from "next/image";
 import { assetIcons } from "@/lib/iconMap";
+import { EstimateCard } from "@/app/builder/components/estimate-card";
 
 interface Props {
   node: Node<DefiNodeData>;
@@ -52,11 +53,7 @@ const normalizeOperationType = (value: unknown): DefiOperationType => {
     .toUpperCase()
     .replace(/\s+/g, "_");
 
-  const validTypes: DefiOperationType[] = [
-    "SWAP",
-    "SUPPLY",
-    "BORROW",
-  ];
+  const validTypes: DefiOperationType[] = ["SWAP", "SUPPLY", "BORROW"];
 
   if (validTypes.includes(normalized as DefiOperationType)) {
     return normalized as DefiOperationType;
@@ -166,15 +163,9 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
   const requiresTokenOut = isSwap || isBorrow;
 
-  
-
-
   const pairs = useMemo<DefiPair[]>(() => {
     return fallbackPairs;
   }, [fallbackPairs]);
-
-  
-
 
   const tokenInOptions = useMemo(() => {
     const map = new Map<string, NonNullable<DefiPair["token_in"]>>();
@@ -186,9 +177,6 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
     return Array.from(map.values());
   }, [pairs]);
-
-  
-
 
   const tokenOutOptions = useMemo(() => {
     const map = new Map<string, NonNullable<DefiPair["token_out"]>>();
@@ -216,10 +204,10 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
   const initializedNodeIdRef = useRef<string | null>(null);
 
-  if (
-    pairs.length > 0 &&
-    initializedNodeIdRef.current !== node.id
-  ) {
+  // Initialization effect — replaces render-side-effect with proper useEffect
+  useEffect(() => {
+    if (pairs.length === 0) return;
+    if (initializedNodeIdRef.current === node.id) return;
     initializedNodeIdRef.current = node.id;
 
     const config = node?.data?.config;
@@ -296,7 +284,18 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
       setTokenOut(requiresTokenOut ? (pairs[0]?.token_out?.id ?? "") : "");
       setIsInitializing(false);
     }
-  }
+  }, [
+    pairs,
+    node.id,
+    node?.data?.config,
+    requiresTokenOut,
+    prevConfig,
+    setTokenIn,
+    setTokenOut,
+    setAmount,
+    setEstimate,
+    setIsInitializing,
+  ]);
 
   const correctTokenOut = useCallback(
     (newTokenIn: string, currentTokenOut: string) => {
@@ -304,7 +303,8 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
       const validPair = pairs.find(
         (p: DefiPair) =>
-          p?.token_in?.id === newTokenIn && p?.token_out?.id === currentTokenOut,
+          p?.token_in?.id === newTokenIn &&
+          p?.token_out?.id === currentTokenOut,
       );
 
       if (validPair) return currentTokenOut;
@@ -353,7 +353,11 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
   const estimateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchEstimate = useCallback(
-    (currentAmount: string, currentTokenIn: string, currentTokenOut: string) => {
+    (
+      currentAmount: string,
+      currentTokenIn: string,
+      currentTokenOut: string,
+    ) => {
       if (estimateTimerRef.current !== null) {
         clearTimeout(estimateTimerRef.current);
       }
@@ -430,16 +434,6 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
             null
           );
 
-        case "SWAP":
-          return (
-            estimate?.amount_out ??
-            estimate?.output_amount ??
-            estimate?.result_amount ??
-            estimate?.received_amount ??
-            estimate?.shares_out ??
-            null
-          );
-
         case "SUPPLY":
           return null;
 
@@ -491,124 +485,13 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
   const renderEstimate = () => {
     if (!estimate) return null;
 
-    const cardBaseStyle =
-      "glass border p-5 relative overflow-hidden group animate-in zoom-in-95 duration-300";
-
-    if (isSwap) {
-      return (
-        <div className={`${cardBaseStyle} bg-primary/5 border-primary/20`}>
-          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-            <div className="w-12 h-12 bg-accent/20" />
-          </div>
-          <p className="text-[10px] uppercase tracking-widest text-primary font-bold">
-            Estimated Output
-          </p>
-          <div className="flex items-baseline gap-2 mt-2">
-            <p className="text-3xl font-bold text-white leading-none">
-              {Number(
-                estimate?.amount_out ?? estimate?.output_amount ?? 0,
-              ).toFixed(6)}
-            </p>
-            <p className="text-sm font-medium text-primary/80">
-              {selectedPair?.token_out?.name}
-            </p>
-          </div>
-          <div className="flex justify-between mt-4 pt-3 border-t border-white/5 text-[11px]">
-            <span className="text-muted">Max Slippage</span>
-            <span className="text-white font-mono">
-              {((estimate?.slippage || 0) * 100).toFixed(2)}%
-            </span>
-          </div>
-        </div>
-      );
-    }
-
-    if (isSupply) {
-      return (
-        <div className={`${cardBaseStyle} bg-primary/5 border-primary/20`}>
-          <div className="absolute -bottom-2 -right-2 p-3 opacity-10">
-            <div className="w-16 h-16 bg-accent/20" />
-          </div>
-          <p className="text-[10px] uppercase tracking-widest text-primary font-bold">
-            Supply Strategy
-          </p>
-          <div className="mt-2">
-            <p className="text-3xl font-bold text-white leading-none">
-              {Number(estimate?.supply_apy ?? estimate?.apy ?? 0).toFixed(2)}%
-            </p>
-            <p className="text-xs text-muted mt-2 tracking-wide font-medium">
-              ESTIMATED NET APY
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (isBorrow) {
-      return (
-        <div className={`${cardBaseStyle} bg-secondary/10 border-border`}>
-          <p className="text-[10px] uppercase tracking-widest text-muted font-bold">
-            Borrow Details
-          </p>
-
-          <div className="space-y-3 mt-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted">Amount Out</span>
-              <span className="text-sm font-bold text-white">
-                {Number(
-                  estimate?.borrow_amount ?? estimate?.amount_out ?? 0,
-                ).toFixed(4)}{" "}
-                {selectedPair?.token_out?.name}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted">Borrow APY</span>
-              <span className="text-sm font-bold text-red-400">
-                {Number(estimate?.borrow_apy ?? estimate?.apy ?? 0).toFixed(2)}%
-              </span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t border-white/5">
-              <span className="text-xs text-muted">LTV Ratio</span>
-              <span className="text-sm font-bold text-primary">
-                {Number(estimate?.ltv ?? estimate?.max_ltv ?? 0).toFixed(2)}%
-              </span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (isSwap) {
-      return (
-        <div className={`${cardBaseStyle} bg-primary/10 border-primary/30`}>
-          <p className="text-[10px] uppercase tracking-widest text-primary font-bold">
-            Strategy Entry
-          </p>
-          <div className="mt-3">
-            <div className="text-2xl font-bold text-white">
-              {Number(estimate?.amount_out ?? 0).toFixed(6)}
-              <span className="text-xs ml-2 text-primary/70">SHARES</span>
-            </div>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-2 text-[10px] pt-3 border-t border-white/5">
-            <div>
-              <p className="text-muted uppercase">APY</p>
-              <p className="text-white font-bold">
-                {Number(estimate?.supply_apy ?? estimate?.apy ?? 0).toFixed(2)}%
-              </p>
-            </div>
-            <div>
-              <p className="text-muted uppercase">Slippage</p>
-              <p className="text-white font-bold">
-                {((estimate?.slippage ?? 0) * 100).toFixed(2)}%
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return null;
+    return (
+      <EstimateCard
+        estimate={estimate}
+        operationType={resolvedType}
+        selectedPair={selectedPair}
+      />
+    );
   };
 
   return (
@@ -645,8 +528,9 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
           <button
             onClick={onClose}
             className="text-neutral-400 hover:text-white transition"
+            aria-label="Close configuration panel"
           >
-            <X size={18} />
+            <X size={18} aria-hidden />
           </button>
         </div>
 
@@ -665,13 +549,11 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
           {pairs.length > 0 && (
             <>
-              
               <div className="space-y-3">
                 <label className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold ml-1">
                   Token In
                 </label>
 
-                
                 <div className="relative">
                   <button
                     type="button"
@@ -730,7 +612,6 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
                     </div>
                   </button>
 
-                  
                   {isTokenInOpen && !incomingEdge && (
                     <>
                       <div
@@ -748,7 +629,10 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
                               onClick={() => {
                                 if (token.id) {
                                   setTokenIn(token.id);
-                                  const correctedOut = correctTokenOut(token.id, tokenOut);
+                                  const correctedOut = correctTokenOut(
+                                    token.id,
+                                    tokenOut,
+                                  );
                                   setTokenOut(correctedOut);
                                   fetchEstimate(amount, token.id, correctedOut);
                                 }
@@ -805,11 +689,12 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
                   "
                 />
                 {error && (
-                  <p className="text-red-400 text-[11px] ml-1">{error}</p>
+                  <p className="text-red-400 text-[11px] ml-1" role="alert">
+                    {error}
+                  </p>
                 )}
               </div>
 
-              
               {requiresTokenOut && (
                 <div className="space-y-3 pt-2">
                   <label className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold ml-1">
@@ -923,12 +808,18 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
               )}
 
               {estimating && (
-                <div className="text-sm text-neutral-500 bg-card p-4 border border-border">
+                <div
+                  className="text-sm text-neutral-500 bg-card p-4 border border-border"
+                  role="status"
+                  aria-live="polite"
+                >
                   Estimating...
                 </div>
               )}
 
-              {renderEstimate()}
+              <div aria-live="polite" aria-atomic="true">
+                {renderEstimate()}
+              </div>
             </>
           )}
         </div>
@@ -940,6 +831,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
                 onClick={handleReveal}
                 disabled={!ctHash}
                 className="flex-1 py-2 border border-accent/40 bg-accent/10 text-accent text-sm hover:bg-accent/20 transition disabled:opacity-40"
+                aria-label="Reveal encrypted collateral balance"
               >
                 Reveal Collateral
               </button>

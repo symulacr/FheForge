@@ -33,12 +33,15 @@ const ExecutionModal = dynamic(
 
 export default function StrategyTable() {
   const { user } = useUser();
-  const { strategies, loading, error, refetch, isEmpty } = useStrategies(user?.id);
+  const { strategies, loading, error, refetch, isEmpty } = useStrategies(
+    user?.id,
+  );
   const { show, hide } = usePreloader();
   const prevLoading = useRef(loading);
   if (loading !== prevLoading.current) {
     prevLoading.current = loading;
-    if (loading) show(); else hide();
+    if (loading) show();
+    else hide();
   }
   const [strategyId, setStrategyId] = useState<string | null>(null);
   const [runModal, setRunModal] = useState(false);
@@ -75,7 +78,6 @@ export default function StrategyTable() {
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6 px-4 py-8">
-      
       <div className="flex items-center justify-between px-1">
         <div className="flex flex-col items-start gap-1">
           <h1 className="text-2xl font-bold text-primary flex items-center gap-2 tracking-tight drop-shadow-[0_0_15px_rgba(0,255,255,0.3)]">
@@ -109,7 +111,6 @@ export default function StrategyTable() {
         </Link>
       </div>
 
-      
       <div className="glass overflow-hidden border border-border shadow-2xl min-h-[400px] flex flex-col">
         {loading ? (
           <div className="flex-1 flex items-center justify-center animate-pulse">
@@ -121,7 +122,12 @@ export default function StrategyTable() {
           <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
             <div className="relative mb-6">
               <div className="w-12 h-12 text-destructive/20 opacity-60">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 8v4M12 16h.01" />
                 </svg>
@@ -202,7 +208,6 @@ export default function StrategyTable() {
                       key={strategy.id}
                       className="group hover:bg-white/[0.01] transition-all duration-300"
                     >
-                      
                       <td className="px-4 py-5 align-top">
                         <div className="flex flex-col gap-1.5 max-w-[200px]">
                           <span
@@ -233,7 +238,6 @@ export default function StrategyTable() {
 
                               return (
                                 <>
-                                  
                                   <div className="flex items-center flex-wrap gap-1.5 min-h-[24px]">
                                     {visibleSteps.map((s, index: number) => (
                                       <div
@@ -253,23 +257,27 @@ export default function StrategyTable() {
 
                                     {steps.length > 3 && (
                                       <button
-                                        onClick={() =>
+                                        onClick={() => {
                                           setExpandedStrategy(
                                             isExpanded ? null : strategy.id,
-                                          )
-                                        }
+                                          );
+                                        }}
                                         className="flex items-center justify-center w-5 h-5 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
+                                        aria-label={
+                                          isExpanded
+                                            ? "Collapse steps"
+                                            : `Expand steps (${steps.length} total)`
+                                        }
                                       >
                                         {isExpanded ? (
-                                          <ChevronUp size={10} />
+                                          <ChevronUp size={10} aria-hidden />
                                         ) : (
-                                          <ChevronDown size={10} />
+                                          <ChevronDown size={10} aria-hidden />
                                         )}
                                       </button>
                                     )}
                                   </div>
 
-                                  
                                   <div className="flex items-center flex-wrap gap-y-2 gap-x-1.5 p-2.5 bg-white/[0.03] border border-white/10 w-fit max-w-full">
                                     {(() => {
                                       const sequence = [
@@ -294,7 +302,6 @@ export default function StrategyTable() {
                                             key={idx}
                                             className="flex items-center gap-1.5"
                                           >
-                                            
                                             <div className="flex items-center gap-1.5 bg-neutral-900/50 pl-0.5 pr-2 py-0.5 border border-white/20 shadow-inner group/token">
                                               <div className="w-5 h-5 overflow-hidden border border-white/40 bg-black flex-shrink-0">
                                                 {assetIcons[symbol] ? (
@@ -316,7 +323,6 @@ export default function StrategyTable() {
                                               </span>
                                             </div>
 
-                                            
                                             {idx <
                                               uniqueSequence.length - 1 && (
                                               <div className="flex items-center px-0.5">
@@ -331,6 +337,7 @@ export default function StrategyTable() {
                                                   strokeWidth="4"
                                                   strokeLinecap="round"
                                                   strokeLinejoin="round"
+                                                  aria-hidden
                                                 >
                                                   <path d="m9 18 6-6-6-6" />
                                                 </svg>
@@ -347,7 +354,6 @@ export default function StrategyTable() {
                         </div>
                       </td>
 
-                      
                       <td className="px-4 py-5 align-top">
                         <div className="flex items-center justify-center -space-x-2 group-hover:space-x-1 transition-all duration-500">
                           {tokens.map((symbol, i) => (
@@ -377,7 +383,6 @@ export default function StrategyTable() {
                         </div>
                       </td>
 
-                      
                       <td className="px-4 py-5 align-top text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
@@ -408,7 +413,6 @@ export default function StrategyTable() {
         )}
       </div>
 
-      
       <ConfirmModal
         open={openConfirm}
         title="Delete Strategy"

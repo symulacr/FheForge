@@ -27,10 +27,7 @@ export const FHENIX_CONTRACT_ADDRESSES: ContractAddresses = {
   swapRouter: process.env.NEXT_PUBLIC_SWAP_ROUTER_ADDRESS! as Address,
   oracle: process.env.NEXT_PUBLIC_ORACLE_ADDRESS! as Address,
 };
-export const CHAIN_CONTRACT_ADDRESSES: Record<
-  number,
-  ContractAddresses
-> = {
+export const CHAIN_CONTRACT_ADDRESSES: Record<number, ContractAddresses> = {
   421614: FHENIX_CONTRACT_ADDRESSES,
   84532: {
     vault: process.env.NEXT_PUBLIC_BASE_VAULT_ADDRESS! as Address,
@@ -57,7 +54,9 @@ export const validateEuint128 = (v: bigint) => {
 
 export const validateEuint64 = (v: bigint) => {
   if (v < 0n || v > 2n ** 64n - 1n)
-    throw new Error(`Amount ${v} exceeds euint64 range (max ${(2n ** 64n - 1n).toString()})`);
+    throw new Error(
+      `Amount ${v} exceeds euint64 range (max ${(2n ** 64n - 1n).toString()})`,
+    );
 };
 
 export const validateEnvVars = () => {

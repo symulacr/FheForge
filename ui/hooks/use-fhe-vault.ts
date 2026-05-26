@@ -1,7 +1,7 @@
 import { useWriteContract, useChainId, useAccount } from "wagmi";
 import type { Abi } from "viem";
 import { Encryptable, FheTypes } from "@cofhe/sdk";
-import { parseUnits, formatUnits, keccak256, toHex, type Hash } from "viem";
+import { parseUnits, formatUnits, type Hash } from "viem";
 import { useMemo, useRef, useState } from "react";
 
 import VaultArtifact from "@/abis/StrategyVault.json";
@@ -55,7 +55,8 @@ export function useFheVault() {
   // CoFHE SDK supports Encryptable.uint128() - no truncation risk for euint128 values
   const encrypt128 = async (value: bigint): Promise<EncryptedHandle> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
-    if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");
+    if (!cofheState.permitReady)
+      throw new Error("CoFHE permit not ready — please wait or reconnect");
     const handles = (await cofheClient
       .encryptInputs([Encryptable.uint128(value)])
       .execute()) as EncryptedHandle[];
@@ -63,13 +64,13 @@ export function useFheVault() {
     return handles[0];
   };
 
-
   const decryptForView = async (
     handle: EncryptedHandle,
     fheType: typeof FheTypes.Uint128 = FheTypes.Uint128,
   ): Promise<string> => {
     if (!cofheClient) throw new Error("CoFHE client not ready");
-    if (!cofheState.permitReady) throw new Error("CoFHE permit not ready — please wait or reconnect");
+    if (!cofheState.permitReady)
+      throw new Error("CoFHE permit not ready — please wait or reconnect");
     const result = await (
       cofheClient as {
         decryptForView: (
@@ -85,36 +86,30 @@ export function useFheVault() {
 
   const revealCollateral = async (): Promise<string> => {
     const handle = lastEncryptedSupply.current;
-    if (!handle) throw new Error("No encrypted supply stored — open a position first");
+    if (!handle)
+      throw new Error("No encrypted supply stored — open a position first");
     return decryptForView(handle);
   };
 
   const revealBorrow = async (): Promise<string> => {
     const handle = lastEncryptedBorrow.current;
-    if (!handle) throw new Error("No encrypted borrow stored — open a position first");
+    if (!handle)
+      throw new Error("No encrypted borrow stored — open a position first");
     return decryptForView(handle, FheTypes.Uint128);
   };
 
-  const revealSwapIntent = async (encryptedAmount: EncryptedUint128Input): Promise<string> => {
+  const revealSwapIntent = async (
+    encryptedAmount: EncryptedUint128Input,
+  ): Promise<string> => {
     return decryptForView(encryptedAmount);
   };
 
-  // P7: auto-generate positionIds when not provided
-  let _positionNonce = 0;
-  const _generatePositionId = (): PositionId => {
-    if (!userAddress) return `0x${"0".repeat(64)}` as PositionId;
-    return keccak256(
-      new TextEncoder().encode(`${userAddress}-${_positionNonce++}-${Date.now()}`)
-    ).slice(0, 42) as PositionId;
-  };
-
+  // P7: position ID generated on-chain by contract, tracked via syncUserPositions
   const openPosition = async (
     collateralToken: string,
     collateralAmount: string,
     strategyId: bigint = 0n,
-    positionId?: PositionId,
   ): Promise<Hash> => {
-    const pid = positionId ?? _generatePositionId();
     const { vault } = requireAddresses();
     const amountWei = parseUnits(collateralAmount, 18);
     validateEuint128(amountWei);
@@ -130,19 +125,9 @@ export function useFheVault() {
         address: vault as `0x${string}`,
         abi: VaultABI,
         functionName: "openPosition",
-        args: [
-          pid,
-          collateralToken,
-          amountWei,
-          encColl,
-          strategyId,
-          userAddr,
-        ],
+        args: [collateralToken, amountWei, encColl, strategyId, userAddr],
       });
-      setUserPositionIds(prev => {
-        if (prev.includes(pid)) return prev;
-        return [...prev, pid];
-      });
+      await syncUserPositions();
       return txHash;
     } finally {
       setIsEncrypting(false);
@@ -258,7 +243,20 @@ export function useFheVault() {
       address: vault as `0x${string}`,
       abi: VaultABI,
       functionName: "closePosition",
-      args: [positionId, collateralAmount, encryptedCollateralAmount] as unknown as [`0x${string}`, bigint, { ctHash: bigint; securityZone: number; utype: number; signature: string }],
+      args: [
+        positionId,
+        collateralAmount,
+        encryptedCollateralAmount,
+      ] as unknown as [
+        `0x${string}`,
+        bigint,
+        {
+          ctHash: bigint;
+          securityZone: number;
+          utype: number;
+          signature: string;
+        },
+      ],
     });
   };
 
@@ -282,7 +280,10 @@ export function useFheVault() {
   };
 
   // MC-21/28: Pool withdrawEth uses InEuint64
-  const withdrawEth = async (amount: bigint, encAmount: EncryptedHandle): Promise<Hash> => {
+  const withdrawEth = async (
+    amount: bigint,
+    encAmount: EncryptedHandle,
+  ): Promise<Hash> => {
     const { pool } = requireAddresses();
     return writeContractAsync({
       address: pool as `0x${string}`,
@@ -293,12 +294,21 @@ export function useFheVault() {
   };
 
   // P7: getUserPositions(user) → bytes32[] — returns all position IDs for a user
-  const getUserPositions = async (user: `0x${string}`): Promise<PositionId[]> => {
+  const getUserPositions = async (
+    user: `0x${string}`,
+  ): Promise<PositionId[]> => {
     const { vault } = requireAddresses();
     if (cofheClient) {
-      const raw = (cofheClient as unknown as {
-        contractView: (address: `0x${string}`, abi: Abi, functionName: string, args: unknown[]) => { execute: () => Promise<unknown> };
-      })
+      const raw = (
+        cofheClient as unknown as {
+          contractView: (
+            address: `0x${string}`,
+            abi: Abi,
+            functionName: string,
+            args: unknown[],
+          ) => { execute: () => Promise<unknown> };
+        }
+      )
         .contractView(vault, VaultABI, "getUserPositions", [user])
         .execute();
       return (await raw) as PositionId[];

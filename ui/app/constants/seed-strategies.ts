@@ -1,4 +1,3 @@
-
 export const SEED_STRATEGIES = [
   {
     id: "seed-1",

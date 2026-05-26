@@ -30,11 +30,9 @@ export default function Sidebar({ modules, onSelect }: SidebarProps) {
         overflow-hidden
       "
     >
-      
       <div className="p-4 border-b border-border">
         <h2 className="text-lg font-semibold tracking-wide">Module Library</h2>
 
-        
         <div className="mt-3 relative">
           <Search
             size={14}
@@ -59,7 +57,6 @@ export default function Sidebar({ modules, onSelect }: SidebarProps) {
         </div>
       </div>
 
-      
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scroll">
         {(() => {
           const filtered = modules.filter((m) =>
@@ -81,7 +78,6 @@ export default function Sidebar({ modules, onSelect }: SidebarProps) {
 
             return (
               <div key={module.id}>
-                
                 <button
                   onClick={() => toggleModule(module.id)}
                   className={`
@@ -101,7 +97,6 @@ export default function Sidebar({ modules, onSelect }: SidebarProps) {
                   />
                 </button>
 
-                
                 {isOpen && (
                   <div className="mt-3 space-y-2">
                     {module.actions && module.actions.length > 0 ? (

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getStrategiesByOwner } from "@/services/defi-module-service";
 import { displayToast } from "@/components/shared/toast-manager";
-import { DefiStrategy } from "@/types/defi.strategy";
+import type { DefiStrategy } from "@/types/defi.strategy";
 
 export const useStrategies = (ownerId?: string) => {
   const queryClient = useQueryClient();

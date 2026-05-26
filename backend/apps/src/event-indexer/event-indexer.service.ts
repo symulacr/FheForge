@@ -5,9 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Contract } from 'ethers';
-import { JsonRpcProvider } from 'ethers/providers';
-import { Result } from 'ethers/abi';
+import { Contract, JsonRpcProvider, Result } from 'ethers';
 import { SupabaseService } from '../shared/infrastructure/supabase.service';
 
 // ── Contract ABIs (only the events we index) ───────────────────────────
@@ -126,6 +124,18 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
     // If no saved state, start from current block
     if (this.lastProcessedBlock === 0) {
       this.lastProcessedBlock = await this.provider.getBlockNumber();
+    }
+
+    // Warn if the gap since the last indexed block exceeds the Arb Sepolia retention
+    // window (~128 blocks, ~30 min). Events from periods where the indexer was down
+    // are permanently lost if they exceed this window.
+    const currentBlock = await this.provider.getBlockNumber();
+    const blockGap = currentBlock - this.lastProcessedBlock;
+    if (blockGap > 64) {
+      this.logger.warn(
+        `Block gap of ${blockGap} blocks detected since last index (current=${currentBlock}, last_indexed=${this.lastProcessedBlock}). ` +
+          `Arbitrum Sepolia retains ~128 blocks (~30 min). Events during this gap may be permanently lost.`,
+      );
     }
 
     this.running = true;

@@ -8,7 +8,6 @@ import { useCofheClient } from "@/providers/fhenix-provider";
 import { useToast } from "@/hooks/use-toast";
 import { validateEuint128 } from "@/utils/addresses";
 
-
 const ERC20_ABI = [
   {
     constant: false,
@@ -48,13 +47,11 @@ export async function performTransfer(params: {
   } = params;
   if (!token?.token_address) throw new Error("Invalid token address");
 
-  
   const amt = parseUnits(amount, decimals);
   validateEuint128(amt);
 
   if (!cofheClient) throw new Error("CoFHE not ready");
 
-  
   const tx = await writeContractAsync({
     address: token.token_address as `0x${string}`,
     abi: ERC20_ABI,

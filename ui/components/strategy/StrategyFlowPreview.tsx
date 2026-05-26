@@ -25,9 +25,7 @@ export function StrategyFlowPreview({
   const { steps, metadata } = strategy;
 
   const getInitialToken = () => {
-    const firstStepWithToken = steps.find(
-      (step) => step.tokenIn?.symbol,
-    );
+    const firstStepWithToken = steps.find((step) => step.tokenIn?.symbol);
     return firstStepWithToken?.tokenIn?.symbol || selectedToken;
   };
 

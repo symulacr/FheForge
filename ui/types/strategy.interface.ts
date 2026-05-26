@@ -1,4 +1,4 @@
-import { StrategyStep } from "@/types/defi.strategy";
+import type { StrategyStep } from "@/types/defi.strategy";
 
 export interface Strategy {
   id: string;

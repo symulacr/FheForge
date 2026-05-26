@@ -21,7 +21,6 @@ export default function DefiNodeSwap({ data }: Props) {
   return (
     <div className="pt-3">
       <div className="grid grid-cols-[1fr_90px_1fr] items-center min-h-[92px]">
-        
         <div className="flex flex-col items-start">
           <div className="text-[28px] font-semibold leading-none text-white">
             {formatAmount(data.amount)}
@@ -31,12 +30,10 @@ export default function DefiNodeSwap({ data }: Props) {
           </div>
         </div>
 
-        
         <div className="flex items-center justify-center">
           <div className="text-[40px] leading-none text-white/90">→</div>
         </div>
 
-        
         <div className="flex flex-col items-end">
           <div className="text-[28px] font-semibold leading-none text-white">
             {formatAmount(data.amountOut)}

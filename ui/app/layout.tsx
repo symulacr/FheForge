@@ -34,7 +34,6 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "700"],
 });
 
-
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fheforge.app";
 
 export const metadata: Metadata = {
