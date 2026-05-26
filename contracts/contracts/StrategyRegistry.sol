@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
-import { FHE, ebool, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { IStrategyRegistry } from "./IStrategyRegistry.sol";
 import { FheForgeBase } from "./FheForgeBase.sol";
 import { TimelockedRotation } from "./libraries/TimelockedRotation.sol";
@@ -10,15 +10,14 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
     uint256 public constant MIN_NAME_LENGTH = 1;
     uint256 public constant MAX_NAME_LENGTH = 256;
 
-    // solhint:disable-next-line gas-struct-packing
     struct Strategy {
         bytes32 workflowHash;
-        address creator;
-        bool active;
         uint64 createdAt;
-        string name;
         uint16 apyTarget;
+        bool active;
         uint8 loopCount;
+        address creator;
+        string name;
     }
 
     error OnlyVault();
@@ -46,7 +45,6 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
     event VaultProposed(address indexed newVault, uint256 indexed earliest);
     event TvlIncreased(uint256 indexed strategyId, address indexed caller);
     event TvlDecreased(uint256 indexed strategyId, address indexed caller);
-    // ────────── P10: Cross-chain event interface ──────────
     event CrossChainMessage(
         uint256 indexed destinationDomain,
         bytes32 indexed intentId,
@@ -64,8 +62,10 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         if (msg.sender != vaultAddress) revert OnlyVault();
     }
 
-    constructor(uint256 vaultRotationDelay_) FheForgeBase() TimelockedRotation(vaultRotationDelay_) {}
+    constructor(uint256 vaultRotationDelay_) TimelockedRotation(vaultRotationDelay_) {}
 
+    /// @notice Set the vault address (one-time, onlyOwner).
+    /// @param v The vault contract address.
     function setVault(address v) external onlyOwner {
         if (v == address(0)) revert ZeroAddress();
         if (vaultAddress != address(0)) revert VaultAlreadySet();
@@ -73,11 +73,14 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         emit VaultSet(v);
     }
 
+    /// @notice Propose a new vault address with timelock.
+    /// @param newVault The proposed vault address.
     function proposeVault(address newVault) external onlyOwner {
         _proposeRole(newVault);
         emit VaultProposed(newVault, pendingRoleEarliest);
     }
 
+    /// @notice Accept the pending vault role after timelock expires.
     function acceptVault() external {
         address newVault = _acceptRole();
         vaultAddress = newVault;
@@ -110,15 +113,7 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         if (bytes(name).length > MAX_NAME_LENGTH) revert NameTooLong();
         if (workflowHash == bytes32(0)) revert ZeroWorkflowHash();
 
-        bytes32 contentHash;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            let m := mload(0x40)
-            mstore(m, caller())
-            let nameLen := name.length
-            calldatacopy(add(m, 0x20), name.offset, nameLen)
-            contentHash := keccak256(m, add(0x20, nameLen))
-        }
+        bytes32 contentHash = keccak256(abi.encode(_msgSender(), name));
         if (idByContentHash[contentHash] != 0) revert StrategyAlreadyExists();
 
         id = ++strategyCount;
@@ -136,6 +131,7 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         emit StrategyRegistered(id, msg.sender, name);
     }
 
+    /// @notice Activate or deactivate a strategy (creator only).
     function setActive(uint256 strategyId, bool active) external whenNotPaused {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
         if (strategies[strategyId].creator != _msgSender()) revert OnlyCreator();
@@ -143,6 +139,7 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         emit StrategyActiveSet(strategyId, active);
     }
 
+    /// @notice Increment the encrypted TVL for a strategy (vault only).
     function incrementTvl(
         uint256 strategyId,
         euint128 amount
@@ -153,6 +150,7 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         emit TvlIncreased(strategyId, msg.sender);
     }
 
+    /// @notice Decrement the encrypted TVL for a strategy (vault only).
     function decrementTvl(
         uint256 strategyId,
         euint128 amount
@@ -169,17 +167,17 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         FHE.allowThis(prev);
         euint128 result;
         if (isIncrement) {
-            result = _safeIncrease(prev, amount, OWNER);
+            result = _safeIncrease(prev, amount, owner());
         } else {
-            result = _safeDecrease(prev, amount, OWNER);
+            result = _safeDecrease(prev, amount, owner());
         }
         encryptedTvls[strategyId] = result;
         FHE.allowThis(result);
     }
 
     /// @notice Returns the encrypted TVL for a strategy, ACL-granted to caller for decryptForView.
-    function getEncryptedTvl(uint256 strategyId) external returns (euint128) {
-        euint128 v = _ensureInitialized(encryptedTvls[strategyId]);
+    function getEncryptedTvl(uint256 strategyId) external returns (euint128 v) {
+        v = _ensureInitialized(encryptedTvls[strategyId]);
         FHE.allow(v, msg.sender);
         FHE.allowSender(v);
         return v;
@@ -209,10 +207,11 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         return (s.apyTarget, s.loopCount);
     }
 
-    // ────────── P10: Cross-chain broadcast ──────────
-
+    /// @notice Broadcast a strategy to another domain via cross-chain message.
+    /// @param strategyId The strategy ID to broadcast.
+    /// @param destinationDomain The destination chain domain ID.
     function broadcastStrategy(uint256 strategyId, uint256 destinationDomain) external {
-        if (strategyId >= strategyCount) revert InvalidStrategyId();
+        if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
         Strategy storage s = strategies[strategyId];
         bytes memory payload = abi.encode(
             localDomain,
@@ -223,10 +222,22 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
             s.apyTarget,
             s.loopCount
         );
-        bytes32 intentId = keccak256(payload);
+        bytes32 intentId = _computeIntentId(payload);
         emit CrossChainMessage(destinationDomain, intentId, msg.sender, payload);
     }
 
+    function _computeIntentId(bytes memory payload) private pure returns (bytes32 result) {
+        return keccak256(payload);
+    }
+
+    /// @notice Receive a strategy from another domain (onlyOwner).
+    /// @param sourceDomain The source chain domain ID.
+    /// @param sourceStrategyId The original strategy ID on the source chain.
+    /// @param name The strategy name.
+    /// @param workflowHash The workflow hash.
+    /// @param creator The original creator address.
+    /// @param apyTarget Target APY in basis points.
+    /// @param loopCount Number of loop iterations.
     function receiveCrossChainStrategy(
         uint256 sourceDomain,
         uint256 sourceStrategyId,
@@ -236,9 +247,10 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         uint16 apyTarget,
         uint8 loopCount
     ) external onlyOwner {
-        bytes32 contentHash = keccak256(abi.encode(name, workflowHash, apyTarget, loopCount));
+        bytes32 contentHash = _computeContentHash(name, workflowHash, apyTarget, loopCount);
         if (idByContentHash[contentHash] != 0) revert StrategyAlreadyExists();
-        uint256 id = strategyCount++;
+        uint256 id = strategyCount;
+        ++strategyCount;
         strategies[id] = Strategy({
             workflowHash: workflowHash,
             creator: creator,
@@ -251,5 +263,15 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         idByContentHash[contentHash] = id;
         emit StrategyRegistered(id, creator, name);
         emit CrossChainMessage(sourceDomain, bytes32(sourceStrategyId), creator, "");
+    }
+
+    function _computeContentHash(
+        string calldata name,
+        bytes32 workflowHash,
+        uint16 apyTarget,
+        uint8 loopCount
+    ) private pure returns (bytes32 result) {
+        bytes memory data = abi.encode(name, workflowHash, apyTarget, loopCount);
+        return keccak256(data);
     }
 }

@@ -8,7 +8,8 @@
     "test:live:base": "HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat run scripts/test-live.ts --network base-sepolia",
     "test": "HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat test",
     "deploy:arb": "HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat run scripts/deploy.ts --network arb-sepolia",
-    "deploy:base": "HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat run scripts/deploy.ts --network base-sepolia"
+    "deploy:base": "HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat run scripts/deploy.ts --network base-sepolia",
+    "verify:addresses": "bun run scripts/verify-addresses.ts"
   },
   "devDependencies": {
     "@cofhe/abi": "0.5.2",

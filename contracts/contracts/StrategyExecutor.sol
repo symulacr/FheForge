@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { FHE, InEuint128, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { FheForgeBase } from "./FheForgeBase.sol";
 import { ILendingPool } from "./interfaces/ILendingPool.sol";
 import { IStrategyVault } from "./interfaces/IStrategyVault.sol";
@@ -16,7 +16,6 @@ contract StrategyExecutor is FheForgeBase {
     IStrategyVault public immutable VAULT;
     ISwapRouter public immutable ROUTER;
 
-    // Action type selectors
     bytes4 public constant SHIELD_SUPPLY = 0x00000001;
     bytes4 public constant BORROW_LTV = 0x00000002;
     bytes4 public constant SWAP_INTENT = 0x00000003;
@@ -39,11 +38,20 @@ contract StrategyExecutor is FheForgeBase {
 
     mapping(bytes32 => Checkpoint) public checkpoints;
 
-    event PipelineExecuted(bytes32 indexed strategyId, uint256 stepsCompleted, bool completed);
-    event ActionExecuted(bytes32 indexed strategyId, uint256 indexed index, bytes4 actionType);
+    event PipelineExecuted(
+        bytes32 indexed strategyId,
+        uint256 indexed stepsCompleted,
+        bool indexed completed
+    );
+    event ActionExecuted(
+        bytes32 indexed strategyId,
+        uint256 indexed index,
+        bytes4 indexed actionType
+    );
 
     constructor(address pool_, address vault_, address router_) FheForgeBase() {
-        if (pool_ == address(0) || vault_ == address(0) || router_ == address(0)) revert ZeroAddress();
+        if (pool_ == address(0) || vault_ == address(0) || router_ == address(0))
+            revert ZeroAddress();
         POOL = ILendingPool(pool_);
         VAULT = IStrategyVault(vault_);
         ROUTER = ISwapRouter(router_);
@@ -57,7 +65,8 @@ contract StrategyExecutor is FheForgeBase {
         Checkpoint storage cp = checkpoints[strategyId];
         uint256 startIdx = cp.completed ? 0 : cp.actionIndex;
 
-        for (uint256 i = startIdx; i < actions.length; i++) {
+        uint256 actionsLen = actions.length;
+        for (uint256 i = startIdx; i < actionsLen; ) {
             // Gas check: leave 100K for finalization
             if (gasleft() < 100_000) {
                 cp.actionIndex = i;
@@ -67,6 +76,9 @@ contract StrategyExecutor is FheForgeBase {
             }
 
             _executeAction(strategyId, i, actions[i]);
+            unchecked {
+                ++i;
+            }
         }
 
         cp.completed = true;
@@ -87,8 +99,13 @@ contract StrategyExecutor is FheForgeBase {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
             POOL.borrowFor(token, amount, FHE.asEuint128(action.encAmount), _msgSender());
         } else if (action.actionType == SWAP_INTENT) {
-            (address tokenIn, address tokenOut, uint256 amountIn, uint256 minOut, uint256 deadline) =
-                abi.decode(action.params, (address, address, uint256, uint256, uint256));
+            (
+                address tokenIn,
+                address tokenOut,
+                uint256 amountIn,
+                uint256 minOut,
+                uint256 deadline
+            ) = abi.decode(action.params, (address, address, uint256, uint256, uint256));
             IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amountIn);
             _ensureApproval(tokenIn, address(ROUTER), amountIn);
             ROUTER.submitSwapIntent(tokenIn, tokenOut, amountIn, minOut, deadline);
@@ -98,26 +115,41 @@ contract StrategyExecutor is FheForgeBase {
             _ensureApproval(token, address(POOL), amount);
             POOL.repayFor(token, amount, FHE.asEuint128(action.encAmount), _msgSender());
         } else if (action.actionType == SWAP_UNISWAP_V3) {
-            (address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint256 minOut) =
-                abi.decode(action.params, (address, address, uint24, uint256, uint256));
+            (address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint256 minOut) = abi
+                .decode(action.params, (address, address, uint24, uint256, uint256));
             IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amountIn);
             _ensureApproval(tokenIn, address(ROUTER), amountIn);
             ROUTER.swapViaUniswapV3Single(tokenIn, tokenOut, fee, amountIn, minOut);
         } else if (action.actionType == DEPOSIT_VAULT) {
-            (address token, uint256 amount, uint256 strategyId_) =
-                abi.decode(action.params, (address, uint256, uint256));
+            (address token, uint256 amount, uint256 strategyId_) = abi.decode(
+                action.params,
+                (address, uint256, uint256)
+            );
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
             _ensureApproval(token, address(VAULT), amount);
-            VAULT.openPosition(token, amount, FHE.asEuint128(action.encAmount), strategyId_, _msgSender());
+            VAULT.openPosition(
+                token,
+                amount,
+                FHE.asEuint128(action.encAmount),
+                strategyId_,
+                _msgSender()
+            );
         } else if (action.actionType == ADD_COLLATERAL) {
-            (bytes32 positionId, address token, uint256 amount) =
-                abi.decode(action.params, (bytes32, address, uint256));
+            (bytes32 positionId, address token, uint256 amount) = abi.decode(
+                action.params,
+                (bytes32, address, uint256)
+            );
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
             _ensureApproval(token, address(VAULT), amount);
-            VAULT.addCollateral(positionId, token, amount, FHE.asEuint128(action.encAmount), _msgSender());
+            VAULT.addCollateral(
+                positionId,
+                token,
+                amount,
+                FHE.asEuint128(action.encAmount),
+                _msgSender()
+            );
         } else if (action.actionType == WITHDRAW_VAULT) {
-            (bytes32 positionId, uint256 amount) =
-                abi.decode(action.params, (bytes32, uint256));
+            (bytes32 positionId, uint256 amount) = abi.decode(action.params, (bytes32, uint256));
             VAULT.closePosition(positionId, amount, FHE.asEuint128(action.encAmount));
         }
     }
@@ -130,7 +162,6 @@ contract StrategyExecutor is FheForgeBase {
         }
     }
 
-    /// @notice Reset checkpoint for a strategy
     function resetCheckpoint(bytes32 strategyId) external onlyOwner {
         delete checkpoints[strategyId];
     }

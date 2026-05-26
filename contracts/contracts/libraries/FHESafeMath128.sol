@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 import { FHE, ebool, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
@@ -11,10 +11,10 @@ library FHESafeMath128 {
     /// @dev Try to increase `oldValue` by `delta`.
     ///      If add would overflow (wrapped result < oldValue), success=false,
     ///      updated=oldValue (unchanged). Otherwise success=true, updated=newValue.
-    function tryIncrease(euint128 oldValue, euint128 delta)
-        internal
-        returns (ebool success, euint128 updated)
-    {
+    function tryIncrease(
+        euint128 oldValue,
+        euint128 delta
+    ) internal returns (ebool success, euint128 updated) {
         if (!FHE.isInitialized(oldValue)) {
             return (FHE.asEbool(true), delta);
         }
@@ -27,10 +27,10 @@ library FHESafeMath128 {
     /// @dev Try to decrease `oldValue` by `delta`.
     ///      If sub would underflow (delta > oldValue), success=false,
     ///      updated=oldValue (unchanged). Otherwise success=true, updated=newValue.
-    function tryDecrease(euint128 oldValue, euint128 delta)
-        internal
-        returns (ebool success, euint128 updated)
-    {
+    function tryDecrease(
+        euint128 oldValue,
+        euint128 delta
+    ) internal returns (ebool success, euint128 updated) {
         if (!FHE.isInitialized(oldValue)) {
             if (!FHE.isInitialized(delta)) {
                 return (FHE.asEbool(true), oldValue);
@@ -43,10 +43,7 @@ library FHESafeMath128 {
     }
 
     /// @dev Try to add `a` + `b`. If overflow, success=false, res=0.
-    function tryAdd(euint128 a, euint128 b)
-        internal
-        returns (ebool success, euint128 res)
-    {
+    function tryAdd(euint128 a, euint128 b) internal returns (ebool success, euint128 res) {
         if (!FHE.isInitialized(a)) return (FHE.asEbool(true), b);
         if (!FHE.isInitialized(b)) return (FHE.asEbool(true), a);
         euint128 sum = FHE.add(a, b);
@@ -55,10 +52,7 @@ library FHESafeMath128 {
     }
 
     /// @dev Try to subtract `b` from `a`. If underflow, success=false, res=0.
-    function trySub(euint128 a, euint128 b)
-        internal
-        returns (ebool success, euint128 res)
-    {
+    function trySub(euint128 a, euint128 b) internal returns (ebool success, euint128 res) {
         if (!FHE.isInitialized(b)) return (FHE.asEbool(true), a);
         euint128 difference = FHE.sub(a, b);
         success = FHE.lte(difference, a);

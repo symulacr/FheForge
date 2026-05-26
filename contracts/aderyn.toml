@@ -48,7 +48,13 @@ exclude = ["lib/", "node_modules/", "test/", "test-foundry/", "scripts/"]
 #   Mitigations: production owner is a multi-sig (Safe / Coinbase Wallet) and
 #   the most consequential rotations are timelocked. Documented in
 #   CONTRACT_INVESTIGATION_REPORT.md §INV-5-001 + ADERYN_MICROFIX_PLAN.md §L-1.
-exclude = ["centralization-risk"]
+exclude = [
+    "centralization-risk",
+    # MC-094: `10 ** dec` exponent literals in PriceOracle are intentional.
+    # The `10` is the radix base in decimal exponentiation. Naming it `TEN`
+    # would reduce readability. Detected by the exponent-detector.
+    "exponent-detector",
+]
 
 # For advanced use cases, leverage the following
 

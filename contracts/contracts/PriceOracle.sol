@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { IPyth } from "@pythnetwork/pyth-sdk-solidity/IPyth.sol";
@@ -27,6 +27,9 @@ contract PriceOracle is FheForgeBase {
     uint256 public stalenessThreshold = 1 hours;
     mapping(address => uint256) public lastPriceUpdate;
 
+    address[] public registeredTokens;
+    mapping(address => bool) public isTokenRegistered;
+
     error NoPriceFeed();
     error NegativePrice();
     error InvalidBps();
@@ -47,10 +50,10 @@ contract PriceOracle is FheForgeBase {
         uint16 indexed liqThresholdBps
     );
     event PythCacheUpdated(address indexed caller, uint256 indexed feePaid);
-    event FallbackPriceSet(address indexed token, uint256 price);
+    event FallbackPriceSet(address indexed token, uint256 indexed price);
     event FallbackPriceRemoved(address indexed token);
-    event StalenessThresholdUpdated(uint256 oldThreshold, uint256 newThreshold);
-    event SourcesBatchSet(uint256 count);
+    event StalenessThresholdUpdated(uint256 indexed oldThreshold, uint256 indexed newThreshold);
+    event SourcesBatchSet(uint256 indexed count);
 
     constructor(address pyth_, uint256 defaultStaleThreshold_) FheForgeBase() {
         if (pyth_ == address(0)) revert ZeroAddress();
@@ -58,6 +61,11 @@ contract PriceOracle is FheForgeBase {
         DEFAULT_STALE_THRESHOLD = defaultStaleThreshold_;
     }
 
+    /// @notice Set the Pyth price feed source for a given token.
+    /// @param token The token address to configure.
+    /// @param priceId_ The Pyth price feed ID for this token.
+    /// @param decimals_ The number of decimals for the token.
+    /// @param threshold_ The staleness threshold (seconds) before the feed is considered stale.
     function setSource(
         address token,
         bytes32 priceId_,
@@ -69,9 +77,15 @@ contract PriceOracle is FheForgeBase {
         priceId[token] = priceId_;
         tokenDecimals[token] = decimals_;
         staleThreshold[token] = threshold_;
+        if (!isTokenRegistered[token]) {
+            isTokenRegistered[token] = true;
+            registeredTokens.push(token);
+        }
         emit SourceSet(token, priceId_, decimals_, threshold_);
     }
 
+    /// @notice Remove a Pyth price feed source for a given token.
+    /// @param token The token address to remove.
     function removeSource(address token) external onlyOwner {
         if (token == address(0)) revert ZeroAddress();
         delete priceId[token];
@@ -81,24 +95,38 @@ contract PriceOracle is FheForgeBase {
 
     struct FeedInfo {
         address token;
-        bytes32 priceId;
-        uint8 decimals;
         uint64 staleThreshold;
+        uint8 decimals;
+        bytes32 priceId;
     }
 
+    /// @notice Batch-configure Pyth price feeds for multiple tokens at once.
+    /// @param feeds Array of FeedInfo structs with token, priceId, decimals, and staleThreshold.
     function batchSetSources(FeedInfo[] calldata feeds) external onlyOwner {
-        for (uint256 i = 0; i < feeds.length; i++) {
+        uint256 feedsLen = feeds.length;
+        for (uint256 i = 0; i < feedsLen; ) {
             FeedInfo calldata feed = feeds[i];
             if (feed.token == address(0)) revert ZeroAddress();
             if (feed.decimals == 0) revert ZeroAmount();
             priceId[feed.token] = feed.priceId;
             tokenDecimals[feed.token] = feed.decimals;
             staleThreshold[feed.token] = feed.staleThreshold;
+            if (!isTokenRegistered[feed.token]) {
+                isTokenRegistered[feed.token] = true;
+                registeredTokens.push(feed.token);
+            }
             emit SourceSet(feed.token, feed.priceId, feed.decimals, feed.staleThreshold);
+            unchecked {
+                ++i;
+            }
         }
         emit SourcesBatchSet(feeds.length);
     }
 
+    /// @notice Set collateral and liquidation factors (in basis points) for a token.
+    /// @param token The token address.
+    /// @param ltvBps Loan-to-value basis points (e.g. 7500 = 75%).
+    /// @param liqThresholdBps Liquidation threshold basis points (e.g. 8000 = 80%).
     function setCollateralFactor(
         address token,
         uint16 ltvBps,
@@ -113,22 +141,29 @@ contract PriceOracle is FheForgeBase {
         emit CollateralFactorSet(token, ltvBps, liqThresholdBps);
     }
 
+    /// @notice Update Pyth price feeds with fresh oracle data.
+    /// @param updateData Encoded Pyth price update data.
     function updatePriceFeeds(bytes[] calldata updateData) external payable {
         uint256 fee = PYTH.getUpdateFee(updateData);
         if (msg.value != fee) revert PythUpdateFeeMismatch();
         PYTH.updatePriceFeeds{ value: fee }(updateData);
 
         uint256 timestamp = block.timestamp;
-        for (uint i = 0; i < 256; i++) {
-            address token = address(uint160(i));
-            if (priceId[token] != bytes32(0)) {
-                lastPriceUpdate[token] = timestamp;
+        uint256 regLen = registeredTokens.length;
+        for (uint256 i = 0; i < regLen; ) {
+            address token = registeredTokens[i];
+            lastPriceUpdate[token] = timestamp;
+            unchecked {
+                ++i;
             }
         }
 
         emit PythCacheUpdated(msg.sender, fee);
     }
 
+    /// @notice Get the fee required to update Pyth price feeds.
+    /// @param updateData Encoded Pyth price update data.
+    /// @return feeAmount The required fee in wei.
     function getPythUpdateFee(
         bytes[] calldata updateData
     ) external view returns (uint256 feeAmount) {
@@ -156,13 +191,17 @@ contract PriceOracle is FheForgeBase {
         if (totalExpInt > -1) {
             priceWad = absAnswer * (10 ** totalExpInt.toUint256());
         } else {
-            priceWad = absAnswer / (10 ** (-totalExpInt).toUint256());
+            uint256 divisor = 10 ** (-totalExpInt).toUint256();
+            priceWad = (absAnswer + divisor - 1) / divisor;
         }
 
         updatedAt = p.publishTime.toUint64();
     }
 
-    function isStale(address token) external view returns (bool) {
+    /// @notice Check if a token's price feed is stale.
+    /// @param token The token address to check.
+    /// @return stale True if the feed is stale or not registered.
+    function isStale(address token) external view returns (bool stale) {
         if (priceId[token] == bytes32(0)) return true;
 
         bytes32 id = priceId[token];
@@ -179,7 +218,7 @@ contract PriceOracle is FheForgeBase {
         return age > stalenessThreshold;
     }
 
-    function getPriceWithFallback(address token) public view returns (uint256) {
+    function getPriceWithFallback(address token) public view returns (uint256 priceWad) {
         bytes32 id = priceId[token];
 
         // If no Pyth feed registered, try fallback immediately
@@ -194,11 +233,8 @@ contract PriceOracle is FheForgeBase {
         if (!stale) {
             uint256 threshold = staleThreshold[token];
             if (threshold == 0) threshold = DEFAULT_STALE_THRESHOLD;
-            try PYTH.getPriceNoOlderThan(id, threshold) returns (PythStructs.Price memory p) {
-                return _normalizePythPrice(p);
-            } catch {
-                // Pyth call failed — fall through to fallback
-            }
+            priceWad = _tryGetPrice(id, threshold);
+            if (priceWad != 0) return priceWad;
         }
 
         // Stale or Pyth call failed — try fallback
@@ -209,7 +245,7 @@ contract PriceOracle is FheForgeBase {
         revert NoPriceAvailable();
     }
 
-    function _isPythStale(bytes32 id, address token) internal view returns (bool) {
+    function _isPythStale(bytes32 id, address token) internal view returns (bool stale) {
         PythStructs.Price memory p = PYTH.getPriceUnsafe(id);
 
         uint256 age;
@@ -223,7 +259,18 @@ contract PriceOracle is FheForgeBase {
         return age > stalenessThreshold;
     }
 
-    function _normalizePythPrice(PythStructs.Price memory p) internal pure returns (uint256 priceWad) {
+    /// @dev Try to get a fresh Pyth price; returns 0 if Pyth call fails (triggers fallback path).
+    function _tryGetPrice(bytes32 id, uint256 threshold) private view returns (uint256 priceWad) {
+        try PYTH.getPriceNoOlderThan(id, threshold) returns (PythStructs.Price memory p) {
+            priceWad = _normalizePythPrice(p);
+        } catch {
+            return 0;
+        }
+    }
+
+    function _normalizePythPrice(
+        PythStructs.Price memory p
+    ) internal pure returns (uint256 priceWad) {
         if (p.price == 0) revert ZeroPrice();
         if (p.price < 0) revert NegativePrice();
         uint256 absAnswer = int256(p.price).toUint256();
@@ -236,10 +283,14 @@ contract PriceOracle is FheForgeBase {
         if (totalExpInt > -1) {
             priceWad = absAnswer * (10 ** totalExpInt.toUint256());
         } else {
-            priceWad = absAnswer / (10 ** (-totalExpInt).toUint256());
+            uint256 divisor = 10 ** (-totalExpInt).toUint256();
+            priceWad = (absAnswer + divisor - 1) / divisor;
         }
     }
 
+    /// @notice Set a fallback price for a token when Pyth is unavailable.
+    /// @param token The token address.
+    /// @param price The fallback price in 18-decimal WAD format.
     function setFallbackPrice(address token, uint256 price) external onlyOwner {
         if (token == address(0)) revert ZeroAddress();
         if (price == 0) revert ZeroAmount();
@@ -248,6 +299,8 @@ contract PriceOracle is FheForgeBase {
         emit FallbackPriceSet(token, price);
     }
 
+    /// @notice Remove a fallback price for a token.
+    /// @param token The token address.
     function removeFallbackPrice(address token) external onlyOwner {
         if (token == address(0)) revert ZeroAddress();
         delete fallbackPrices[token];
@@ -255,6 +308,8 @@ contract PriceOracle is FheForgeBase {
         emit FallbackPriceRemoved(token);
     }
 
+    /// @notice Set the global staleness threshold for all Pyth price feeds.
+    /// @param newThreshold New staleness duration in seconds.
     function setStalenessThreshold(uint256 newThreshold) external onlyOwner {
         if (newThreshold == 0) revert ZeroAmount();
         uint256 old = stalenessThreshold;
@@ -262,6 +317,10 @@ contract PriceOracle is FheForgeBase {
         emit StalenessThresholdUpdated(old, newThreshold);
     }
 
+    /// @notice Convert a token amount to its USD value at current prices.
+    /// @param token The token address.
+    /// @param amount The token amount (in token's own decimals).
+    /// @return usdWad The USD value in 18-decimal WAD format.
     function convertToUsd(address token, uint256 amount) external view returns (uint256 usdWad) {
         uint256 priceWad = getPriceWithFallback(token);
         uint8 dec = tokenDecimals[token];
@@ -269,6 +328,10 @@ contract PriceOracle is FheForgeBase {
         usdWad = (amount * priceWad) / (10 ** dec);
     }
 
+    /// @notice Convert a USD value to a token amount at current prices.
+    /// @param token The token address.
+    /// @param usdWad The USD value in 18-decimal WAD format.
+    /// @return amount The token amount (in token's own decimals).
     function convertFromUsd(address token, uint256 usdWad) external view returns (uint256 amount) {
         uint256 priceWad = getPriceWithFallback(token);
         uint8 dec = tokenDecimals[token];
@@ -276,10 +339,15 @@ contract PriceOracle is FheForgeBase {
         amount = (usdWad * (10 ** dec)) / priceWad;
     }
 
-    function isSupported(address token) external view returns (bool) {
+    /// @notice Check if a token has a price feed configured.
+    /// @param token The token address.
+    /// @return supported True if the token has a price feed.
+    function isSupported(address token) external view returns (bool supported) {
         return priceId[token] != bytes32(0);
     }
 
+    /// @notice Sweep accumulated ETH from oracle update fees to a recipient.
+    /// @param to The recipient address.
     function sweepEth(address payable to) external onlyOwner {
         if (to == address(0)) revert ZeroAddress();
         uint256 bal = address(this).balance;

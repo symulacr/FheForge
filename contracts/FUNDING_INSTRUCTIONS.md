@@ -80,7 +80,7 @@ Sepolia, request 10 USDC). Then approve the vault and pool:
 cast send 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d \
   "approve(address,uint256)" <VAULT_ADDR> 1000000000 \
   --rpc-url $ARBITRUM_SEPOLIA_RPC_URL \
-  --private-key $TESTER_PRIVATE_KEY
+  --private-key $TESTER1_PRIVATE_KEY
 ```
 
 ### Option C: Swap ETH → USDC on testnet

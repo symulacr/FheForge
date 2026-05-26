@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -25,8 +25,12 @@ interface IUniswapV3SwapRouter {
         uint256 amountIn;
         uint256 amountOutMinimum;
     }
-    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
-    function exactInput(ExactInputParams calldata params) external payable returns (uint256 amountOut);
+    function exactInputSingle(
+        ExactInputSingleParams calldata params
+    ) external payable returns (uint256 amountOut);
+    function exactInput(
+        ExactInputParams calldata params
+    ) external payable returns (uint256 amountOut);
 }
 
 contract SwapRouter is FheForgeBase, TimelockedRotation {
@@ -75,8 +79,18 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
     event IntentCancelled(bytes32 indexed intentId, address indexed user);
     event ExecutorProposed(address indexed newExecutor, uint256 indexed earliest);
     event ExecutorRotated(address indexed previousExecutor, address indexed newExecutor);
-    event UniswapV3SingleSwap(address indexed user, address indexed tokenIn, address indexed tokenOut, uint256 amountIn, uint256 amountOut);
-    event UniswapV3MultiHopSwap(address indexed user, uint256 amountIn, uint256 amountOut);
+    event UniswapV3SingleSwap(
+        address indexed user,
+        address indexed tokenIn,
+        address indexed tokenOut,
+        uint256 amountIn,
+        uint256 amountOut
+    );
+    event UniswapV3MultiHopSwap(
+        address indexed user,
+        uint256 indexed amountIn,
+        uint256 indexed amountOut
+    );
 
     constructor(
         address executor_,
@@ -84,7 +98,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         uint256 maxDeadlineOffset_,
         uint256 executorRotationDelay_,
         address uniswapV3Router_
-    ) FheForgeBase() TimelockedRotation(executorRotationDelay_) {
+    ) TimelockedRotation(executorRotationDelay_) {
         if (executor_ == address(0)) revert ZeroAddress();
         if (minDeadlineOffset_ == 0) revert DeadlineTooShort();
         if (maxDeadlineOffset_ < minDeadlineOffset_) revert DeadlineTooLong();
@@ -94,12 +108,14 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         UNISWAP_V3_ROUTER = uniswapV3Router_;
     }
 
-    function proposeExecutor(address newExecutor) external onlyOwner {
+    /// @notice Propose a new executor address with timelock.
+    function proposeExecutor(address newExecutor) external onlyOwner whenNotPaused {
         _proposeRole(newExecutor);
         emit ExecutorProposed(newExecutor, pendingRoleEarliest);
     }
 
-    function acceptExecutor() external {
+    /// @notice Accept the pending executor role after timelock expires.
+    function acceptExecutor() external whenNotPaused {
         address oldExec = executor;
         executor = _acceptRole();
         emit ExecutorRotated(oldExec, executor);
@@ -145,6 +161,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         return (i.tokenIn, i.tokenOut, i.user, i.deadline);
     }
 
+    /// @notice Cancel a pending swap intent and return escrowed tokens.
     function cancelIntent(bytes32 intentId) external {
         if (intents[intentId].user != _msgSender()) revert NotCreator();
         // C-04: Return escrowed tokensIn to user
@@ -155,6 +172,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         emit IntentCancelled(intentId, msg.sender);
     }
 
+    /// @notice Execute a swap intent (executor only).
     function executeIntent(bytes32 intentId, uint256 outputAmount) external whenNotPaused {
         if (msg.sender != executor) revert NotExecutor();
         SwapIntent storage i = intents[intentId];
@@ -175,8 +193,6 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         delete intents[intentId];
         emit IntentExecuted(intentId, user, outputAmount);
     }
-
-    // ────────── Uniswap V3 Direct Swap Paths ──────────
 
     /// @notice Swap via Uniswap V3 single-hop exactInputSingle
     function swapViaUniswapV3Single(
@@ -234,5 +250,4 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
 
         emit UniswapV3MultiHopSwap(_msgSender(), amountIn, amountOut);
     }
-
 }

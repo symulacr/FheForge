@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
-import { FHE, InEuint128, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, InEuint128, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { FheForgeBase } from "./FheForgeBase.sol";
@@ -23,9 +23,7 @@ contract FheForgeComposer is FheForgeBase {
         uint256 indexed strategyId,
         bytes32 indexed intentId
     );
-    event StrategyRebalanced(
-        address indexed user
-    );
+    event StrategyRebalanced(address indexed user);
 
     constructor(address registry_, address vault_, address pool_, address router_) FheForgeBase() {
         if (
@@ -73,7 +71,6 @@ contract FheForgeComposer is FheForgeBase {
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e
     ) external nonReentrant whenNotPaused returns (uint256 strategyId, bytes32 intentId) {
-        // Pull total needed: max of collateralAmount and poolSupplyAmount from user
         uint256 totalNeeded =
             p.collateralAmount > p.poolSupplyAmount ? p.collateralAmount : p.poolSupplyAmount;
         if (totalNeeded > 0) {
@@ -81,20 +78,16 @@ contract FheForgeComposer is FheForgeBase {
         }
 
         strategyId = _resolveStrategyId(p);
-        // Split: vault gets collateralAmount, pool gets the remainder
-        uint256 vaultCovered =
-            totalNeeded > p.collateralAmount ? p.collateralAmount : totalNeeded;
+        uint256 vaultCovered = totalNeeded > p.collateralAmount ? p.collateralAmount : totalNeeded;
         _openVaultPosition(p, e, strategyId);
         _depositToPool(p, e, totalNeeded - vaultCovered);
         _borrowFromPool(p, e);
         intentId = _submitSwap(p, e);
 
-        emit LeveragedStrategyOpened(
-            msg.sender, strategyId, intentId
-        );
+        emit LeveragedStrategyOpened(msg.sender, strategyId, intentId);
     }
 
-    function _resolveStrategyId(OpenStrategyParams calldata p) internal returns (uint256) {
+    function _resolveStrategyId(OpenStrategyParams calldata p) internal returns (uint256 id) {
         if (p.strategyId == 0) {
             return
                 REGISTRY.registerStrategy(p.strategyName, p.workflowHash, p.apyTarget, p.loopCount);
@@ -106,15 +99,20 @@ contract FheForgeComposer is FheForgeBase {
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata e,
         uint256 strategyId
-    ) internal returns (bytes32) {
+    ) internal returns (bytes32 positionId) {
         if (p.collateralAmount == 0) return bytes32(0);
         _ensureApproval(p.collateralToken, address(VAULT), p.collateralAmount);
         euint128 incomingColl = FHE.asEuint128(e.collateral);
         euint128 verifiedColl = _verifyEquality(incomingColl, p.collateralAmount);
         FHE.allowTransient(verifiedColl, address(VAULT));
-        return VAULT.openPosition(
-            p.collateralToken, p.collateralAmount, verifiedColl, strategyId, _msgSender()
-        );
+        return
+            VAULT.openPosition(
+                p.collateralToken,
+                p.collateralAmount,
+                verifiedColl,
+                strategyId,
+                _msgSender()
+            );
     }
 
     function _depositToPool(
@@ -144,12 +142,14 @@ contract FheForgeComposer is FheForgeBase {
     function _submitSwap(
         OpenStrategyParams calldata p,
         OpenStrategyEncrypted calldata /* e */
-    ) internal returns (bytes32) {
+    ) internal returns (bytes32 intentId) {
         if (p.swapTokenOut == address(0)) {
-            // No swap — forward borrowed tokens to user
-            uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
-            if (received > 0) {
-                IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
+            // No swap — forward borrowed tokens to user (if any were borrowed)
+            if (p.borrowToken != address(0)) {
+                uint256 received = IERC20(p.borrowToken).balanceOf(address(this));
+                if (received > 0) {
+                    IERC20(p.borrowToken).safeTransfer(_msgSender(), received);
+                }
             }
             return bytes32(0);
         }
@@ -189,13 +189,13 @@ contract FheForgeComposer is FheForgeBase {
         RebalanceParams calldata p,
         RebalanceEncrypted calldata e
     ) external nonReentrant whenNotPaused {
-        // Pull collateral directly
         if (p.addCollateralAmount > 0) {
             IERC20(p.collateralToken).safeTransferFrom(
-                _msgSender(), address(this), p.addCollateralAmount
+                _msgSender(),
+                address(this),
+                p.addCollateralAmount
             );
         }
-        // Pull repay token directly
         if (p.repayAmount > 0) {
             IERC20(p.repayToken).safeTransferFrom(_msgSender(), address(this), p.repayAmount);
         }
@@ -205,7 +205,11 @@ contract FheForgeComposer is FheForgeBase {
             euint128 verifiedAddColl = _verifyEquality(addCollEnc, p.addCollateralAmount);
             FHE.allowTransient(verifiedAddColl, address(VAULT));
             VAULT.addCollateral(
-                p.positionId, p.collateralToken, p.addCollateralAmount, verifiedAddColl, _msgSender()
+                p.positionId,
+                p.collateralToken,
+                p.addCollateralAmount,
+                verifiedAddColl,
+                _msgSender()
             );
         }
 
@@ -221,16 +225,15 @@ contract FheForgeComposer is FheForgeBase {
             euint128 newBorrowEnc = FHE.asEuint128(e.newBorrowEnc);
             euint128 verifiedNewBorrow = _verifyEquality(newBorrowEnc, p.newBorrowAmount);
             FHE.allowTransient(verifiedNewBorrow, address(POOL));
-            POOL.borrowFor(
-                p.borrowToken, p.newBorrowAmount, verifiedNewBorrow, _msgSender()
-            );
+            POOL.borrowFor(p.borrowToken, p.newBorrowAmount, verifiedNewBorrow, _msgSender());
         }
 
-        emit StrategyRebalanced(
-            msg.sender
-        );
+        emit StrategyRebalanced(msg.sender);
     }
 
+    /// @notice Sweep accidental token balances from the contract to a recipient.
+    /// @param token The token address to sweep.
+    /// @param to The recipient address.
     function sweepToken(address token, address to) external onlyOwner {
         if (token == address(0) || to == address(0)) revert ZeroAddress();
         uint256 bal = IERC20(token).balanceOf(address(this));

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 import { Governor } from "@openzeppelin/contracts/governance/Governor.sol";
 import { GovernorSettings } from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
@@ -23,31 +23,29 @@ contract FheForgeGovernor is
 
     // GovernorSettings handles _votingDelay, _votingPeriod, _proposalThreshold internally
 
-    constructor(IVotes token, TimelockController timelock, uint256 quorumBPS)
+    constructor(
+        IVotes token,
+        TimelockController timelock,
+        uint256 quorumBps
+    )
         Governor("FheForge Governor")
         GovernorSettings(1 days, 3 days, PROPOSAL_THRESHOLD)
         GovernorVotes(token)
-        GovernorVotesQuorumFraction(quorumBPS)
+        GovernorVotesQuorumFraction(quorumBps)
         GovernorTimelockControl(timelock)
     {}
 
     // Governor: must override due to conflict with GovernorTimelockControl
-    function state(uint256 proposalId)
-        public
-        view
-        override(Governor, GovernorTimelockControl)
-        returns (ProposalState)
-    {
+    function state(
+        uint256 proposalId
+    ) public view override(Governor, GovernorTimelockControl) returns (ProposalState state_) {
         return super.state(proposalId);
     }
 
     // GovernorTimelockControl: must override due to conflict with Governor
-    function proposalNeedsQueuing(uint256 proposalId)
-        public
-        view
-        override(Governor, GovernorTimelockControl)
-        returns (bool)
-    {
+    function proposalNeedsQueuing(
+        uint256 proposalId
+    ) public view override(Governor, GovernorTimelockControl) returns (bool needsQueue) {
         return super.proposalNeedsQueuing(proposalId);
     }
 
@@ -58,11 +56,7 @@ contract FheForgeGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    )
-        internal
-        override(Governor, GovernorTimelockControl)
-        returns (uint48)
-    {
+    ) internal override(Governor, GovernorTimelockControl) returns (uint48 scheduledAt) {
         return super._queueOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -73,10 +67,7 @@ contract FheForgeGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    )
-        internal
-        override(Governor, GovernorTimelockControl)
-    {
+    ) internal override(Governor, GovernorTimelockControl) {
         super._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -86,11 +77,7 @@ contract FheForgeGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    )
-        internal
-        override(Governor, GovernorTimelockControl)
-        returns (uint256 proposalId)
-    {
+    ) internal override(Governor, GovernorTimelockControl) returns (uint256 proposalId) {
         return super._cancel(targets, values, calldatas, descriptionHash);
     }
 
@@ -99,18 +86,17 @@ contract FheForgeGovernor is
         internal
         view
         override(Governor, GovernorTimelockControl)
-        returns (address)
+        returns (address executor_)
     {
         return super._executor();
     }
-
 
     // Governor + GovernorSettings both define proposalThreshold — must override explicitly
     function proposalThreshold()
         public
         pure
         override(Governor, GovernorSettings)
-        returns (uint256)
+        returns (uint256 threshold)
     {
         return PROPOSAL_THRESHOLD;
     }

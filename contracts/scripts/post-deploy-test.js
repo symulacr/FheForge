@@ -33,8 +33,8 @@ async function main() {
     record.contracts;
 
   const [deployer] = await hre.ethers.getSigners();
-  const testerKey = process.env.TESTER_PRIVATE_KEY;
-  if (!testerKey) throw new Error("TESTER_PRIVATE_KEY env var missing");
+  const testerKey = process.env.TESTER1_PRIVATE_KEY;
+  if (!testerKey) throw new Error("TESTER1_PRIVATE_KEY env var missing");
   const tester = new hre.ethers.Wallet(testerKey, provider);
 
   console.log(`\n=== POST-DEPLOY TEST on ${network.name} (chainId ${chainId}) ===`);

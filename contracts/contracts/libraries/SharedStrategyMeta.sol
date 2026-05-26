@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
-import { FHE, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { FHESafeMath128 } from "./FHESafeMath128.sol";
 
 library SharedStrategyMeta {
@@ -32,18 +32,26 @@ library SharedStrategyMeta {
     }
 
     /// @dev Safe increase with ACL grant. Returns new balance with ACL set.
-    function safeIncrease(euint128 stored, euint128 delta, address user) internal returns (euint128) {
-        (, euint128 newBalance) = FHESafeMath128.tryIncrease(stored, delta);
+    function safeIncrease(
+        euint128 stored,
+        euint128 delta,
+        address user
+    ) internal returns (euint128 newBalance) {
+        FHE.allowThis(delta);
+        (, newBalance) = FHESafeMath128.tryIncrease(stored, delta);
         FHE.allowThis(newBalance);
         FHE.allow(newBalance, user);
-        return newBalance;
     }
 
     /// @dev Safe decrease with ACL grant. Returns new balance with ACL set.
-    function safeDecrease(euint128 stored, euint128 delta, address user) internal returns (euint128) {
-        (, euint128 newBalance) = FHESafeMath128.tryDecrease(stored, delta);
+    function safeDecrease(
+        euint128 stored,
+        euint128 delta,
+        address user
+    ) internal returns (euint128 newBalance) {
+        FHE.allowThis(delta);
+        (, newBalance) = FHESafeMath128.tryDecrease(stored, delta);
         FHE.allowThis(newBalance);
         FHE.allow(newBalance, user);
-        return newBalance;
     }
 }

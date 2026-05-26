@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 interface IRegistry {
     function registerStrategy(
@@ -9,5 +9,5 @@ interface IRegistry {
         uint8 loopCount
     ) external returns (uint256 id);
 
-    function strategyCount() external view returns (uint256);
+    function strategyCount() external view returns (uint256 count);
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 import { euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 

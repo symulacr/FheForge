@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 import { FHE, InEuint128, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { PriceOracle } from "./PriceOracle.sol";
 import { FheForgeBase } from "./FheForgeBase.sol";
 import { IWETH9 } from "./interfaces/IWETH9.sol";
@@ -12,31 +11,16 @@ import { IERC3156FlashBorrower } from "@openzeppelin/contracts/interfaces/IERC31
 
 contract LendingPool is FheForgeBase {
     using SafeERC20 for IERC20;
-    using SafeCast for uint256;
 
     mapping(address => mapping(address => euint128)) private supplyBalances;
     mapping(address => mapping(address => euint128)) private borrowBalances;
     mapping(address => uint256) public totalPlainBorrow;
     mapping(address => uint256) public liquidReserve;
-    // ────────── P3: Interest accrual state ──────────
-    uint256 public constant RESERVE_FACTOR_BPS = 1000; // 10% to protocol reserve
-    uint256 public constant YEAR = 365 days;
-
-    struct InterestIndex {
-        uint128 supplyIndex;    // WAD-scaled (1e18 = 1.0)
-        uint128 borrowIndex;    // WAD-scaled
-        uint64 lastAccrualTs;
-    }
-    mapping(address => InterestIndex) public indices;
-
-    // ────────── P5: Unshield/reveal events ──────────
     event UnshieldRequested(address indexed user, address indexed token);
-    event BalanceRevealed(address indexed user, address indexed token, uint256 amount);
 
     address public composer;
 
     uint16 public constant LIQUIDATION_BONUS_BPS = 500;
-
     uint16 public constant LIQUIDATION_CLOSE_FACTOR_BPS = 5000;
 
     PriceOracle public oracle;
@@ -49,17 +33,13 @@ contract LendingPool is FheForgeBase {
     error InsufficientReserve();
     error OracleNotSet();
     error WethNotSet();
-    error PositionHealthy();
     error LiquidationTooLarge();
     error NotComposer();
-    error NotLiquidatable();
     error InvalidProof();
-    error InsufficientCollateralEncrypted();
     error FlashLoanNotRepaid();
     error FlashLoanUnsupportedToken();
+    error CannotSelfLiquidate();
 
-    // ─── P-HIGH-6 FIX: Events no longer emit plain amounts ───
-    // Liquidated event retains amounts (public by design in liquidation)
     event Supplied(address indexed user, address indexed token);
     event Borrowed(
         address indexed user,
@@ -68,7 +48,7 @@ contract LendingPool is FheForgeBase {
     );
     event Repaid(address indexed user, address indexed token);
     event Withdrawn(address indexed user, address indexed token);
-    event PausedWithdrawn(address indexed user, address indexed token, uint256 amount);
+    event PausedWithdrawn(address indexed user, address indexed token, uint256 indexed amount);
     event OracleSet(address indexed oracle);
     event OracleDisabled();
     event WethSet(address indexed weth);
@@ -84,51 +64,32 @@ contract LendingPool is FheForgeBase {
     );
 
     modifier onlyComposer() {
-        if (msg.sender != composer) revert NotComposer();
+        _onlyComposer();
         _;
+    }
+
+    function _onlyComposer() private view {
+        if (msg.sender != composer) revert NotComposer();
     }
 
     constructor() FheForgeBase() {}
 
-    // ────────── User-facing shield / borrow / repay / unshield ──────────
-
-    /// @notice Shield (deposit) tokens into the pool. Equality verification ensures
-    ///         the encrypted input matches the claimed plain amount.
     function shield(
         address token,
         uint256 amount,
         InEuint128 calldata encAmount
-    ) external nonReentrant whenNotPaused {
-        _pullAndSupply(token, amount, encAmount);
-    }
-
-    function _finalizeSupply(
-        address token,
-        uint256 amount,
-        InEuint128 calldata encAmount
-    ) internal {
+    ) external payable nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         liquidReserve[token] += amount;
-
-        // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-
-        // ─── P-CRIT-1 FIX: Safe increase with overflow detection ───
-        euint128 stored = supplyBalances[token][_msgSender()];
-        supplyBalances[token][_msgSender()] = _safeIncrease(stored, verifiedIncoming, _msgSender());
-
+        euint128 stored = supplyBalances[token][msg.sender];
+        supplyBalances[token][msg.sender] = _safeIncrease(stored, verifiedIncoming, msg.sender);
         emit Supplied(msg.sender, token);
     }
 
-    function _pullAndSupply(address token, uint256 amount, InEuint128 calldata encAmount) internal {
-        if (token == address(0)) revert ZeroAddress();
-        if (amount == 0) revert ZeroAmount();
-        IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
-        _finalizeSupply(token, amount, encAmount);
-    }
-
-    /// @notice Borrow with encrypted LTV health check. Uses oracle for plain
-    ///         transfer gating and FHE.select for encrypted health enforcement.
     function borrowWithLtvCheck(
         address collateralToken,
         address borrowToken,
@@ -136,295 +97,250 @@ contract LendingPool is FheForgeBase {
         InEuint128 calldata encBorrowAmount,
         uint128 ltvNum,
         uint128 ltvDen
-    ) external nonReentrant whenNotPaused returns (euint128 actual) {
+    ) external payable nonReentrant whenNotPaused returns (euint128 actual) {
         if (collateralToken == address(0) || borrowToken == address(0)) revert ZeroAddress();
         if (borrowAmount == 0) revert ZeroAmount();
         if (ltvDen == 0) revert LtvDenominatorZero();
         if (ltvNum == 0) revert LtvNumeratorZero();
         if (ltvNum > ltvDen) revert LtvExceedsHundredPercent();
 
-        // ─── P-HIGH-5 FIX: Encrypted health check via FHE.select ───
-        euint128 supplyBal = _ensureInitialized(supplyBalances[collateralToken][_msgSender()]);
-        euint128 borrowBal = _ensureInitialized(borrowBalances[borrowToken][_msgSender()]);
-
-        // ─── P-CRIT-4 FIX: Equality verification ───
+        euint128 supplyBal = _ensureInitialized(supplyBalances[collateralToken][msg.sender]);
+        euint128 borrowBal = _ensureInitialized(borrowBalances[borrowToken][msg.sender]);
         euint128 requested = FHE.asEuint128(encBorrowAmount);
         euint128 verifiedBorrow = _verifyEquality(requested, borrowAmount);
 
-        // Encrypted health check: newBorrow * ltvDen <= supplyBal * ltvNum
         euint128 newBorrow = FHE.add(borrowBal, verifiedBorrow);
         euint128 lhs = FHE.mul(newBorrow, FHE.asEuint128(uint256(ltvDen)));
         euint128 rhs = FHE.mul(supplyBal, FHE.asEuint128(uint256(ltvNum)));
         ebool isHealthy = FHE.lte(lhs, rhs);
 
-        // If unhealthy, actual borrow is encrypted zero (no revert — no info leak)
         actual = FHE.select(isHealthy, verifiedBorrow, _ZERO);
+        FHE.allowThis(actual);
 
-        // Store encrypted borrow state
-        borrowBalances[borrowToken][_msgSender()] = _safeIncrease(borrowBal, actual, _msgSender());
-        _grantAcl(actual, _msgSender());
+        borrowBalances[borrowToken][msg.sender] = _safeIncrease(borrowBal, actual, msg.sender);
+        _grantAcl(actual, msg.sender);
 
-        // Plain transfer only if oracle confirms healthy (conservative gate)
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
-        totalPlainBorrow[borrowToken] += borrowAmount;
-        liquidReserve[borrowToken] -= borrowAmount;
-        IERC20(borrowToken).safeTransfer(_msgSender(), borrowAmount);
-
+        unchecked {
+            totalPlainBorrow[borrowToken] += borrowAmount;
+            liquidReserve[borrowToken] -= borrowAmount;
+        }
+        IERC20(borrowToken).safeTransfer(msg.sender, borrowAmount);
         emit Borrowed(msg.sender, collateralToken, borrowToken);
     }
 
-    /// @notice Repay debt with equality verification and safe decrease.
     function repayDebt(
         address token,
         uint256 amount,
         InEuint128 calldata encAmount
-    ) external nonReentrant whenNotPaused {
-        _pullAndRepay(token, amount, encAmount);
-    }
-
-    function _finalizeRepay(address token, uint256 amount, InEuint128 calldata encAmount) internal {
+    ) external payable nonReentrant whenNotPaused {
+        if (token == address(0)) revert ZeroAddress();
+        if (amount == 0) revert ZeroAmount();
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         totalPlainBorrow[token] -= amount;
         liquidReserve[token] += amount;
-
-        // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-
-        // ─── P-CRIT-1 FIX: Safe decrease with underflow detection ───
-        euint128 currentBalance = borrowBalances[token][_msgSender()];
-        borrowBalances[token][_msgSender()] = _safeDecrease(currentBalance, verifiedIncoming, _msgSender());
-
+        euint128 currentBalance = borrowBalances[token][msg.sender];
+        borrowBalances[token][msg.sender] = _safeDecrease(
+            currentBalance,
+            verifiedIncoming,
+            msg.sender
+        );
         emit Repaid(msg.sender, token);
     }
 
-    function _pullAndRepay(address token, uint256 amount, InEuint128 calldata encAmount) internal {
-        if (token == address(0)) revert ZeroAddress();
-        if (amount == 0) revert ZeroAmount();
-        IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
-        _finalizeRepay(token, amount, encAmount);
-    }
-
-    /// @notice Partial unshield (withdraw) with equality verification.
     function partialUnshield(
         address token,
         uint256 amount,
         InEuint128 calldata encAmount
-    ) external nonReentrant whenNotPaused {
+    ) external payable nonReentrant whenNotPaused {
         if (token == address(0)) revert ZeroAddress();
         _withdrawCore(token, amount, encAmount);
-        IERC20(token).safeTransfer(_msgSender(), amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, token);
     }
 
     function _withdrawCore(address token, uint256 amount, InEuint128 calldata encAmount) internal {
         if (amount == 0) revert ZeroAmount();
-
         uint256 reserve = liquidReserve[token];
-        if (reserve < amount || reserve - amount < totalPlainBorrow[token]) {
-            revert InsufficientReserve();
+        if (reserve < amount) revert InsufficientReserve();
+        unchecked {
+            if (reserve - amount < totalPlainBorrow[token]) {
+                revert InsufficientReserve();
+            }
+            liquidReserve[token] = reserve - amount;
         }
-
-        liquidReserve[token] = reserve - amount;
-
-        // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-
-        // ─── P-CRIT-1 FIX: Safe decrease with underflow detection ───
-        euint128 currentBalance = supplyBalances[token][_msgSender()];
-        supplyBalances[token][_msgSender()] = _safeDecrease(currentBalance, verifiedIncoming, _msgSender());
+        euint128 currentBalance = supplyBalances[token][msg.sender];
+        supplyBalances[token][msg.sender] = _safeDecrease(
+            currentBalance,
+            verifiedIncoming,
+            msg.sender
+        );
     }
 
-    function requestBalanceReveal(address token) external {
+    function requestBalanceReveal(address token) external payable {
         if (token == address(0)) revert ZeroAddress();
-        FHE.allowPublic(_ensureInitialized(supplyBalances[token][_msgSender()]));
+        FHE.allowPublic(_ensureInitialized(supplyBalances[token][msg.sender]));
     }
 
-    // ────────── V3-2: Unshield lifecycle (FHERC20 pattern) ──────────
-
-    /// @notice Request unshield — marks supply balance for decryption.
-    ///         User must call unshieldWithProof after this with the decrypted proof.
-    function requestUnshield(address token) external {
+    function requestUnshield(address token) external payable {
         if (token == address(0)) revert ZeroAddress();
-        euint128 bal = _ensureInitialized(supplyBalances[token][_msgSender()]);
+        euint128 bal = _ensureInitialized(supplyBalances[token][msg.sender]);
         FHE.allowPublic(bal);
         emit UnshieldRequested(msg.sender, token);
     }
 
-    /// @notice Unshield with proof — full position exit.
-    ///         After requestUnshield, user gets proof via decryptForTx,
-    ///         then submits proof here to withdraw entire balance.
     function unshieldWithProof(
         address token,
         uint128 balanceProof,
         bytes calldata balanceSig
-    ) external nonReentrant whenNotPaused {
+    ) external payable nonReentrant whenNotPaused {
         if (token == address(0)) revert ZeroAddress();
-        euint128 bal = _ensureInitialized(supplyBalances[token][_msgSender()]);
+        euint128 bal = _ensureInitialized(supplyBalances[token][msg.sender]);
         if (!FHE.verifyDecryptResult(bal, balanceProof, balanceSig)) {
             revert InvalidProof();
         }
         uint256 amount = uint256(balanceProof);
         if (amount == 0) revert ZeroAmount();
-
         uint256 reserve = liquidReserve[token];
-        if (reserve < amount || reserve - amount < totalPlainBorrow[token]) {
-            revert InsufficientReserve();
+        if (reserve < amount) revert InsufficientReserve();
+        unchecked {
+            if (reserve - amount < totalPlainBorrow[token]) {
+                revert InsufficientReserve();
+            }
+            liquidReserve[token] = reserve - amount;
         }
-        liquidReserve[token] = reserve - amount;
-
-        // Zero out supply balance (full exit)
-        supplyBalances[token][_msgSender()] = _ZERO;
-        // Also zero borrow balance if any (clean exit)
-        borrowBalances[token][_msgSender()] = _ZERO;
-
-        IERC20(token).safeTransfer(_msgSender(), amount);
+        supplyBalances[token][msg.sender] = _ZERO;
+        borrowBalances[token][msg.sender] = _ZERO;
+        IERC20(token).safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, token);
     }
 
-    /// @notice Request borrow reveal — marks borrow balance for decryption.
-    function requestBorrowReveal(address token) external {
+    function requestBorrowReveal(address token) external payable {
         if (token == address(0)) revert ZeroAddress();
-        FHE.allowPublic(_ensureInitialized(borrowBalances[token][_msgSender()]));
+        FHE.allowPublic(_ensureInitialized(borrowBalances[token][msg.sender]));
     }
-
-
 
     function withdrawPausedWithProof(
         address token,
         uint128 balanceProof,
         bytes calldata balanceSig
-    ) external nonReentrant whenPaused {
+    ) external payable nonReentrant whenPaused {
         if (token == address(0)) revert ZeroAddress();
-        if (!FHE.verifyDecryptResult(_ensureInitialized(supplyBalances[token][_msgSender()]), balanceProof, balanceSig)) {
+        if (
+            !FHE.verifyDecryptResult(
+                _ensureInitialized(supplyBalances[token][msg.sender]),
+                balanceProof,
+                balanceSig
+            )
+        ) {
             revert InvalidProof();
         }
         uint256 amount = uint256(balanceProof);
         if (amount == 0) revert ZeroAmount();
-
         uint256 reserve = liquidReserve[token];
-        if (reserve < amount || reserve - amount < totalPlainBorrow[token]) {
-            revert InsufficientReserve();
+        if (reserve < amount) revert InsufficientReserve();
+        unchecked {
+            if (reserve - amount < totalPlainBorrow[token]) {
+                revert InsufficientReserve();
+            }
+            liquidReserve[token] = reserve - amount;
         }
-        liquidReserve[token] = reserve - amount;
-
-        supplyBalances[token][_msgSender()] = _ZERO;
-        borrowBalances[token][_msgSender()] = _ZERO;
-
-        IERC20(token).safeTransfer(_msgSender(), amount);
+        supplyBalances[token][msg.sender] = _ZERO;
+        borrowBalances[token][msg.sender] = _ZERO;
+        IERC20(token).safeTransfer(msg.sender, amount);
         emit PausedWithdrawn(msg.sender, token, amount);
     }
 
-    function setOracle(address newOracle) external onlyOwner {
+    function setOracle(address newOracle) external payable onlyOwner {
         if (newOracle == address(0)) revert ZeroAddress();
         oracle = PriceOracle(newOracle);
         emit OracleSet(newOracle);
     }
 
-    function disableOracle() external onlyOwner {
+    function disableOracle() external payable onlyOwner {
         oracle = PriceOracle(address(0));
         emit OracleDisabled();
     }
 
-    function setWeth(address newWeth) external onlyOwner {
+    function setWeth(address newWeth) external payable onlyOwner {
         if (newWeth == address(0)) revert ZeroAddress();
         weth = IWETH9(newWeth);
         emit WethSet(newWeth);
     }
 
-    function disableWeth() external onlyOwner {
+    function disableWeth() external payable onlyOwner {
         weth = IWETH9(address(0));
         emit WethDisabled();
     }
 
-    function setComposer(address c) external onlyOwner {
+    function setComposer(address c) external payable onlyOwner {
         if (c == address(0)) revert ZeroAddress();
         composer = c;
         emit ComposerSet(c);
     }
 
-    /// @notice Shield ETH with equality verification.
     function shieldEth(InEuint128 calldata encAmount) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         if (msg.value == 0) revert ZeroAmount();
         address tokenAddr = address(weth);
-
         liquidReserve[tokenAddr] += msg.value;
-
-        // ─── P-CRIT-4 FIX: Equality verification ───
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, msg.value);
-
-        // ─── P-CRIT-1 FIX: Safe increase ───
-        euint128 stored = supplyBalances[tokenAddr][_msgSender()];
-        supplyBalances[tokenAddr][_msgSender()] = _safeIncrease(stored, verifiedIncoming, _msgSender());
-
+        euint128 stored = supplyBalances[tokenAddr][msg.sender];
+        supplyBalances[tokenAddr][msg.sender] = _safeIncrease(stored, verifiedIncoming, msg.sender);
         weth.deposit{ value: msg.value }();
-
         emit Supplied(msg.sender, tokenAddr);
     }
 
     function partialUnshieldEth(
         uint256 amount,
         InEuint128 calldata encAmount
-    ) external nonReentrant whenNotPaused {
+    ) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         address tokenAddr = address(weth);
         _withdrawCore(tokenAddr, amount, encAmount);
-
         weth.withdraw(amount);
-        (bool ok, ) = _msgSender().call{ value: amount }("");
+        (bool ok, ) = msg.sender.call{ value: amount }("");
         if (!ok) revert EthTransferFailed();
-
         emit Withdrawn(msg.sender, tokenAddr);
     }
 
-    receive() external payable {
-        if (msg.sender != address(weth)) revert ZeroAddress();
-    }
+    /// @dev Accept ETH only from WETH during unwrap, or from any payable function call.
+    receive() external payable {}
 
-    /// @notice Borrow with oracle health gate + encrypted audit.
     function borrowWithOracle(
         address collateralToken,
         address borrowToken,
         uint256 collateralAmount,
         uint256 borrowAmount,
         InEuint128 calldata encBorrowAmount
-    ) external nonReentrant whenNotPaused returns (euint128 actual) {
+    ) external payable nonReentrant whenNotPaused returns (euint128 actual) {
         if (address(oracle) == address(0)) revert OracleNotSet();
         if (collateralToken == address(0) || borrowToken == address(0)) revert ZeroAddress();
         if (borrowAmount == 0) revert ZeroAmount();
         if (collateralAmount == 0) revert ZeroAmount();
-
-        // Oracle gates the plain transfer
         _requireOracleHealthy(collateralToken, borrowToken, collateralAmount, borrowAmount, 0);
 
-        return _finalizeBorrow(collateralToken, borrowToken, borrowAmount, encBorrowAmount);
-    }
-
-    function _finalizeBorrow(
-        address collateralToken,
-        address borrowToken,
-        uint256 borrowAmount,
-        InEuint128 calldata encBorrowAmount
-    ) internal returns (euint128 actual) {
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
-
-        totalPlainBorrow[borrowToken] += borrowAmount;
-        liquidReserve[borrowToken] -= borrowAmount;
-
-        // ─── P-CRIT-4 FIX: Equality verification ───
+        unchecked {
+            totalPlainBorrow[borrowToken] += borrowAmount;
+            liquidReserve[borrowToken] -= borrowAmount;
+        }
         euint128 requested = FHE.asEuint128(encBorrowAmount);
         euint128 verifiedRequested = _verifyEquality(requested, borrowAmount);
         actual = verifiedRequested;
-
-        // ─── P-CRIT-1 FIX: Safe increase ───
-        euint128 storedBorrow = borrowBalances[borrowToken][_msgSender()];
-        borrowBalances[borrowToken][_msgSender()] = _safeIncrease(storedBorrow, verifiedRequested, _msgSender());
-        _grantAcl(actual, _msgSender());
-
-        IERC20(borrowToken).safeTransfer(_msgSender(), borrowAmount);
-
+        euint128 storedBorrow = borrowBalances[borrowToken][msg.sender];
+        borrowBalances[borrowToken][msg.sender] = _safeIncrease(
+            storedBorrow,
+            verifiedRequested,
+            msg.sender
+        );
+        _grantAcl(actual, msg.sender);
+        IERC20(borrowToken).safeTransfer(msg.sender, borrowAmount);
         emit Borrowed(msg.sender, collateralToken, borrowToken);
     }
 
@@ -442,19 +358,16 @@ contract LendingPool is FheForgeBase {
         if (collateralUsd * ltvBps < totalDebtUsd * BPS_DEN) revert InsufficientCollateral();
     }
 
-    // ────────── Composer cross-contract (euint128 handles) ──────────
-
     function depositFor(
         address token,
         uint256 amount,
         euint128 handle,
         address user
-    ) external nonReentrant whenNotPaused onlyComposer {
+    ) external payable nonReentrant whenNotPaused onlyComposer {
         if (token == address(0) || user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
         liquidReserve[token] += amount;
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        // ─── P-CRIT-1 FIX: Safe increase ───
         euint128 storedSupply = supplyBalances[token][user];
         supplyBalances[token][user] = _safeIncrease(storedSupply, handle, user);
         emit Supplied(user, token);
@@ -465,13 +378,14 @@ contract LendingPool is FheForgeBase {
         uint256 amount,
         euint128 handle,
         address user
-    ) external nonReentrant whenNotPaused onlyComposer {
+    ) external payable nonReentrant whenNotPaused onlyComposer {
         if (token == address(0) || user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
         if (liquidReserve[token] < amount) revert InsufficientReserve();
-        totalPlainBorrow[token] += amount;
-        liquidReserve[token] -= amount;
-        // ─── P-CRIT-1 FIX: Safe increase ───
+        unchecked {
+            totalPlainBorrow[token] += amount;
+            liquidReserve[token] -= amount;
+        }
         euint128 storedBorrow = borrowBalances[token][user];
         borrowBalances[token][user] = _safeIncrease(storedBorrow, handle, user);
         IERC20(token).safeTransfer(msg.sender, amount);
@@ -483,13 +397,12 @@ contract LendingPool is FheForgeBase {
         uint256 amount,
         euint128 handle,
         address user
-    ) external nonReentrant whenNotPaused onlyComposer {
+    ) external payable nonReentrant whenNotPaused onlyComposer {
         if (token == address(0) || user == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
         totalPlainBorrow[token] -= amount;
         liquidReserve[token] += amount;
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        // ─── P-CRIT-1 FIX: Safe decrease ───
         euint128 currentBalance = borrowBalances[token][user];
         borrowBalances[token][user] = _safeDecrease(currentBalance, handle, user);
         emit Repaid(user, token);
@@ -499,15 +412,13 @@ contract LendingPool is FheForgeBase {
         address user,
         address collateralToken,
         address debtToken
-    ) external {
+    ) external payable {
         if (user == address(0)) revert ZeroAddress();
         if (collateralToken == address(0) || debtToken == address(0)) revert ZeroAddress();
         FHE.allowPublic(_ensureInitialized(borrowBalances[debtToken][user]));
         FHE.allowPublic(_ensureInitialized(supplyBalances[collateralToken][user]));
     }
 
-    /// @notice Liquidate with proof-based decryption. Uses stored encrypted handles
-    ///         as minuend (not re-encrypted proofs) to preserve privacy of remaining balances.
     function liquidateWithProof(
         address user,
         address collateralToken,
@@ -517,141 +428,161 @@ contract LendingPool is FheForgeBase {
         bytes calldata debtSig,
         uint128 supplyBalanceProof,
         bytes calldata supplySig
-    ) external nonReentrant whenNotPaused {
+    ) external payable nonReentrant whenNotPaused {
         if (address(oracle) == address(0)) revert OracleNotSet();
         if (user == address(0)) revert ZeroAddress();
         if (collateralToken == address(0) || debtToken == address(0)) revert ZeroAddress();
         if (debtToCover == 0) revert ZeroAmount();
         if (collateralToken == debtToken) revert TokenMismatch();
+        if (user == msg.sender) revert CannotSelfLiquidate();
 
-        // Verify decrypted balances via Threshold Network proof
-        if (!FHE.verifyDecryptResult(_ensureInitialized(borrowBalances[debtToken][user]), debtBalanceProof, debtSig)) {
-            revert InvalidProof();
-        }
-        if (!FHE.verifyDecryptResult(_ensureInitialized(supplyBalances[collateralToken][user]), supplyBalanceProof, supplySig)) {
-            revert InvalidProof();
-        }
+        _verifyLiquidationProofs(
+            user,
+            debtToken,
+            collateralToken,
+            debtBalanceProof,
+            debtSig,
+            supplyBalanceProof,
+            supplySig
+        );
 
-        // Use verified plain amounts for checks
         uint256 userDebt = uint256(debtBalanceProof);
         uint256 userCollateral = uint256(supplyBalanceProof);
-
-        // Only allow partial liquidation up to close factor
         uint256 maxLiquidation = (userDebt * LIQUIDATION_CLOSE_FACTOR_BPS) / BPS_DEN;
         uint256 actualDebtCover = debtToCover > maxLiquidation ? maxLiquidation : debtToCover;
         if (actualDebtCover > userDebt) revert LiquidationTooLarge();
 
-        // Check health post-liquidation using oracle LTV
-        uint256 remainingDebt = userDebt - actualDebtCover;
+        uint256 remainingDebt;
+        unchecked {
+            remainingDebt = userDebt - actualDebtCover;
+        }
         _requireOracleHealthy(collateralToken, debtToken, userCollateral, remainingDebt, 0);
 
-        // Pull debt tokens from liquidator
-        IERC20(debtToken).safeTransferFrom(_msgSender(), address(this), actualDebtCover);
-
-        // Repay user's debt (decrease plain borrow)
+        IERC20(debtToken).safeTransferFrom(msg.sender, address(this), actualDebtCover);
         totalPlainBorrow[debtToken] -= actualDebtCover;
         liquidReserve[debtToken] += actualDebtCover;
 
-        // ─── P-CRIT-2 FIX: Use stored encrypted handle as minuend ───
         euint128 repayEnc = FHE.asEuint128(actualDebtCover);
         euint128 storedDebt = _ensureInitialized(borrowBalances[debtToken][user]);
         FHE.allowThis(storedDebt);
-        borrowBalances[debtToken][user] = _safeDecrease(storedDebt, repayEnc, _msgSender());
+        borrowBalances[debtToken][user] = _safeDecrease(storedDebt, repayEnc, msg.sender);
 
-        // Calculate collateral to seize: debtCover * price * (1 + bonus)
         uint256 seizedCollateral =
-            (actualDebtCover * oracle.convertToUsd(collateralToken, 1e18))
-                / oracle.convertToUsd(debtToken, 1e18)
-                * (BPS_DEN + LIQUIDATION_BONUS_BPS)
-                / BPS_DEN;
-
+            (actualDebtCover *
+                oracle.convertToUsd(collateralToken, 1e18) *
+                (BPS_DEN + LIQUIDATION_BONUS_BPS)) /
+                (oracle.convertToUsd(debtToken, 1e18) * BPS_DEN);
         if (seizedCollateral > userCollateral) seizedCollateral = userCollateral;
         liquidReserve[collateralToken] -= seizedCollateral;
 
-        // ─── P-CRIT-2 FIX: Use stored encrypted handle as minuend ───
         euint128 seizeEnc = FHE.asEuint128(seizedCollateral);
         euint128 storedColl = _ensureInitialized(supplyBalances[collateralToken][user]);
         FHE.allowThis(storedColl);
-        supplyBalances[collateralToken][user] = _safeDecrease(storedColl, seizeEnc, _msgSender());
+        supplyBalances[collateralToken][user] = _safeDecrease(storedColl, seizeEnc, msg.sender);
 
-        // Transfer seized collateral to liquidator
-        IERC20(collateralToken).safeTransfer(_msgSender(), seizedCollateral);
-
-        // Liquidated event retains plain amounts — public by design
+        IERC20(collateralToken).safeTransfer(msg.sender, seizedCollateral);
         emit Liquidated(
-            msg.sender, user, collateralToken, debtToken, actualDebtCover, seizedCollateral
+            msg.sender,
+            user,
+            collateralToken,
+            debtToken,
+            actualDebtCover,
+            seizedCollateral
         );
     }
 
-    // ────────── Encrypted balance getters (allowSender) ──────────
+    function _verifyLiquidationProofs(
+        address user,
+        address debtToken,
+        address collateralToken,
+        uint128 debtBalanceProof,
+        bytes calldata debtSig,
+        uint128 supplyBalanceProof,
+        bytes calldata supplySig
+    ) private view {
+        if (
+            !FHE.verifyDecryptResult(
+                _ensureInitialized(borrowBalances[debtToken][user]),
+                debtBalanceProof,
+                debtSig
+            )
+        ) {
+            revert InvalidProof();
+        }
+        if (
+            !FHE.verifyDecryptResult(
+                _ensureInitialized(supplyBalances[collateralToken][user]),
+                supplyBalanceProof,
+                supplySig
+            )
+        ) {
+            revert InvalidProof();
+        }
+    }
 
-    function getSupplyBalance(address token) external returns (euint128) {
-        euint128 bal = _ensureInitialized(supplyBalances[token][msg.sender]);
+    function getSupplyBalance(address token) external payable returns (euint128 bal) {
+        bal = _ensureInitialized(supplyBalances[token][msg.sender]);
         FHE.allowSender(bal);
         return bal;
     }
 
-    function getBorrowBalance(address token) external returns (euint128) {
-        euint128 bal = _ensureInitialized(borrowBalances[token][msg.sender]);
+    function getBorrowBalance(address token) external payable returns (euint128 bal) {
+        bal = _ensureInitialized(borrowBalances[token][msg.sender]);
         FHE.allowSender(bal);
         return bal;
     }
 
-    // ────────── Flash Loan (ERC-3156 compatible) ──────────
+    uint256 public constant FLASH_FEE_BPS = 5;
 
-    uint256 public constant FLASH_FEE_BPS = 5; // 0.05% flash loan fee
+    event FlashLoan(
+        address indexed receiver,
+        address indexed token,
+        uint256 indexed amount,
+        uint256 fee
+    );
 
-    event FlashLoan(address indexed receiver, address indexed token, uint256 amount, uint256 fee);
-
-    /// @notice ERC-3156: max flash loanable amount for a token.
-    function maxFlashLoan(address token) external view returns (uint256) {
+    function maxFlashLoan(address token) external view returns (uint256 maxLoan) {
         uint256 reserve = liquidReserve[token];
         uint256 borrowed = totalPlainBorrow[token];
-        return reserve > borrowed ? reserve - borrowed : 0;
+        if (reserve < borrowed) return 0;
+        unchecked {
+            return reserve - borrowed;
+        }
     }
 
-    /// @notice ERC-3156: flash loan fee for a given amount.
-    function flashFee(address token, uint256 amount) external view returns (uint256) {
-        if (liquidReserve[token] == 0 && totalPlainBorrow[token] == 0) revert FlashLoanUnsupportedToken();
+    function flashFee(address token, uint256 amount) external view returns (uint256 fee) {
+        if (liquidReserve[token] == 0 && totalPlainBorrow[token] == 0)
+            revert FlashLoanUnsupportedToken();
         return (amount * FLASH_FEE_BPS) / 10000;
     }
 
-    /// @notice Execute a flash loan. Borrower must implement IERC3156FlashBorrower.
-    ///         Repayment = amount + fee, transferred back within the callback.
     function flashLoan(
         address receiver,
         address token,
         uint256 amount,
         bytes calldata params
-    ) external nonReentrant whenNotPaused returns (bool) {
+    ) external payable nonReentrant whenNotPaused returns (bool success) {
         if (amount == 0) revert ZeroAmount();
         uint256 fee = (amount * FLASH_FEE_BPS) / 10000;
         uint256 reserve = liquidReserve[token];
         if (reserve < amount) revert InsufficientReserve();
-
-        // Transfer tokens to borrower
-        liquidReserve[token] = reserve - amount;
+        unchecked {
+            liquidReserve[token] = reserve - amount;
+        }
         IERC20(token).safeTransfer(receiver, amount);
-
-        // Call borrower callback
-        bytes memory callbackData = abi.encodeWithSelector(
-            IERC3156FlashBorrower.onFlashLoan.selector,
+        bytes32 flashResult = IERC3156FlashBorrower(receiver).onFlashLoan(
             msg.sender,
             token,
             amount,
             fee,
             params
         );
-        (bool success, bytes memory returnData) = receiver.call(callbackData);
-        if (!success || returnData.length < 32 || abi.decode(returnData, (bytes32)) != keccak256("ERC3156FlashBorrower.onFlashLoan")) {
+        if (flashResult != keccak256("ERC3156FlashBorrower.onFlashLoan")) {
             revert FlashLoanNotRepaid();
         }
-
-        // Collect repayment: amount + fee
         uint256 totalDebt = amount + fee;
         IERC20(token).safeTransferFrom(receiver, address(this), totalDebt);
         liquidReserve[token] += totalDebt;
-
         emit FlashLoan(receiver, token, amount, fee);
         return true;
     }

@@ -13,6 +13,8 @@ interface NetworkConfig {
 }
 const network: NetworkConfig = (hardhat as unknown as { network: NetworkConfig }).network;
 
+const UNISWAP_V3_ROUTER = "0x101F443B4d1b059569D643917553c771E1b9663E";
+
 const CONTRACTS = [
   "StrategyRegistry",
   "StrategyVault",
@@ -23,6 +25,12 @@ const CONTRACTS = [
 ] as const;
 
 const PRODUCTION_CHAIN_IDS = new Set<number>([1, 42161, 10, 137, 8453, 43114]);
+
+// Gas optimization config
+const GAS_CONFIG = {
+  maxFeePerGas: BigInt("50000000000"),  // 50 gwei
+  maxPriorityFeePerGas: BigInt("100000000"),  // 0.1 gwei
+};
 
 // ──────────────────────────────────────────────
 // Timing parameters (demo vs. production)
@@ -74,6 +82,7 @@ interface DeploymentRecord {
   deployer: string;
   deployedAt: string;
   mode: string;
+  wave?: number;
   timing: Record<string, string>;
   contracts: Record<string, string>;
   deploymentTxs: Record<string, string | null>;
@@ -81,6 +90,8 @@ interface DeploymentRecord {
   weth: string;
   forwarder?: string;
   tokens?: Record<string, string>;
+  notes?: string;
+  waveDescription?: string;
 }
 
 function deploymentRecordPath(chainId: number): string {
@@ -96,6 +107,26 @@ function loadDeploymentRecord(chainId: number): DeploymentRecord | null {
   } catch {
     console.warn(`Could not parse deployment record at ${filePath}, proceeding with fresh deploy.`);
     return null;
+  }
+}
+
+// ──────────────────────────────────────────────
+// Verification helper
+// ──────────────────────────────────────────────
+
+async function tryVerify(name: string, addr: string, args: unknown[]): Promise<boolean> {
+  if (!process.env.ETHERSCAN_API_KEY) return false;
+  try {
+    await (hardhat as any).run("verify:verify", { address: addr, constructorArguments: args });
+    console.log(`  ✓ Verified ${name}`);
+    return true;
+  } catch (e: any) {
+    if (e?.message?.includes("Already Verified") || e?.message?.includes("already verified")) {
+      console.log(`  ✓ ${name} already verified`);
+      return true;
+    }
+    console.log(`  ⚠ ${name} verify failed: ${String(e).slice(0, 150)}`);
+    return false;
   }
 }
 
@@ -127,43 +158,40 @@ async function main() {
     const allDeployed = CONTRACTS.every((name) => existing.contracts[name]);
     const hasForwarder = Boolean(existing.forwarder);
     if (allDeployed && hasForwarder) {
-      console.log("All contracts already deployed. Exiting (idempotent).");
-      console.log("Existing deployment record:");
-      for (const [name, addr] of Object.entries(existing.contracts)) {
-        console.log(`  ${name.padEnd(18)} ${addr}`);
-      }
-      if (existing.forwarder) console.log(`  Forwarder          ${existing.forwarder}`);
-      if (existing.tokens) {
-        for (const [name, addr] of Object.entries(existing.tokens)) {
+      // Verify contracts actually exist on-chain (not self-destructed or stale)
+      const addrsToCheck = [existing.forwarder, ...Object.values(existing.contracts)].filter(Boolean) as string[];
+      const codes = await Promise.all(addrsToCheck.map((a) => ethers.provider.getCode(a)));
+      const allHaveCode = codes.every((c) => c !== "0x");
+      if (!allHaveCode) {
+        console.log("Deployment record stale (some contracts missing on-chain code) — re-deploying.\n");
+      } else {
+        console.log("All contracts already deployed. Exiting (idempotent).");
+        console.log("Existing deployment record:");
+        for (const [name, addr] of Object.entries(existing.contracts)) {
           console.log(`  ${name.padEnd(18)} ${addr}`);
         }
+        if (existing.forwarder) console.log(`  Forwarder          ${existing.forwarder}`);
+        if (existing.tokens) {
+          for (const [name, addr] of Object.entries(existing.tokens)) {
+            console.log(`  ${name.padEnd(18)} ${addr}`);
+          }
+        }
+        return;
       }
-      return;
+    } else {
+      console.log("Partial deployment record found — proceeding with full deploy.\n");
     }
-    console.log("Partial deployment record found — proceeding with full deploy.\n");
   }
 
   // ────────────────────────────────────────────
-  // 1. Deploy ERC-2771 MinimalForwarder
+  // Level 0 — Parallel: Forwarder + Mock tokens
   // ────────────────────────────────────────────
 
-  console.log("── Deploying ERC-2771 Forwarder ──");
+  console.log("── Level 0: Deploying Forwarder + Mock Tokens (parallel) ──");
+
   const Forwarder = await ethers.getContractFactory("MinimalForwarder");
-  const forwarder = await Forwarder.deploy();
-  const forwarderDeployTx = forwarder.deploymentTransaction();
-  await forwarder.waitForDeployment();
-  const forwarderAddr = await forwarder.getAddress();
-  console.log(
-    `MinimalForwarder: ${forwarderAddr} (tx: ${forwarderDeployTx?.hash ?? "n/a"})\n`
-  );
-
-  // ────────────────────────────────────────────
-  // 2. Deploy MockERC20 test tokens
-  // ────────────────────────────────────────────
-
-  console.log("── Deploying MockERC20 Test Tokens ──");
-
   const MockERC20 = await ethers.getContractFactory("MockERC20");
+
   const tokens: Record<string, string> = {};
   const tokenTxs: Record<string, string | null> = {};
 
@@ -178,90 +206,48 @@ async function main() {
     { symbol: "WETH", envOverride: undefined, label: "MockERC20-WETH" },
   ];
 
-  for (const spec of tokenSpecs) {
-    if (spec.envOverride && ethers.isAddress(spec.envOverride)) {
-      tokens[spec.label] = spec.envOverride;
-      tokenTxs[spec.label] = null;
-      console.log(`  ${spec.label.padEnd(18)} ${spec.envOverride} (env override)`);
-    } else {
-      const token = await MockERC20.deploy();
-      const tokenDeployTx = token.deploymentTransaction();
+  // Deploy all independent contracts in parallel
+  const [forwarder, ...tokenResults] = await Promise.all([
+    (async () => {
+      const f = await Forwarder.deploy(GAS_CONFIG);
+      await f.waitForDeployment();
+      return f;
+    })(),
+    ...tokenSpecs.map(async (spec) => {
+      if (spec.envOverride && ethers.isAddress(spec.envOverride)) {
+        return { label: spec.label, address: spec.envOverride, txHash: null, isOverride: true };
+      }
+      const token = await MockERC20.deploy(GAS_CONFIG);
+      const tx = token.deploymentTransaction();
       await token.waitForDeployment();
-      const tokenAddr = await token.getAddress();
-      tokens[spec.label] = tokenAddr;
-      tokenTxs[spec.label] = tokenDeployTx?.hash ?? null;
-      console.log(`  ${spec.label.padEnd(18)} ${tokenAddr} (tx: ${tokenDeployTx?.hash ?? "n/a"})`);
-    }
+      const addr = await token.getAddress();
+      return { label: spec.label, address: addr, txHash: tx?.hash ?? null, isOverride: false };
+    }),
+  ]);
+
+  const forwarderAddr = await forwarder.getAddress();
+  const forwarderDeployTx = forwarder.deploymentTransaction();
+  console.log(`MinimalForwarder: ${forwarderAddr} (tx: ${forwarderDeployTx?.hash ?? "n/a"})`);
+
+  for (const tc of tokenResults) {
+    tokens[tc.label] = tc.address;
+    tokenTxs[tc.label] = tc.txHash;
+    const source = tc.isOverride ? "env override" : `tx: ${tc.txHash}`;
+    console.log(`  ${tc.label.padEnd(18)} ${tc.address} (${source})`);
   }
   console.log("");
 
   // ────────────────────────────────────────────
-  // 3. Deploy StrategyRegistry
+  // Level 1 — Parallel: Registry, Pool, Router, Oracle
   // ────────────────────────────────────────────
 
-  console.log("── Deploying Core Contracts ──");
+  console.log("── Level 1: Deploying Core Contracts (parallel) ──");
 
   const Registry = await ethers.getContractFactory("StrategyRegistry");
-  const registry = await Registry.deploy(timing.vaultRotationDelay);
-  const registryDeployTx = registry.deploymentTransaction();
-  await registry.waitForDeployment();
-  const registryAddr = await registry.getAddress();
-  console.log(
-    `StrategyRegistry:  ${registryAddr} (tx: ${registryDeployTx?.hash ?? "n/a"})`
-  );
-
-  // ────────────────────────────────────────────
-  // 4. Deploy StrategyVault & wire to registry
-  // ────────────────────────────────────────────
-
-  const Vault = await ethers.getContractFactory("StrategyVault");
-  const vault = await Vault.deploy(registryAddr);
-  const vaultDeployTx = vault.deploymentTransaction();
-  await vault.waitForDeployment();
-  const vaultAddr = await vault.getAddress();
-  console.log(
-    `StrategyVault:     ${vaultAddr} (tx: ${vaultDeployTx?.hash ?? "n/a"})`
-  );
-
-  const setVaultTx = await registry.setVault(vaultAddr);
-  await setVaultTx.wait();
-  console.log(`  → registry.setVault(${vaultAddr})  (tx: ${setVaultTx.hash})`);
-
-  // ────────────────────────────────────────────
-  // 5. Deploy LendingPool
-  // ────────────────────────────────────────────
-
   const Pool = await ethers.getContractFactory("LendingPool");
-  const pool = await Pool.deploy();
-  const poolDeployTx = pool.deploymentTransaction();
-  await pool.waitForDeployment();
-  const poolAddr = await pool.getAddress();
-  console.log(
-    `LendingPool:       ${poolAddr} (tx: ${poolDeployTx?.hash ?? "n/a"})`
-  );
-
-  // ────────────────────────────────────────────
-  // 6. Deploy SwapRouter
-  // ────────────────────────────────────────────
 
   const executor = process.env.SWAP_EXECUTOR_ADDRESS ?? deployer.address;
   const Router = await ethers.getContractFactory("SwapRouter");
-  const router = await Router.deploy(
-    executor,
-    timing.minDeadlineOffset,
-    timing.maxDeadlineOffset,
-    timing.executorRotationDelay,
-  );
-  const routerDeployTx = router.deploymentTransaction();
-  await router.waitForDeployment();
-  const routerAddr = await router.getAddress();
-  console.log(
-    `SwapRouter:        ${routerAddr} (tx: ${routerDeployTx?.hash ?? "n/a"})  executor: ${executor}`
-  );
-
-  // ────────────────────────────────────────────
-  // 7. Deploy PriceOracle
-  // ────────────────────────────────────────────
 
   const PYTH_BY_CHAIN: Record<number, string> = {
     421614: "0x4374e5a8b9C22271E9EB878A2AA31DE97DF15DAF",
@@ -274,16 +260,68 @@ async function main() {
   }
 
   const Oracle = await ethers.getContractFactory("PriceOracle");
-  const oracle = await Oracle.deploy(pythAddr, timing.defaultStaleThreshold);
-  const oracleDeployTx = oracle.deploymentTransaction();
-  await oracle.waitForDeployment();
+
+  // Deploy Registry, Pool, Router, Oracle in parallel (no inter-dependencies)
+  const [registry, pool, router, oracle] = await Promise.all([
+    (async () => {
+      const c = await Registry.deploy(timing.vaultRotationDelay, GAS_CONFIG);
+      await c.waitForDeployment();
+      return c;
+    })(),
+    (async () => {
+      const c = await Pool.deploy(GAS_CONFIG);
+      await c.waitForDeployment();
+      return c;
+    })(),
+    (async () => {
+      const c = await Router.deploy(
+        executor,
+        timing.minDeadlineOffset,
+        timing.maxDeadlineOffset,
+        timing.executorRotationDelay,
+        UNISWAP_V3_ROUTER,
+        GAS_CONFIG,
+      );
+      await c.waitForDeployment();
+      return c;
+    })(),
+    (async () => {
+      const c = await Oracle.deploy(pythAddr, timing.defaultStaleThreshold, GAS_CONFIG);
+      await c.waitForDeployment();
+      return c;
+    })(),
+  ]);
+
+  const registryAddr = await registry.getAddress();
+  const poolAddr = await pool.getAddress();
+  const routerAddr = await router.getAddress();
   const oracleAddr = await oracle.getAddress();
-  console.log(
-    `PriceOracle:       ${oracleAddr} (tx: ${oracleDeployTx?.hash ?? "n/a"})`
-  );
+  const registryDeployTx = registry.deploymentTransaction();
+  const poolDeployTx = pool.deploymentTransaction();
+  const routerDeployTx = router.deploymentTransaction();
+  const oracleDeployTx = oracle.deploymentTransaction();
+  console.log(`StrategyRegistry:  ${registryAddr} (tx: ${registryDeployTx?.hash ?? "n/a"})`);
+  console.log(`LendingPool:       ${poolAddr} (tx: ${poolDeployTx?.hash ?? "n/a"})`);
+  console.log(`SwapRouter:        ${routerAddr} (tx: ${routerDeployTx?.hash ?? "n/a"})  executor: ${executor}`);
+  console.log(`PriceOracle:       ${oracleAddr} (tx: ${oracleDeployTx?.hash ?? "n/a"})`);
 
   // ────────────────────────────────────────────
-  // 8. Deploy FheForgeComposer
+  // Deploy StrategyVault (needs registryAddr from Level 1)
+  // ────────────────────────────────────────────
+
+  const Vault = await ethers.getContractFactory("StrategyVault");
+  const vault = await Vault.deploy(registryAddr, GAS_CONFIG);
+  const vaultDeployTx = vault.deploymentTransaction();
+  await vault.waitForDeployment();
+  const vaultAddr = await vault.getAddress();
+  console.log(`StrategyVault:     ${vaultAddr} (tx: ${vaultDeployTx?.hash ?? "n/a"})`);
+
+  const setVaultTx = await registry.setVault(vaultAddr);
+  await setVaultTx.wait();
+  console.log(`  → registry.setVault(${vaultAddr})  (tx: ${setVaultTx.hash})`);
+
+  // ────────────────────────────────────────────
+  // Deploy FheForgeComposer (needs all core addresses)
   // ────────────────────────────────────────────
 
   const Composer = await ethers.getContractFactory("FheForgeComposer");
@@ -292,13 +330,12 @@ async function main() {
     vaultAddr,
     poolAddr,
     routerAddr,
+    GAS_CONFIG,
   );
   const composerDeployTx = composer.deploymentTransaction();
   await composer.waitForDeployment();
   const composerAddr = await composer.getAddress();
-  console.log(
-    `FheForgeComposer:  ${composerAddr} (tx: ${composerDeployTx?.hash ?? "n/a"})`
-  );
+  console.log(`FheForgeComposer:  ${composerAddr} (tx: ${composerDeployTx?.hash ?? "n/a"})`);
 
   // ────────────────────────────────────────────
   // 9. Wire up cross-contract dependencies
@@ -316,7 +353,32 @@ async function main() {
   console.log(`  pool.setWeth(${wethAddr})  (tx: ${setWethTx.hash})\n`);
 
   // ────────────────────────────────────────────
-  // 10. Export ABIs to ui/abis/
+  // 10. Verify all contracts (best-effort, parallel)
+  // ────────────────────────────────────────────
+
+  console.log("── Contract Verification ──");
+  const hasKey = Boolean(process.env.ETHERSCAN_API_KEY);
+  if (hasKey) {
+    const verifyItems: [string, string, unknown[]][] = [
+      ["StrategyRegistry", registryAddr, [timing.vaultRotationDelay.toString()]],
+      ["StrategyVault", vaultAddr, [registryAddr]],
+      ["LendingPool", poolAddr, []],
+      ["SwapRouter", routerAddr, [executor, timing.minDeadlineOffset.toString(), timing.maxDeadlineOffset.toString(), timing.executorRotationDelay.toString(), UNISWAP_V3_ROUTER]],
+      ["PriceOracle", oracleAddr, [pythAddr, timing.defaultStaleThreshold.toString()]],
+      ["FheForgeComposer", composerAddr, [registryAddr, vaultAddr, poolAddr, routerAddr]],
+    ];
+    // Verify in parallel — these are independent
+    const results = await Promise.all(
+      verifyItems.map(([n, a, args]) => tryVerify(n, a, args))
+    );
+    const verified = results.filter(Boolean).length;
+    console.log(`\n  ${verified}/${verifyItems.length} contracts verified`);
+  } else {
+    console.log("  ⚠ ETHERSCAN_API_KEY not set — skipping verification");
+  }
+
+  // ────────────────────────────────────────────
+  // 11. Export ABIs to ui/abis/
   // ────────────────────────────────────────────
 
   const abiDir = path.join(__dirname, "..", "..", "ui", "abis");
@@ -331,11 +393,12 @@ async function main() {
   console.log(`ABIs exported to ${abiDir}`);
 
   // ────────────────────────────────────────────
-  // 11. Write deployment record
   // ────────────────────────────────────────────
 
   const deploymentsDir = path.join(__dirname, "..", "deployments");
   fs.mkdirSync(deploymentsDir, { recursive: true });
+
+  const waveNum = process.env.DEPLOY_WAVE ? parseInt(process.env.DEPLOY_WAVE, 10) : undefined;
 
   const record: DeploymentRecord = {
     network: network.name,
@@ -343,6 +406,7 @@ async function main() {
     deployer: deployer.address,
     deployedAt: new Date().toISOString(),
     mode: timing.modeLabel,
+    wave: waveNum,
     timing: {
       vaultRotationDelay: timing.vaultRotationDelay.toString(),
       executorRotationDelay: timing.executorRotationDelay.toString(),
@@ -375,6 +439,8 @@ async function main() {
     weth: wethAddr,
     forwarder: forwarderAddr,
     tokens,
+    notes: process.env.DEPLOY_NOTES || undefined,
+    waveDescription: process.env.DEPLOY_DESCRIPTION || undefined,
   };
 
   fs.writeFileSync(
@@ -384,7 +450,28 @@ async function main() {
   console.log(`Deployment record written to deployments/${chainId}.json`);
 
   // ────────────────────────────────────────────
-  // 12. Environment variable summary
+  // 13. Export addresses to .env file
+  // ────────────────────────────────────────────
+
+  const envPath = path.join(__dirname, "..", "deployments", `${chainId}.env`);
+  const envLines: string[] = [
+    `# FheForge deployment — ${network.name} (chainId ${chainId}) — ${new Date().toISOString()}`,
+    `NEXT_PUBLIC_VAULT_ADDRESS=${vaultAddr}`,
+    `NEXT_PUBLIC_POOL_ADDRESS=${poolAddr}`,
+    `NEXT_PUBLIC_ROUTER_ADDRESS=${routerAddr}`,
+    `NEXT_PUBLIC_REGISTRY_ADDRESS=${registryAddr}`,
+    `NEXT_PUBLIC_ORACLE_ADDRESS=${oracleAddr}`,
+    `NEXT_PUBLIC_COMPOSER_ADDRESS=${composerAddr}`,
+    `NEXT_PUBLIC_FORWARDER_ADDRESS=${forwarderAddr}`,
+  ];
+  for (const [label, addr] of Object.entries(tokens)) {
+    envLines.push(`NEXT_PUBLIC_${label.replace(/[^A-Z0-9]/g, "_").toUpperCase()}_ADDRESS=${addr}`);
+  }
+  fs.writeFileSync(envPath, envLines.join("\n") + "\n");
+  console.log(`Addresses exported to ${envPath}`);
+
+  // ────────────────────────────────────────────
+  // 14. Environment variable summary
   // ────────────────────────────────────────────
 
   console.log("\n── Environment Variables for UI / Backend ──");
@@ -400,7 +487,6 @@ async function main() {
   }
 
   // ────────────────────────────────────────────
-  // 13. Optional: auto-fund tester
   // ────────────────────────────────────────────
 
   if (process.env.AUTO_FUND_TESTER === "1") {

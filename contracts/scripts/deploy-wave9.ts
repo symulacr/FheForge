@@ -6,7 +6,7 @@ async function main() {
   console.log(`Deployer: ${deployer.address}`);
 
   // Read existing addresses from v4 deployment backup
-  const OLD = JSON.parse(fs.readFileSync("deployments/421614.pre-v4.json", "utf8"));
+  const OLD = JSON.parse(fs.readFileSync("deployments/421614.json", "utf8"));
 
   // 1. Deploy StrategyRegistry with wave 9 changes
   console.log("\n── Deploying StrategyRegistry ──");

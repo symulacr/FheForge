@@ -561,8 +561,8 @@ async function coldStart(cli: CliArgs): Promise<RuntimeContext> {
 
   const rpcUrl = process.env.ARBITRUM_SEPOLIA_RPC_URL;
   if (!rpcUrl) throw new Error("ARBITRUM_SEPOLIA_RPC_URL not set in environment.");
-  const testerKey = process.env.TESTER_PRIVATE_KEY;
-  if (!testerKey) throw new Error("TESTER_PRIVATE_KEY not set in environment.");
+  const testerKey = process.env.TESTER1_PRIVATE_KEY;
+  if (!testerKey) throw new Error("TESTER1_PRIVATE_KEY not set in environment.");
 
   if (!fs.existsSync(DEPLOY_PATH)) {
     throw new Error(`Deployment record missing: ${DEPLOY_PATH}`);

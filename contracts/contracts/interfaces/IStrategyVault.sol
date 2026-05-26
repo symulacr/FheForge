@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
-import { InEuint128, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 interface IStrategyVault {
     function openPosition(
@@ -10,7 +10,7 @@ interface IStrategyVault {
         euint128 encAmount,
         uint256 strategyId,
         address user
-    ) external returns (bytes32);
+    ) external returns (bytes32 positionId);
 
     function addCollateral(
         bytes32 positionId,
@@ -27,8 +27,10 @@ interface IStrategyVault {
     ) external;
 
     function withdrawPaused(bytes32 positionId) external;
-    function getCollateral(bytes32 positionId) external returns (euint128);
-    function getUserPositions(address user) external view returns (bytes32[] memory);
-    function getPositionMeta(bytes32 positionId) external view returns (uint256 strategyId, uint256 createdAt);
-    function getDepositedAmount(bytes32 positionId) external view returns (uint256);
+    function getCollateral(bytes32 positionId) external returns (euint128 coll);
+    function getUserPositions(address user) external view returns (bytes32[] memory ids);
+    function getPositionMeta(
+        bytes32 positionId
+    ) external view returns (uint256 strategyId, uint256 createdAt);
+    function getDepositedAmount(bytes32 positionId) external view returns (uint256 amount);
 }

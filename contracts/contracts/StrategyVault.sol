@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
-import {
-    FHE,
-    InEuint128,
-    euint128,
-    ebool
-} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStrategyRegistry } from "./IStrategyRegistry.sol";
@@ -18,7 +13,6 @@ contract StrategyVault is FheForgeBase {
 
     struct Position {
         euint128 collateral;
-        euint128 debt;
     }
 
     mapping(address => mapping(bytes32 => Position)) private positions;
@@ -29,6 +23,8 @@ contract StrategyVault is FheForgeBase {
     mapping(bytes32 => uint256) private positionOpenedAtBlock;
     mapping(bytes32 => bool) private positionExists;
     mapping(address => uint256) private userPositionNonce;
+    mapping(bytes32 => address) public positionOwner;
+    mapping(bytes32 => address) private positionBeneficiary;
 
     address public immutable REGISTRY;
 
@@ -37,6 +33,7 @@ contract StrategyVault is FheForgeBase {
     error NoPosition();
     error ExceedsDeposit();
     error SameBlockClose();
+    error NotPositionOwner(bytes32 positionId, address caller, address owner);
 
     // ─── P-HIGH-6 FIX: Events no longer emit plain amounts ───
     event PositionOpened(
@@ -70,6 +67,12 @@ contract StrategyVault is FheForgeBase {
 
     /// @notice Opens a vault position for `user`. Caller (Composer) holds the tokens.
     ///         Equality verification is done by the caller (Composer) before passing the handle.
+    /// @param token The collateral token address.
+    /// @param amount The plaintext collateral amount.
+    /// @param encAmount The encrypted collateral handle (euint128).
+    /// @param strategyId The strategy ID to associate with this position.
+    /// @param user The user on whose behalf the position is opened.
+    /// @return positionId The unique identifier for the new position.
     function openPosition(
         address token,
         uint256 amount,
@@ -80,7 +83,11 @@ contract StrategyVault is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         if (token == address(0)) revert ZeroAddress();
 
-        positionId = keccak256(abi.encode(user, userPositionNonce[user]++));
+        uint256 nonce = userPositionNonce[user];
+        ++userPositionNonce[user];
+        positionId = keccak256(abi.encode(user, nonce));
+        positionOwner[positionId] = _msgSender();
+        positionBeneficiary[positionId] = user;
 
         positionDepositedAmount[positionId] = amount;
         positionCollateralToken[positionId] = token;
@@ -91,7 +98,7 @@ contract StrategyVault is FheForgeBase {
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
-        positions[user][positionId] = Position({ collateral: encAmount, debt: _ZERO });
+        positions[user][positionId] = Position({ collateral: encAmount });
 
         SharedStrategyMeta.grantPositionAcl(user, encAmount, _ZERO);
 
@@ -100,6 +107,11 @@ contract StrategyVault is FheForgeBase {
 
     /// @notice Adds collateral to an existing position on behalf of `user`.
     ///         Equality verification is done by the caller (Composer) before passing the handle.
+    /// @param positionId The position to add collateral to.
+    /// @param collateralToken The collateral token address.
+    /// @param amount The plaintext additional collateral amount.
+    /// @param encAmount The encrypted additional collateral handle (euint128).
+    /// @param user The user on whose behalf collateral is added.
     function addCollateral(
         bytes32 positionId,
         address collateralToken,
@@ -117,7 +129,9 @@ contract StrategyVault is FheForgeBase {
 
         // ─── P-CRIT-1 FIX: Safe increase ───
         positions[user][positionId].collateral = SharedStrategyMeta.safeIncrease(
-            positions[user][positionId].collateral, encAmount, user
+            positions[user][positionId].collateral,
+            encAmount,
+            user
         );
 
         SharedStrategyMeta.grantUpdatedHandle(user, positions[user][positionId].collateral);
@@ -126,6 +140,9 @@ contract StrategyVault is FheForgeBase {
     }
 
     /// @notice Close a position with equality verification.
+    /// @param positionId The position to close.
+    /// @param collateralAmount The plaintext collateral amount to withdraw.
+    /// @param encCollateralAmount The encrypted collateral amount for verification.
     function closePosition(
         bytes32 positionId,
         uint256 collateralAmount,
@@ -135,21 +152,23 @@ contract StrategyVault is FheForgeBase {
         if (collateralAmount == 0) revert ZeroAmount();
         uint256 deposited = positionDepositedAmount[positionId];
         if (collateralAmount > deposited) revert ExceedsDeposit();
-        if (positionOpenedAtBlock[positionId] + 1 > block.number) revert SameBlockClose();
+        if (positionOpenedAtBlock[positionId] > block.number - 1) revert SameBlockClose();
 
         address token = positionCollateralToken[positionId];
         uint256 strategyId = positionStrategyId[positionId];
-        address user = _msgSender();
+        address owner = positionOwner[positionId];
+        if (owner != _msgSender()) revert NotPositionOwner(positionId, _msgSender(), owner);
+        address beneficiary = positionBeneficiary[positionId];
 
         uint256 remaining = deposited - collateralAmount;
         positionDepositedAmount[positionId] = remaining;
 
-        Position storage pos = positions[user][positionId];
+        Position storage pos = positions[beneficiary][positionId];
         euint128 currentCollateral = pos.collateral;
         bool fullClose = remaining == 0;
 
         if (fullClose) {
-            _deletePosition(user, positionId);
+            _deletePosition(beneficiary, positionId);
         }
 
         if (strategyId != 0) {
@@ -163,16 +182,16 @@ contract StrategyVault is FheForgeBase {
 
             if (!fullClose) {
                 // ─── P-CRIT-1 FIX: Safe decrease ───
-                pos.collateral = _safeDecrease(currentCollateral, verifiedClosed, user);
+                pos.collateral = _safeDecrease(currentCollateral, verifiedClosed, beneficiary);
             }
         }
 
-        IERC20(token).safeTransfer(user, collateralAmount);
+        IERC20(token).safeTransfer(owner, collateralAmount);
 
-        emit PositionClosed(positionId, user, token, fullClose);
+        emit PositionClosed(positionId, owner, token, fullClose);
     }
 
-    function withdrawPaused(bytes32 positionId) external nonReentrant whenPaused {
+    function withdrawPaused(bytes32 positionId) external whenPaused nonReentrant {
         if (!positionExists[positionId]) revert PositionNotFound();
         uint256 amount = positionDepositedAmount[positionId];
         if (amount == 0) revert ZeroAmount();
@@ -197,24 +216,27 @@ contract StrategyVault is FheForgeBase {
         emit PausedWithdrawn(positionId, user, token, amount);
     }
 
-    function getCollateral(bytes32 positionId) external returns (euint128) {
+    /// @notice Get the encrypted collateral for a position with ACL granted to the caller.
+    function getCollateral(bytes32 positionId) external returns (euint128 coll) {
         if (!positionExists[positionId]) revert PositionNotFound();
-        euint128 coll = _ensureInitialized(positions[_msgSender()][positionId].collateral);
+        coll = _ensureInitialized(positions[_msgSender()][positionId].collateral);
         FHE.allow(coll, _msgSender());
         FHE.allowSender(coll);
         return coll;
     }
 
-    function getPositionMeta(bytes32 positionId) external view returns (uint256 strategyId, uint256 createdAt) {
+    function getPositionMeta(
+        bytes32 positionId
+    ) external view returns (uint256 strategyId, uint256 createdAt) {
         if (!positionExists[positionId]) revert PositionNotFound();
         return (positionStrategyId[positionId], positionOpenedAtBlock[positionId]);
     }
 
-    function getDepositedAmount(bytes32 positionId) external view returns (uint256) {
+    function getDepositedAmount(bytes32 positionId) external view returns (uint256 amount) {
         return positionDepositedAmount[positionId];
     }
 
-    function getUserPositions(address user) external view returns (bytes32[] memory) {
+    function getUserPositions(address user) external view returns (bytes32[] memory ids) {
         return userPositionIds[user];
     }
 
@@ -230,11 +252,14 @@ contract StrategyVault is FheForgeBase {
 
         bytes32[] storage ids = userPositionIds[user];
         uint256 len = ids.length;
-        for (uint256 i = 0; i < len; i++) {
+        for (uint256 i = 0; i < len; ) {
             if (ids[i] == positionId) {
                 ids[i] = ids[len - 1];
                 ids.pop();
                 break;
+            }
+            unchecked {
+                ++i;
             }
         }
     }

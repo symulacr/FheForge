@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 interface ISwapRouter {
     // Intent model
+    function executeIntent(bytes32 intentId, uint256 outputAmount) external;
+
     function submitSwapIntent(
         address tokenIn,
         address tokenOut,

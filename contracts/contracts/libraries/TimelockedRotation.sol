@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
 import { FheForgeBase } from "../FheForgeBase.sol";
 
@@ -27,12 +27,11 @@ abstract contract TimelockedRotation is FheForgeBase {
 
     /// @dev Accept the pending role after timelock elapsed.
     ///      Returns the new address (caller must assign it to the appropriate slot).
-    function _acceptRole() internal returns (address) {
+    function _acceptRole() internal returns (address newAddr) {
         if (pendingRole == address(0)) revert NoPendingRole();
         if (block.timestamp < pendingRoleEarliest) revert TimelockNotElapsed();
-        address newAddr = pendingRole;
+        newAddr = pendingRole;
         pendingRole = address(0);
         pendingRoleEarliest = 0;
-        return newAddr;
     }
 }

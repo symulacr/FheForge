@@ -99,7 +99,7 @@ async function main() {
   const deployer = signers[0];
   const tester = signers[1] ?? signers[0];
   if (!signers[1]) {
-    console.log("⚠ TESTER_PRIVATE_KEY not in hardhat.config accounts; using deployer for tester role");
+    console.log("⚠ TESTER1_PRIVATE_KEY not in hardhat.config accounts; using deployer for tester role");
   }
 
   console.log(`Network:   ${network.name} (chain ${chainId})`);

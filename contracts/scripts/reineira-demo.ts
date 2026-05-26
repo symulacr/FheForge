@@ -22,7 +22,7 @@
 
 
 
-import { ethers } from "hardhat";
+import { ethers } from "ethers";
 import { ReineiraSDK, TESTNET_ADDRESSES, formatUsdc } from "@reineira-os/sdk";
 import * as fs from "fs";
 import * as path from "path";
@@ -50,11 +50,13 @@ interface DemoEvidence {
 }
 
 async function main() {
-    const [, tester] = await ethers.getSigners();
-    if (!tester) {
-        throw new Error("TESTER_PRIVATE_KEY missing from hardhat config accounts");
-    }
-    const network = await ethers.provider.getNetwork();
+    const rpcUrl = process.env.ARBITRUM_SEPOLIA_RPC_URL;
+    if (!rpcUrl) throw new Error("ARBITRUM_SEPOLIA_RPC_URL not set in environment.");
+    const testerKey = process.env.TESTER1_PRIVATE_KEY;
+    if (!testerKey) throw new Error("TESTER1_PRIVATE_KEY not set in environment.");
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    const tester = new ethers.Wallet(testerKey, provider);
+    const network = await provider.getNetwork();
     const chainId = Number(network.chainId);
     if (chainId !== 421614) {
         throw new Error(`Reineira testnet is on arb-sepolia 421614; got chainId ${chainId}`);
@@ -88,7 +90,7 @@ async function main() {
     const conf = new ethers.Contract(TESTNET_ADDRESSES.confidentialUSDC, erc20Abi, tester);
     const gov = new ethers.Contract(TESTNET_ADDRESSES.governanceToken, erc20Abi, tester);
 
-    const eth = await ethers.provider.getBalance(tester.address);
+    const eth = await provider.getBalance(tester.address);
     const plainUsdc = (await usdc.balanceOf(tester.address)) as bigint;
     let confHandle: bigint;
     try {
