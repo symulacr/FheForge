@@ -1,10 +1,177 @@
 name: CI
 on: [push, pull_request]
 
+# ============================================================
+# MC-092: Split CI into sequential lint → test → build stages
+# MC-091: Added missing test jobs (backend npm test, frontend
+#          vitest, forge coverage enforcement, forge fuzz)
+# ============================================================
+
+env:
+  FORGE_COVERAGE_MIN: 50
+
 jobs:
-  contracts:
-    name: Contracts
+  # ───────────── Stage 1: Lint & Type-check (fast feedback) ─────────────
+  lint-contracts:
+    name: Lint (Contracts)
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            contracts/node_modules
+            ~/.cache/bun
+          key: contracts-lint-${{ runner.os }}-bun-${{ hashFiles('contracts/bun.lock') }}
+          restore-keys: |
+            contracts-lint-${{ runner.os }}-bun-
+      - name: Install
+        run: bun install
+        working-directory: contracts
+      - name: Lint (solhint)
+        run: bun run lint
+        working-directory: contracts
+
+  lint-backend:
+    name: Lint (Backend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            backend/apps/node_modules
+            ~/.cache/bun
+          key: backend-lint-${{ runner.os }}-bun-${{ hashFiles('backend/apps/bun.lock') }}
+          restore-keys: |
+            backend-lint-${{ runner.os }}-bun-
+      - name: Install
+        run: bun install
+        working-directory: backend/apps
+      - name: Lint
+        run: bunx eslint 'src/**/*.ts'
+        working-directory: backend/apps
+
+  lint-frontend:
+    name: Lint (Frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ui/node_modules
+            ~/.cache/bun
+          key: frontend-lint-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
+          restore-keys: |
+            frontend-lint-${{ runner.os }}-bun-
+      - name: Install (root for workspace links)
+        run: bun install
+      - name: Lint
+        run: bunx --bun next lint -d .
+        working-directory: ui
+
+  prettier:
+    name: Prettier
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - run: bun install
+        working-directory: backend/apps
+      - run: bunx prettier --check '**/*.{ts,tsx,js,md,json,yml,yaml}' --ignore-path .gitignore
+        working-directory: backend/apps
+
+  # ───────────── Stage 2: Type-check ─────────────
+
+  typecheck-contracts:
+    name: TypeCheck (Contracts)
+    runs-on: ubuntu-latest
+    needs: [lint-contracts]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            contracts/node_modules
+            ~/.cache/bun
+          key: contracts-lint-${{ runner.os }}-bun-${{ hashFiles('contracts/bun.lock') }}
+          restore-keys: |
+            contracts-lint-${{ runner.os }}-bun-
+      - name: Install
+        run: bun install
+        working-directory: contracts
+      - name: Compile
+        run: HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat compile
+        working-directory: contracts
+      - name: Type-check
+        run: bunx tsc --noEmit -p tsconfig.json
+        working-directory: contracts
+
+  typecheck-backend:
+    name: TypeCheck (Backend)
+    runs-on: ubuntu-latest
+    needs: [lint-backend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            backend/apps/node_modules
+            ~/.cache/bun
+          key: backend-lint-${{ runner.os }}-bun-${{ hashFiles('backend/apps/bun.lock') }}
+          restore-keys: |
+            backend-lint-${{ runner.os }}-bun-
+      - name: Install
+        run: bun install
+        working-directory: backend/apps
+      - name: Type-check
+        run: bunx tsc --noEmit -p tsconfig.json
+        working-directory: backend/apps
+
+  typecheck-frontend:
+    name: TypeCheck (Frontend)
+    runs-on: ubuntu-latest
+    needs: [lint-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ui/node_modules
+            ~/.cache/bun
+          key: frontend-lint-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
+          restore-keys: |
+            frontend-lint-${{ runner.os }}-bun-
+      - name: Install (root for workspace links)
+        run: bun install
+      - name: Type-check
+        run: bunx tsc --noEmit -p tsconfig.json
+        working-directory: ui
+
+  # ───────────── Stage 3: Test ─────────────
+
+  test-contracts:
+    name: Test (Contracts)
+    runs-on: ubuntu-latest
+    needs: [typecheck-contracts]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -19,20 +186,11 @@ jobs:
             contracts/node_modules
             ~/.cache/bun
             ~/.foundry/cache
-          key: contracts-${{ runner.os }}-bun-${{ hashFiles('contracts/bun.lock') }}-foundry-${{ hashFiles('contracts/foundry.toml') }}
+          key: contracts-test-${{ runner.os }}-bun-${{ hashFiles('contracts/bun.lock') }}-foundry-${{ hashFiles('contracts/foundry.toml') }}
           restore-keys: |
-            contracts-${{ runner.os }}-bun-
+            contracts-test-${{ runner.os }}-bun-
       - name: Install
         run: bun install
-        working-directory: contracts
-      - name: Lint (solhint)
-        run: bun run lint
-        working-directory: contracts
-      - name: Compile
-        run: HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat compile
-        working-directory: contracts
-      - name: Type-check
-        run: bunx tsc --noEmit -p tsconfig.json
         working-directory: contracts
       - name: Test (Hardhat)
         run: HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true node node_modules/.bin/hardhat test
@@ -40,8 +198,11 @@ jobs:
       - name: Test (Forge)
         run: forge test -vvv
         working-directory: contracts
+      - name: Test (Forge Fuzz/Invariant)
+        run: forge test --match-path "test-foundry/InvariantTests.t.sol" -vvv
+        working-directory: contracts
       - name: Coverage (Forge)
-        run: forge coverage --report lcov
+        run: forge coverage --report lcov --min-coverage ${{ env.FORGE_COVERAGE_MIN }}
         working-directory: contracts
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -51,40 +212,88 @@ jobs:
       - name: Gas snapshot (Forge)
         run: forge snapshot --check || echo "WARNING - Gas snapshot differs. Run 'forge snapshot' locally and commit .gas-snapshot."
         working-directory: contracts
+      - name: Verify deployed addresses
+        run: bun run scripts/verify-addresses.ts
+        working-directory: contracts
+        env:
+          RPC_URL: https://sepolia-rollup.arbitrum.io/rpc
+        continue-on-error: true
 
-  backend:
-    name: Backend
+  test-backend:
+    name: Test (Backend)
     runs-on: ubuntu-latest
+    needs: [typecheck-backend]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1.3.13" }
-      - uses: actions/setup-node@v4
-        with: { node-version: "22" }
       - uses: actions/cache@v4
         with:
           path: |
             backend/apps/node_modules
             ~/.cache/bun
-          key: backend-${{ runner.os }}-bun-${{ hashFiles('backend/apps/bun.lock') }}
+          key: backend-test-${{ runner.os }}-bun-${{ hashFiles('backend/apps/bun.lock') }}
           restore-keys: |
-            backend-${{ runner.os }}-bun-
+            backend-test-${{ runner.os }}-bun-
       - name: Install
         run: bun install
         working-directory: backend/apps
-      - name: Type-check
-        run: bunx tsc --noEmit -p tsconfig.json
+      - name: Unit tests
+        run: bun run test
         working-directory: backend/apps
-      - name: Lint
-        run: bunx eslint 'src/**/*.ts'
+
+  test-frontend:
+    name: Test (Frontend)
+    runs-on: ubuntu-latest
+    needs: [typecheck-frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ui/node_modules
+            ~/.cache/bun
+          key: frontend-test-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
+          restore-keys: |
+            frontend-test-${{ runner.os }}-bun-
+      - name: Install (root for workspace links)
+        run: bun install
+      - name: Unit tests
+        run: bun run test
+        working-directory: ui
+
+  # ───────────── Stage 4: Build ─────────────
+
+  build-backend:
+    name: Build (Backend)
+    runs-on: ubuntu-latest
+    needs: [test-backend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: "1.3.13" }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            backend/apps/node_modules
+            ~/.cache/bun
+          key: backend-build-${{ runner.os }}-bun-${{ hashFiles('backend/apps/bun.lock') }}
+          restore-keys: |
+            backend-build-${{ runner.os }}-bun-
+      - name: Install
+        run: bun install
         working-directory: backend/apps
       - name: Build
         run: bun run build
         working-directory: backend/apps
 
-  frontend:
-    name: Frontend
+  build-frontend:
+    name: Build (Frontend)
     runs-on: ubuntu-latest
+    needs: [test-frontend]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -96,29 +305,40 @@ jobs:
             ui/node_modules
             ~/.cache/bun
             ui/.next/cache
-          key: frontend-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
+          key: frontend-build-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
           restore-keys: |
-            frontend-${{ runner.os }}-bun-
+            frontend-build-${{ runner.os }}-bun-
       - name: Install (root for workspace links)
         run: bun install
-      - name: Type-check
-        run: bunx tsc --noEmit -p tsconfig.json
-        working-directory: ui
-      - name: Lint
-        run: bunx --bun next lint -d .
-        working-directory: ui
       - name: Build
         run: bun run build
         working-directory: ui
 
-  prettier:
-    name: Prettier
+  # ───────────── POSTFIX probes (manual/scheduled only) ─────────────
+
+  deployed-integration:
+    name: POSTFIX (live network)
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    environment: arb-sepolia
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1.3.13" }
-      - run: bun install
-        working-directory: backend/apps
-      - run: bunx prettier --check '**/*.{ts,tsx,js,md,json,yml,yaml}' --ignore-path .gitignore
-        working-directory: backend/apps
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Install
+        run: bun install
+        working-directory: contracts
+      - name: Run POSTFIX probes
+        env:
+          ARBITRUM_SEPOLIA_RPC_URL: ${{ secrets.ARBITRUM_SEPOLIA_RPC_URL }}
+          PRIVATE_KEY: ${{ secrets.TESTER_PRIVATE_KEY }}
+        run: HARDHAT_EXPERIMENTAL_ALLOW_NON_LOCAL_INSTALLATION=true npx hardhat run scripts/test-postfix.ts --network arb-sepolia
+        working-directory: contracts
+      - name: Upload POSTFIX results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postfix-results
+          path: contracts/postfix-results.log

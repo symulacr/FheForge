@@ -1,10 +1,17 @@
+---
 # Alert Rules for FheForge
+#
+# MC-061: Removed 11 rules that referenced non-existent metrics.
+# MC-062: Restored 4 API rules after MC-024 (/metrics endpoint) confirmed
+#         metric names: http_requests_total, http_request_duration_seconds,
+#         user_signups_total (all with method/status/path labels).
 
 groups:
+  # ── API alerts (require MC-024 /metrics endpoint) ──────────────────
   - name: api_alerts
     interval: 30s
     rules:
-      # High Error Rate
+      # High Error Rate (>5% of requests returning 5xx over 5m)
       - alert: HighErrorRate
         expr: |
           (
@@ -19,7 +26,7 @@ groups:
           summary: "High error rate detected"
           description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
 
-      # Slow API Response
+      # Slow API Response (p95 > 1s over 5m)
       - alert: SlowAPIResponse
         expr: |
           histogram_quantile(0.95,
@@ -33,7 +40,7 @@ groups:
           summary: "Slow API response time"
           description: "95th percentile response time is {{ $value }}s"
 
-      # API Down
+      # API Down (Prometheus target unreachable for >1m)
       - alert: APIDown
         expr: up{job="backend-api"} == 0
         for: 1m
@@ -44,89 +51,20 @@ groups:
           summary: "API is down"
           description: "Backend API has been down for more than 1 minute"
 
-  - name: database_alerts
-    interval: 30s
-    rules:
-      # Database Connection Failed
-      - alert: DatabaseConnectionFailed
-        expr: up{job="database"} == 0
-        for: 1m
+      # New User Sign-up (informational)
+      - alert: NewUserSignup
+        expr: increase(user_signups_total[5m]) > 0
         labels:
-          severity: critical
-          service: database
+          severity: info
+          service: business
         annotations:
-          summary: "Database connection failed"
-          description: "Cannot connect to database for more than 1 minute"
+          summary: "New user sign-up"
+          description: "{{ $value }} new user(s) signed up in the last 5 minutes"
 
-      # Slow Database Queries
-      - alert: SlowDatabaseQueries
-        expr: |
-          histogram_quantile(0.95,
-            rate(database_query_duration_seconds_bucket[5m])
-          ) > 0.5
-        for: 5m
-        labels:
-          severity: warning
-          service: database
-        annotations:
-          summary: "Slow database queries"
-          description: "95th percentile query time is {{ $value }}s"
-
-      # High Database Connections
-      - alert: HighDatabaseConnections
-        expr: database_connections_active > 80
-        for: 5m
-        labels:
-          severity: warning
-          service: database
-        annotations:
-          summary: "High database connections"
-          description: "Active database connections: {{ $value }}"
-
-  - name: contract_alerts
-    interval: 60s
-    rules:
-      # Contract Deployment Failed
-      - alert: ContractDeploymentFailed
-        expr: contract_deployment_total{status="failed"} > 0
-        for: 1m
-        labels:
-          severity: critical
-          service: contracts
-        annotations:
-          summary: "Contract deployment failed"
-          description: "Contract deployment failed {{ $value }} times"
-
-      # High Gas Price
-      - alert: HighGasPrice
-        expr: gas_price_gwei > 100
-        for: 5m
-        labels:
-          severity: warning
-          service: contracts
-        annotations:
-          summary: "High gas price"
-          description: "Gas price is {{ $value }} gwei"
-
-      # Contract Interaction Failed
-      - alert: ContractInteractionFailed
-        expr: |
-          (
-            rate(contract_interaction_total{status="failed"}[5m]) /
-            rate(contract_interaction_total[5m])
-          ) > 0.1
-        for: 5m
-        labels:
-          severity: critical
-          service: contracts
-        annotations:
-          summary: "High contract interaction failure rate"
-          description: "Contract interaction failure rate is {{ $value | humanizePercentage }}"
-
+  # ── System alerts (require node_exporter on Docker host) ──────────
   - name: system_alerts
     interval: 30s
     rules:
-      # High CPU Usage
       - alert: HighCPUUsage
         expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
         for: 5m
@@ -137,7 +75,6 @@ groups:
           summary: "High CPU usage"
           description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
 
-      # High Memory Usage
       - alert: HighMemoryUsage
         expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
         for: 5m
@@ -148,7 +85,6 @@ groups:
           summary: "High memory usage"
           description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
 
-      # High Disk Usage
       - alert: HighDiskUsage
         expr: (node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_free_bytes{fstype!="tmpfs"}) / node_filesystem_size_bytes{fstype!="tmpfs"} * 100 > 80
         for: 5m
@@ -158,27 +94,3 @@ groups:
         annotations:
           summary: "High disk usage"
           description: "Disk usage is {{ $value }}% on {{ $labels.instance }}"
-
-  - name: business_alerts
-    interval: 60s
-    rules:
-      # New User Sign-up
-      - alert: NewUserSignup
-        expr: increase(user_signups_total[5m]) > 0
-        labels:
-          severity: info
-          service: business
-        annotations:
-          summary: "New user sign-up"
-          description: "{{ $value }} new user(s) signed up in the last 5 minutes"
-
-      # High Transaction Volume
-      - alert: HighTransactionVolume
-        expr: rate(contract_interaction_total[5m]) > 10
-        for: 5m
-        labels:
-          severity: info
-          service: business
-        annotations:
-          summary: "High transaction volume"
-          description: "Transaction rate is {{ $value }} transactions/second"

@@ -1,0 +1,36 @@
+---
+# Railway-specific Prometheus scrape configuration
+#
+# Railway does NOT resolve Docker Compose service names (backend:3001,
+# frontend:3000). Instead, scrape public endpoints or use Railway's
+# built-in metrics.
+#
+# Usage:
+#   prometheus --config.file=prometheus.railway.yml
+#
+# When Railway introduces native Prometheus scrape targets via internal
+# networking, replace the static_configs below with Railway's service
+# discovery.
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  # Backend API — scrape via Railway public URL
+  - job_name: "backend-api"
+    static_configs:
+      - targets:
+          - "fheforge-api-production.up.railway.app:443"
+    scheme: https
+    metrics_path: /metrics
+
+  # Node exporter — if running on a separate VPS
+  - job_name: "node"
+    static_configs:
+      - targets: []
+    # Uncomment and set your VPS IP:
+    #   - targets: ["YOUR_VPS_IP:9100"]
+
+  # System metrics (CPU/memory/disk) — available via Railway dashboard
+  # For Prometheus collection, deploy node_exporter on a VPS and point here.
