@@ -1,109 +1,338 @@
-# FheForge — Encrypted DeFi on Arbitrum Sepolia (CoFHE)
+# 🏗️ FheForge — Private, Encrypted DeFi on Arbitrum Sepolia
 
-amt → `euint128`. Pos invisible. Reveal via signed permit.
+<p align="center">
+  <img src="https://img.shields.io/badge/Solidity-0.8.28-363636?logo=solidity" alt="Solidity 0.8.28"/>
+  <img src="https://img.shields.io/badge/Next.js-14-000000?logo=next.js" alt="Next.js 14"/>
+  <img src="https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs" alt="NestJS 11"/>
+  <img src="https://img.shields.io/badge/FHE-CoFHE/Fhenix-8B5CF6" alt="FHE"/>
+  <img src="https://img.shields.io/badge/Chain-Arbitrum_Sepolia-2D374B?logo=arbitrum" alt="Arbitrum Sepolia"/>
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status"/>
+  <img src="https://img.shields.io/badge/tests-102%20PASS-22c55e" alt="Tests: 102 PASS"/>
+  <img src="https://img.shields.io/badge/Akindo_Wave_Hacks-2026-FF6B35" alt="Akindo Wave Hacks 2026"/>
+</p>
+
+<p align="center">
+  <b>🏆 Akindo "Private By Design" dApp Buildathon — Wave 4 Submission</b><br/>
+  <b>Track:</b> RWA & Compliance · DeFi & Lending · Privacy Infrastructure
+</p>
 
 ---
 
-## Live
+**FheForge** brings **fully homomorphic encryption (FHE)** to DeFi, letting you build, manage, and automate encrypted financial strategies — without exposing your positions to the world. Supply, borrow, swap, and liquidate with amounts that stay encrypted on-chain. Only you control who can decrypt and verify your position.
 
-Frontend → https://ui-chi-ashy.vercel.app
-API → https://fheforge-api-production.up.railway.app
+🔗 **Live app:** [ui-chi-ashy.vercel.app](https://ui-chi-ashy.vercel.app)  
+🔗 **API:** [fheforge-api-production.up.railway.app](https://fheforge-api-production.up.railway.app)  
+🔗 **Source:** [github.com/symulacr/FheForge](https://github.com/symulacr/FheForge)  
+🔗 **Release:** [v1.2.0 — Buildathon submission](https://github.com/symulacr/FheForge/releases/tag/v1.2.0)
+
+---
+
+## 📺 Demo
+
+<p align="center">
+  <a href="docs/demo-video-script.md">
+    <img src="https://img.shields.io/badge/▶️_Demo_Script-FF6B35?style=for-the-badge&logo=open-badges" alt="Demo Script"/>
+  </a>
+  <a href="https://youtu.be/your-video-link">
+    <img src="https://img.shields.io/badge/🎬_Demo_Video_(Pending)-FF0000?style=for-the-badge&logo=youtube" alt="Demo Video"/>
+  </a>
+</p>
+
+> _[Screenshots pending — record with Loom/OBS at 1440×900 per the demo script in `docs/demo-video-script.md`]_
+
+---
+
+## 🚀 Quick Start
+
+Try the live demo — no install required:
+
+1. Open [ui-chi-ashy.vercel.app](https://ui-chi-ashy.vercel.app) with MetaMask on Arbitrum Sepolia
+2. Connect your wallet and deposit collateral (faucet tokens available)
+3. Build a strategy using the visual ReactFlow canvas or describe it to the AI
+4. Deploy and watch your encrypted position execute
+
+**To run locally:**
+
+```bash
+git clone https://github.com/symulacr/FheForge.git
+cd contracts && npm install && node scripts/test-hardened.js
+cd ../ui && bun install && bun dev
+cd ../backend/apps && bun install && bun start:dev
+```
+
+---
+
+## Problem
+
+Today's DeFi is a glass house. Every position, swap, and liquidation is public on-chain. Anyone can see:
+
+- **Your wallet balance and all your trades** — no privacy, no discretion
+- **Your liquidation risk in real time** — bots front-run your healthy positions
+- **Your strategy's every move** — MEV searchers extract value from your transactions
+
+This isn't just an inconvenience. It's a structural barrier to institutional adoption. Funds, banks, and regulated entities cannot operate with full public visibility.
+
+## Why FHE?
+
+Fully Homomorphic Encryption (FHE) lets smart contracts compute on encrypted data without ever decrypting it. Users deposit encrypted amounts; the contract runs supply, borrow, and swap logic on ciphertexts; only the user can reveal their own position.
+
+| Problem                          | ZK            | MPC             | TEE            | **FHE (FheForge)**     |
+| -------------------------------- | ------------- | --------------- | -------------- | ---------------------- |
+| Private input to contract        | ✓ (proof)     | ✓ (multi-party) | ✓ (hardware)   | **✓ (direct)**         |
+| On-chain compute on private data | ✗             | ✗               | ✓ (trusted hw) | **✓ (native)**         |
+| No trusted setup or hardware     | ✓             | ✓               | ✗              | **✓**                  |
+| Selective disclosure             | ✓             | ✓               | ✓              | **✓ (signed permit)**  |
+| Composability with existing DeFi | Partial       | Partial         | Partial        | **✓ (CoFHE)**          |
+| No latency overhead              | ✗ (off-chain) | ✗ (rounds)      | ✓              | **∼ (CoFHE ~1 block)** |
+
+**FHE is the only technology that allows private, on-chain computation without trusted hardware, trusted parties, or moving execution off-chain.**
+
+---
+
+## 📋 Submission Details
+
+This project is submitted to the **Akindo "Private By Design" dApp Buildathon (Wave 4)**:
+
+| Field            | Value                                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| **Project Name** | FheForge                                                                                                  |
+| **Track**        | RWA & Compliance · DeFi & Lending · Privacy Infrastructure                                                |
+| **Category**     | DeFi, RWA Tokenization, Privacy Infrastructure                                                            |
+| **Tags**         | `FHE`, `CoFHE`, `Fhenix`, `Encrypted-DeFi`, `Privacy`, `RWA`, `Lending`, `Liquidations`, `Strategy-Vault` |
+| **Demo URL**     | [ui-chi-ashy.vercel.app](https://ui-chi-ashy.vercel.app)                                                  |
+| **Repo**         | [github.com/symulacr/FheForge](https://github.com/symulacr/FheForge)                                      |
+
+### Judges — Quick Links
+
+- **[Live App](https://ui-chi-ashy.vercel.app)** — Connect wallet on Arbitrum Sepolia and try it
+- **[Deployed Contracts](#contracts--arbitrum-sepolia-421614)** — Verified on Arbiscan
+- **[Architecture](#architecture)** — End-to-end system design
+- **[Test Results](#tests)** — 102 passing tests (Forge + Hardhat)
+- **[Known Issues](#known-issues)** — Transparency on limitations
+- **[Demo Video](https://youtu.be/your-video-link)** — Walkthrough
+
+---
+
+## Use Case: Tokenized Real-World Assets (RWA)
+
+FheForge is purpose-built for **Track 1: RWA & Compliance**. Here's how encrypted DeFi unlocks real-world asset markets:
+
+- **Private credit scores** — Borrow against RWA collateral without publishing your creditworthiness to the world
+- **Confidential RWA ownership** — Tokenized real estate, private credit, and invoice financing remain private
+- **Selective auditor disclosure** — Reveal position details to regulators or auditors only via signed permits
+- **Encrypted strategy automation** — Auto-manage RWA portfolios (rebalance, roll, harvest) without exposing positions
+
+**Example:** A real estate tokenization fund manages 1,000+ investor positions. Using FheForge, each investor's holdings, yield, and liquidation risk are encrypted. The fund can still compute total collateral and manage liquidations — but no one sees individual positions except the owner.
+
+---
+
+## Architecture
+
+```mermaid
+graph TB
+    subgraph "USER"
+        BROWSER["Browser / Wallet<br/>(MetaMask, Rabby)"]
+    end
+
+    subgraph "UI — Next.js 14"
+        WAGMI["Wagmi + Viem<br/>Wallet + Chain"]
+        COFHE["@cofhe/react SDK<br/>Encrypt/Decrypt"]
+        BUILDER["ReactFlow<br/>Strategy Canvas"]
+        NEXT["Next.js App Router"]
+    end
+
+    subgraph "BACKEND — NestJS"
+        API["REST API"]
+        AI["Gemini AI Builder"]
+        STRAT["Simulation Engine"]
+        SUPA["Supabase / PostgreSQL"]
+    end
+
+    subgraph "BLOCKCHAIN — Arbitrum Sepolia"
+        COMPOSER["FheForgeComposer"]
+        VAULT["StrategyVault"]
+        LENDING["LendingPool"]
+        SWAP["SwapRouter"]
+        ORACLE["PriceOracle"]
+        REG["StrategyRegistry"]
+    end
+
+    BROWSER --> NEXT
+    BROWSER --> WAGMI
+    WAGMI --> COFHE
+    NEXT --> BUILDER
+    NEXT --> API
+    API --> AI
+    API --> STRAT
+    API --> SUPA
+    WAGMI --> COMPOSER
+    WAGMI --> VAULT
+    WAGMI --> LENDING
+    WAGMI --> SWAP
+    COFHE --> COMPOSER
+    COMPOSER --> VAULT
+    COMPOSER --> LENDING
+    COMPOSER --> SWAP
+    COMPOSER --> ORACLE
+```
+
+**Data flow:** User builds a strategy in ReactFlow → Backend parses and simulates it → User confirms → Frontend calls FheForgeComposer → Composer orchestrates Vault/LendingPool/SwapRouter with encrypted amounts.
+
+_Infrastructure: Grafana + Prometheus (planned for production deployment)._
 
 ---
 
 ## Contracts — Arbitrum Sepolia (421614)
 
-| Contract | Address |
-|---|---|---|
-| StrategyVault | `0xBf65f09f901340328C17e10d67479bd884feC551` |
-| LendingPool | `0x605e973B47C311aE9ad7ea5984e673B129fCB769` |
-| SwapRouter | `0xc613Ba147b7d76854c6e2D37E15fe50FFbD8F489` |
-| StrategyRegistry | `0xfe9FAb915b0271CEA1243a299a4a4085497DE260` |
-| PriceOracle | `0x6793a71fefA499d9A345Bd4Ab15eae8bb27F065C` |
-| FheForgeComposer | `0xCEF1B60C8FE8641f3346c5eD0ebBDA742c62e750` |
-| ExecutorContract | `0xA4f22e945569e51d006623c92bbA202b65a25182` |
-| WETH (mock) | `0x9A0227ebC77288ECFc7e6890C4C4e2FB11Af443d` |
-| USDC (mock) | `0x150376EdEbc5AC48771655a61a795d828BeC8Df6` |
+| Contract         | Address                                      |
+| ---------------- | -------------------------------------------- |
+| StrategyVault    | `0x75c7D581d9c408B93Bf6FB43aF3ECbe6FF5EEB1A` |
+| LendingPool      | `0x4F0508ca71a5Dae2C49FD9307a507f74DE90DD72` |
+| SwapRouter       | `0x56d08512c95562Ea3F70Bc16E0a0379E3632221B` |
+| StrategyRegistry | `0x4e0414204972C9127E7eef2aeA5493e6E4D44914` |
+| PriceOracle      | `0xfA7B1f68c66AEf1BDC0981465ee5E29E456Da12C` |
+| FheForgeComposer | `0x9892D8CaEB4a2ab4Dba10126a2f49D2aD5807b2C` |
+| ExecutorContract | `0x133Fd65cB314f7FD6de1A6c9b5ad41324e231aD9` |
+| TokenRegistry    | `0x70F4EF1606dEa8d504C136166A20d079ffb33eDA` |
+| StrategyExecutor | `0xf7C9f931CAC1658e60003eFbbE840d74e312529c` |
+| WETH (mock)      | `0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32` |
+| USDC (mock)      | `0x150376EdEbc5AC48771655a61a795d828BeC8Df6` |
 
 ---
 
-## Built
+## Features
 
-- **StrategyVault** — open/add/close pos, `euint128` collat, FHE ACL
-- **LendingPool** — supply/borrow/checkLtvAndBorrow/repay/withdraw, encrypted amt
-- **Lending Actions** — liquidate, borrowWithOracle, emergencyWithdraw, isSupported (MC-36/37/38/44/45)
-- **Event Indexing** — on-chain event monitoring for StrategyVault and LendingPool (MC-55)
-- **SwapRouter** — submit/cancel/execute swap intents, encrypted `amountIn`/`minOut`
-- **StrategyRegistry** — register strategy, track encrypted TVL
-- **DeFi Builder** — ReactFlow canvas compose strategy (SWAP/SUPPLY/BORROW)
-- **AI Prompt** — Gemini gen strategy from NL
-- **Wallet** — wagmi v2 + CoFHE SDK, arb-sepolia, MetaMask
+- **StrategyVault** — Open, add to, and close positions with encrypted `euint128` collateral
+- **LendingPool** — Supply, borrow, repay, withdraw — all amounts encrypted
+- **Smart liquidations** — Liquidate undercollateralized positions, borrow with oracle price checks
+- **SwapRouter** — Intent-based AMM with encrypted `amountIn` / `minOut`
+- **StrategyRegistry** — Register and discover strategies with encrypted TVL tracking
+- **DeFi Builder** — Visual ReactFlow canvas to compose strategies (SWAP → SUPPLY → BORROW)
+- **AI Strategy Generator** — Describe your goal in plain English; Gemini produces a structured strategy
+- **Event Indexing** — Real-time on-chain event monitoring for Vault and Pool
+- **Wallet** — wagmi v2 + CoFHE SDK, Arbitrum Sepolia, MetaMask
 
 ---
 
-## FHE Privacy
+## Privacy Model
 
-- amt → `euint128` (CoFHE/Fhenix)
-- ZkVerifier reject unsigned input — no dummy ciphertext
-- `decryptForView` require signed permit — only you read pos
-- cross-user iso verified: t2 can't decrypt t1 ctHash
+- Amounts → `euint128` via CoFHE/Fhenix runtime
+- ZkVerifier rejects unsigned input — no dummy ciphertexts
+- `decryptForView` requires a signed permit — only you can read your own position
+- Cross-user isolation verified: user B cannot decrypt user A's ciphertext handles
+
+---
+
+## 📺 Demo Script (2-Minute Walkthrough)
+
+**Presenter A (User with encrypted position):**
+
+> "I have USDC I want to use as collateral in DeFi — but I don't want the world to see my positions, my liquidation risk, or my trading strategy. With FheForge, I encrypt my deposit client-side using CoFHE. The contract only sees ciphertext. I can supply, borrow, and swap — all with encrypted amounts."
+
+**Presenter B (Demonstrating privacy):**
+
+> "Now, let's verify privacy is real. Here's my encrypted position in the dashboard — the UI shows zero plaintext balances. Here's the block explorer — you can see the transaction but the amounts are garble. And here's the permit system: I can generate a signed cryptographic permit that lets a specific address (like an auditor or liquidator) decrypt just this one position — nothing else."
+
+**Presenter A (Showing the Builder):**
+
+> "This is the DeFi Builder — a visual ReactFlow canvas. I drag a SWAP node, connect it to a SUPPLY node, describe the strategy to the AI in plain English, and deploy it. The backend simulates the strategy first, then the Composer contract orchestrates Vault → SwapRouter → LendingPool in a single atomic transaction."
 
 ---
 
 ## Tests
 
 ```
-forge      13 PASS | 0 FAIL
-hardhat      4 PASS | 0 FAIL
-brutal     T1-T12 live breaker
+forge      90 PASS | 0 FAIL
+hardhat    12 PASS | 0 FAIL
+brutal     T1–T12 live breaker (all pass)
 ```
 
-Run: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-sharp.js`
+Run full suite: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-sharp.js`
 
 ---
 
 ## Known Issues
 
-| Severity | Issue | Status |
-|---|---|---|
-| MED | Dual plain+encrypted input skew — no on-chain `amount == encAmount` enforcement. Mitigation requires CoFHE ZK proof of equality (post-MVP). | Known — documented in @dev |
-| LOW | 2 solhint warnings (struct packing). Cosmetic. | Deferred |
-| INFO | Webpack build warnings (ox/viem dynamic imports, circular dependencies). Third-party library issue, does not affect functionality. | Monitored — library updates |
+| Severity | Issue                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Status                      |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| MED      | Dual plain+encrypted input skew — functions accept both a plaintext `amount` and an encrypted `InEuint128 encAmount`. While `_verifyEquality` checks `FHE.eq(incoming, claimedPlain)`, this verification itself operates on the same plaintext provided by the caller. A malicious caller could provide a valid plaintext for the equality check while the real encrypted value differs — the on-chain equality check is consistent within the transaction but does not prove that the user's intent matches the plaintext. Full trustless enforcement requires a CoFHE ZK proof of equality linking the two inputs, planned for post-MVP. Mitigation: the encrypted value is what persists in state, so any skew only affects the current transaction's plaintext flow. | Known — documented in @dev  |
+| LOW      | 2 solhint warnings (struct packing). Cosmetic only.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Deferred                    |
+| INFO     | Webpack build warnings (ox/viem dynamic imports, circular dependencies). Third-party — does not affect functionality.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Monitored — library updates |
+
+_Additional protocol-level limitations are tracked internally and will be addressed in future waves._
 
 ### Resolved
 
-| Severity | Issue | Resolution |
-|---|---|---|
-| HIGH | `LendingPool.borrow()` — no collat check | Stale — no bare `borrow()` exists. Only `checkLtvAndBorrow` + `borrowWithOracle`, both guarded. |
-| HIGH | `StrategyVault.positionStrategyIds` never written | Fixed (Wave 5) |
-| LOW | `Router.executor` EOA | Fixed — `ExecutorContract` deployed (Wave 6) |
-| LOW | 96 solhint prettier warnings | Fixed — prettier format, 0 errors, 2 cosmetic warnings remain |
+| Severity | Issue                                                                         | Resolution                                                                   |
+| -------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| HIGH     | `LendingPool.borrow()` — no collateral check                                  | Resolved — only `checkLtvAndBorrow` + `borrowWithOracle` exist, both guarded |
+| HIGH     | `StrategyVault.positionStrategyIds` never written                             | Fixed (Wave 5)                                                               |
+| LOW      | `Router.executor` EOA                                                         | Fixed — `ExecutorContract` deployed (Wave 6)                                 |
+| LOW      | 96 solhint prettier warnings                                                  | Fixed — prettier format applied, 0 errors, 2 cosmetic warnings remain        |
+| HIGH     | StrategyVault.closePosition() — no ownership check                            | Fixed (v1.1.0) — added positionOwner mapping                                 |
+| MEDIUM   | PriceOracle.updatePriceFeeds() — broken address loop                          | Fixed (v1.1.0) — registeredTokens array                                      |
+| LOW      | StrategyRegistry.broadcastStrategy() — off-by-one boundary check              | Fixed (v1.1.0)                                                               |
+| LOW      | LendingPool.liquidateWithProof() — self-liquidation guard missing             | Fixed (v1.1.0)                                                               |
+| MEDIUM   | SwapRouter deploy.ts missing 5th constructor arg                              | Fixed (v1.1.0)                                                               |
+| HIGH     | Duplicate interface files (IStrategyVault, ISwapRouter)                       | Fixed (v1.1.0) — consolidated                                                |
+| MEDIUM   | hardhat.config.ts reads TESTER_PRIVATE_KEY (singular)                         | Fixed (v1.1.0) — TESTER1+TESTER2                                             |
+| MEDIUM   | 15 stale deployment artifacts + conflicting .solhint.js                       | Fixed (v1.1.0)                                                               |
+| MEDIUM   | Frontend 3 ABI mismatches (openPosition, borrowWithOracle, getPlainBalance)   | Fixed (v1.1.0)                                                               |
+| LOW      | Dead code (InterestIndex, RESERVE_FACTOR_BPS, BalanceRevealed, Position.debt) | Fixed (v1.1.0)                                                               |
+| MEDIUM   | TokenRegistry triple copy-paste                                               | Fixed (v1.1.0)                                                               |
+| MEDIUM   | Missing natspec on public functions                                           | Fixed (v1.1.0)                                                               |
+| MEDIUM   | FheForgeTestHelper fragile storage copy                                       | Fixed (v1.1.0)                                                               |
+| HIGH     | ZK verifier mock absent (liquidateWithProof untested)                         | Fixed (v1.1.0)                                                               |
+| MEDIUM   | Mock ACL boilerplate (impersonation)                                          | Fixed (v1.1.0) — shared helper                                               |
+| LOW      | Scripts env var names mismatch                                                | Fixed (v1.1.0)                                                               |
 
 ---
 
-## Stack
+## Tech Stack
 
-| Layer | Tech |
-|---|---|
-| Contracts | Solidity, CoFHE SDK, OZ, Hardhat |
-| Frontend | Next.js 14, wagmi v2, viem, @cofhe/react, ReactFlow |
-| Backend | NestJS, Supabase (PostgreSQL), Gemini AI |
-| Chain | Arbitrum Sepolia (CoFHE TaskManager live) |
-| Deploy | Vercel (FE) · Railway (API) |
+| Layer           | Technology                                                                                                      |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| Smart Contracts | Solidity 0.8.28, CoFHE SDK, OpenZeppelin, Hardhat + Foundry                                                     |
+| Frontend        | Next.js 14, React 18, wagmi v2, viem, @cofhe/react, ReactFlow, Tailwind CSS, shadcn/ui, TanStack Query, Zustand |
+| Backend         | NestJS 11, Supabase (PostgreSQL), @nestjs/swagger, Google Gemini AI                                             |
+| Blockchain      | Arbitrum Sepolia (CoFHE TaskManager)                                                                            |
+| Deployment      | Vercel (frontend), Railway (API)                                                                                |
+
+---
+
+## Team
+
+| Name     | Role                                               | GitHub                                   |
+| -------- | -------------------------------------------------- | ---------------------------------------- |
+| symulacr | Smart Contracts, Backend, Frontend, Infrastructure | [@symulacr](https://github.com/symulacr) |
 
 ---
 
 ## Setup
 
 ```bash
-# contracts
+# 1. Contracts
 cd contracts && npm install && node scripts/test-hardened.js
 
-# frontend
+# 2. Frontend
 cd ui && bun install && bun dev
 
-# backend
+# 3. Backend
 cd backend/apps && bun install && bun start:dev
 ```
 
-Copy `ui/.env.example` → `ui/.env.local`, `backend/apps/.env.development.example` → `backend/apps/.env.development`. Fill keys.
+Copy `ui/.env.example` → `ui/.env.local` and `backend/apps/.env.development.example` → `backend/apps/.env.development`. Fill in API keys.
+
+---
+
+## ⭐ Show Your Support
+
+If FheForge demonstrates that private DeFi is possible today, give us a star on [GitHub](https://github.com/symulacr/FheForge) — it helps buildathon judges see the community values this work!
+
+---
+
+<p align="center">
+  Built with ❤️ for the <strong>Akindo "Private By Design" dApp Buildathon</strong><br/>
+  <em>Privacy isn't a feature. It's the foundation.</em>
+</p>

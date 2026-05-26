@@ -38,10 +38,20 @@ Thumbs.db
 # Secrets / credentials
 WALLET_CREDENTIALS.txt
 *.wallet-secret.json
+*.wallet-secret*.json
+*.wallet*
+*.secret*
 wallet-seed.json
 *.private-key
 *private-key.json
 .mnemonic
+
+# Keystore files (contain private keys)
+*.pem
+*.p12
+*.pfx
+*.key
+keystore/
 .git-rewrite/
 
 # GSD / agent scaffolding
@@ -118,3 +128,9 @@ contracts/*MANIFEST*
 contracts/*INTEGRATION*
 *.tgz
 *.old
+
+# POC/demo projects (standalone repos with own .git history)
+/poc-sealed-bid-auction/
+/poc-shielded-stablecoin/
+/rfq-demo/
+/selective-disclosure-demo/
