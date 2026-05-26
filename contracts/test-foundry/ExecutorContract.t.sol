@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.25;
+pragma solidity ^0.8.28;
 
-import { Test, console } from "forge-std/Test.sol";
 import { MockERC20 } from "../contracts/MockERC20.sol";
 import { SwapRouter } from "../contracts/SwapRouter.sol";
 import { ExecutorContract } from "../contracts/ExecutorContract.sol";
+// selector 0x118cdaa7 = OwnableUnauthorizedAccount(address) — hardcoded per TestHelper pattern
+import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 
-contract ExecutorContractTest is Test {
+contract ExecutorContractTest is FheForgeTestHelper {
+    error ExecutorContractTest_IntentNotDeleted();
+
     uint256 internal constant MIN_DEADLINE = 30;
     uint256 internal constant MAX_DEADLINE = 7 days;
     uint256 internal constant EXEC_DELAY = 48 hours;
@@ -20,25 +23,31 @@ contract ExecutorContractTest is Test {
     address public user = makeAddr("user");
 
     function setUp() public {
+        _deployFheMocks();
         vm.startPrank(owner);
 
-        // Deploy mock tokens
-        tokenIn = new MockERC20();
-        tokenOut = new MockERC20();
+        tokenIn = new MockERC20("TokenIn", "TIN", 18);
+        tokenOut = new MockERC20("TokenOut", "TOUT", 18);
 
-        // Deploy executor (owner becomes contract owner)
         executorContract = new ExecutorContract();
 
-        // Deploy swap router with executorContract as the executor
-        router = new SwapRouter(address(executorContract), MIN_DEADLINE, MAX_DEADLINE, EXEC_DELAY);
+        router = new SwapRouter(
+            address(executorContract),
+            MIN_DEADLINE,
+            MAX_DEADLINE,
+            EXEC_DELAY,
+            address(0x1)
+        );
+
+        tokenIn.mint(user, 100 ether);
 
         vm.stopPrank();
     }
 
     /// @notice Full integration test: owner executes intent via ExecutorContract
-    function test_ExecuteIntentViaContract() public {
-        // 1. User submits a swap intent
+    function testExecuteIntentViaContract() public {
         vm.startPrank(user);
+        tokenIn.approve(address(router), 100 ether);
         bytes32 intentId = router.submitSwapIntent(
             address(tokenIn),
             address(tokenOut),
@@ -50,28 +59,24 @@ contract ExecutorContractTest is Test {
 
         uint256 outputAmount = 70 ether;
 
-        // 2. Owner funds executorContract with tokenOut
         vm.startPrank(owner);
         tokenOut.mint(address(executorContract), outputAmount);
 
-        // 3. ExecutorContract approves router to spend tokenOut
         executorContract.approveToken(address(tokenOut), address(router), outputAmount);
 
-        // 4. Owner triggers intent execution via executorContract
         executorContract.executeIntent(address(router), intentId, outputAmount);
         vm.stopPrank();
 
-        // 5. Verify user received the tokens
         assertEq(tokenOut.balanceOf(user), outputAmount, "user should receive outputAmount");
 
-        // 6. Verify the intent is cleared (executed intents are deleted)
         (, , address u, ) = router.getIntentMeta(intentId);
-        assertEq(u, address(0), "intent should be deleted after execution");
+        if (u != address(0)) revert ExecutorContractTest_IntentNotDeleted();
     }
 
     /// @notice Only owner can call executeIntent
-    function test_ExecuteIntentRejectsNonOwner() public {
+    function testExecuteIntentRejectsNonOwner() public {
         vm.startPrank(user);
+        tokenIn.approve(address(router), 100 ether);
         bytes32 intentId = router.submitSwapIntent(
             address(tokenIn),
             address(tokenOut),
@@ -83,7 +88,6 @@ contract ExecutorContractTest is Test {
 
         uint256 outputAmount = 70 ether;
 
-        // Fund and approve
         vm.startPrank(owner);
         tokenOut.mint(address(executorContract), outputAmount);
         executorContract.approveToken(address(tokenOut), address(router), outputAmount);
@@ -91,18 +95,15 @@ contract ExecutorContractTest is Test {
 
         // Non-owner tries to execute
         vm.startPrank(user);
-        vm.expectRevert(
-            abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")), user)
-        );
+        vm.expectRevert(abi.encodeWithSelector(0x118cdaa7, user));
         executorContract.executeIntent(address(router), intentId, outputAmount);
         vm.stopPrank();
     }
 
     /// @notice WithdrawTokens works for owner
-    function test_WithdrawTokens() public {
+    function testWithdrawTokens() public {
         uint256 amount = 100 ether;
 
-        // Owner funds executor
         vm.prank(owner);
         tokenOut.mint(address(executorContract), amount);
 
@@ -110,7 +111,6 @@ contract ExecutorContractTest is Test {
 
         uint256 ownerBalanceBefore = tokenOut.balanceOf(owner);
 
-        // Owner withdraws
         vm.prank(owner);
         executorContract.withdrawTokens(address(tokenOut), amount);
 
@@ -119,22 +119,21 @@ contract ExecutorContractTest is Test {
     }
 
     /// @notice Only owner can withdraw
-    function test_WithdrawTokensRejectsNonOwner() public {
+    function testWithdrawTokensRejectsNonOwner() public {
         uint256 amount = 100 ether;
 
         vm.prank(owner);
         tokenOut.mint(address(executorContract), amount);
 
         vm.prank(user);
-        vm.expectRevert(
-            abi.encodeWithSelector(bytes4(keccak256("OwnableUnauthorizedAccount(address)")), user)
-        );
+        vm.expectRevert(abi.encodeWithSelector(0x118cdaa7, user));
         executorContract.withdrawTokens(address(tokenOut), amount);
     }
 
     /// @notice executeIntent reverts when executor is unfunded
-    function test_ExecuteIntentRevertsWhenUnfunded() public {
+    function testExecuteIntentRevertsWhenUnfunded() public {
         vm.startPrank(user);
+        tokenIn.approve(address(router), 100 ether);
         bytes32 intentId = router.submitSwapIntent(
             address(tokenIn),
             address(tokenOut),
@@ -146,7 +145,6 @@ contract ExecutorContractTest is Test {
 
         uint256 outputAmount = 70 ether;
 
-        // Approve router but don't fund executor
         vm.startPrank(owner);
         executorContract.approveToken(address(tokenOut), address(router), outputAmount);
 
