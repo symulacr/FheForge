@@ -61,6 +61,7 @@ venv/
 
 # === INFRASTRUCTURE ===
 .vercel/
+logging/
 
 # === DATABASE FILES ===
 *.sqlite
@@ -103,6 +104,9 @@ docker-compose.override.yml
 # === AGENT ORCHESTRATOR ===
 .pi/
 .omx/
+.omc/
+.sisyphus/
+.playwright-mcp/
 .commandcode/
 .recon/
 conductor/
