@@ -1,8 +1,8 @@
 import { Encryptable, FheTypes } from "@cofhe/sdk";
 import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import type { Abi } from "viem";
 import { formatUnits, type Hash, parseUnits } from "viem";
-import { toast } from "sonner";
 import { useAccount, useChainId, useWriteContract } from "wagmi";
 
 import VaultArtifact from "@/abis/StrategyVault.json";

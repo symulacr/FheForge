@@ -43,10 +43,10 @@ interface DefiPair {
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
-import { useChainId } from "wagmi";
-import { waitForTransactionReceipt } from "wagmi/actions";
 import type { Connection, Edge, Node } from "reactflow";
 import { addEdge, useEdgesState, useNodesState } from "reactflow";
+import { useChainId } from "wagmi";
+import { waitForTransactionReceipt } from "wagmi/actions";
 import type { DefiEstimate, DefiNodeData } from "@/app/builder/components/nodes/defi-node.types";
 import { displayToast } from "@/components/shared/toast-manager";
 import { useFheVault } from "@/hooks/use-fhe-vault";

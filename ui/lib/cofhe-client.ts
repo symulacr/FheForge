@@ -1,11 +1,11 @@
 "use client";
 
-import { createCofheConfig, createCofheClient } from "@cofhe/sdk/web";
-import { chains } from "@cofhe/sdk/chains";
-import { Ethers6Adapter } from "@cofhe/sdk/adapters";
-import { Encryptable, FheTypes } from "@cofhe/sdk";
 import type { CofheClient, CofheConfig } from "@cofhe/sdk";
-import type { Provider, AbstractSigner, Wallet } from "ethers";
+import { Encryptable, FheTypes } from "@cofhe/sdk";
+import { Ethers6Adapter } from "@cofhe/sdk/adapters";
+import { chains } from "@cofhe/sdk/chains";
+import { createCofheClient, createCofheConfig } from "@cofhe/sdk/web";
+import type { AbstractSigner, Provider, Wallet } from "ethers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,9 +32,7 @@ let _instance: CofheClient<CofheConfig> | null = null;
  */
 export function getCofheClient(): CofheClient<CofheConfig> {
 	if (!_instance) {
-		throw new Error(
-			"CoFHE client not initialised — call initCofheClient(provider, signer) first",
-		);
+		throw new Error("CoFHE client not initialised — call initCofheClient(provider, signer) first");
 	}
 	return _instance;
 }
@@ -147,10 +145,7 @@ export async function decryptForView(
 	utype: FheTypes = FheTypes.Uint128,
 ): Promise<bigint> {
 	const client = getCofheClient();
-	const result = await client
-		.decryptForView(ctHash, utype)
-		.withPermit()
-		.execute();
+	const result = await client.decryptForView(ctHash, utype).withPermit().execute();
 	return result as bigint;
 }
 /**
@@ -165,10 +160,7 @@ export async function decryptForView(
  */
 export async function decryptForTx(ctHash: bigint) {
 	const client = getCofheClient();
-	const result = await client
-		.decryptForTx(ctHash)
-		.withPermit()
-		.execute();
+	const result = await client.decryptForTx(ctHash).withPermit().execute();
 	return result;
 }
 

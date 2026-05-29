@@ -25,6 +25,8 @@ contract StrategyExecutor is FheForgeBase {
     bytes4 public constant WITHDRAW_VAULT = 0x00000007;
     bytes4 public constant SWAP_UNISWAP_V3 = 0x00000008;
 
+
+    error UnknownActionType(bytes4 actionType);
     struct Action {
         bytes4 actionType;
         bytes params;
@@ -90,6 +92,10 @@ contract StrategyExecutor is FheForgeBase {
     function _executeAction(bytes32 strategyId, uint256 index, Action calldata action) internal {
         emit ActionExecuted(strategyId, index, action.actionType);
 
+        // MC-077: Validate encrypted handle before any action-specific logic.
+        //         This prevents "calls without _verifyEquality" bypasses.
+        _validateCiphertext(FHE.asEuint128(action.encAmount));
+
         if (action.actionType == SHIELD_SUPPLY) {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
@@ -108,6 +114,7 @@ contract StrategyExecutor is FheForgeBase {
             ) = abi.decode(action.params, (address, address, uint256, uint256, uint256));
             IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amountIn);
             _ensureApproval(tokenIn, address(ROUTER), amountIn);
+            _verifyEquality(FHE.asEuint128(action.encAmount), amountIn);
             ROUTER.submitSwapIntent(tokenIn, tokenOut, amountIn, minOut, deadline);
         } else if (action.actionType == REPAY_DEBT) {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
@@ -119,6 +126,7 @@ contract StrategyExecutor is FheForgeBase {
                 .decode(action.params, (address, address, uint24, uint256, uint256));
             IERC20(tokenIn).safeTransferFrom(_msgSender(), address(this), amountIn);
             _ensureApproval(tokenIn, address(ROUTER), amountIn);
+            _verifyEquality(FHE.asEuint128(action.encAmount), amountIn);
             ROUTER.swapViaUniswapV3Single(tokenIn, tokenOut, fee, amountIn, minOut);
         } else if (action.actionType == DEPOSIT_VAULT) {
             (address token, uint256 amount, uint256 strategyId_) = abi.decode(
@@ -151,6 +159,8 @@ contract StrategyExecutor is FheForgeBase {
         } else if (action.actionType == WITHDRAW_VAULT) {
             (bytes32 positionId, uint256 amount) = abi.decode(action.params, (bytes32, uint256));
             VAULT.closePosition(positionId, amount, _verifyEquality(FHE.asEuint128(action.encAmount), amount));
+        } else {
+            revert UnknownActionType(action.actionType);
         }
     }
 

@@ -1,32 +1,34 @@
 "use client";
 
-import { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { useConfigPanelForm } from "@/hooks/use-config-panel-form";
 import { X } from "lucide-react";
-import { useReadContract, useAccount } from "wagmi";
-import { formatUnits, type Abi } from "viem";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type Abi, formatUnits } from "viem";
+import { useAccount, useReadContract } from "wagmi";
 import VaultArtifact from "@/abis/StrategyVault.json";
+import { useConfigPanelForm } from "@/hooks/use-config-panel-form";
+
 const VaultABI = VaultArtifact as unknown as Abi;
+
 import { FheTypes } from "@cofhe/sdk";
+import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
+import { type Node, useEdges } from "reactflow";
+import { EstimateCard } from "@/app/builder/components/estimate-card";
+import type {
+	DefiEstimate,
+	DefiNodeData,
+	DefiOperationType,
+} from "@/app/builder/components/nodes/defi-node.types";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { SaveConfigPayload } from "@/hooks/use-strategy-builder";
+import { assetIcons } from "@/lib/iconMap";
 import { useCofheClient, useCofheState } from "@/providers/fhenix-provider";
-import { FHENIX_CONTRACT_ADDRESSES } from "@/utils/addresses";
 import {
+	type EstimateDefiOperationPayload,
 	estimateDefiOperation,
 	getRequiredActionData,
-	type EstimateDefiOperationPayload,
 } from "@/services/defi-module-service";
-import { useQuery } from "@tanstack/react-query";
-import { useEdges, Node } from "reactflow";
-import {
-	DefiOperationType,
-	DefiNodeData,
-	DefiEstimate,
-} from "@/app/builder/components/nodes/defi-node.types";
-import { SaveConfigPayload } from "@/hooks/use-strategy-builder";
-import Image from "next/image";
-import { assetIcons } from "@/lib/iconMap";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EstimateCard } from "@/app/builder/components/estimate-card";
+import { FHENIX_CONTRACT_ADDRESSES } from "@/utils/addresses";
 
 interface Props {
 	node: Node<DefiNodeData>;
