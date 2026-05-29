@@ -128,4 +128,15 @@ contract MockLendingPool is ILendingPool {
     function getBorrowBalance(address) external returns (euint128 bal) {
         return FHE.asEuint128(0);
     }
+
+    // ─── isLiquidatable (stub) ──────────────────────────────────────────────
+    function isLiquidatable(
+        address,
+        address,
+        address,
+        uint256,
+        uint256
+    ) external pure returns (bool) {
+        return false;
+    }
 }

@@ -1,11 +1,13 @@
-require("@cofhe/hardhat-plugin");
-require("@nomicfoundation/hardhat-ethers");
-require("@nomicfoundation/hardhat-chai-matchers");
-require("@nomicfoundation/hardhat-verify");
+import "@cofhe/hardhat-plugin";
+import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-chai-matchers";
+import "@nomicfoundation/hardhat-verify";
+import "dotenv/config";
+import type { HardhatUserConfig } from "hardhat/config";
 
-const config = {
+const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.25",
+      version: "0.8.28",
     settings: {
       viaIR: true,
       evmVersion: "cancun",
@@ -39,8 +41,6 @@ const config = {
       allowUnlimitedContractSize: true,
     },
   },
-
-
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY || "",
     customChains: [
@@ -67,4 +67,4 @@ const config = {
   },
 };
 
-module.exports = config;
+export default config;

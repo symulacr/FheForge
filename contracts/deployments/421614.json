@@ -2,19 +2,19 @@
   "network": "arb-sepolia",
   "chainId": 421614,
   "deployer": "0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8",
-  "deployedAt": "2026-05-12T01:55:16.468Z",
-  "mode": "wave30",
+  "deployedAt": "2026-05-28T21:18:39.122Z",
+  "mode": "demo",
   "wave": 30,
   "contracts": {
-    "StrategyRegistry": "0x4e0414204972C9127E7eef2aeA5493e6E4D44914",
-    "StrategyVault": "0x75c7D581d9c408B93Bf6FB43aF3ECbe6FF5EEB1A",
-    "FheForgeComposer": "0x9892D8CaEB4a2ab4Dba10126a2f49D2aD5807b2C",
-    "LendingPool": "0x4F0508ca71a5Dae2C49FD9307a507f74DE90DD72",
-    "SwapRouter": "0x56d08512c95562Ea3F70Bc16E0a0379E3632221B",
-    "PriceOracle": "0xfA7B1f68c66AEf1BDC0981465ee5E29E456Da12C",
-    "ExecutorContract": "0x133Fd65cB314f7FD6de1A6c9b5ad41324e231aD9",
-    "TokenRegistry": "0x70F4EF1606dEa8d504C136166A20d079ffb33eDA",
-    "StrategyExecutor": "0xf7C9f931CAC1658e60003eFbbE840d74e312529c"
+    "StrategyRegistry": "0xC1256f738f1bF9D08F8168eE48e34d4E929DDE9C",
+    "LendingPool": "0x6903df3E8f45497C3097A16E534787D6Fc9F58eF",
+    "PriceOracle": "0xFB8fb4232f70bF41750515F54861b0698938ceDe",
+    "SwapRouter": "0x1136E5eF8bB8E189aE83894eCB2F0c67E3097Ea1",
+    "ExecutorContract": "0x80EF32CE77f5DC7aA92d200f36357cd83ef8407D",
+    "StrategyVault": "0xf3cB0A1b02128C630C2bca9b50151FbC350f6AFC",
+    "FheForgeComposer": "0x65dB0572076f14b838327F5C2513f32b927Ec36E",
+    "TokenRegistry": "0x7aF5d7E762D895C917EA3c9e72Ca134176A32AD3",
+    "StrategyExecutor": "0x9eCC8c61F65EBB652d3DfA3A32Eac08487CC1e00"
   },
   "deploymentTxs": {
     "StrategyRegistry": "0x35b2775f994cbb3842f6a6c838ddcfe9bacc01f46c28832022ba7f21100d7857",
@@ -27,7 +27,22 @@
     "setComposer": "wave10"
   },
   "notes": "Wave 30: C-03 minAmountOut, C-04 escrow, C-08 ZeroPrice, C-12 overflow guard, H-06 ComposerSet, full redeploy",
-  "swapExecutor": "0x133Fd65cB314f7FD6de1A6c9b5ad41324e231aD9",
+  "swapExecutor": "0x80EF32CE77f5DC7aA92d200f36357cd83ef8407D",
   "weth": "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32",
-  "waveDescription": "New PriceOracle with real Pyth + stablecoin fallback"
+  "waveDescription": "New PriceOracle with real Pyth + stablecoin fallback",
+  "tokens": {
+    "WETH": "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32",
+    "USDC": "0x150376EdEbc5AC48771655a61a795d828BeC8Df6"
+  },
+  "verificationStatus": {
+    "StrategyRegistry": true,
+    "LendingPool": true,
+    "PriceOracle": true,
+    "SwapRouter": true,
+    "ExecutorContract": false,
+    "StrategyVault": true,
+    "FheForgeComposer": true,
+    "TokenRegistry": true,
+    "StrategyExecutor": true
+  }
 }

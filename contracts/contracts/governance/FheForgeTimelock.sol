@@ -5,10 +5,11 @@ import { TimelockController } from "@openzeppelin/contracts/governance/TimelockC
 
 contract FheForgeTimelock is TimelockController {
     constructor(
+        uint256 minDelay,
         address admin
     )
         TimelockController(
-            2 days /* minDelay */,
+            minDelay,
             new address[](0) /* proposers — set after governor deployed */,
             new address[](0) /* executors — anyone */,
             admin

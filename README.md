@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Chain-Arbitrum_Sepolia-2D374B?logo=arbitrum" alt="Arbitrum Sepolia"/>
   <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License"/>
   <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status"/>
-  <img src="https://img.shields.io/badge/tests-102%20PASS-22c55e" alt="Tests: 102 PASS"/>
+  <img src="https://img.shields.io/badge/tests-passing%20(forge%20live)-22c55e" alt="Tests: Passing (forge live)"/>
   <img src="https://img.shields.io/badge/Akindo_Wave_Hacks-2026-FF6B35" alt="Akindo Wave Hacks 2026"/>
 </p>
 
@@ -108,7 +108,7 @@ This project is submitted to the **Akindo "Private By Design" dApp Buildathon (W
 - **[Live App](https://ui-chi-ashy.vercel.app)** — Connect wallet on Arbitrum Sepolia and try it
 - **[Deployed Contracts](#contracts--arbitrum-sepolia-421614)** — Verified on Arbiscan
 - **[Architecture](#architecture)** — End-to-end system design
-- **[Test Results](#tests)** — 102 passing tests (Forge + Hardhat)
+- **[Test Results](#tests)** — Forge live test suite (expanded: dual input, state audit, governance)
 - **[Known Issues](#known-issues)** — Transparency on limitations
 - **[Demo Video](https://youtu.be/your-video-link)** — Walkthrough
 
@@ -187,17 +187,15 @@ _Infrastructure: Grafana + Prometheus (planned for production deployment)._
 
 | Contract         | Address                                      |
 | ---------------- | -------------------------------------------- |
-| StrategyVault    | `0x75c7D581d9c408B93Bf6FB43aF3ECbe6FF5EEB1A` |
-| LendingPool      | `0x4F0508ca71a5Dae2C49FD9307a507f74DE90DD72` |
-| SwapRouter       | `0x56d08512c95562Ea3F70Bc16E0a0379E3632221B` |
-| StrategyRegistry | `0x4e0414204972C9127E7eef2aeA5493e6E4D44914` |
-| PriceOracle      | `0xfA7B1f68c66AEf1BDC0981465ee5E29E456Da12C` |
-| FheForgeComposer | `0x9892D8CaEB4a2ab4Dba10126a2f49D2aD5807b2C` |
-| ExecutorContract | `0x133Fd65cB314f7FD6de1A6c9b5ad41324e231aD9` |
-| TokenRegistry    | `0x70F4EF1606dEa8d504C136166A20d079ffb33eDA` |
-| StrategyExecutor | `0xf7C9f931CAC1658e60003eFbbE840d74e312529c` |
-| WETH (mock)      | `0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32` |
-| USDC (mock)      | `0x150376EdEbc5AC48771655a61a795d828BeC8Df6` |
+| StrategyRegistry | `0xC1256f738f1bF9D08F8168eE48e34d4E929DDE9C` |
+| LendingPool      | `0x6903df3E8f45497C3097A16E534787D6Fc9F58eF` |
+| PriceOracle      | `0xFB8fb4232f70bF41750515F54861b0698938ceDe` |
+| SwapRouter       | `0x1136E5eF8bB8E189aE83894eCB2F0c67E3097Ea1` |
+| ExecutorContract | `0x80EF32CE77f5DC7aA92d200f36357cd83ef8407D` |
+| StrategyVault    | `0xf3cB0A1b02128C630C2bca9b50151FbC350f6AFC` |
+| FheForgeComposer | `0x65dB0572076f14b838327F5C2513f32b927Ec36E` |
+| TokenRegistry    | `0x7aF5d7E762D895C917EA3c9e72Ca134176A32AD3` |
+| StrategyExecutor | `0x9eCC8c61F65EBB652d3DfA3A32Eac08487CC1e00` |
 
 ---
 
@@ -243,12 +241,12 @@ _Infrastructure: Grafana + Prometheus (planned for production deployment)._
 ## Tests
 
 ```
-forge      90 PASS | 0 FAIL
-hardhat    12 PASS | 0 FAIL
-brutal     T1–T12 live breaker (all pass)
+forge-test.ts (live Arb Sepolia)    all PASS | 0 FAIL (comprehensive: tokens, lending, FHE privacy, liquidation, reentrancy, governance, vaults, oracles)
+hardhat                              12 PASS | 0 FAIL
+brutal                               T1–T12 live breaker (all pass)
 ```
 
-Run full suite: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-sharp.js`
+Run full suite: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-sharp.js` · `DEMO_MODE=1 npx hardhat run scripts/forge-test.ts --network arb-sepolia`
 
 ---
 

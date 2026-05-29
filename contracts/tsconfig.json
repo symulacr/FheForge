@@ -17,6 +17,7 @@
       "@cofhe/sdk/chains": ["../node_modules/.bun/@cofhe+sdk@0.5.1+d77193ada486e617/node_modules/@cofhe/sdk/dist/chains.d.ts"]
     }
   },
+  "files": ["./hardhat.config.ts"],
   "include": ["./scripts/**/*.ts", "./test/**/*.ts", "./types/**/*.ts"],
   "exclude": [
     "node_modules",

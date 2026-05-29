@@ -50,4 +50,11 @@ interface ILendingPool {
     ) external;
     function getSupplyBalance(address token) external returns (euint128 bal);
     function getBorrowBalance(address token) external returns (euint128 bal);
+    function isLiquidatable(
+        address user,
+        address collateralToken,
+        address debtToken,
+        uint256 collateralAmount,
+        uint256 borrowAmount
+    ) external view returns (bool);
 }

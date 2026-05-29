@@ -532,6 +532,24 @@ contract LendingPool is FheForgeBase {
         return bal;
     }
 
+    function isLiquidatable(
+        address user,
+        address collateralToken,
+        address debtToken,
+        uint256 collateralAmount,
+        uint256 borrowAmount
+    ) external view returns (bool) {
+        if (user == address(0)) revert ZeroAddress();
+        if (collateralToken == address(0) || debtToken == address(0)) revert ZeroAddress();
+        if (collateralAmount == 0 || borrowAmount == 0) return false;
+        if (address(oracle) == address(0)) return false;
+        uint16 ltvBps = oracle.collateralFactorBps(collateralToken);
+        if (ltvBps == 0) return false;
+        uint256 collateralUsd = oracle.convertToUsd(collateralToken, collateralAmount);
+        uint256 totalDebtUsd = oracle.convertToUsd(debtToken, borrowAmount);
+        return collateralUsd * ltvBps < totalDebtUsd * BPS_DEN;
+    }
+
     uint256 public constant FLASH_FEE_BPS = 5;
 
     event FlashLoan(

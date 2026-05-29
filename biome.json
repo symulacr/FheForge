@@ -1,0 +1,25 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
+	"files": {
+		"includes": [
+			"package.json",
+			"biome.json",
+			"ui/**/*.{js,ts,tsx,json,md}",
+			"backend/apps/**/*.{js,ts,tsx,json,md}",
+			"contracts/**/*.{js,ts,tsx,json,md}",
+			"!bun.lock",
+			"!node_modules",
+			"!ui/.next",
+			"!backend/apps/dist",
+			"!contracts/artifacts",
+			"!contracts/cache"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"lineWidth": 100
+	},
+	"linter": {
+		"enabled": true
+	}
+}

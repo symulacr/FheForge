@@ -7,8 +7,10 @@ import { PriceOracle } from "../contracts/PriceOracle.sol";
 import { FlashLoanReceiver } from "./FlashLoanReceiver.sol";
 import { FheForgeBase } from "../contracts/FheForgeBase.sol";
 import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import { FHE, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
+import { WETH9 } from "../contracts/WETH9.sol";
+import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
 
 contract LendingPoolTest is FheForgeTestHelper {
     LendingPool public pool;
@@ -356,5 +358,358 @@ contract LendingPoolTest is FheForgeTestHelper {
                 hex""
             );
         }
+    }
+
+    function _mockEncVal(uint256 ctHash, uint256 value) internal {
+        uint256 hashMask = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000;
+        uint256 handle = (ctHash & hashMask) | (6 << 8); // utype 6 is euint128
+        MockTaskManager(getTaskManagerAddress()).MOCK_setInEuintKey(handle, value);
+    }
+
+    function testShield() public {
+        uint256 amount = 100 ether;
+        vm.prank(owner);
+        token.mint(user, amount);
+
+        euint128 encAmount = FHE.asEuint128(amount);
+        _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
+        ITaskManager(getTaskManagerAddress()).allow(
+            uint256(euint128.unwrap(encAmount)),
+            address(pool)
+        );
+
+        vm.startPrank(user);
+        token.approve(address(pool), amount);
+        pool.shield(address(token), amount, InEuint128({
+            ctHash: uint256(euint128.unwrap(encAmount)),
+            securityZone: 0,
+            utype: 6,
+            signature: ""
+        }));
+        vm.stopPrank();
+
+        assertEq(pool.liquidReserve(address(token)), amount);
+    }
+
+    function testBorrowWithLtvCheck() public {
+        uint256 collAmount = 200 ether;
+        uint256 borrowAmount = 50 ether;
+
+        // Supply liquidity first so we can borrow it
+        vm.startPrank(owner);
+        token.mint(owner, borrowAmount);
+        token.approve(address(pool), borrowAmount);
+        euint128 ownerEnc = FHE.asEuint128(borrowAmount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(ownerEnc)), address(pool));
+        pool.setComposer(owner);
+        pool.depositFor(address(token), borrowAmount, ownerEnc, owner);
+        vm.stopPrank();
+
+        // user deposits collateral
+        vm.prank(owner);
+        token.mint(user, collAmount);
+
+        vm.startPrank(user);
+        token.approve(address(pool), collAmount);
+        euint128 collEnc = FHE.asEuint128(collAmount);
+        _mockEncVal(uint256(euint128.unwrap(collEnc)), collAmount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(collEnc)), address(pool));
+        pool.shield(address(token), collAmount, InEuint128({
+            ctHash: uint256(euint128.unwrap(collEnc)),
+            securityZone: 0,
+            utype: 6,
+            signature: ""
+        }));
+
+        euint128 borrowEnc = FHE.asEuint128(borrowAmount);
+        _mockEncVal(uint256(euint128.unwrap(borrowEnc)), borrowAmount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(borrowEnc)), address(pool));
+        
+        pool.borrowWithLtvCheck(
+            address(token),
+            address(token),
+            borrowAmount,
+            InEuint128({
+                ctHash: uint256(euint128.unwrap(borrowEnc)),
+                securityZone: 0,
+                utype: 6,
+                signature: ""
+            }),
+            50, // LTV 50%
+            100
+        );
+        vm.stopPrank();
+    }
+
+    function testRepayDebt() public {
+        uint256 collAmount = 200 ether;
+        uint256 borrowAmount = 50 ether;
+
+        // Supply liquidity first
+        vm.startPrank(owner);
+        token.mint(owner, borrowAmount);
+        token.approve(address(pool), borrowAmount);
+        euint128 ownerEnc = FHE.asEuint128(borrowAmount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(ownerEnc)), address(pool));
+        pool.setComposer(owner);
+        pool.depositFor(address(token), borrowAmount, ownerEnc, owner);
+        vm.stopPrank();
+
+        // user deposits collateral and borrows
+        vm.prank(owner);
+        token.mint(user, collAmount);
+
+        vm.startPrank(user);
+        token.approve(address(pool), collAmount);
+        euint128 collEnc = FHE.asEuint128(collAmount);
+        _mockEncVal(uint256(euint128.unwrap(collEnc)), collAmount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(collEnc)), address(pool));
+        pool.shield(address(token), collAmount, InEuint128({
+            ctHash: uint256(euint128.unwrap(collEnc)),
+            securityZone: 0,
+            utype: 6,
+            signature: ""
+        }));
+
+        euint128 borrowEnc = FHE.asEuint128(borrowAmount);
+        _mockEncVal(uint256(euint128.unwrap(borrowEnc)), borrowAmount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(borrowEnc)), address(pool));
+        pool.borrowWithLtvCheck(
+            address(token),
+            address(token),
+            borrowAmount,
+            InEuint128({
+                ctHash: uint256(euint128.unwrap(borrowEnc)),
+                securityZone: 0,
+                utype: 6,
+                signature: ""
+            }),
+            50,
+            100
+        );
+
+        // Repay
+        token.approve(address(pool), borrowAmount);
+        pool.repayDebt(
+            address(token),
+            borrowAmount,
+            InEuint128({
+                ctHash: uint256(euint128.unwrap(borrowEnc)),
+                securityZone: 0,
+                utype: 6,
+                signature: ""
+            })
+        );
+        vm.stopPrank();
+    }
+
+    function testPartialUnshield() public {
+        uint256 amount = 100 ether;
+        vm.prank(owner);
+        token.mint(user, amount);
+
+        vm.startPrank(user);
+        token.approve(address(pool), amount);
+        euint128 encAmount = FHE.asEuint128(amount);
+        _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
+        pool.shield(address(token), amount, InEuint128({
+            ctHash: uint256(euint128.unwrap(encAmount)),
+            securityZone: 0,
+            utype: 6,
+            signature: ""
+        }));
+
+        euint128 withdrawEnc = FHE.asEuint128(40 ether);
+        _mockEncVal(uint256(euint128.unwrap(withdrawEnc)), 40 ether);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(withdrawEnc)), address(pool));
+        pool.partialUnshield(
+            address(token),
+            40 ether,
+            InEuint128({
+                ctHash: uint256(euint128.unwrap(withdrawEnc)),
+                securityZone: 0,
+                utype: 6,
+                signature: ""
+            })
+        );
+        vm.stopPrank();
+        assertEq(token.balanceOf(user), 40 ether);
+    }
+
+    function testRequestReveals() public {
+        vm.startPrank(user);
+        pool.requestBalanceReveal(address(token));
+        pool.requestUnshield(address(token));
+        pool.requestBorrowReveal(address(token));
+        pool.requestLiquidityCheck(user, address(token), address(token));
+        vm.stopPrank();
+    }
+
+    function testUnshieldWithProof() public {
+        uint256 amount = 100 ether;
+        vm.prank(owner);
+        token.mint(user, amount);
+
+        vm.startPrank(user);
+        token.approve(address(pool), amount);
+        euint128 encAmount = FHE.asEuint128(amount);
+        _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
+        pool.shield(address(token), amount, InEuint128({
+            ctHash: uint256(euint128.unwrap(encAmount)),
+            securityZone: 0,
+            utype: 6,
+            signature: ""
+        }));
+
+        pool.unshieldWithProof(address(token), uint128(amount), hex"");
+        vm.stopPrank();
+        assertEq(token.balanceOf(user), amount);
+    }
+
+    function testWithdrawPausedWithProof() public {
+        uint256 amount = 100 ether;
+        vm.prank(owner);
+        token.mint(user, amount);
+
+        vm.startPrank(user);
+        token.approve(address(pool), amount);
+        euint128 encAmount = FHE.asEuint128(amount);
+        _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
+        pool.shield(address(token), amount, InEuint128({
+            ctHash: uint256(euint128.unwrap(encAmount)),
+            securityZone: 0,
+            utype: 6,
+            signature: ""
+        }));
+        vm.stopPrank();
+
+        vm.prank(owner);
+        pool.pause();
+
+        vm.prank(user);
+        pool.withdrawPausedWithProof(address(token), uint128(amount), hex"");
+        assertEq(token.balanceOf(user), amount);
+    }
+
+    function testSetWeth() public {
+        WETH9 weth9 = new WETH9();
+        vm.startPrank(owner);
+        pool.setWeth(address(weth9));
+        assertEq(address(pool.weth()), address(weth9));
+        pool.disableWeth();
+        assertEq(address(pool.weth()), address(0));
+        vm.stopPrank();
+    }
+
+    function testShieldEthAndPartialUnshieldEth() public {
+        WETH9 weth9 = new WETH9();
+        vm.startPrank(owner);
+        pool.setWeth(address(weth9));
+        vm.stopPrank();
+
+        uint256 amount = 10 ether;
+        vm.deal(user, amount);
+
+        vm.startPrank(user);
+        euint128 encAmount = FHE.asEuint128(amount);
+        _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
+        pool.shieldEth{value: amount}(InEuint128({
+            ctHash: uint256(euint128.unwrap(encAmount)),
+            securityZone: 0,
+            utype: 6,
+            signature: ""
+        }));
+
+        euint128 withdrawEnc = FHE.asEuint128(4 ether);
+        _mockEncVal(uint256(euint128.unwrap(withdrawEnc)), 4 ether);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(withdrawEnc)), address(pool));
+        pool.partialUnshieldEth(
+            4 ether,
+            InEuint128({
+                ctHash: uint256(euint128.unwrap(withdrawEnc)),
+                securityZone: 0,
+                utype: 6,
+                signature: ""
+            })
+        );
+        vm.stopPrank();
+        assertEq(user.balance, 4 ether);
+    }
+
+    function testBorrowWithOracle() public {
+        vm.startPrank(owner);
+        oracle = new PriceOracle(PYTH_MOCK, DEFAULT_STALE);
+        oracle.setCollateralFactor(address(token), 5000, 5500);
+        oracle.setFallbackPrice(address(token), 1e18);
+        pool.setOracle(address(oracle));
+        vm.stopPrank();
+
+        uint256 collAmount = 200 ether;
+        uint256 borrowAmount = 50 ether;
+
+        // Supply liquidity first
+        vm.startPrank(owner);
+        token.mint(owner, borrowAmount);
+        token.approve(address(pool), borrowAmount);
+        euint128 ownerEnc = FHE.asEuint128(borrowAmount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(ownerEnc)), address(pool));
+        pool.setComposer(owner);
+        pool.depositFor(address(token), borrowAmount, ownerEnc, owner);
+        vm.stopPrank();
+
+        // user borrows with oracle
+        vm.startPrank(user);
+        euint128 borrowEnc = FHE.asEuint128(borrowAmount);
+        _mockEncVal(uint256(euint128.unwrap(borrowEnc)), borrowAmount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(borrowEnc)), address(pool));
+        pool.borrowWithOracle(
+            address(token),
+            address(token),
+            collAmount,
+            borrowAmount,
+            InEuint128({
+                ctHash: uint256(euint128.unwrap(borrowEnc)),
+                securityZone: 0,
+                utype: 6,
+                signature: ""
+            })
+        );
+        vm.stopPrank();
+    }
+
+    function testComposerDepositBorrowRepayFor() public {
+        address composerAddr = makeAddr("composer");
+        vm.prank(owner);
+        pool.setComposer(composerAddr);
+
+        uint256 amount = 100 ether;
+        vm.prank(owner);
+        token.mint(composerAddr, amount);
+
+        vm.startPrank(composerAddr);
+        token.approve(address(pool), amount);
+        euint128 handle = FHE.asEuint128(amount);
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(handle)), address(pool));
+
+        pool.depositFor(address(token), amount, handle, user);
+        
+        // now borrow for user
+        pool.borrowFor(address(token), amount, handle, user);
+
+        // repay for user
+        token.approve(address(pool), amount);
+        pool.repayFor(address(token), amount, handle, user);
+        vm.stopPrank();
+    }
+
+    function testGetSupplyAndBorrowBalance() public {
+        vm.startPrank(user);
+        pool.getSupplyBalance(address(token));
+        pool.getBorrowBalance(address(token));
+        vm.stopPrank();
     }
 }
