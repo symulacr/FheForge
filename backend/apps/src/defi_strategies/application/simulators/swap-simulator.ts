@@ -29,7 +29,7 @@ export class SwapSimulator extends BaseSimulator {
 			this.addWarning(context, `High price impact (${priceImpact.toFixed(2)}%) detected in swap`);
 		}
 
-		const exchangeRate = await this.getExchangeRate(step.tokenIn?.assetId, step.tokenOut?.assetId);
+		const exchangeRate = await this.getExchangeRate(step.tokenIn!.assetId, step.tokenOut!.assetId);
 
 		const outputAmount = (inputAmount - fee - slippage) * exchangeRate;
 
@@ -41,13 +41,13 @@ export class SwapSimulator extends BaseSimulator {
 			action_type: step.type,
 			agent: step.agent,
 			token_in: {
-				asset_id: step.tokenIn?.assetId,
-				symbol: step.tokenIn?.symbol,
+				asset_id: step.tokenIn!.assetId,
+				symbol: step.tokenIn!.symbol,
 				amount: inputAmount,
 			},
 			token_out: {
-				asset_id: step.tokenOut?.assetId,
-				symbol: step.tokenOut?.symbol,
+				asset_id: step.tokenOut!.assetId,
+				symbol: step.tokenOut!.symbol,
 				amount: outputAmount,
 			},
 			fee,

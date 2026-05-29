@@ -54,7 +54,7 @@ export class BorrowSimulator extends BaseSimulator {
 		const collateralRatio = step.collateralRatio || 0.7;
 		const borrowAmount = inputAmount * collateralRatio;
 
-		const exchangeRate = await this.getExchangeRate(step.tokenIn?.assetId, step.tokenOut?.assetId);
+		const exchangeRate = await this.getExchangeRate(step.tokenIn!.assetId, step.tokenOut!.assetId);
 
 		if (collateralRatio > 0.8) {
 			this.addWarning(
