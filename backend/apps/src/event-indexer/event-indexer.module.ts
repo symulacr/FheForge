@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common';
-import { EventIndexerService } from './event-indexer.service';
-import { SupabaseModule } from '../shared/supabase.module';
+import { Module } from "@nestjs/common";
+import { SupabaseModule } from "../shared/supabase.module";
+import { EventIndexerService } from "./event-indexer.service";
 
 @Module({
-  imports: [SupabaseModule],
-  providers: [EventIndexerService],
-  exports: [EventIndexerService],
+	imports: [SupabaseModule],
+	providers: [EventIndexerService],
+	exports: [EventIndexerService],
 })
 export class EventIndexerModule {}

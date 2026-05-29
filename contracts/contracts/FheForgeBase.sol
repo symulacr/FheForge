@@ -172,7 +172,7 @@ abstract contract FheForgeBase {
         return result;
     }
 
-    function _validateCiphertext(euint128 handle) internal pure {
+    function _validateCiphertext(euint128 handle) internal view {
         if (!FHE.isInitialized(handle)) revert InvalidCiphertext();
     }
 }

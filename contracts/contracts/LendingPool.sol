@@ -16,12 +16,15 @@ contract LendingPool is FheForgeBase {
     mapping(address => mapping(address => euint128)) private borrowBalances;
     mapping(address => uint256) public totalPlainBorrow;
     mapping(address => uint256) public liquidReserve;
+    /// @dev Tracks last public reveal timestamp per (user, token) for cooldown gating.
+    mapping(address => mapping(address => uint256)) public lastRevealTime;
     event UnshieldRequested(address indexed user, address indexed token);
 
     address public composer;
 
     uint16 public constant LIQUIDATION_BONUS_BPS = 500;
     uint16 public constant LIQUIDATION_CLOSE_FACTOR_BPS = 5000;
+    uint256 public constant REVEAL_COOLDOWN = 1 hours;
 
     PriceOracle public oracle;
     IWETH9 public weth;
@@ -39,6 +42,8 @@ contract LendingPool is FheForgeBase {
     error FlashLoanNotRepaid();
     error FlashLoanUnsupportedToken();
     error CannotSelfLiquidate();
+    error NotAuthorized();
+    error RevealCooldown();
 
     event Supplied(address indexed user, address indexed token);
     event Borrowed(
@@ -81,10 +86,10 @@ contract LendingPool is FheForgeBase {
     ) external payable nonReentrant whenNotPaused {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        liquidReserve[token] += amount;
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        liquidReserve[token] += amount;
         euint128 stored = supplyBalances[token][msg.sender];
         supplyBalances[token][msg.sender] = _safeIncrease(stored, verifiedIncoming, msg.sender);
         emit Supplied(msg.sender, token);
@@ -136,11 +141,11 @@ contract LendingPool is FheForgeBase {
     ) external payable nonReentrant whenNotPaused {
         if (token == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
+        euint128 incoming = FHE.asEuint128(encAmount);
+        euint128 verifiedIncoming = _verifyEquality(incoming, amount);
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         totalPlainBorrow[token] -= amount;
         liquidReserve[token] += amount;
-        euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 verifiedIncoming = _verifyEquality(incoming, amount);
         euint128 currentBalance = borrowBalances[token][msg.sender];
         borrowBalances[token][msg.sender] = _safeDecrease(
             currentBalance,
@@ -163,6 +168,8 @@ contract LendingPool is FheForgeBase {
 
     function _withdrawCore(address token, uint256 amount, InEuint128 calldata encAmount) internal {
         if (amount == 0) revert ZeroAmount();
+        euint128 incoming = FHE.asEuint128(encAmount);
+        euint128 verifiedIncoming = _verifyEquality(incoming, amount);
         uint256 reserve = liquidReserve[token];
         if (reserve < amount) revert InsufficientReserve();
         unchecked {
@@ -171,8 +178,6 @@ contract LendingPool is FheForgeBase {
             }
             liquidReserve[token] = reserve - amount;
         }
-        euint128 incoming = FHE.asEuint128(encAmount);
-        euint128 verifiedIncoming = _verifyEquality(incoming, amount);
         euint128 currentBalance = supplyBalances[token][msg.sender];
         supplyBalances[token][msg.sender] = _safeDecrease(
             currentBalance,
@@ -183,6 +188,8 @@ contract LendingPool is FheForgeBase {
 
     function requestBalanceReveal(address token) external payable {
         if (token == address(0)) revert ZeroAddress();
+        if (block.timestamp < lastRevealTime[msg.sender][token] + REVEAL_COOLDOWN) revert RevealCooldown();
+        lastRevealTime[msg.sender][token] = block.timestamp;
         FHE.allowPublic(_ensureInitialized(supplyBalances[token][msg.sender]));
     }
 
@@ -221,6 +228,8 @@ contract LendingPool is FheForgeBase {
 
     function requestBorrowReveal(address token) external payable {
         if (token == address(0)) revert ZeroAddress();
+        if (block.timestamp < lastRevealTime[msg.sender][token] + REVEAL_COOLDOWN) revert RevealCooldown();
+        lastRevealTime[msg.sender][token] = block.timestamp;
         FHE.allowPublic(_ensureInitialized(borrowBalances[token][msg.sender]));
     }
 
@@ -325,13 +334,14 @@ contract LendingPool is FheForgeBase {
         if (collateralAmount == 0) revert ZeroAmount();
         _requireOracleHealthy(collateralToken, borrowToken, collateralAmount, borrowAmount, 0);
 
+        euint128 requested = FHE.asEuint128(encBorrowAmount);
+        euint128 verifiedRequested = _verifyEquality(requested, borrowAmount);
+
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
         unchecked {
             totalPlainBorrow[borrowToken] += borrowAmount;
             liquidReserve[borrowToken] -= borrowAmount;
         }
-        euint128 requested = FHE.asEuint128(encBorrowAmount);
-        euint128 verifiedRequested = _verifyEquality(requested, borrowAmount);
         actual = verifiedRequested;
         euint128 storedBorrow = borrowBalances[borrowToken][msg.sender];
         borrowBalances[borrowToken][msg.sender] = _safeIncrease(
@@ -415,6 +425,7 @@ contract LendingPool is FheForgeBase {
     ) external payable {
         if (user == address(0)) revert ZeroAddress();
         if (collateralToken == address(0) || debtToken == address(0)) revert ZeroAddress();
+        if (msg.sender != user) revert NotAuthorized();
         FHE.allowPublic(_ensureInitialized(borrowBalances[debtToken][user]));
         FHE.allowPublic(_ensureInitialized(supplyBalances[collateralToken][user]));
     }

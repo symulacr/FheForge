@@ -18,6 +18,9 @@ library FHESafeMath128 {
         if (!FHE.isInitialized(oldValue)) {
             return (FHE.asEbool(true), delta);
         }
+        if (!FHE.isInitialized(delta)) {
+            return (FHE.asEbool(true), oldValue);
+        }
         euint128 newValue = FHE.add(oldValue, delta);
         // Overflow check: if a + b wraps, the result is smaller than a
         success = FHE.gte(newValue, oldValue);

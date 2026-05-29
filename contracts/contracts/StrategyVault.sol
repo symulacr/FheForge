@@ -18,6 +18,9 @@ contract StrategyVault is FheForgeBase {
     mapping(address => mapping(bytes32 => Position)) private positions;
     mapping(address => bytes32[]) private userPositionIds;
     mapping(bytes32 => address) private positionCollateralToken;
+    /// @dev DEPRECATED — plaintext deposit amount leaks privacy. Do not use externally.
+    ///     Only kept for internal position bookkeeping during withdrawal. Will be removed
+    ///     once protocol fully migrates to encrypted-only deposits.
     mapping(bytes32 => uint256) private positionDepositedAmount;
     mapping(bytes32 => uint256) private positionStrategyId;
     mapping(bytes32 => uint256) private positionOpenedAtBlock;
@@ -232,8 +235,10 @@ contract StrategyVault is FheForgeBase {
         return (positionStrategyId[positionId], positionOpenedAtBlock[positionId]);
     }
 
-    function getDepositedAmount(bytes32 positionId) external view returns (uint256 amount) {
-        return positionDepositedAmount[positionId];
+    /// @notice Deprecated — plaintext leak. Use encrypted getCollateral() instead.
+    /// @dev Always returns 0. Retained to avoid breaking external consumers during transition.
+    function getDepositedAmount(bytes32 /*positionId*/) external pure returns (uint256 amount) {
+        return 0;
     }
 
     function getUserPositions(address user) external view returns (bytes32[] memory ids) {

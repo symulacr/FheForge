@@ -1,63 +1,63 @@
 {
-  "timestamp": "2026-05-28T21:29:04.403Z",
-  "network": 421614,
-  "totalFunctions": 51,
-  "coveredFunctions": 49,
-  "coveragePercent": "96.1",
-  "perContract": [
-    {
-      "contract": "StrategyRegistry",
-      "covered": 8,
-      "total": 8,
-      "coveragePercent": "100.0"
-    },
-    {
-      "contract": "StrategyVault",
-      "covered": 1,
-      "total": 1,
-      "coveragePercent": "100.0"
-    },
-    {
-      "contract": "LendingPool",
-      "covered": 12,
-      "total": 13,
-      "coveragePercent": "92.3"
-    },
-    {
-      "contract": "SwapRouter",
-      "covered": 5,
-      "total": 5,
-      "coveragePercent": "100.0"
-    },
-    {
-      "contract": "PriceOracle",
-      "covered": 6,
-      "total": 7,
-      "coveragePercent": "85.7"
-    },
-    {
-      "contract": "FheForgeComposer",
-      "covered": 3,
-      "total": 3,
-      "coveragePercent": "100.0"
-    },
-    {
-      "contract": "ExecutorContract",
-      "covered": 3,
-      "total": 3,
-      "coveragePercent": "100.0"
-    },
-    {
-      "contract": "TokenRegistry",
-      "covered": 8,
-      "total": 8,
-      "coveragePercent": "100.0"
-    },
-    {
-      "contract": "StrategyExecutor",
-      "covered": 3,
-      "total": 3,
-      "coveragePercent": "100.0"
-    }
-  ]
+	"timestamp": "2026-05-28T21:29:04.403Z",
+	"network": 421614,
+	"totalFunctions": 51,
+	"coveredFunctions": 49,
+	"coveragePercent": "96.1",
+	"perContract": [
+		{
+			"contract": "StrategyRegistry",
+			"covered": 8,
+			"total": 8,
+			"coveragePercent": "100.0"
+		},
+		{
+			"contract": "StrategyVault",
+			"covered": 1,
+			"total": 1,
+			"coveragePercent": "100.0"
+		},
+		{
+			"contract": "LendingPool",
+			"covered": 12,
+			"total": 13,
+			"coveragePercent": "92.3"
+		},
+		{
+			"contract": "SwapRouter",
+			"covered": 5,
+			"total": 5,
+			"coveragePercent": "100.0"
+		},
+		{
+			"contract": "PriceOracle",
+			"covered": 6,
+			"total": 7,
+			"coveragePercent": "85.7"
+		},
+		{
+			"contract": "FheForgeComposer",
+			"covered": 3,
+			"total": 3,
+			"coveragePercent": "100.0"
+		},
+		{
+			"contract": "ExecutorContract",
+			"covered": 3,
+			"total": 3,
+			"coveragePercent": "100.0"
+		},
+		{
+			"contract": "TokenRegistry",
+			"covered": 8,
+			"total": 8,
+			"coveragePercent": "100.0"
+		},
+		{
+			"contract": "StrategyExecutor",
+			"covered": 3,
+			"total": 3,
+			"coveragePercent": "100.0"
+		}
+	]
 }

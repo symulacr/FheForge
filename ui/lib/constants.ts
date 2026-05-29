@@ -84,10 +84,10 @@ export const ARBITRUM_SEPOLIA_EXPLORER = "https://sepolia.arbiscan.io";
 
 /** Default CoFHE chain configuration object */
 export const COFHE_CHAIN = {
-  name: "Arbitrum Sepolia",
-  chainId: ARBITRUM_SEPOLIA_CHAIN_ID,
-  rpc: ARBITRUM_SEPOLIA_RPC,
-  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+	name: "Arbitrum Sepolia",
+	chainId: ARBITRUM_SEPOLIA_CHAIN_ID,
+	rpc: ARBITRUM_SEPOLIA_RPC,
+	nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,21 +115,19 @@ export const OG_IMAGE_WIDTH = 1_200;
 
 /** Meta keywords for SEO */
 export const META_KEYWORDS = [
-  "FheForge",
-  "DeFi",
-  "Yield Farming",
-  "Crypto Investment",
-  "AI Strategies",
-  "Blockchain",
+	"FheForge",
+	"DeFi",
+	"Yield Farming",
+	"Crypto Investment",
+	"AI Strategies",
+	"Blockchain",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONTRACT ADDRESSES  — read from NEXT_PUBLIC_* env vars; empty string when unset
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const STRATEGY_VAULT_ADDRESS =
-  process.env.NEXT_PUBLIC_VAULT_ADDRESS ?? "";
+export const STRATEGY_VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS ?? "";
 export const LENDING_POOL_ADDRESS = process.env.NEXT_PUBLIC_POOL_ADDRESS ?? "";
-export const SWAP_ROUTER_ADDRESS = process.env.NEXT_PUBLIC_ROUTER_ADDRESS ?? "";
-export const STRATEGY_REGISTRY_ADDRESS =
-  process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ?? "";
+export const SWAP_ROUTER_ADDRESS = process.env.NEXT_PUBLIC_SWAP_ROUTER_ADDRESS ?? "";
+export const STRATEGY_REGISTRY_ADDRESS = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ?? "";

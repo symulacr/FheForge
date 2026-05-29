@@ -6,8 +6,8 @@ import { vi } from "vitest";
 
 // Globally mock @cofhe/react to avoid ESM/MUI resolution issues in test environment
 vi.mock("@cofhe/react", () => ({
-  createCofheConfig: vi.fn(() => ({})),
-  CofheProvider: ({ children }: { children: React.ReactNode }) => children,
+	createCofheConfig: vi.fn(() => ({})),
+	CofheProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock("@cofhe/react/styles.css", () => ({}));

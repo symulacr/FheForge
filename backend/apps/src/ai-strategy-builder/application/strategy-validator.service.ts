@@ -1,350 +1,332 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { StrategyStepResponseDto } from '../interfaces/dtos/strategy-step-response.dto';
-import { DefiPairsService } from '../../defi_modules/application/defi_pairs.service';
-import { DefiTokenService } from '../../defi_token/application/defi_token.service';
-import { OperationType } from '../../defi_modules/domain/operation-type.enum';
+import { Injectable, Logger } from "@nestjs/common";
+import type { DefiPairsService } from "../../defi_modules/application/defi_pairs.service";
+import { OperationType } from "../../defi_modules/domain/operation-type.enum";
+import type { DefiTokenService } from "../../defi_token/application/defi_token.service";
+import type { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
 
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+	return error instanceof Error ? error.message : String(error);
 }
 
 @Injectable()
 export class StrategyValidatorService {
-  private readonly logger = new Logger(StrategyValidatorService.name);
+	private readonly logger = new Logger(StrategyValidatorService.name);
 
-  constructor(
-    private readonly defiPairsService: DefiPairsService,
-    private readonly defiTokenService: DefiTokenService,
-  ) {}
+	constructor(
+		private readonly defiPairsService: DefiPairsService,
+		private readonly defiTokenService: DefiTokenService,
+	) {}
 
-  async validateSteps(steps: StrategyStepResponseDto[]): Promise<{
-    isValid: boolean;
-    errors: string[];
-    warnings: string[];
-  }> {
-    this.logger.log('Starting strategy validation', {
-      stepCount: steps.length,
-    });
+	async validateSteps(steps: StrategyStepResponseDto[]): Promise<{
+		isValid: boolean;
+		errors: string[];
+		warnings: string[];
+	}> {
+		this.logger.log("Starting strategy validation", {
+			stepCount: steps.length,
+		});
 
-    const errors: string[] = [];
-    const warnings: string[] = [];
+		const errors: string[] = [];
+		const warnings: string[] = [];
 
-    for (let i = 0; i < steps.length; i++) {
-      const step = steps[i];
+		for (let i = 0; i < steps.length; i++) {
+			const step = steps[i];
 
-      if (!step.type || !step.agent) {
-        errors.push(`Step ${i + 1}: Missing required fields (type, agent)`);
-        continue;
-      }
+			if (!step.type || !step.agent) {
+				errors.push(`Step ${i + 1}: Missing required fields (type, agent)`);
+				continue;
+			}
 
-      if (!this.isValidOperationType(step.type)) {
-        errors.push(`Step ${i + 1}: Invalid operation type '${step.type}'`);
-        continue;
-      }
+			if (!this.isValidOperationType(step.type)) {
+				errors.push(`Step ${i + 1}: Invalid operation type '${step.type}'`);
+				continue;
+			}
 
-      if (this.requiresTokenValidation(step.type)) {
-        const pairValidation = await this.validateTokenPair(step);
-        if (!pairValidation.isValid) {
-          errors.push(`Step ${i + 1}: ${pairValidation.error}`);
-        }
-      }
+			if (this.requiresTokenValidation(step.type)) {
+				const pairValidation = await this.validateTokenPair(step);
+				if (!pairValidation.isValid) {
+					errors.push(`Step ${i + 1}: ${pairValidation.error}`);
+				}
+			}
 
-      if (i > 0) {
-        const sequenceValidation = this.validateSequence(steps[i - 1], step);
-        if (!sequenceValidation.isValid) {
-          warnings.push(`Step ${i + 1}: ${sequenceValidation.warning}`);
-        }
-      }
+			if (i > 0) {
+				const sequenceValidation = this.validateSequence(steps[i - 1], step);
+				if (!sequenceValidation.isValid) {
+					warnings.push(`Step ${i + 1}: ${sequenceValidation.warning}`);
+				}
+			}
 
-      if (step.tokenIn?.amount && step.tokenIn.amount <= 0) {
-        errors.push(`Step ${i + 1}: Invalid tokenIn amount (must be > 0)`);
-      }
-      if (step.tokenOut?.amount && step.tokenOut.amount <= 0) {
-        errors.push(`Step ${i + 1}: Invalid tokenOut amount (must be > 0)`);
-      }
-    }
+			if (step.tokenIn?.amount && step.tokenIn.amount <= 0) {
+				errors.push(`Step ${i + 1}: Invalid tokenIn amount (must be > 0)`);
+			}
+			if (step.tokenOut?.amount && step.tokenOut.amount <= 0) {
+				errors.push(`Step ${i + 1}: Invalid tokenOut amount (must be > 0)`);
+			}
+		}
 
-    const strategyValidation = this.validateOverallStrategy(steps);
-    const flowValidation = this.validateStrategyFlow(steps);
+		const strategyValidation = this.validateOverallStrategy(steps);
+		const flowValidation = this.validateStrategyFlow(steps);
 
-    errors.push(...strategyValidation.errors, ...flowValidation.errors);
-    warnings.push(...strategyValidation.warnings, ...flowValidation.warnings);
+		errors.push(...strategyValidation.errors, ...flowValidation.errors);
+		warnings.push(...strategyValidation.warnings, ...flowValidation.warnings);
 
-    const isValid = errors.length === 0;
+		const isValid = errors.length === 0;
 
-    this.logger.log('Strategy validation completed', {
-      isValid,
-      errorCount: errors.length,
-      warningCount: warnings.length,
-    });
+		this.logger.log("Strategy validation completed", {
+			isValid,
+			errorCount: errors.length,
+			warningCount: warnings.length,
+		});
 
-    if (!isValid) {
-      this.logger.warn('Strategy validation failed', { errors });
-    }
+		if (!isValid) {
+			this.logger.warn("Strategy validation failed", { errors });
+		}
 
-    return {
-      isValid,
-      errors,
-      warnings,
-    };
-  }
+		return {
+			isValid,
+			errors,
+			warnings,
+		};
+	}
 
-  private isValidOperationType(type: string): boolean {
-    const validTypes = ['SWAP', 'SUPPLY', 'BORROW', 'CLAIM_REWARDS'];
-    return validTypes.includes(type);
-  }
+	private isValidOperationType(type: string): boolean {
+		const validTypes = ["SWAP", "SUPPLY", "BORROW", "CLAIM_REWARDS"];
+		return validTypes.includes(type);
+	}
 
-  private requiresTokenValidation(type: string): boolean {
-    return ['SWAP', 'SUPPLY', 'BORROW'].includes(type);
-  }
+	private requiresTokenValidation(type: string): boolean {
+		return ["SWAP", "SUPPLY", "BORROW"].includes(type);
+	}
 
-  private async validateTokenPair(
-    step: StrategyStepResponseDto,
-  ): Promise<{ isValid: boolean; error?: string }> {
-    try {
-      let operationType: OperationType;
-      switch (step.type) {
-        case 'SWAP':
-          operationType = OperationType.SWAP;
-          break;
-        case 'SUPPLY':
-          operationType = OperationType.SUPPLY;
-          break;
-        case 'BORROW':
-          operationType = OperationType.BORROW;
-          break;
-        default:
-          return { isValid: true };
-      }
+	private async validateTokenPair(
+		step: StrategyStepResponseDto,
+	): Promise<{ isValid: boolean; error?: string }> {
+		try {
+			let operationType: OperationType;
+			switch (step.type) {
+				case "SWAP":
+					operationType = OperationType.SWAP;
+					break;
+				case "SUPPLY":
+					operationType = OperationType.SUPPLY;
+					break;
+				case "BORROW":
+					operationType = OperationType.BORROW;
+					break;
+				default:
+					return { isValid: true };
+			}
 
-      if (
-        operationType === OperationType.SWAP &&
-        step.tokenIn &&
-        step.tokenOut
-      ) {
-        const [tokenInEntity, tokenOutEntity] = await Promise.all([
-          this.getTokenIdByAssetId(step.tokenIn.assetId),
-          this.getTokenIdByAssetId(step.tokenOut.assetId),
-        ]);
+			if (operationType === OperationType.SWAP && step.tokenIn && step.tokenOut) {
+				const [tokenInEntity, tokenOutEntity] = await Promise.all([
+					this.getTokenIdByAssetId(step.tokenIn.assetId),
+					this.getTokenIdByAssetId(step.tokenOut.assetId),
+				]);
 
-        const estimate = await this.defiPairsService.estimateDefiPair({
-          operation_type: operationType,
-          token_in_id: tokenInEntity,
-          token_out_id: tokenOutEntity,
-          amount_in: step.tokenIn.amount,
-        });
+				const estimate = await this.defiPairsService.estimateDefiPair({
+					operation_type: operationType,
+					token_in_id: tokenInEntity,
+					token_out_id: tokenOutEntity,
+					amount_in: step.tokenIn.amount,
+				});
 
-        if (!estimate) {
-          return {
-            isValid: false,
-            error: `Token pair ${step.tokenIn.symbol}/${step.tokenOut.symbol} not supported for ${step.type}`,
-          };
-        }
-      }
+				if (!estimate) {
+					return {
+						isValid: false,
+						error: `Token pair ${step.tokenIn.symbol}/${step.tokenOut.symbol} not supported for ${step.type}`,
+					};
+				}
+			}
 
-      if (operationType === OperationType.SUPPLY && step.tokenIn) {
-        const tokenInEntity = await this.getTokenIdByAssetId(
-          step.tokenIn.assetId,
-        );
+			if (operationType === OperationType.SUPPLY && step.tokenIn) {
+				const tokenInEntity = await this.getTokenIdByAssetId(step.tokenIn.assetId);
 
-        const estimate = await this.defiPairsService.estimateDefiPair({
-          operation_type: operationType,
-          token_in_id: tokenInEntity,
-          amount_in: step.tokenIn.amount,
-        });
+				const estimate = await this.defiPairsService.estimateDefiPair({
+					operation_type: operationType,
+					token_in_id: tokenInEntity,
+					amount_in: step.tokenIn.amount,
+				});
 
-        if (!estimate) {
-          return {
-            isValid: false,
-            error: `Token ${step.tokenIn.symbol} not supported for SUPPLY`,
-          };
-        }
-      }
+				if (!estimate) {
+					return {
+						isValid: false,
+						error: `Token ${step.tokenIn.symbol} not supported for SUPPLY`,
+					};
+				}
+			}
 
-      if (operationType === OperationType.BORROW && step.tokenOut) {
-        return { isValid: true };
-      }
+			if (operationType === OperationType.BORROW && step.tokenOut) {
+				return { isValid: true };
+			}
 
-      return { isValid: true };
-    } catch (error) {
-      return {
-        isValid: false,
-        error: `Failed to validate token pair: ${getErrorMessage(error)}`,
-      };
-    }
-  }
+			return { isValid: true };
+		} catch (error) {
+			return {
+				isValid: false,
+				error: `Failed to validate token pair: ${getErrorMessage(error)}`,
+			};
+		}
+	}
 
-  private async getTokenIdByAssetId(assetId: string): Promise<string> {
-    try {
-      const token = await this.defiTokenService.getDefiTokenByAssetId(assetId);
-      return token.id;
-    } catch (error) {
-      throw new Error(
-        `Failed to find token with assetId ${assetId}: ${getErrorMessage(error)}`,
-      );
-    }
-  }
+	private async getTokenIdByAssetId(assetId: string): Promise<string> {
+		try {
+			const token = await this.defiTokenService.getDefiTokenByAssetId(assetId);
+			return token.id;
+		} catch (error) {
+			throw new Error(`Failed to find token with assetId ${assetId}: ${getErrorMessage(error)}`);
+		}
+	}
 
-  private validateSequence(
-    prevStep: StrategyStepResponseDto,
-    currentStep: StrategyStepResponseDto,
-  ): { isValid: boolean; warning?: string } {
-    if (prevStep.tokenOut && currentStep.tokenIn) {
-      if (prevStep.tokenOut.symbol !== currentStep.tokenIn.symbol) {
-        return {
-          isValid: false,
-          warning: `Token mismatch: previous step outputs ${prevStep.tokenOut.symbol} but current step expects ${currentStep.tokenIn.symbol}`,
-        };
-      }
+	private validateSequence(
+		prevStep: StrategyStepResponseDto,
+		currentStep: StrategyStepResponseDto,
+	): { isValid: boolean; warning?: string } {
+		if (prevStep.tokenOut && currentStep.tokenIn) {
+			if (prevStep.tokenOut.symbol !== currentStep.tokenIn.symbol) {
+				return {
+					isValid: false,
+					warning: `Token mismatch: previous step outputs ${prevStep.tokenOut.symbol} but current step expects ${currentStep.tokenIn.symbol}`,
+				};
+			}
 
-      const amountDiff = Math.abs(
-        prevStep.tokenOut.amount - currentStep.tokenIn.amount,
-      );
-      if (amountDiff > prevStep.tokenOut.amount * 0.5) {
-        return {
-          isValid: false,
-          warning: `Large amount discrepancy between steps (${prevStep.tokenOut.amount} vs ${currentStep.tokenIn.amount})`,
-        };
-      }
-    }
+			const amountDiff = Math.abs(prevStep.tokenOut.amount - currentStep.tokenIn.amount);
+			if (amountDiff > prevStep.tokenOut.amount * 0.5) {
+				return {
+					isValid: false,
+					warning: `Large amount discrepancy between steps (${prevStep.tokenOut.amount} vs ${currentStep.tokenIn.amount})`,
+				};
+			}
+		}
 
-    const sequenceValidation = this.validateStepSequenceRules(
-      prevStep.type,
-      currentStep.type,
-    );
-    if (!sequenceValidation.isValid) {
-      return sequenceValidation;
-    }
+		const sequenceValidation = this.validateStepSequenceRules(prevStep.type, currentStep.type);
+		if (!sequenceValidation.isValid) {
+			return sequenceValidation;
+		}
 
-    return { isValid: true };
-  }
+		return { isValid: true };
+	}
 
-  private validateStepSequenceRules(
-    prevStepType: string,
-    currentStepType: string,
-  ): { isValid: boolean; warning?: string } {
-    const allowedNextSteps: Record<string, string[]> = {
-      SWAP: ['SUPPLY', 'SWAP'],
-      SUPPLY: ['BORROW'],
-      BORROW: ['SWAP', 'SUPPLY'],
-    };
+	private validateStepSequenceRules(
+		prevStepType: string,
+		currentStepType: string,
+	): { isValid: boolean; warning?: string } {
+		const allowedNextSteps: Record<string, string[]> = {
+			SWAP: ["SUPPLY", "SWAP"],
+			SUPPLY: ["BORROW"],
+			BORROW: ["SWAP", "SUPPLY"],
+		};
 
-    const allowedNext = allowedNextSteps[prevStepType];
+		const allowedNext = allowedNextSteps[prevStepType];
 
-    if (!allowedNext) {
-      return { isValid: true };
-    }
+		if (!allowedNext) {
+			return { isValid: true };
+		}
 
-    if (!allowedNext.includes(currentStepType)) {
-      return {
-        isValid: false,
-        warning: `Invalid sequence: ${currentStepType} cannot follow ${prevStepType}. Allowed next steps after ${prevStepType}: ${allowedNext.join(', ')}`,
-      };
-    }
+		if (!allowedNext.includes(currentStepType)) {
+			return {
+				isValid: false,
+				warning: `Invalid sequence: ${currentStepType} cannot follow ${prevStepType}. Allowed next steps after ${prevStepType}: ${allowedNext.join(", ")}`,
+			};
+		}
 
-    return { isValid: true };
-  }
+		return { isValid: true };
+	}
 
-  private validateOverallStrategy(steps: StrategyStepResponseDto[]): {
-    errors: string[];
-    warnings: string[];
-  } {
-    const errors: string[] = [];
-    const warnings: string[] = [];
+	private validateOverallStrategy(steps: StrategyStepResponseDto[]): {
+		errors: string[];
+		warnings: string[];
+	} {
+		const errors: string[] = [];
+		const warnings: string[] = [];
 
-    const loopCount = steps.filter((s) => s.type === 'BORROW').length;
-    if (loopCount > 10) {
-      warnings.push(
-        `Strategy has ${loopCount} loops - this may be excessive and risky`,
-      );
-    }
+		const loopCount = steps.filter((s) => s.type === "BORROW").length;
+		if (loopCount > 10) {
+			warnings.push(`Strategy has ${loopCount} loops - this may be excessive and risky`);
+		}
 
-    const firstBorrowIndex = steps.findIndex((s) => s.type === 'BORROW');
-    const firstSupplyIndex = steps.findIndex((s) => s.type === 'SUPPLY');
+		const firstBorrowIndex = steps.findIndex((s) => s.type === "BORROW");
+		const firstSupplyIndex = steps.findIndex((s) => s.type === "SUPPLY");
 
-    if (firstBorrowIndex !== -1 && firstSupplyIndex === -1) {
-      errors.push('Cannot BORROW without first supplying collateral');
-    }
+		if (firstBorrowIndex !== -1 && firstSupplyIndex === -1) {
+			errors.push("Cannot BORROW without first supplying collateral");
+		}
 
-    if (firstBorrowIndex !== -1 && firstSupplyIndex > firstBorrowIndex) {
-      errors.push('Must SUPPLY collateral before BORROW');
-    }
+		if (firstBorrowIndex !== -1 && firstSupplyIndex > firstBorrowIndex) {
+			errors.push("Must SUPPLY collateral before BORROW");
+		}
 
-    if (steps.length === 0) {
-      errors.push('Strategy must have at least one step');
-    }
+		if (steps.length === 0) {
+			errors.push("Strategy must have at least one step");
+		}
 
-    return { errors, warnings };
-  }
+		return { errors, warnings };
+	}
 
-  private validateStrategyFlow(steps: StrategyStepResponseDto[]): {
-    errors: string[];
-    warnings: string[];
-  } {
-    const errors: string[] = [];
-    const warnings: string[] = [];
+	private validateStrategyFlow(steps: StrategyStepResponseDto[]): {
+		errors: string[];
+		warnings: string[];
+	} {
+		const errors: string[] = [];
+		const warnings: string[] = [];
 
-    if (steps.length === 0) {
-      errors.push('Strategy must contain at least one step');
-      return { errors, warnings };
-    }
+		if (steps.length === 0) {
+			errors.push("Strategy must contain at least one step");
+			return { errors, warnings };
+		}
 
-    const stepTypes = steps.map((step) => step.type);
+		const stepTypes = steps.map((step) => step.type);
 
-    const hasSupply = stepTypes.includes('SUPPLY');
-    const hasBorrow = stepTypes.includes('BORROW');
+		const hasSupply = stepTypes.includes("SUPPLY");
+		const hasBorrow = stepTypes.includes("BORROW");
 
-    if (hasBorrow && !hasSupply) {
-      errors.push('Cannot borrow without first supplying collateral (SUPPLY)');
-    }
+		if (hasBorrow && !hasSupply) {
+			errors.push("Cannot borrow without first supplying collateral (SUPPLY)");
+		}
 
-    const borrowCount = stepTypes.filter((type) => type === 'BORROW').length;
-    const supplyCount = stepTypes.filter((type) => type === 'SUPPLY').length;
+		const borrowCount = stepTypes.filter((type) => type === "BORROW").length;
+		const supplyCount = stepTypes.filter((type) => type === "SUPPLY").length;
 
-    if (borrowCount > supplyCount) {
-      warnings.push(
-        'More BORROW operations than collateral operations - strategy may be unbalanced',
-      );
-    }
+		if (borrowCount > supplyCount) {
+			warnings.push(
+				"More BORROW operations than collateral operations - strategy may be unbalanced",
+			);
+		}
 
-    if (stepTypes.length > 20) {
-      warnings.push(
-        'Strategy is very complex with many steps - consider simplifying for better execution',
-      );
-    }
+		if (stepTypes.length > 20) {
+			warnings.push(
+				"Strategy is very complex with many steps - consider simplifying for better execution",
+			);
+		}
 
-    for (let i = 1; i < steps.length; i++) {
-      const prevStep = steps[i - 1];
-      const currentStep = steps[i];
+		for (let i = 1; i < steps.length; i++) {
+			const prevStep = steps[i - 1];
+			const currentStep = steps[i];
 
-      const sequenceValidation = this.validateStepSequenceRules(
-        prevStep.type,
-        currentStep.type,
-      );
-      if (!sequenceValidation.isValid) {
-        errors.push(`Flow validation: ${sequenceValidation.warning}`);
-      }
-    }
+			const sequenceValidation = this.validateStepSequenceRules(prevStep.type, currentStep.type);
+			if (!sequenceValidation.isValid) {
+				errors.push(`Flow validation: ${sequenceValidation.warning}`);
+			}
+		}
 
-    return { errors, warnings };
-  }
+		return { errors, warnings };
+	}
 
-  getBusinessRules(): Record<string, string[]> {
-    return {
-      SWAP: ['SUPPLY', 'SWAP'],
-      SUPPLY: ['BORROW'],
-      BORROW: ['SWAP', 'SUPPLY'],
-    };
-  }
+	getBusinessRules(): Record<string, string[]> {
+		return {
+			SWAP: ["SUPPLY", "SWAP"],
+			SUPPLY: ["BORROW"],
+			BORROW: ["SWAP", "SUPPLY"],
+		};
+	}
 
-  isValidSequence(fromStep: string, toStep: string): boolean {
-    const rules = this.getBusinessRules();
-    const allowedNext = rules[fromStep];
+	isValidSequence(fromStep: string, toStep: string): boolean {
+		const rules = this.getBusinessRules();
+		const allowedNext = rules[fromStep];
 
-    if (!allowedNext) {
-      return true;
-    }
+		if (!allowedNext) {
+			return true;
+		}
 
-    return allowedNext.includes(toStep);
-  }
+		return allowedNext.includes(toStep);
+	}
 }

@@ -1,4 +1,5 @@
 @openzeppelin/=node_modules/@openzeppelin/
 @fhenixprotocol/=node_modules/@fhenixprotocol/
 @pythnetwork/pyth-sdk-solidity/=node_modules/@pythnetwork/pyth-sdk-solidity/
+@cofhe/mock-contracts/=node_modules/@cofhe/mock-contracts/
 forge-std/=lib/forge-std/src/

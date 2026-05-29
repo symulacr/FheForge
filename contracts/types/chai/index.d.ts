@@ -1,3 +1,3 @@
 declare module "chai" {
-  export const expect: any;
+	export const expect: any;
 }

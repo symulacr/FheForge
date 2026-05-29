@@ -1,24 +1,24 @@
 // ENUM
 export enum ASSET_ID {
-  WETH = "1",
-  USDT = "2",
-  USDC = "3",
+	WETH = "1",
+	USDT = "2",
+	USDC = "3",
 }
 
 export enum ASSET_SYMBOL {
-  WETH = "WETH",
-  USDT = "USDT",
-  USDC = "USDC",
+	WETH = "WETH",
+	USDT = "USDT",
+	USDC = "USDC",
 }
 
 export enum AGENT {
-  COFHE = "COFHE",
+	COFHE = "COFHE",
 }
 
 export enum STEP_TYPE {
-  SWAP = "SWAP",
-  BORROW = "BORROW",
-  SUPPLY = "SUPPLY",
+	SWAP = "SWAP",
+	BORROW = "BORROW",
+	SUPPLY = "SUPPLY",
 }
 
 // CONSTANTS

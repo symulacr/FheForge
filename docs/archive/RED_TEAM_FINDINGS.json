@@ -1,0 +1,391 @@
+{
+  "$schema": "RedTeamFindingsV1",
+  "target": "FheForge — Arbitrum Sepolia (chainId 421614)",
+  "date": "2026-05-29T00:00:00Z",
+  "probes": {
+    "1_config_env": {
+      "title": "Config / Environment Variable Analysis",
+      "severity": "HIGH",
+      "findings": [
+        {
+          "id": "CFG-001",
+          "severity": "CRITICAL",
+          "title": "ALLOWED_ORIGINS fallback to DEV_ORIGINS in production",
+          "description": "main.ts:34-37 reads ALLOWED_ORIGINS from env. When unset, falls back to DEV_ORIGINS = ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173']. In production (NODE_ENV=production), CORS still allows these dev origins. Any attacker controlling a localhost-bound process on a user's machine, or via DNS rebinding, can bypass CORS restrictions.",
+          "evidence": {
+            "file": "backend/apps/src/main.ts",
+            "lines": "34-37",
+            "code": "const allowedOrigins = allowedOriginsRaw ? allowedOriginsRaw.split(',') : DEV_ORIGINS;"
+          },
+          "remediation": "In production, fail hard if ALLOWED_ORIGINS is not set instead of falling back to dev origins."
+        },
+        {
+          "id": "CFG-002",
+          "severity": "HIGH",
+          "title": "GEMINI_API_KEY missing causes runtime failure, not startup rejection",
+          "description": "gemini-ai.service.ts reads GEMINI_API_KEY at request time (process.env.GEMINI_API_KEY). Missing key is not detected at startup. The /ai-strategy-builder/build endpoint succeeds in routing but fails when calling Gemini API. No startup guard exists.",
+          "evidence": {
+            "file": "backend/apps/src/ai-strategy-builder/application/gemini-ai.service.ts",
+            "lines": "44",
+            "code": "const apiKey = process.env.GEMINI_API_KEY;"
+          },
+          "remediation": "Add startup validation: fail the module init if GEMINI_API_KEY is empty."
+        },
+        {
+          "id": "CFG-003",
+          "severity": "MEDIUM",
+          "title": "TOKEN_USDT has empty address — silent fallback to '' in 10+ code paths",
+          "description": ".env.development:24 sets TOKEN_USDT= (empty). strategy-templates.service.ts, strategy-parser.service.ts, strategy-constraints.service.ts, fhenix-strategy.service.ts, and gemini-ai.service.ts all fall back to '' when TOKEN_USDT is empty. No warning is logged. Transactions involving USDT will fail at runtime with unhelpful 'address empty' errors.",
+          "evidence": {
+            "file": "backend/apps/src/ai-strategy-builder/application/strategy-templates.service.ts",
+            "lines": "174, 215, 288",
+            "pattern": "assetId: process.env.TOKEN_USDT || ''"
+          },
+          "remediation": "Validate all TOKEN_* addresses on startup. Treat empty token addresses as a hard error in production."
+        },
+        {
+          "id": "CFG-004",
+          "severity": "MEDIUM",
+          "title": "Stale env var name: verify-env script checks FHENIX_RPC but code reads COFHE_RPC",
+          "description": "scripts/verify-env-vars.js (MC-29) requires FHENIX_RPC in its requiredVars list. But the backend source code everywhere reads COFHE_RPC (FHENIX_RPC is never referenced in .ts source). The env check passes when FHENIX_RPC is set but COFHE_RPC is missing, giving a false sense of correctness.",
+          "evidence": {
+            "verify": "backend/apps/scripts/verify-env-vars.js:9",
+            "source_grep": "grep -r COFHE_RPC backend/apps/src/ --count = 8 files, grep -r FHENIX_RPC backend/apps/src/ -- no matches"
+          },
+          "remediation": "Update verify-env-vars.js to check COFHE_RPC instead of FHENIX_RPC. Remove the backward-compat alias when confirmed."
+        },
+        {
+          "id": "CFG-005",
+          "severity": "HIGH",
+          "title": "Alertmanager SMTP credentials use shell expansion with no defaults — container fails to start",
+          "description": "alertmanager.yml lines 8-9: smtp_auth_password: ${SMTP_AUTH_PASSWORD}, slack_api_url: ${SLACK_API_URL}. The docker-compose.yml does not set these env vars. Alertmanager container fails on startup when it resolves ${} to empty. No defaults make the monitoring stack non-functional out of the box.",
+          "evidence": {
+            "file": "monitoring/alertmanager.yml",
+            "lines": "8-9"
+          },
+          "remediation": "Add SMTP_AUTH_PASSWORD and SLACK_API_URL defaults to docker-compose.yml, or document them in a .env.example."
+        },
+        {
+          "id": "CFG-006",
+          "severity": "LOW",
+          "title": "CI notification failures are silent",
+          "description": "nightly-integration.yml has commented-out Slack/email notification steps. When the workflow fails, no one is notified. The infrastructure exists but is dead code.",
+          "evidence": {
+            "file": ".github/workflows/nightly-integration.yml",
+            "lines": "109-141",
+            "note": "Slack webhook and SMTP secrets not available, TODO placed but no alternative notification configured"
+          },
+          "remediation": "Implement at minimum a GitHub issue comment on failure, or configure the notification secrets."
+        }
+      ]
+    },
+    "2_auth_nonce": {
+      "title": "Authentication Nonce Store Analysis",
+      "severity": "CRITICAL",
+      "findings": [
+        {
+          "id": "AUTH-001",
+          "severity": "CRITICAL",
+          "title": "Nonce stored in-memory Map — no-op in multi-instance deployment",
+          "description": "auth.service.ts uses a module-level const nonceStore = new Map<string, { nonce: string; createdAt: number }>(). On Railway, multiple instances (horizontal scaling) each have their own nonce store. Instance A generates a nonce, instance B receives the login request -> B's Map is empty -> UnauthorizedException('No nonce found'). Every request that routes to a different instance fails auth. This effectively breaks login in any multi-instance or auto-scaling setup.",
+          "evidence": {
+            "file": "backend/apps/src/auth/auth.service.ts",
+            "lines": "12-13",
+            "code": "const nonceStore = new Map<string, { nonce: string; createdAt: number }>();",
+            "comment": "Nonce retrieval at line 52: const stored = nonceStore.get(normalizedAddress); — fails if this instance was not the one that generated the nonce"
+          },
+          "remediation": "Replace in-memory Map with Redis or Supabase-backed nonce storage. Critical for scalability."
+        },
+        {
+          "id": "AUTH-002",
+          "severity": "MEDIUM",
+          "title": "Nonce store memory leak — unbounded growth",
+          "description": "Map entries are only removed on: (1) successful login (line 87: nonceStore.delete()), (2) expired nonce check at login time (line 64). Expired nonces are never garbage-collected if the wallet never calls login. Over time, every generateNonce() call adds a permanent entry. An attacker can call GET /auth/nonce/0x... repeatedly to exhaust server memory.",
+          "evidence": {
+            "file": "backend/apps/src/auth/auth.service.ts",
+            "lines": "30-34",
+            "code": "nonceStore.set(walletAddress.toLowerCase(), { nonce, createdAt: Date.now() });"
+          },
+          "remediation": "Add a periodic cleanup interval (e.g. setInterval every 60s) that removes entries older than NONCE_TTL_MS."
+        },
+        {
+          "id": "AUTH-003",
+          "severity": "MEDIUM",
+          "title": "Concurrent generateNonce overwrites — race condition soft-lock",
+          "description": "If a wallet calls generateNonce twice in rapid succession, the second call overwrites the first entry. The first nonce is lost. The wallet can only use the most recent nonce. This is not a security vulnerability per se but causes user-facing failures under rapid refresh.",
+          "evidence": {
+            "file": "backend/apps/src/auth/auth.service.ts",
+            "lines": "30-34",
+            "code": "nonceStore.set(walletAddress.toLowerCase(), { nonce, createdAt: Date.now() });"
+          },
+          "remediation": "Consider allowing multiple valid nonces per wallet (e.g. Map<string, nonce[]> or a bounded last-N cache)."
+        },
+        {
+          "id": "AUTH-004",
+          "severity": "LOW",
+          "title": "No JWT revocation mechanism — logged-out tokens remain valid",
+          "description": "JWTs expire after 15 minutes (auth.module.ts:27). There is no token blacklist, no refresh token rotation, and no token revocation endpoint. If a token is leaked, it is usable until expiry. No logout endpoint provided.",
+          "evidence": {
+            "file": "backend/apps/src/auth/auth.module.ts",
+            "lines": "27",
+            "code": "signOptions: { expiresIn: '15m' }"
+          },
+          "remediation": "Add token blacklist support (Redis-backed) and a /auth/logout endpoint that invalidates the current token."
+        },
+        {
+          "id": "AUTH-005",
+          "severity": "LOW",
+          "title": "JWT_SECRET hard crash is the correct behavior but message is logged before throw",
+          "description": "auth.module.ts:19-23 calls Logger.error then throws. The secret validation works, but the error message is logged with the secret check at module init — minor info disclosure if logs are publicly accessible.",
+          "evidence": {
+            "file": "backend/apps/src/auth/auth.module.ts",
+            "lines": "18-23"
+          },
+          "remediation": "REDACTED: Consider not logging the specific reason in production."
+        }
+      ]
+    },
+    "3_api_throttler": {
+      "title": "API Throttler Coverage Analysis",
+      "severity": "MEDIUM",
+      "findings": [
+        {
+          "id": "API-001",
+          "severity": "HIGH",
+          "title": "Global 20/60s throttle applies to /health and /metrics endpoints",
+          "description": "app.module.ts:27 registers ThrottlerModule.forRoot([{ ttl: 60000, limit: 20 }]) as APP_GUARD (global). This means /health (used by Railway healthchecks) and /metrics (scraped by Prometheus every 15s) are throttled. Railway's healthcheck runs every 30s with a 30s timeout — 20/60s is tight. A Prometheus scrape storm or multiple healthcheck pods could hit the limit, causing the healthcheck to 429 and Railway to restart the container in a loop.",
+          "evidence": {
+            "file": "backend/apps/src/app.module.ts",
+            "lines": "27, 48-49",
+            "app_controller": "backend/apps/src/app.controller.ts:10 (@Public() @Get('health'))",
+            "metrics": "backend/apps/src/metrics.controller.ts:70-71 (@Public() @Get('metrics'))"
+          },
+          "remediation": "Add @Throttle({ default: { ttl: 60000, limit: 0 } }) or skip throttle explicitly for /health and /metrics using NestJS throttler's skip-throttle decorator."
+        },
+        {
+          "id": "API-002",
+          "severity": "MEDIUM",
+          "title": "AiStrategyBuilder 5/min throttle override is correct but no method-level isolation",
+          "description": "AiStrategyBuilderController has @Throttle({ default: { ttl: 60000, limit: 5 } }) at class level. This replaces the global limit for all routes in that controller. This is functionally correct. However, there is no per-user/per-wallet throttling — the global throttle counts across all users. A single user can exhaust the global budget (20/60s) affecting all other users.",
+          "evidence": {
+            "file": "backend/apps/src/ai-strategy-builder/interfaces/ai-strategy-builder.controller.ts",
+            "lines": "10",
+            "code": "@Throttle({ default: { ttl: 60000, limit: 5 } })"
+          },
+          "remediation": "Add per-user throttling using NestJS throttler's @SkipThrottle or a custom key generator based on authenticated user ID."
+        },
+        {
+          "id": "API-003",
+          "severity": "MEDIUM",
+          "title": "Swagger /api/docs endpoint is unauthenticated and unthrottled",
+          "description": "main.ts:80-84 sets up Swagger at /api/docs. It is accessible publicly (no @Public() needed — it has its own router). API documentation exposes every endpoint, DTO shape, and contract addresses. While Swagger is useful for development, it provides a complete API map to attackers in production.",
+          "evidence": {
+            "file": "backend/apps/src/main.ts",
+            "lines": "80-84"
+          },
+          "remediation": "Guard /api/docs behind an admin-only check or disable in production."
+        }
+      ]
+    },
+    "4_database_migrations": {
+      "title": "Database Migration Coverage Analysis",
+      "severity": "CRITICAL",
+      "findings": [
+        {
+          "id": "DB-001",
+          "severity": "CRITICAL",
+          "title": "13 of 16 database tables lack migration DDL — complete schema loss if project recreated",
+          "description": "Entities found in code: users, activities, strategies, defi_modules, defi_module_actions, defi_pairs, defi_action_required, defi_tokens, defi_strategies, defi_strategy_versions, defi_strategy_executions, defi_strategy_simulation_snapshots, defi_execution_step_results, on_chain_events, event_indexer_state, _migrations = 16 tables. Migration SQL files cover only 3 tables: _migrations (000_base.sql), on_chain_events + event_indexer_state (001_event_indexing_tables.sql), defi_action_required (002_defi_action_required.sql). The remaining 13 tables have no DDL anywhere. If the Supabase project is recreated, there is no way to recover the schema.",
+          "evidence": {
+            "migration_files": [
+              "backend/apps/migrations/000_base.sql (1 table: _migrations)",
+              "backend/apps/migrations/001_event_indexing_tables.sql (2 tables: on_chain_events, event_indexer_state)",
+              "backend/apps/migrations/002_defi_action_required.sql (1 table: defi_action_required)"
+            ],
+            "entity_files": [
+              "backend/apps/src/users/domain/user.entity.ts",
+              "backend/apps/src/strategies/domain/strategies.entity.ts",
+              "backend/apps/src/activities/domain/activity.entity.ts",
+              "backend/apps/src/defi_modules/domain/defi_modules.entity.ts",
+              "backend/apps/src/defi_modules/domain/defi_module_actions.entity.ts",
+              "backend/apps/src/defi_modules/domain/defi_pairs.entity.ts",
+              "backend/apps/src/defi_token/domain/defi_token.entity.ts",
+              "backend/apps/src/defi_strategies/domain/defi_strategies.entity.ts",
+              "backend/apps/src/defi_strategies/domain/defi_strategy_version.entity.ts",
+              "backend/apps/src/defi_strategies/domain/defi_strategy_execution.entity.ts",
+              "backend/apps/src/defi_strategies/domain/defi_strategy_simulation_snapshot.entity.ts",
+              "backend/apps/src/defi_strategies/domain/defi_execution_step_result.entity.ts"
+            ]
+          },
+          "remediation": "Write DDL for all 13 missing tables. Store as migration files 003-015 in order respecting foreign key dependencies."
+        },
+        {
+          "id": "DB-002",
+          "severity": "HIGH",
+          "title": "Missing indexes on frequently queried columns",
+          "description": "Supabase repository implementations filter/join by foreign key columns that have no indexes:\n  - defi_strategies: owner_id (Eq filter in getAll), is_public (Eq filter in getAll), created_at (Order desc)\n  - defi_strategy_versions: strategy_id (JOIN with defi_strategies)\n  - defi_module_actions: module_id (JOIN with defi_modules)\n  - defi_pairs: token_in_id, token_out_id (foreign keys to defi_tokens)\n  - activities: strategy_id, user_address (filter queries)\n  - users: wallet_address (findByWalletAddress called on every login)\n- event_indexer_state: only one row (global), so index not needed",
+          "evidence": {
+            "files": [
+              "backend/apps/src/users/infrastructure/user.repository.impl.ts:27 (.eq('wallet_address', ...))",
+              "backend/apps/src/defi_strategies/infrastructure/defi_strategies.repository.impl.ts:66 (.eq('owner_id', owner_id))",
+              "backend/apps/src/defi_strategies/infrastructure/defi_strategies.repository.impl.ts:68 (.eq('is_public', true))",
+              "backend/apps/src/activities/infrastructure/activity.repository.impl.ts:31-50 (.eq on strategyId, userAddress)"
+            ]
+          },
+          "remediation": "Add indexes: defi_strategies(owner_id), defi_strategies(is_public, created_at desc), defi_strategy_versions(strategy_id), defi_module_actions(module_id), defi_pairs(token_in_id), defi_pairs(token_out_id), activities(strategy_id), activities(user_address), users(wallet_address)."
+        },
+        {
+          "id": "DB-003",
+          "severity": "MEDIUM",
+          "title": "Service-role Supabase key used server-side — no row-level security",
+          "description": "supabase.service.ts creates a Supabase client with SUPABASE_KEY (service_role key, not the anon key). This bypasses all Row-Level Security policies. While expected for a backend API, any bug in the app that allows SQL injection through the Supabase REST API gives full database access. There is no query-level access control.",
+          "evidence": {
+            "file": "backend/apps/src/shared/infrastructure/supabase.service.ts",
+            "lines": "13-14, 19"
+          },
+          "remediation": "Consider using a restricted database user for backend operations, or implement RLS with a custom JWT role."
+        }
+      ]
+    },
+    "5_monitoring": {
+      "title": "Monitoring & Alerting Analysis",
+      "severity": "HIGH",
+      "findings": [
+        {
+          "id": "MON-001",
+          "severity": "HIGH",
+          "title": "3 system alert rules reference node_exporter metrics that never get scraped on Railway",
+          "description": "alerts.yml HighCPUUsage, HighMemoryUsage, HighDiskUsage rules reference node_cpu_seconds_total, node_memory_MemAvailable_bytes, node_filesystem_size_bytes. These metrics come from node_exporter. prometheus.railway.yml has an empty targets list for the 'node' job. The Railway deployment does not run node_exporter. These rules will never fire, creating noise and a false sense of monitoring coverage. They should be removed or their silence should be documented.",
+          "evidence": {
+            "rules": "monitoring/alerts/alerts.yml:68-96",
+            "scrape_config": "monitoring/prometheus.railway.yml:29-33"
+          },
+          "remediation": "Either deploy node_exporter on a VPS and configure targets, or remove the 3 system alert rules. Document the gap."
+        },
+        {
+          "id": "MON-002",
+          "severity": "HIGH",
+          "title": "3 Grafana dashboards reference non-existent metrics — permanently show No Data",
+          "description": "contract-interactions.json references contract_interaction_total, gas_used_total. database-performance.json references database_connections_active, database_query_duration_seconds_bucket, database_errors_total. None of these metrics are registered in metrics.controller.ts (which only registers http_requests_total, http_request_duration_seconds, user_signups_total) or anywhere else in the codebase. The panels will show 'No data' permanently.",
+          "evidence": {
+            "metrics_controller": "backend/apps/src/metrics.controller.ts:26-46",
+            "dashboards": [
+              "monitoring/grafana/dashboards/contract-interactions.json",
+              "monitoring/grafana/dashboards/database-performance.json",
+              "monitoring/grafana/dashboards/system-health.json"
+            ]
+          },
+          "remediation": "Either implement the missing Prometheus metrics and register them in the backend, or remove the dashboard panels that reference them."
+        },
+        {
+          "id": "MON-003",
+          "severity": "MEDIUM",
+          "title": "No Grafana dashboard provisioning YAML — JSON files silently ignored",
+          "description": "docker-compose.yml:37 mounts ./grafana/dashboards to /etc/grafana/provisioning/dashboards but Grafana's file-based provisioning requires a dashboards.yaml (or .yml) configuration file in that directory to enumerate which JSON files to load. The JSON files exist but without a provisioning config, Grafana never imports them. The dashboards are dead code.",
+          "evidence": {
+            "docker_compose": "monitoring/docker-compose.yml:37",
+            "missing_config": "No dashboards.yaml or provisioning YAML found in monitoring/grafana/"
+          },
+          "remediation": "Add monitoring/grafana/dashboards/dashboards.yaml with proper provisioning config that points to the JSON files."
+        },
+        {
+          "id": "MON-004",
+          "severity": "MEDIUM",
+          "title": "Prometheus on Railway: Grafana datasource URL unresolvable",
+          "description": "grafana/datasources/prometheus.yml:9 sets url: http://prometheus:9090. On Railway, Docker Compose service names are NOT resolvable. Grafana connects to nothing. Railway deployment monitoring is non-functional.",
+          "evidence": {
+            "file": "monitoring/grafana/datasources/prometheus.yml",
+            "line": "9"
+          },
+          "remediation": "Use the public Railway Prometheus URL or deploy Grafana behind Railway's internal networking."
+        },
+        {
+          "id": "MON-005",
+          "severity": "HIGH",
+          "title": "Event indexer gap risk: warning at 64 blocks, hard loss at ~128 blocks",
+          "description": "event-indexer.service.ts:134 warns at blockGap > 64, but Arbitrum Sepolia retains only ~128 blocks (~30 min). If the backend is down for 30+ minutes, all events during the gap are permanently lost. No catch-up mechanism beyond the warning log. No backfill capability.",
+          "evidence": {
+            "file": "backend/apps/src/event-indexer/event-indexer.service.ts",
+            "lines": "130-139"
+          },
+          "remediation": "Implement event backfill via an archive node RPC or use a more persistent event tracking mechanism."
+        }
+      ]
+    },
+    "6_ci_cd": {
+      "title": "CI/CD Pipeline Security Analysis",
+      "severity": "MEDIUM",
+      "findings": [
+        {
+          "id": "CI-001",
+          "severity": "HIGH",
+          "title": "No approval gate for production deployment — Railway auto-deploys linked repos",
+          "description": "CI pipeline (ci.yml) only builds and tests — no deploy step. However, railway.json exists at backend/apps/railway.json with a build command. Railway auto-deploys from linked GitHub repos on every push to the default branch without any approval gate. There is no manual approval, canary, or staged rollout. A push to main immediately deploys to production.",
+          "evidence": {
+            "ci_file": ".github/workflows/ci.yml",
+            "railway_config": "backend/apps/railway.json",
+            "note": "Railway's auto-deploy setting is external to this repo (configured in Railway dashboard)"
+          },
+          "remediation": "Add a GitHub environment with required reviewers to the default branch, or use Railway's deployment previews and manual promotion."
+        },
+        {
+          "id": "CI-002",
+          "severity": "MEDIUM",
+          "title": "PRIVATE_KEY and TESTER_PRIVATE_KEY both set to same secret — redundant exposure surface",
+          "description": "nightly-integration.yml:88-89 passes both PRIVATE_KEY and TESTER_PRIVATE_KEY with the same value (secrets.TESTER_PRIVATE_KEY). The hardhat config likely reads PRIVATE_KEY. Having two env vars for the same key increases the surface area for accidental exposure in build logs.",
+          "evidence": {
+            "file": ".github/workflows/nightly-integration.yml",
+            "lines": "88-89"
+          },
+          "remediation": "Consolidate to a single PRIVATE_KEY env var. Remove the TESTER_PRIVATE_KEY duplicate."
+        },
+        {
+          "id": "CI-003",
+          "severity": "MEDIUM",
+          "title": "Gitleaks secret scan exists but does not inspect build log artifacts",
+          "description": "secret-scan.yml runs gitleaks on every push/PR but only scans source code at git log/tree level. Build artifacts (compiled JS, bundled JSON with embedded ABI addresses, test output logs) are not scanned. CI workflows generate logs containing environment variables (echo statements, tee'd output) that could leak secrets. The nightly integration test uploads logs as GitHub artifacts (retention 30d) without redaction.",
+          "evidence": {
+            "secret_scan": ".github/workflows/secret-scan.yml",
+            "artifact_upload": ".github/workflows/nightly-integration.yml:102-107",
+            "note": "The `tee test-logs.txt` captures ALL output including any error stack traces that might contain RPC URLs or ABI data"
+          },
+          "remediation": "Scan build artifacts with gitleaks too. Redact sensitive patterns from uploaded CI logs. Shorten artifact retention."
+        },
+        {
+          "id": "CI-004",
+          "severity": "LOW",
+          "title": "Nightly integration workflow uses workflow_dispatch with secrets in subprocess calls",
+          "description": "The nightly workflow has a workflow_dispatch trigger allowing manual runs on arb-sepolia OR base-sepolia. The same secrets are available regardless of target network. A user could run on base-sepolia with arb-sepolia secrets, causing cross-network confusion.",
+          "evidence": {
+            "file": ".github/workflows/nightly-integration.yml",
+            "lines": "22-30, 86-95"
+          },
+          "remediation": "Add distinct secrets per environment, or restrict workflow_dispatch to admin users."
+        }
+      ]
+    }
+  },
+  "summary": {
+    "total_findings": 22,
+    "by_severity": {
+      "CRITICAL": 3,
+      "HIGH": 7,
+      "MEDIUM": 10,
+      "LOW": 2
+    },
+    "by_area": {
+      "config_env": 6,
+      "auth_nonce": 5,
+      "api_throttler": 3,
+      "database_migrations": 3,
+      "monitoring": 5,
+      "ci_cd": 4
+    },
+    "top_3_recommendations": [
+      "1. Replace in-memory nonce Map with Redis-backed store — blocks horizontal scaling entirely (AUTH-001, CRITICAL).",
+      "2. Write migration DDL for all 13 missing tables — schema loss on Supabase project recreation is catastrophic (DB-001, CRITICAL).",
+      "3. Exempt /health and /metrics from global throttle — Railway healthchecks and Prometheus scraping hit the 20/60s limit (API-001, HIGH).",
+      "(4. Alertmanager SMTP defaults missing — monitoring stack non-functional without env vars, CFG-005, HIGH.)"
+    ]
+  }
+}

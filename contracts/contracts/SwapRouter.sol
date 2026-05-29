@@ -127,8 +127,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         uint256 amountIn,
         uint256 minAmountOut,
         uint256 deadlineOffset
-    ) external whenNotPaused returns (bytes32 intentId) {
-        if (tokenIn == address(0) || tokenOut == address(0)) revert ZeroAddress();
+    ) external nonReentrant whenNotPaused returns (bytes32 intentId) {
         if (tokenIn == tokenOut) revert SameToken();
         if (amountIn == 0) revert ZeroAmount();
         if (deadlineOffset < MIN_DEADLINE_OFFSET) revert DeadlineTooShort();
@@ -162,7 +161,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
     }
 
     /// @notice Cancel a pending swap intent and return escrowed tokens.
-    function cancelIntent(bytes32 intentId) external {
+    function cancelIntent(bytes32 intentId) external nonReentrant {
         if (intents[intentId].user != _msgSender()) revert NotCreator();
         // C-04: Return escrowed tokensIn to user
         address tokenIn = intents[intentId].tokenIn;
@@ -173,7 +172,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
     }
 
     /// @notice Execute a swap intent (executor only).
-    function executeIntent(bytes32 intentId, uint256 outputAmount) external whenNotPaused {
+    function executeIntent(bytes32 intentId, uint256 outputAmount) external nonReentrant whenNotPaused {
         if (msg.sender != executor) revert NotExecutor();
         SwapIntent storage i = intents[intentId];
         if (i.user == address(0)) revert UnknownIntent();
@@ -187,11 +186,13 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         address tokenIn = i.tokenIn;
         uint256 amountIn = i.amountIn;
 
+        // CEI: delete state before external calls
+        delete intents[intentId];
+        emit IntentExecuted(intentId, user, outputAmount);
+
         IERC20(tokenOut).safeTransferFrom(msg.sender, user, outputAmount);
         // C-04: Release escrowed tokenIn to executor
         IERC20(tokenIn).safeTransfer(msg.sender, amountIn);
-        delete intents[intentId];
-        emit IntentExecuted(intentId, user, outputAmount);
     }
 
     /// @notice Swap via Uniswap V3 single-hop exactInputSingle
@@ -201,7 +202,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         uint24 fee,
         uint256 amountIn,
         uint256 amountOutMinimum
-    ) external whenNotPaused returns (uint256 amountOut) {
+    ) external nonReentrant whenNotPaused returns (uint256 amountOut) {
         if (tokenIn == address(0) || tokenOut == address(0)) revert ZeroAddress();
         if (amountIn == 0) revert ZeroAmount();
 
@@ -230,7 +231,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         bytes calldata path,
         uint256 amountIn,
         uint256 amountOutMinimum
-    ) external whenNotPaused returns (uint256 amountOut) {
+    ) external nonReentrant whenNotPaused returns (uint256 amountOut) {
         if (amountIn == 0) revert ZeroAmount();
 
         // Decode first token from path for transferFrom
