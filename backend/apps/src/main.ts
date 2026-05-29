@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 
 dotenv.config();
+import "reflect-metadata";
 
 import { Logger, ValidationPipe } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
