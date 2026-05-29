@@ -1,17 +1,14 @@
 ---
 # Alert Rules for FheForge
-#
-# MC-061: Removed 11 rules that referenced non-existent metrics.
-# MC-062: Restored 4 API rules after MC-024 (/metrics endpoint) confirmed
-#         metric names: http_requests_total, http_request_duration_seconds,
-#         user_signups_total (all with method/status/path labels).
+# MC-061: Removed 11 rules referencing non-existent metrics.
+# MC-062: Restored 4 API rules confirmed functional via /metrics endpoint.
 
 groups:
-  # ── API alerts (require MC-024 /metrics endpoint) ──────────────────
+  # ── API alerts (require /metrics endpoint on backend) ──────────────
   - name: api_alerts
     interval: 30s
     rules:
-      # High Error Rate (>5% of requests returning 5xx over 5m)
+      # High Error Rate (>5% requests 5xx over 5m)
       - alert: HighErrorRate
         expr: |
           (
@@ -40,7 +37,7 @@ groups:
           summary: "Slow API response time"
           description: "95th percentile response time is {{ $value }}s"
 
-      # API Down (Prometheus target unreachable for >1m)
+      # API Down (target unreachable >1m)
       - alert: APIDown
         expr: up{job="backend-api"} == 0
         for: 1m
@@ -60,37 +57,3 @@ groups:
         annotations:
           summary: "New user sign-up"
           description: "{{ $value }} new user(s) signed up in the last 5 minutes"
-
-  # ── System alerts (require node_exporter on Docker host) ──────────
-  - name: system_alerts
-    interval: 30s
-    rules:
-      - alert: HighCPUUsage
-        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
-        for: 5m
-        labels:
-          severity: warning
-          service: system
-        annotations:
-          summary: "High CPU usage"
-          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
-
-      - alert: HighMemoryUsage
-        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 80
-        for: 5m
-        labels:
-          severity: warning
-          service: system
-        annotations:
-          summary: "High memory usage"
-          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
-
-      - alert: HighDiskUsage
-        expr: (node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_free_bytes{fstype!="tmpfs"}) / node_filesystem_size_bytes{fstype!="tmpfs"} * 100 > 80
-        for: 5m
-        labels:
-          severity: warning
-          service: system
-        annotations:
-          summary: "High disk usage"
-          description: "Disk usage is {{ $value }}% on {{ $labels.instance }}"

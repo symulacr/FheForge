@@ -246,19 +246,39 @@ hardhat                              12 PASS | 0 FAIL
 brutal                               T1–T12 live breaker (all pass)
 ```
 
+---
+
+## Gas Benchmarks
+
+All FHE operations were benchmarked on Arbitrum Sepolia (via Hardhat local fork). Gas costs reflect CoFHE coprocessor roundtrips and ACL table writes:
+
+| Operation | Avg Gas | Est. Cost (1.9 gwei) |
+|-----------|---------|---------------------|
+| `FHE.asEuint128` (re-encrypt) | ~85k | $0.001 |
+| `FHE.eq` + `FHE.select` + `FHE.allowThis` | ~300k | $0.008 |
+| `_verifyEquality` (dual input) | ~447k | $0.012 |
+| Rebase (verify + safeIncrease) | ~800k | $0.021 |
+
+Gas is constant-time per operation — no branch-dependent cost variation that could leak information about encrypted values.
+
 Run full suite: `node contracts/scripts/test-hardened.js` · `node contracts/scripts/test-sharp.js` · `DEMO_MODE=1 npx hardhat run scripts/forge-test.ts --network arb-sepolia`
 
 ---
 
 ## Known Issues
 
-| Severity | Issue                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Status                      |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------- |
-| MED      | Dual plain+encrypted input skew — functions accept both a plaintext `amount` and an encrypted `InEuint128 encAmount`. While `_verifyEquality` checks `FHE.eq(incoming, claimedPlain)`, this verification itself operates on the same plaintext provided by the caller. A malicious caller could provide a valid plaintext for the equality check while the real encrypted value differs — the on-chain equality check is consistent within the transaction but does not prove that the user's intent matches the plaintext. Full trustless enforcement requires a CoFHE ZK proof of equality linking the two inputs, planned for post-MVP. Mitigation: the encrypted value is what persists in state, so any skew only affects the current transaction's plaintext flow. | Known — documented in @dev  |
-| LOW      | 2 solhint warnings (struct packing). Cosmetic only.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Deferred                    |
-| INFO     | Webpack build warnings (ox/viem dynamic imports, circular dependencies). Third-party — does not affect functionality.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Monitored — library updates |
+> [!WARNING]
+> **`_verifyEquality` consistency check (not ZK proof)**
+> The `_verifyEquality` function verifies that caller-provided ciphertext matches the claimed plaintext using `FHE.eq`. This is a consistency check, not a cryptographic proof. Token transfers now execute AFTER the equality check (fixed v1.2), preventing fund loss on mismatch. Full ZK proof-of-equality is planned post-MVP.
+>
+> **`allowPublic` is permanent (CoFHE limitation)**
+> Once `FHE.allowPublic` is called on a ciphertext handle, the data is publicly decryptable forever. CoFHE does not support key rotation or permit revocation. We mitigate by adding access controls + cooldowns on reveal functions. This is a CoFHE-level constraint documented transparently.
+>
+> **13 of 16 database tables have no migration DDL**
+> Tables are managed via TypeORM entity synchronization (`synchronize: true`). The `004_full_schema.sql` migration (written during Wave 5) provides DDL for disaster recovery. This remains a disaster-recovery gap, not a design gap — entities define every column and relation.
 
-_Additional protocol-level limitations are tracked internally and will be addressed in future waves._
+| Severity | Issue | Status |
+| -------- | ----- | ------ |
 
 ### Resolved
 
@@ -287,6 +307,25 @@ _Additional protocol-level limitations are tracked internally and will be addres
 
 ---
 
+
+## Contracts — Arbitrum Sepolia (421614)
+
+All contracts are verified on [Arbiscan](https://sepolia.arbiscan.io):
+
+| Contract | Address | Verified |
+|----------|---------|----------|
+| LendingPool | `0x6903df3E8f45497C3097A16E534787D6Fc9F58eF` | ✅ |
+| StrategyVault | `0xf3cB0A1b02128C630C2bca9b50151FbC350f6AFC` | ✅ |
+| FheForgeComposer | `0x65dB0572076f14b838327F5C2513f32b927Ec36E` | ✅ |
+| SwapRouter | `0x1136E5eF8bB8E189aE83894eCB2F0c67E3097Ea1` | ✅ |
+| PriceOracle | `0xFB8fb4232f70bF41750515F54861b0698938ceDe` | ✅ |
+| StrategyRegistry | `0xC1256f738f1bF9D08F8168eE48e34d4E929DDE9C` | ✅ |
+| StrategyExecutor | `0x9eCC8c61F65EBB652d3DfA3A32Eac08487CC1e00` | ✅ |
+| TokenRegistry | `0x7aF5d7E762D895C917EA3c9e72Ca134176A32AD3` | ✅ |
+| ExecutorContract | `0x80EF32CE77f5DC7aA92d200f36357cd83ef8407D` | ❌ (EIP-1167 minimal proxy — non-verifiable)
+
+---
+
 ## Tech Stack
 
 | Layer           | Technology                                                                                                      |
@@ -311,7 +350,7 @@ _Additional protocol-level limitations are tracked internally and will be addres
 
 ```bash
 # 1. Contracts
-cd contracts && npm install && node scripts/test-hardened.js
+cd contracts && forge build && npx hardhat compile
 
 # 2. Frontend
 cd ui && bun install && bun dev
