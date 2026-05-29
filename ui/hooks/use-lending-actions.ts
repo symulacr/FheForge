@@ -77,6 +77,9 @@ export function useLendingActions() {
 		collateralToken: Address,
 		debtToken: Address,
 	): Promise<Hash> => {
+		if (!cofheClient) throw new Error("CoFHE client not ready");
+		if (!cofheState.permitReady)
+			throw new Error("CoFHE permit not ready — please wait or reconnect");
 		const { pool } = requireAddresses();
 		return writeContractAsync({
 			address: pool as `0x${string}`,
@@ -105,6 +108,40 @@ export function useLendingActions() {
 				params.supplySig,
 			],
 		});
+	};
+
+	// ────────── P2: prepareLiquidationProof (decryptForTx helper) ──────────
+
+	const prepareLiquidationProof = async (
+		user: Address,
+		debtToken: Address,
+		collateralToken: Address,
+	): Promise<LiquidateWithProofParams> => {
+		if (!cofheClient) throw new Error("CoFHE client not ready");
+		if (!cofheState.permitReady)
+			throw new Error("CoFHE permit not ready — please wait or reconnect");
+
+		const { pool } = requireAddresses();
+		const permit = await cofheClient.permits.getOrCreateSelfPermit();
+
+		// Read encrypted balances from the pool contract
+		const debtHandle = await cofheClient.decryptForTx(user, debtToken, pool, {
+			permit,
+		});
+		const supplyHandle = await cofheClient.decryptForTx(user, collateralToken, pool, {
+			permit,
+		});
+
+		return {
+			user,
+			collateralToken,
+			debtToken,
+			debtToCover: BigInt(debtHandle.plaintext ?? 0),
+			debtBalanceProof: BigInt(debtHandle.proof ?? 0),
+			debtSig: debtHandle.signature as `0x${string}`,
+			supplyBalanceProof: BigInt(supplyHandle.proof ?? 0),
+			supplySig: supplyHandle.signature as `0x${string}`,
+		};
 	};
 
 	// ────────── MC-37: borrowWithLtvCheck ──────────
@@ -246,6 +283,7 @@ export function useLendingActions() {
 	return {
 		requestLiquidityCheck,
 		liquidateWithProof,
+		prepareLiquidationProof,
 		borrowWithLtvCheck,
 		borrowWithOracle,
 		isSupported,

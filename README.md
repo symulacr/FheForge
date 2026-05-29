@@ -6,14 +6,14 @@
   <img src="https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs" alt="NestJS 11"/>
   <img src="https://img.shields.io/badge/FHE-CoFHE/Fhenix-8B5CF6" alt="FHE"/>
   <img src="https://img.shields.io/badge/Chain-Arbitrum_Sepolia-2D374B?logo=arbitrum" alt="Arbitrum Sepolia"/>
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/License-MIT%20Apache%202.0-green" alt="License"/>
   <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status"/>
   <img src="https://img.shields.io/badge/tests-passing%20(forge%20live)-22c55e" alt="Tests: Passing (forge live)"/>
   <img src="https://img.shields.io/badge/Akindo_Wave_Hacks-2026-FF6B35" alt="Akindo Wave Hacks 2026"/>
 </p>
 
 <p align="center">
-  <b>🏆 Akindo "Private By Design" dApp Buildathon — Wave 4 Submission</b><br/>
+  <b>🏆 Akindo "Private By Design" dApp Buildathon — Wave 5 Final Submission</b><br/>
   <b>Track:</b> RWA & Compliance · DeFi & Lending · Privacy Infrastructure
 </p>
 
