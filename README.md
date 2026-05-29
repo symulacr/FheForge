@@ -21,7 +21,7 @@
 
 **FheForge** brings **fully homomorphic encryption (FHE)** to DeFi, letting you build, manage, and automate encrypted financial strategies — without exposing your positions to the world. Supply, borrow, swap, and liquidate with amounts that stay encrypted on-chain. Only you control who can decrypt and verify your position.
 
-🔗 **Live app:** [ui-chi-ashy.vercel.app](https://ui-chi-ashy.vercel.app)  
+🔗 **Live app:** [fheforge-ljuvnzyfp-xkq.vercel.app](https://fheforge-ljuvnzyfp-xkq.vercel.app)  
 🔗 **API:** [fheforge-api-production.up.railway.app](https://fheforge-api-production.up.railway.app)  
 🔗 **Source:** [github.com/symulacr/FheForge](https://github.com/symulacr/FheForge)  
 🔗 **Release:** [v1.2.0 — Buildathon submission](https://github.com/symulacr/FheForge/releases/tag/v1.2.0)
