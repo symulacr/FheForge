@@ -8,6 +8,7 @@ import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 import { SimplePythMock } from "../contracts/mocks/SimplePythMock.sol";
 import { PriceOracleHarness } from "./PriceOracleHarness.sol";
 
+/// @custom:mock
 contract PriceOracleTest is FheForgeTestHelper {
     uint256 private constant DEFAULT_STALE = 3600;
 

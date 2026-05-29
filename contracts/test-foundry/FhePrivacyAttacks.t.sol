@@ -9,6 +9,7 @@ import { FHE, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.s
 import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
 import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 
+/// @custom:mock
 contract FhePrivacyAttacksTest is FheForgeTestHelper {
     LendingPool public pool;
     MockERC20 public token;

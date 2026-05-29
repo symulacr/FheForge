@@ -7,6 +7,7 @@ import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
+/// @custom:mock
 contract StrategyRegistryTest is FheForgeTestHelper {
     uint256 internal constant ROTATION_DELAY = 48 hours;
 

@@ -6,6 +6,7 @@ import { SwapRouter } from "../contracts/SwapRouter.sol";
 import { FheForgeBase } from "../contracts/FheForgeBase.sol";
 import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 
+/// @custom:mock
 contract SwapRouterTest is FheForgeTestHelper {
     uint256 internal constant MIN_DL = 30;
     uint256 internal constant MAX_DL = 7 days;

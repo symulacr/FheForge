@@ -16,6 +16,7 @@ import { StrategyRegistry } from "../contracts/StrategyRegistry.sol";
 ///         1. All action types validate encrypted handles upfront (close the "without _verifyEquality" gap)
 ///         2. Unknown action types revert instead of silently succeeding
 ///         3. OnlyComposer guards on Pool functions work correctly
+/// @custom:mock
 contract StrategyExecutorBypassTest is FheForgeTestHelper {
     StrategyExecutor public executor;
     MockLendingPool public pool;

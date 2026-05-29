@@ -8,6 +8,7 @@ import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
+/// @custom:mock
 contract FheForgeGovernorTest is FheForgeTestHelper {
     // Governance parameters matching prod intent.
     // clock() uses block.number (Votes default), so voting delay/period are in blocks.

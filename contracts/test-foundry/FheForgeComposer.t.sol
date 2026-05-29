@@ -12,6 +12,7 @@ import { VaultMock } from "../contracts/mocks/VaultMock.sol";
 import { PoolMock } from "../contracts/mocks/PoolMock.sol";
 import { RouterMock } from "../contracts/mocks/RouterMock.sol";
 
+/// @custom:mock
 contract FheForgeComposerTest is FheForgeTestHelper {
     FheForgeComposer public composer;
     StrategyRegistry public registry;

@@ -88,6 +88,7 @@ contract ReentrantFlashBorrower is IERC3156FlashBorrower {
 //  the reentrant call sees intermediate state. The nonReentrant guard must
 //  prevent any stateful re-entry.
 // ──────────────────────────────────────────────────────────────────────────────
+/// @custom:mock
 contract InvariantReentrancy is FheForgeTestHelper {
     LendingPool public pool;
     MockERC20 public token;

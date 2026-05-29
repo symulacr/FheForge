@@ -12,6 +12,7 @@ import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 import { WETH9 } from "../contracts/WETH9.sol";
 import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
 
+/// @custom:mock
 contract LendingPoolTest is FheForgeTestHelper {
     LendingPool public pool;
     MockERC20 public token;

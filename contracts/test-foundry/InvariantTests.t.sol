@@ -8,6 +8,7 @@ import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 
 /// @notice Foundry invariant/fuzz tests for non-FHE protocol invariants (MC-073).
 ///         These tests validate that core constraints hold across various inputs.
+/// @custom:mock
 contract InvariantTests is FheForgeTestHelper {
     uint256 internal constant MIN_DL = 30;
     uint256 internal constant MAX_DL = 7 days;

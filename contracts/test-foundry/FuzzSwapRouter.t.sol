@@ -10,6 +10,7 @@ import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 ///         Extends coverage beyond InvariantTests.t.sol with deadline boundary
 ///         fuzzing, amount/minOut ratio fuzzing, swap validation fuzzing,
 ///         and executor timelock boundary fuzzing.
+/// @custom:mock
 contract FuzzSwapRouter is FheForgeTestHelper {
     uint256 internal constant MIN_DL       = 30;
     uint256 internal constant MAX_DL       = 7 days;

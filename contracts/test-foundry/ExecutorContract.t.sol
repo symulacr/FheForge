@@ -7,6 +7,7 @@ import { ExecutorContract } from "../contracts/ExecutorContract.sol";
 // selector 0x118cdaa7 = OwnableUnauthorizedAccount(address) — hardcoded per TestHelper pattern
 import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 
+/// @custom:mock
 contract ExecutorContractTest is FheForgeTestHelper {
     error ExecutorContractTest_IntentNotDeleted();
 

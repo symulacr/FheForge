@@ -11,6 +11,7 @@ import { SwapRouter } from "../contracts/SwapRouter.sol";
 import { StrategyVault } from "../contracts/StrategyVault.sol";
 import { StrategyRegistry } from "../contracts/StrategyRegistry.sol";
 
+/// @custom:mock
 contract StrategyExecutorTest is FheForgeTestHelper {
     StrategyExecutor public executor;
     MockLendingPool public pool;

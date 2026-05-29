@@ -7,6 +7,7 @@ import { FheForgeBase } from "../contracts/FheForgeBase.sol";
 import { MockERC20 } from "../contracts/MockERC20.sol";
 import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 
+/// @custom:mock
 contract NonFheConstructorTest is FheForgeTestHelper {
     address internal constant UNISWAP_ROUTER = address(0x1);
 

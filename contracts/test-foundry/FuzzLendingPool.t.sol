@@ -13,6 +13,7 @@ import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 /// @notice Fuzz + invariant tests for LendingPool (MC-074).
 ///         Covers: oracle-based borrow with random amounts, LTV parameter edge cases,
 ///         zero-amount revert patterns, and the supply+borrow conservation invariant.
+/// @custom:mock
 contract FuzzLendingPool is FheForgeTestHelper {
     LendingPool public pool;
     MockERC20 public token;

@@ -25,6 +25,7 @@ contract VerifyEqualityHarness is FheForgeBase {
 ///
 /// @dev The mock FHE system stores value→handle mappings via MockTaskManager.
 ///      We register each handle with its decrypted value before calling the harness.
+/// @custom:mock
 contract FuzzVerifyEquality is FheForgeTestHelper {
     VerifyEqualityHarness public harness;
 

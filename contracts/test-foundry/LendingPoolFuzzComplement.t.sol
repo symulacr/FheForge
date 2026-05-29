@@ -21,6 +21,7 @@ import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 ///           - Fuzz: shield() amount boundaries
 ///           - Fuzz: borrowWithLtvCheck — ltvDen lower bound edge cases
 ///           - Fuzz: partialUnshield() — withdraw amount vs reserve ratio
+/// @custom:mock
 contract LendingPoolFuzzComplement is FheForgeTestHelper {
     LendingPool  public pool;
     MockERC20    public collToken;

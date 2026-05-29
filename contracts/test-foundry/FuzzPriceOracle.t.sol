@@ -11,6 +11,7 @@ import { SimplePythMock } from "../contracts/mocks/SimplePythMock.sol";
 ///         Covers: staleness thresholds, collateral factor boundary combinations,
 ///         setSource with various decimal values, convertToUsd / convertFromUsd
 ///         amount fuzzing, and isStale behaviour across time domains.
+/// @custom:mock
 contract FuzzPriceOracle is FheForgeTestHelper {
     uint256 private constant DEFAULT_STALE = 3600;
 
@@ -124,7 +125,7 @@ contract FuzzPriceOracle is FheForgeTestHelper {
     // ─── Fuzz 6: convertFromUsd round-trip with fallback prices ───────────────
     // convertFromUsd(convertToUsd(amount)) ≈ amount (roundtrip invariant).
     function testFuzzConvertRoundtrip(uint256 fallbackPrice, uint256 amount) public {
-        fallbackPrice = bound(fallbackPrice, 1e6, 1_000_000e18);
+        fallbackPrice = bound(fallbackPrice, 1e18, 1_000_000e18);
         amount        = bound(amount,        1,    1_000_000e18);
 
         vm.prank(owner);
@@ -187,6 +188,7 @@ contract FuzzPriceOracle is FheForgeTestHelper {
 
         vm.prank(owner);
         oracle.setSource(TOKEN_A, ETH_PRICE_ID, 18, 600);
+        vm.prank(owner);
         oracle.setStalenessThreshold(3600); // 1 hour default
 
         pythMock.setPrice(

@@ -8,6 +8,7 @@ import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 ///         Covers: strategy name length bounds (1..256 chars), apyTarget/loopCount
 ///         boundary combinations, broadcast destination domain fuzzing, workflow
 ///         hash edge cases, and setActive with randomised IDs.
+/// @custom:mock
 contract FuzzStrategyRegistry is FheForgeTestHelper {
     uint256 internal constant ROTATION_DELAY = 48 hours;
 

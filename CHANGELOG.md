@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+
+## [1.2.1] — 2026-05-29
+
+### Akindo Wave Hacks Final Wave Submission
+
+#### Security (Critical)
+- `_verifyEquality` now gates token transfers — reordered before `safeTransferFrom`/`safeTransfer` in all 6 LendingPool call sites
+- `requestLiquidityCheck` now has `msg.sender == user` ACL check
+- `getDepositedAmount` removed (plaintext privacy leak)
+- `allowPublic` now has 1-hour cooldown on `requestBalanceReveal` / `requestBorrowReveal`
+- `SwapRouter`: added `nonReentrant` to all 5 intent functions, fixed CEI violation in `executeIntent`
+- `StrategyExecutor`: added `_verifyEquality` before all 6 forwarded action types
+- `FheForgeBase`: added `_validateCiphertext` using `FHE.isInitialized` on all incoming handles
+- `FHESafeMath128`: added overflow guard to `tryIncrease`
+
+#### Deployment
+- Re-deployed all 12 contracts to Arbitrum Sepolia (incl. governance: Token, Timelock, Governor)
+- All contracts verified on Arbiscan
+- Live forge-test.ts suite: 100+ scenarios against real deployed contracts
+
+#### Infrastructure
+- CORS hardens production — rejects Origin-less requests
+- Auth nonce stored in Supabase `auth_nonces` table (replaces in-memory Map)
+- JWT: algorithm restricted to `HS256`
+- Event indexer: auto-clamp on gap > 128 blocks
+- Swagger API docs at `/api/docs`
+- CI pipeline: 4 stages, 14 jobs (lint → type-check → test → build)
+
+#### Frontend
+- Fresh `cofhe-client.ts` with `initCofheClient()`, `encryptUint128/64()`, `decryptForView/Tx()`
+- Fixed Encryptable type mismatches (`uint128` vs `uint64` per contract ABI)
+- Added `prepareLiquidationProof` (decryptForTx helper)
+- Removed dead `NEXT_PUBLIC_ROUTER_ADDRESS` alias
+- Added COOP/COEP headers for CoFHE Wasm SharedArrayBuffer
+- Loading skeletons, error toasts for all async FHE operations
+
+#### Documentation
+- README: gas benchmarks, defense paragraphs, updated deployed contracts table
+- Dual license: MIT + Apache 2.0
+- Demo script at `docs/fheforge-demo-script.md`
 ## [1.2.0] — 2026-05-25
 
 ### Akindo Buildathon Prep

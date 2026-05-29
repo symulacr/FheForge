@@ -7,6 +7,7 @@ import { FheForgeBase } from "../contracts/FheForgeBase.sol";
 import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
+/// @custom:mock
 contract StrategyVaultTest is FheForgeTestHelper {
     StrategyVault public vault;
     MockERC20 public token;

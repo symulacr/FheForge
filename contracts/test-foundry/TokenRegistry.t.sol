@@ -5,6 +5,7 @@ import { TokenRegistry } from "../contracts/TokenRegistry.sol";
 import { FheForgeBase } from "../contracts/FheForgeBase.sol";
 import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 
+/// @custom:mock
 contract TokenRegistryTest is FheForgeTestHelper {
     TokenRegistry public tokenRegistry;
 
