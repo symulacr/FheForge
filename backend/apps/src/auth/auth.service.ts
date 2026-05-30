@@ -1,5 +1,5 @@
 import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
-import type { ConfigService } from "@nestjs/config";
+import { ConfigService } from "@nestjs/config";
 import type { JwtService } from "@nestjs/jwt";
 import { verifyMessage } from "ethers";
 import { v4 as uuidv4 } from "uuid";

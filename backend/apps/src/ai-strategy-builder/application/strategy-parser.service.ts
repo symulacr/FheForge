@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { ConfigService } from "@nestjs/config";
+import { ConfigService } from "@nestjs/config";
 import type { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
 import type { GeminiAiService } from "./gemini-ai.service";
 
