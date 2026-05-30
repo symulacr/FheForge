@@ -236,3 +236,4 @@ ui/tsconfig.tsbuildinfo
 # === ARCHIVED LEGACY SCRIPTS ===
 archives/
 .env.*.local
+fheforge-demo/
