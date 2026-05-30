@@ -129,7 +129,7 @@ export function StrategyFlow({ steps = [], initialCapital, loops, fee }: Strateg
 
 									<div className="flex-1 flex justify-center items-center">
 										{hasBoth ? (
-											<ArrowDown className="w-3 h-3 text-primary animate-bounce" />
+											<ArrowDown className="w-3 h-3 text-primary animate-float-subtle" />
 										) : (
 											<span className="opacity-0">placeholder</span>
 										)}
@@ -169,7 +169,7 @@ export function StrategyFlow({ steps = [], initialCapital, loops, fee }: Strateg
 
 								{idx < nodes.length - 1 && (
 									<div className="absolute left-1/2 -bottom-5 transform -translate-x-1/2">
-										<ArrowDown className="w-4 h-4 text-primary/60 animate-bounce" />
+										<ArrowDown className="w-4 h-4 text-primary/60 animate-float-subtle" />
 									</div>
 								)}
 							</motion.div>

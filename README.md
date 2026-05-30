@@ -331,6 +331,17 @@ All contracts verified on [Arbiscan](https://sepolia.arbiscan.io). Deployed `202
 
 ---
 
+## Design System
+
+FheForge uses a structured design system documented in two root files:
+
+- **[PRODUCT.md](./PRODUCT.md)** — Register, users, product purpose, brand personality, anti-references, and design principles. Strategic context for all UI work.
+- **[DESIGN.md](./DESIGN.md)** — Visual theme, color tokens, typography, components, motion, and status vocabulary. Reference before building any frontend surface.
+
+The UI is a product-register interface: dark terminal aesthetic, JetBrains Mono globally, zero border-radius, restrained blue accent (#3b82f6). Any impeccable command reads these files automatically.
+
+---
+
 ## Tech Stack
 
 | Layer           | Technology                                                                                                      |
