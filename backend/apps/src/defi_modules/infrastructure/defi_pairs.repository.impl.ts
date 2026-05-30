@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import type { DefiPairRow } from "src/shared/infrastructure/database.types";
-import type { SupabaseService } from "../../shared/infrastructure/supabase.service";
+import { DefiPairRow } from "src/shared/infrastructure/database.types";
+import { SupabaseService } from "../../shared/infrastructure/supabase.service";
 import { DefiPair } from "../domain/defi_pairs.entity";
-import type { DefiPairsRepository } from "../domain/defi_pairs.repository";
+import { DefiPairsRepository } from "../domain/defi_pairs.repository";
 
 function mapPair(row: DefiPairRow): DefiPair {
 	return new DefiPair(row.id, "", row.token_in_id ?? undefined, row.token_out_id ?? undefined);

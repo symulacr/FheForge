@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Contract, JsonRpcProvider } from "ethers";
-import type { StrategyStepResponseDto } from "../../../ai-strategy-builder/interfaces/dtos/strategy-step-response.dto";
+import { StrategyStepResponseDto } from "../../../ai-strategy-builder/interfaces/dtos/strategy-step-response.dto";
 import type {
 	SimulationContext,
 	SimulationStepResult,

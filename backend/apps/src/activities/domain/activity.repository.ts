@@ -1,4 +1,4 @@
-import type { Activity } from "./activity.entity";
+import { Activity } from "./activity.entity";
 
 export abstract class ActivityRepository {
 	abstract findAll(): Promise<Activity[]>;

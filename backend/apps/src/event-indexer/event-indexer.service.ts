@@ -1,7 +1,7 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Contract, JsonRpcProvider, type Result } from "ethers";
-import type { SupabaseService } from "../shared/infrastructure/supabase.service";
+import { SupabaseService } from "../shared/infrastructure/supabase.service";
 
 // ── Contract ABIs (only the events we index) ───────────────────────────
 

@@ -1,9 +1,9 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
-import type { GeminiAiService } from "../application/gemini-ai.service";
-import type { AnalyzeRiskDto } from "./dtos/analyze-risk.dto";
-import type { OptimizeStrategyDto } from "./dtos/optimize-strategy.dto";
+import { GeminiAiService } from "../application/gemini-ai.service";
+import { AnalyzeRiskDto } from "./dtos/analyze-risk.dto";
+import { OptimizeStrategyDto } from "./dtos/optimize-strategy.dto";
 
 @ApiTags("AI Strategy Builder - Advanced")
 @Controller("ai-strategy-builder/advanced")

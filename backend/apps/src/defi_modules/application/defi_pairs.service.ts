@@ -1,11 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import type { DefiTokenService } from "src/defi_token/application/defi_token.service";
-import type { FhenixStrategyService } from "src/shared/infrastructure/fhenix-strategy.service";
-import type { DefiPair } from "../domain/defi_pairs.entity";
-import type { DefiPairsRepository } from "../domain/defi_pairs.repository";
+import { DefiTokenService } from "src/defi_token/application/defi_token.service";
+import { FhenixStrategyService } from "src/shared/infrastructure/fhenix-strategy.service";
+import { DefiPair } from "../domain/defi_pairs.entity";
+import { DefiPairsRepository } from "../domain/defi_pairs.repository";
 import { OperationType } from "../domain/operation-type.enum";
-import type { EstimateDefiPairDto } from "../interfaces/dtos/estimate-defi-pair.dto";
-import type { EstimateDefiPairResponseDto } from "../interfaces/dtos/estimate-defi-pair-response.dto";
+import { EstimateDefiPairDto } from "../interfaces/dtos/estimate-defi-pair.dto";
+import { EstimateDefiPairResponseDto } from "../interfaces/dtos/estimate-defi-pair-response.dto";
 
 @Injectable()
 export class DefiPairsService {

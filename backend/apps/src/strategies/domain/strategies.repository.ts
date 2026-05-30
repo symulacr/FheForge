@@ -1,4 +1,4 @@
-import type { Strategy } from "./strategies.entity";
+import { Strategy } from "./strategies.entity";
 
 export abstract class StrategiesRepository {
 	abstract findById(id: string): Promise<Strategy | null>;

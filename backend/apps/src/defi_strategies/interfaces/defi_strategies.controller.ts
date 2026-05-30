@@ -11,14 +11,14 @@ import {
 	Query,
 } from "@nestjs/common";
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from "@nestjs/swagger";
-import type { DefiStrategiesService } from "../application/defi_strategies.service";
-import type { DefiStrategyVersionService } from "../application/defi_strategy_version.service";
-import type { DefiSimulationEngine } from "../application/defi-simulation-engine.service";
-import type { CreateDefiStrategyDto } from "./dto/create_defi_strategy.dto";
-import type { CreateDefiStrategyVersionDto } from "./dto/create_defi_strategy_version.dto";
-import type { UpdateDefiStrategyDto } from "./dto/update_defi_strategy.dto";
-import type { UpdateDefiStrategyVersionDto } from "./dto/update_defi_strategy_version.dto";
-import type { SimulateStrategyDto } from "./dtos/simulate-strategy.dto";
+import { DefiStrategiesService } from "../application/defi_strategies.service";
+import { DefiStrategyVersionService } from "../application/defi_strategy_version.service";
+import { DefiSimulationEngine } from "../application/defi-simulation-engine.service";
+import { CreateDefiStrategyDto } from "./dto/create_defi_strategy.dto";
+import { CreateDefiStrategyVersionDto } from "./dto/create_defi_strategy_version.dto";
+import { UpdateDefiStrategyDto } from "./dto/update_defi_strategy.dto";
+import { UpdateDefiStrategyVersionDto } from "./dto/update_defi_strategy_version.dto";
+import { SimulateStrategyDto } from "./dtos/simulate-strategy.dto";
 
 @ApiTags("DeFi Strategies")
 @Controller("defi-strategies")

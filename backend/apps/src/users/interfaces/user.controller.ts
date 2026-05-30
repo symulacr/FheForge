@@ -14,9 +14,9 @@ import {
 import { ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Public } from "../../auth/public.decorator";
 import { UserMapper } from "../application/mappers/user.mapper";
-import type { UserService } from "../application/user.service";
-import type { CreateUserDto } from "./dtos/create-user.dto";
-import type { UpdateUsernameDto } from "./dtos/update-username.dto";
+import { UserService } from "../application/user.service";
+import { CreateUserDto } from "./dtos/create-user.dto";
+import { UpdateUsernameDto } from "./dtos/update-username.dto";
 import { UserResponseDto } from "./dtos/user-response.dto";
 
 @ApiTags("Users")

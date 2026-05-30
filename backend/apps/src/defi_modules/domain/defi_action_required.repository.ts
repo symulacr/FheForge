@@ -1,5 +1,5 @@
-import type { DefiActionRequired } from "./defi_action_required.entity";
-import type { DefiModuleAction } from "./defi_module_actions.entity";
+import { DefiActionRequired } from "./defi_action_required.entity";
+import { DefiModuleAction } from "./defi_module_actions.entity";
 
 export abstract class DefiActionRequiredRepository {
 	abstract save(defiActionRequired: DefiActionRequired): Promise<DefiActionRequired>;

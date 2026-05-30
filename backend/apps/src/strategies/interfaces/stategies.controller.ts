@@ -12,10 +12,10 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { StrategyMapper } from "../application/mappers/strategy.mapper";
-import type { StrategyService } from "../application/strategy.service";
-import type { CreateStrategyDto } from "./dtos/create-strategy.dto";
+import { StrategyService } from "../application/strategy.service";
+import { CreateStrategyDto } from "./dtos/create-strategy.dto";
 import { StrategyResponseDto } from "./dtos/strategy-response.dto";
-import type { UpdateStrategyDto } from "./dtos/update-strategy.dto";
+import { UpdateStrategyDto } from "./dtos/update-strategy.dto";
 
 @ApiTags("Strategies")
 @Controller("strategies")

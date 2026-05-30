@@ -1,5 +1,5 @@
-import type { DefiExecutionStepResult } from "./defi_execution_step_result.entity";
-import type { DefiStrategyExecution } from "./defi_strategy_execution.entity";
+import { DefiExecutionStepResult } from "./defi_execution_step_result.entity";
+import { DefiStrategyExecution } from "./defi_strategy_execution.entity";
 
 export abstract class DefiStrategyExecutionRepository {
 	abstract save(execution: DefiStrategyExecution): Promise<DefiStrategyExecution>;

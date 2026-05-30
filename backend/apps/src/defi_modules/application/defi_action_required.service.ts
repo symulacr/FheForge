@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 import { DefiActionRequired } from "../domain/defi_action_required.entity";
-import type { DefiActionRequiredRepository } from "../domain/defi_action_required.repository";
+import { DefiActionRequiredRepository } from "../domain/defi_action_required.repository";
 
 @Injectable()
 export class DefiActionRequiredService {

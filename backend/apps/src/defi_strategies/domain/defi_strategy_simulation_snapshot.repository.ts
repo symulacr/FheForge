@@ -1,4 +1,4 @@
-import type { DefiStrategySimulationSnapshot } from "./defi_strategy_simulation_snapshot.entity";
+import { DefiStrategySimulationSnapshot } from "./defi_strategy_simulation_snapshot.entity";
 
 export abstract class DefiStrategySimulationSnapshotRepository {
 	abstract save(snapshot: DefiStrategySimulationSnapshot): Promise<DefiStrategySimulationSnapshot>;

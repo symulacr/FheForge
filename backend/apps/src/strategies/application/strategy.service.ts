@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import type { FhenixStrategyService } from "../../shared/infrastructure/fhenix-strategy.service";
+import { FhenixStrategyService } from "../../shared/infrastructure/fhenix-strategy.service";
 import { Strategy } from "../domain/strategies.entity";
-import type { StrategiesRepository } from "../domain/strategies.repository";
+import { StrategiesRepository } from "../domain/strategies.repository";
 import { StrategyMapper } from "./mappers/strategy.mapper";
-import type { RewardsService } from "./rewards.service";
+import { RewardsService } from "./rewards.service";
 
 @Injectable()
 export class StrategyService {

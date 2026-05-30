@@ -1,8 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { DefiPairsService } from "../../defi_modules/application/defi_pairs.service";
+import { DefiPairsService } from "../../defi_modules/application/defi_pairs.service";
 import { OperationType } from "../../defi_modules/domain/operation-type.enum";
-import type { DefiTokenService } from "../../defi_token/application/defi_token.service";
-import type { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
+import { DefiTokenService } from "../../defi_token/application/defi_token.service";
+import { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);

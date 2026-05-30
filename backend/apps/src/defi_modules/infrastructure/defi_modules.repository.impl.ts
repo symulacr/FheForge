@@ -1,10 +1,10 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { DefiToken } from "src/defi_token/domain/defi_token.entity";
-import type { SupabaseService } from "../../shared/infrastructure/supabase.service";
+import { SupabaseService } from "../../shared/infrastructure/supabase.service";
 import { DefiModuleAction } from "../domain/defi_module_actions.entity";
 import { DefiModule } from "../domain/defi_modules.entity";
-import type { DefiModulesRepository } from "../domain/defi_modules.repository";
-import type { DefiPair } from "../domain/defi_pairs.entity";
+import { DefiModulesRepository } from "../domain/defi_modules.repository";
+import { DefiPair } from "../domain/defi_pairs.entity";
 
 type ModuleJoinRow = {
 	id: string;

@@ -1,5 +1,5 @@
-import type { Activity } from "../../domain/activity.entity";
-import type { ActivityResponseDto } from "../../interfaces/dtos/activity-response.dto";
+import { Activity } from "../../domain/activity.entity";
+import { ActivityResponseDto } from "../../interfaces/dtos/activity-response.dto";
 
 export class ActivityMapper {
 	static toResponse(entity: Activity): ActivityResponseDto {

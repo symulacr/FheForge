@@ -1,4 +1,4 @@
-import type { StrategyStepResponseDto } from "src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto";
+import { StrategyStepResponseDto } from "src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto";
 import type {
 	ActionSimulator,
 	SimulationContext,

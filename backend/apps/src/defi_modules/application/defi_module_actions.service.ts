@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 import { DefiModuleAction } from "../domain/defi_module_actions.entity";
-import type { DefiModuleActionsRepository } from "../domain/defi_module_actions.repository";
-import type { CreateDefiModuleActionDto } from "../interfaces/dtos/create_defi_module_action.dto";
-import type { DefiModulesService } from "./defi_modules.service";
+import { DefiModuleActionsRepository } from "../domain/defi_module_actions.repository";
+import { CreateDefiModuleActionDto } from "../interfaces/dtos/create_defi_module_action.dto";
+import { DefiModulesService } from "./defi_modules.service";
 
 @Injectable()
 export class DefiModuleActionsService {

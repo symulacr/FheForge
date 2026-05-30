@@ -1,7 +1,7 @@
-import type { DefiToken } from "src/defi_token/domain/defi_token.entity";
-import type { DefiModuleAction } from "./defi_module_actions.entity";
-import type { DefiModule } from "./defi_modules.entity";
-import type { DefiPair } from "./defi_pairs.entity";
+import { DefiToken } from "src/defi_token/domain/defi_token.entity";
+import { DefiModuleAction } from "./defi_module_actions.entity";
+import { DefiModule } from "./defi_modules.entity";
+import { DefiPair } from "./defi_pairs.entity";
 
 export abstract class DefiModulesRepository {
 	abstract save(defiModule: DefiModule): Promise<DefiModule>;

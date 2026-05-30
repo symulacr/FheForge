@@ -1,8 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
-import type { ActivityRow } from "src/shared/infrastructure/database.types";
-import type { SupabaseService } from "src/shared/infrastructure/supabase.service";
+import { ActivityRow } from "src/shared/infrastructure/database.types";
+import { SupabaseService } from "src/shared/infrastructure/supabase.service";
 import { Activity, type ActivityStatus } from "../domain/activity.entity";
-import type { ActivityRepository } from "../domain/activity.repository";
+import { ActivityRepository } from "../domain/activity.repository";
 
 @Injectable()
 export class ActivityRepositoryImplement implements ActivityRepository {

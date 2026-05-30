@@ -1,6 +1,6 @@
 import { plainToInstance } from "class-transformer";
 import { User } from "src/users/domain/user.entity";
-import type { CreateUserDto } from "src/users/interfaces/dtos/create-user.dto";
+import { CreateUserDto } from "src/users/interfaces/dtos/create-user.dto";
 import { UserDto } from "src/users/interfaces/dtos/user.dto";
 import { UserResponseDto } from "src/users/interfaces/dtos/user-response.dto";
 

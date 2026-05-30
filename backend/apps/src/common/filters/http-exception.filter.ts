@@ -6,7 +6,7 @@ import {
 	HttpStatus,
 	Logger,
 } from "@nestjs/common";
-import type { Request, Response } from "express";
+import { Request, Response } from "express";
 import { GeminiApiException } from "../exceptions/gemini-api.exception";
 
 interface HttpResponseShape {

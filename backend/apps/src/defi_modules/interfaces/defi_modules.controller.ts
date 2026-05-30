@@ -1,15 +1,15 @@
 import { Body, Controller, Get, Post, Query } from "@nestjs/common";
 import { ApiBody, ApiOperation, ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { v4 as uuidv4 } from "uuid";
-import type { DefiActionRequiredService } from "../application/defi_action_required.service";
-import type { DefiModuleActionsService } from "../application/defi_module_actions.service";
-import type { DefiModulesService } from "../application/defi_modules.service";
-import type { DefiPairsService } from "../application/defi_pairs.service";
+import { DefiActionRequiredService } from "../application/defi_action_required.service";
+import { DefiModuleActionsService } from "../application/defi_module_actions.service";
+import { DefiModulesService } from "../application/defi_modules.service";
+import { DefiPairsService } from "../application/defi_pairs.service";
 import { DefiPair } from "../domain/defi_pairs.entity";
 import { CreateDefiActionRequiredDto } from "./dtos/create_defi_action_required.dto";
-import type { CreateDefiModuleDto } from "./dtos/create_defi_module.dto";
+import { CreateDefiModuleDto } from "./dtos/create_defi_module.dto";
 import { CreateDefiModuleActionDto } from "./dtos/create_defi_module_action.dto";
-import type { CreateDefiPairsDto } from "./dtos/create_defi_pairs.dto";
+import { CreateDefiPairsDto } from "./dtos/create_defi_pairs.dto";
 import { EstimateDefiPairDto } from "./dtos/estimate-defi-pair.dto";
 import { EstimateDefiPairResponseDto } from "./dtos/estimate-defi-pair-response.dto";
 

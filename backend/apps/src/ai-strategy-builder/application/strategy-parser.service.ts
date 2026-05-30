@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import type { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
-import type { GeminiAiService } from "./gemini-ai.service";
+import { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
+import { GeminiAiService } from "./gemini-ai.service";
 
 function _getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);

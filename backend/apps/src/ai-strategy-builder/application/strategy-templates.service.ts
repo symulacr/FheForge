@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import type { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
+import { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
 
 export interface StrategyTemplate {
 	id: string;

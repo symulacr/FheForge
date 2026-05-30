@@ -1,5 +1,5 @@
-import type { Strategy } from "../../domain/strategies.entity";
-import type { StrategyResponseDto } from "../../interfaces/dtos/strategy-response.dto";
+import { Strategy } from "../../domain/strategies.entity";
+import { StrategyResponseDto } from "../../interfaces/dtos/strategy-response.dto";
 
 export class StrategyMapper {
 	static toResponse(entity: Strategy): StrategyResponseDto {
