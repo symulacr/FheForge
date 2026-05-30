@@ -57,11 +57,11 @@ export function TokenSelector({
 					if (token.id) onSelect(token.id);
 					onClose();
 				}}
-				className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors"
+				className="flex items-center gap-3 px-4 py-3 hover:bg-secondary cursor-pointer transition-colors"
 				role="option"
 				aria-selected={selectedId === token.id}
 			>
-				<div className="w-5 h-5 border border-border overflow-hidden bg-neutral-900 flex items-center justify-center relative">
+				<div className="w-5 h-5 border border-border overflow-hidden bg-secondary flex items-center justify-center relative">
 					{iconSrc ? (
 						<Image
 							src={iconSrc}
@@ -74,7 +74,7 @@ export function TokenSelector({
 						<span className="text-[8px] font-bold">{token.name?.charAt(0)}</span>
 					)}
 				</div>
-				<span className="text-sm text-white">{token.name ?? ""}</span>
+				<span className="text-sm text-foreground">{token.name ?? ""}</span>
 				{selectedId === token.id && <div className="ml-auto w-1 h-1 bg-primary animate-pulse" />}
 			</div>
 		);
@@ -82,7 +82,7 @@ export function TokenSelector({
 
 	return (
 		<div className="space-y-3">
-			<label className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold ml-1">
+			<label className="text-xs text-muted font-medium ml-1">
 				{label}
 			</label>
 			<div className="relative">
@@ -92,8 +92,8 @@ export function TokenSelector({
 					onClick={onToggle}
 					className="
             w-full flex items-center justify-between pl-4 pr-10 py-3.5 
-            bg-card border border-border text-white
-            hover:bg-secondary hover:border-white/20 transition-all
+            bg-card border border-border text-foreground
+            hover:bg-secondary hover:border-accent/50 transition-all
             disabled:opacity-50 disabled:cursor-not-allowed
           "
 					aria-label={`Select ${label.toLowerCase()}`}

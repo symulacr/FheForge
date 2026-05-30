@@ -66,12 +66,12 @@ export default function StrategyTable() {
 		<div className="w-full max-w-6xl mx-auto space-y-6 px-4 py-8">
 			<div className="flex items-center justify-between px-1">
 				<div className="flex flex-col items-start gap-1">
-					<h1 className="text-2xl font-bold text-primary flex items-center gap-2 tracking-tight drop-shadow-[0_0_15px_rgba(0,255,255,0.3)]">
+					<h1 className="text-2xl font-bold text-primary flex items-center gap-2 tracking-tight">
 						<Target className="w-6 h-6 text-primary" />
 						Strategy Hub
 					</h1>
 					<div className="flex items-center gap-3">
-						<p className="text-sm text-neutral-400 font-medium">Automated DeFi management</p>
+						<p className="text-sm text-muted font-medium">Strategy positions on Arbitrum Sepolia</p>
 
 						{!loading && strategies.length > 0 && (
 							<div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted/80 bg-tertiary/5 px-2 py-0.5 rounded border border-border">
@@ -84,7 +84,7 @@ export default function StrategyTable() {
 
 				<Link
 					href="/builder"
-					className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 text-primary text-[11px] font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-lg active:scale-95 group"
+					className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary hover:text-white transition-all active:scale-95 group"
 				>
 					<Plus
 						size={14}
@@ -95,12 +95,10 @@ export default function StrategyTable() {
 				</Link>
 			</div>
 
-			<div className="glass overflow-hidden border border-border shadow-2xl min-h-[400px] flex flex-col">
+			<div className="glass overflow-hidden border border-border min-h-[400px] flex flex-col">
 				{loading ? (
-					<div className="flex-1 flex items-center justify-center animate-pulse">
-						<span className="text-[10px] font-black tracking-[0.3em] text-white/10 uppercase">
-							Synchronizing...
-						</span>
+					<div className="flex-1 flex items-center justify-center">
+						<span className="terminal-loading">synchronizing</span>
 					</div>
 				) : error ? (
 					<div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
@@ -111,13 +109,12 @@ export default function StrategyTable() {
 									<path d="M12 8v4M12 16h.01" />
 								</svg>
 							</div>
-							<div className="absolute inset-0 bg-destructive/20 blur-3xl -z-10" />
 						</div>
-						<p className="text-white font-bold text-lg tracking-tight">Failed to load strategies</p>
-						<p className="text-neutral-500 text-sm mt-1 italic max-w-[250px]">{error}</p>
+						<p className="text-foreground font-semibold text-base">Failed to load strategies</p>
+						<p className="text-muted text-sm mt-1 italic max-w-[250px]">{error}</p>
 						<button
 							onClick={() => refetch()}
-							className="mt-8 px-6 py-2.5 bg-primary text-black font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-primary/80"
+							className="mt-8 px-6 py-2.5 bg-primary text-black text-sm font-medium transition-all hover:bg-primary/80"
 						>
 							Retry
 						</button>
@@ -126,15 +123,14 @@ export default function StrategyTable() {
 					<div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
 						<div className="relative mb-6">
 							<Rocket className="w-12 h-12 text-primary/20 opacity-60" />
-							<div className="absolute inset-0 bg-primary/20 blur-3xl -z-10" />
 						</div>
-						<p className="text-white font-bold text-lg tracking-tight">Strategy vault is empty</p>
-						<p className="text-neutral-500 text-sm mt-1 italic max-w-[250px]">
-							You haven&apos;t created any strategies yet. Start your journey now.
+						<p className="text-foreground font-semibold text-base">Strategy vault is empty</p>
+						<p className="text-muted text-sm mt-1 italic max-w-[250px]">
+							No strategies yet. Use the builder to compose your first position.
 						</p>
 						<Link
 							href="/builder"
-							className="mt-8 px-6 py-2.5 bg-primary text-black font-black text-[10px] uppercase tracking-[0.2em] transition-all"
+							className="mt-8 px-6 py-2.5 bg-primary text-black text-sm font-medium transition-all"
 						>
 							Launch Builder
 						</Link>
@@ -144,16 +140,16 @@ export default function StrategyTable() {
 						<table className="w-full text-left border-separate border-spacing-0 table-fixed">
 							<thead>
 								<tr className="bg-neutral-900/40 border-b border-white/5">
-									<th className="w-[20%] px-4 py-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+									<th className="w-[20%] px-4 py-4 text-[10px] font-bold text-muted uppercase tracking-widest">
 										Strategy
 									</th>
-									<th className="w-[50%] px-4 py-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+									<th className="w-[50%] px-4 py-4 text-[10px] font-bold text-muted uppercase tracking-widest">
 										Workflow & Path
 									</th>
-									<th className="w-[15%] px-4 py-4 text-[10px] font-bold text-neutral-500 uppercase tracking-widest text-center">
+									<th className="w-[15%] px-4 py-4 text-[10px] font-bold text-muted uppercase tracking-widest text-center">
 										Assets
 									</th>
-									<th className="w-[15%] px-4 py-4 text-right text-[10px] font-bold text-neutral-500 uppercase tracking-widest">
+									<th className="w-[15%] px-4 py-4 text-right text-[10px] font-bold text-muted uppercase tracking-widest">
 										Actions
 									</th>
 								</tr>
@@ -183,7 +179,7 @@ export default function StrategyTable() {
 													>
 														{strategy.name}
 													</span>
-													<span className="text-[9px] w-fit px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-neutral-500 font-black uppercase tracking-tighter">
+													<span className="text-[9px] w-fit px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted font-black uppercase tracking-tighter">
 														{strategy.context || "CoFHE"}
 													</span>
 												</div>

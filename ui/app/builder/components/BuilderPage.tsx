@@ -167,7 +167,7 @@ function Builder() {
 	};
 
 	return (
-		<div className="flex flex-1 text-white px-6 pb-6 pt-4 min-h-0 gap-6">
+		<div className="flex flex-1 text-foreground px-6 pb-6 pt-4 min-h-0 gap-6">
 			<div className="w-80 custom-scroll pr-2">
 				<Sidebar modules={modules} onSelect={handleAddNode} />
 			</div>

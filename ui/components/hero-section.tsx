@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, Layers, Menu, Sparkles, Workflow, X } from "lucide-react";
+import { Bookmark, Layers, Menu, Terminal, Workflow, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -11,7 +11,7 @@ const NAV_ITEMS = [
 	{ icon: Layers, label: "Strategies", href: "/" },
 	{ icon: Workflow, label: "Builder", href: "/builder" },
 	{ icon: Bookmark, label: "My strategies", href: "/strategy" },
-	{ icon: Sparkles, label: "Prompt", href: "/prompt" },
+	{ icon: Terminal, label: "Prompt", href: "/prompt" },
 ] as const;
 
 export function HeroSection() {
@@ -37,7 +37,7 @@ export function HeroSection() {
 				<Link
 					href="/"
 					aria-label="FheForge home"
-					className="text-sm font-bold uppercase tracking-widest text-foreground transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+					className="text-sm font-bold uppercase tracking-widest text-foreground transition-colors duration-150 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 				>
 					FHE<span className="text-accent">FORGE</span>
 				</Link>
@@ -51,13 +51,13 @@ export function HeroSection() {
 								href={href}
 								onClick={(e) => navigateTo(href, e)}
 								aria-current={active ? "page" : undefined}
-								className={`flex h-9 items-center gap-1.5 border px-3 text-xs uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+								className={`flex h-9 items-center gap-1.5 border px-3 text-xs uppercase tracking-wide transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
 									active
 										? "border-accent bg-accent/10 text-accent"
 										: "border-transparent text-muted hover:border-border hover:text-foreground"
 								}`}
 							>
-								<Icon className="h-3 w-3" aria-hidden="true" />
+								<Icon className="h-4 w-4" aria-hidden="true" />
 								{label}
 							</Link>
 						);
@@ -72,7 +72,7 @@ export function HeroSection() {
 						aria-expanded={mobileOpen}
 						aria-controls="mobile-nav"
 						onClick={() => setMobileOpen((v) => !v)}
-						className="flex h-11 w-11 items-center justify-center border border-border text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:hidden"
+						className="flex h-11 w-11 items-center justify-center border border-border text-foreground transition-colors duration-150 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:hidden"
 					>
 						{mobileOpen ? (
 							<X className="h-4 w-4" aria-hidden="true" />
@@ -83,11 +83,15 @@ export function HeroSection() {
 				</div>
 			</div>
 
-			{mobileOpen && (
+			<div
+				id="mobile-nav"
+				className={`overflow-hidden transition-all duration-200 md:hidden ${
+					mobileOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+				}`}
+			>
 				<nav
-					id="mobile-nav"
 					aria-label="Mobile primary"
-					className="border-b border-border bg-background md:hidden"
+					className="border-b border-border bg-background"
 				>
 					<ul className="flex flex-col py-2">
 						{NAV_ITEMS.map(({ icon: Icon, label, href }) => {
@@ -98,7 +102,7 @@ export function HeroSection() {
 										href={href}
 										onClick={(e) => navigateTo(href, e)}
 										aria-current={active ? "page" : undefined}
-										className={`flex h-12 items-center gap-3 px-6 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+										className={`flex h-12 items-center gap-3 px-6 text-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
 											active ? "bg-accent/10 text-accent" : "text-foreground hover:bg-secondary"
 										}`}
 									>
@@ -110,7 +114,7 @@ export function HeroSection() {
 						})}
 					</ul>
 				</nav>
-			)}
+			</div>
 		</header>
 	);
 }

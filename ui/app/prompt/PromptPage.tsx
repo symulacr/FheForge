@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Lightbulb, Sparkles } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -79,18 +79,18 @@ export default function PromptPage() {
 	};
 
 	return (
-		<div className="flex flex-1 min-h-[calc(100vh-120px)] items-center justify-center px-6 py-5 text-white">
+		<div className="flex flex-1 min-h-[calc(100vh-120px)] items-center justify-center px-6 py-5 text-foreground">
 			<div className="flex w-full max-w-7xl items-start justify-center gap-6">
-				<div className="flex w-full max-w-[820px] flex-col relative overflow-hidden bg-card text-card-foreground border border-border p-6 shadow-lg transition-colors duration-300 hover:border-accent/50">
+				<div className="flex w-full max-w-[820px] flex-col relative overflow-hidden bg-card text-card-foreground border border-border p-6 transition-colors duration-300 hover:border-accent/50">
 					<div className="space-y-5">
 						<div className="space-y-1">
-							<h1 className="text-2xl font-semibold tracking-tight text-white">
+							<h1 className="text-2xl font-semibold tracking-tight text-foreground">
 								Create Prompt Strategy
 							</h1>
 						</div>
 
 						<section className="space-y-2">
-							<h2 className="text-sm font-medium text-white">Starting Token & Amount</h2>
+							<h2 className="text-sm font-medium text-foreground">Starting Token & Amount</h2>
 
 							<div className="flex gap-3">
 								<div className="relative w-32">
@@ -102,19 +102,19 @@ export default function PromptPage() {
 										step="0.000001"
 										placeholder="Amount"
 										className="
-                      h-12 w-full 
+                      h-12 w-full
                       border border-border
                       bg-secondary
                       pl-4 pr-4
-                      text-sm text-white text-center
+                      text-sm text-foreground text-center
                       placeholder:text-muted
                       outline-none transition-all duration-200
-                      
+
                       hover:border-accent/50
                       hover:bg-secondary
                       focus:border-accent
                       focus:bg-secondary
-                      
+
                       [appearance:textfield]
                       [&::-webkit-outer-spin-button]:appearance-none
                       [&::-webkit-inner-spin-button]:appearance-none
@@ -126,18 +126,18 @@ export default function PromptPage() {
 									<div
 										onClick={() => setIsDropdownOpen(!isDropdownOpen)}
 										className="
-                      h-12 w-full cursor-pointer 
+                      h-12 w-full cursor-pointer
                       border border-border
                       bg-secondary
                       pl-5 pr-12
-                      text-sm text-white
+                      text-sm text-foreground
                       outline-none transition-all duration-200
-                      
+
                       hover:border-accent/50
                       hover:bg-secondary
                       focus:border-accent
                       focus:bg-secondary
-                      
+
                       flex items-center gap-3
                     "
 									>
@@ -184,7 +184,7 @@ export default function PromptPage() {
 															setSelectedToken(token.value);
 															setIsDropdownOpen(false);
 														}}
-														className="flex items-center gap-3 px-5 py-3 text-sm text-white hover:bg-secondary cursor-pointer transition-colors"
+														className="flex items-center gap-3 px-5 py-3 text-sm text-foreground hover:bg-secondary cursor-pointer transition-colors"
 													>
 														<Image
 															src={
@@ -210,7 +210,7 @@ export default function PromptPage() {
 
 						<section className="space-y-2">
 							<div className="flex items-center justify-between gap-4">
-								<h2 className="text-sm font-medium text-white">Strategy Prompt</h2>
+								<h2 className="text-sm font-medium text-foreground">Strategy Prompt</h2>
 
 								<span className="text-xs text-muted">
 									{charCount}/{PROMPT_MAX_LENGTH}
@@ -223,7 +223,7 @@ export default function PromptPage() {
 									onChange={(e) => setPrompt(e.target.value)}
 									maxLength={PROMPT_MAX_LENGTH}
 									placeholder="Example: Create a gdot looping 3 loops, Supply DOT and borrow USDC, Maximize yield with moderate risk..."
-									className="h-[110px] w-full resize-none bg-transparent text-sm text-white outline-none placeholder:text-muted"
+									className="h-[110px] w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted"
 								/>
 
 								<div className="mt-3 flex items-center justify-between gap-3">
@@ -239,7 +239,7 @@ export default function PromptPage() {
 					<div className="mt-5 flex items-center justify-end gap-3">
 						<button
 							onClick={onCancel}
-							className="h-11  border border-border bg-secondary px-5 text-sm font-medium text-muted transition hover:border-accent/50 hover:bg-secondary hover:text-white"
+							className="h-11  border border-border bg-secondary px-5 text-sm font-medium text-muted transition hover:border-accent/50 hover:bg-secondary hover:text-foreground"
 						>
 							Cancel
 						</button>
@@ -247,16 +247,16 @@ export default function PromptPage() {
 						<button
 							onClick={handleNext}
 							disabled={submitting}
-							className="h-11  border border-border bg-secondary px-7 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-secondary hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+							className="h-11  border border-border bg-secondary px-7 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{submitting ? (
 								<div className="flex items-center gap-2">
 									<motion.div
 										animate={{ rotate: 360 }}
 										transition={{
-											duration: 1,
-											repeat: Infinity,
+											duration: 0.8,
 											ease: "linear",
+											repeat: Infinity,
 										}}
 										className="w-4 h-4 border-2 border-white/30 border-t-white/80 "
 									/>
@@ -272,14 +272,24 @@ export default function PromptPage() {
 				<div className="w-[320px] shrink-0">
 					{submitting ? (
 						<StrategyFlowSkeleton />
-					) : strategyResult ? (
-						<StrategyFlowPreview
-							strategy={strategyResult}
-							selectedToken={selectedToken}
-							onRunStrategy={handleRunStrategyClick}
-						/>
 					) : (
-						<div className="relative overflow-hidden  bg-card text-card-foreground  border border-border p-5 shadow-lg  transition-all duration-300 hover:border-accent/50  ">
+						<AnimatePresence>
+							{strategyResult ? (
+								<motion.div
+									key="strategy-result"
+									initial={{ opacity: 0, x: 16 }}
+									animate={{ opacity: 1, x: 0 }}
+									exit={{ opacity: 0, x: 16 }}
+									transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+								>
+									<StrategyFlowPreview
+										strategy={strategyResult}
+										selectedToken={selectedToken}
+										onRunStrategy={handleRunStrategyClick}
+									/>
+								</motion.div>
+							) : (
+						<div className="relative overflow-hidden  bg-card text-card-foreground  border border-border p-5  transition-all duration-300 hover:border-accent/50  ">
 							<div className="space-y-5">
 								<div className="flex items-center gap-2 text-yellow-400">
 									<Lightbulb className="h-4 w-4" />
@@ -327,10 +337,10 @@ export default function PromptPage() {
 									</div>
 								</div>
 
-								<div className="space-y-3 border-t border-white/8 pt-4">
+								<div className="space-y-3 border-t border-border pt-4">
 									<div className="space-y-2">
 										<h3 className="text-xs font-medium text-muted">Supported Operations:</h3>
-										<div className="grid grid-cols-2 gap-1 text-xs text-white/50">
+										<div className="grid grid-cols-2 gap-1 text-xs text-muted">
 											<div className="p-1.5 rounded bg-secondary border border-white/5 select-none">
 												Supply
 											</div>
@@ -347,7 +357,7 @@ export default function PromptPage() {
 									</div>
 								</div>
 
-								<div className="space-y-3 border-t border-white/8 pt-4">
+								<div className="space-y-3 border-t border-border pt-4">
 									<div className="space-y-2">
 										<h3 className="text-xs font-medium text-muted">Available Tokens:</h3>
 										<div className="flex flex-wrap gap-1">
@@ -364,6 +374,8 @@ export default function PromptPage() {
 								</div>
 							</div>
 						</div>
+						)}
+						</AnimatePresence>
 					)}
 				</div>
 			</div>

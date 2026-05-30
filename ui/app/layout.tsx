@@ -49,7 +49,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		title: "FheForge",
 		description:
-			"Maximize your DeFi investments with FheForge. Explore AI-driven strategies and earn yield across the Fhenix ecosystem.",
+			"FHE-encrypted DeFi protocol. Supply, borrow, and swap with encrypted amounts on Arbitrum Sepolia.",
 		url: baseUrl,
 		siteName: "FheForge",
 		images: [
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
 		card: "summary_large_image",
 		title: "FheForge – Fhenix DeFi Strategies & AI Yield Optimization",
 		description:
-			"Maximize your DeFi investments with FheForge. Explore AI-driven strategies and earn yield across the Fhenix ecosystem.",
+			"FHE-encrypted DeFi protocol. Supply, borrow, and swap with encrypted amounts on Arbitrum Sepolia.",
 		images: ["/logo-fheforge.svg"],
 		site: "@FheForgeApp",
 		creator: "@FheForgeApp",

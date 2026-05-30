@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2, Circle, ExternalLinkIcon, Loader2Icon } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useRef, useState } from "react";
@@ -17,6 +17,7 @@ export const CARD_HEIGHT = 50;
 export const CARD_OFFSET = 100;
 
 export default function StepStack({ steps, currentStep, allStepsCompleted }: StepStackProps) {
+	const prefersReducedMotion = useReducedMotion();
 	const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 	const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 	const containerRef = useRef<HTMLDivElement | null>(null);
@@ -109,18 +110,14 @@ export default function StepStack({ steps, currentStep, allStepsCompleted }: Ste
 									initial={{ y: yPosition, opacity: 1 }}
 									animate={{ y: yPosition, opacity: 1 }}
 									exit={{ y: yPosition - 400, opacity: 0 }}
-									transition={{
-										type: "spring",
-										stiffness: 300,
-										damping: 30,
-									}}
+									transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
 									className="absolute top-0 left-0 right-0 will-change-transform"
 									onMouseEnter={() => setHoveredCard(index)}
 									onMouseLeave={() => setHoveredCard(null)}
 								>
 									<div
 										className={`border p-4 transition-all duration-300 flex flex-col cursor-pointer relative overflow-hidden ${
-											hoveredCard === index ? "shadow-xl scale-105" : ""
+											hoveredCard === index && !prefersReducedMotion ? "scale-105" : ""
 										}`}
 										style={{
 											background: isActive
@@ -142,11 +139,7 @@ export default function StepStack({ steps, currentStep, allStepsCompleted }: Ste
 													<motion.div
 														initial={{ scale: 0 }}
 														animate={{ scale: 1 }}
-														transition={{
-															type: "spring",
-															stiffness: 500,
-															damping: 30,
-														}}
+														transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 30 }}
 													>
 														<CheckCircle2 className="h-6 w-6 text-white" />
 													</motion.div>

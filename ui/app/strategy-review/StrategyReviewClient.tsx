@@ -35,6 +35,8 @@ export default function StrategyReviewClient() {
 	const searchParams = useSearchParams();
 	const [executing, setExecuting] = useState(false);
 	const [slippage, setSlippage] = useState(SLIPPAGE_TOLERANCE);
+	const [txHash, setTxHash] = useState<string | null>(null);
+	const [ciphertextHandle, setCiphertextHandle] = useState<string | null>(null);
 	const { openPosition, encrypt128ForComposer, isPending: composerPending } = useComposer();
 
 	const encodedData = searchParams.get("data");
@@ -133,8 +135,14 @@ export default function StrategyReviewClient() {
 				borrowEnc: encBorrow,
 			};
 
-			await openPosition(params, encrypted);
-			router.push("/execute");
+			const receipt = await openPosition(params, encrypted);
+			if (receipt) {
+				setTxHash(receipt);
+			}
+			if (params.workflowHash && params.workflowHash !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+				setCiphertextHandle(params.workflowHash);
+			}
+			router.push("/strategy");
 		} catch (e: unknown) {
 			console.warn("openPosition failed:", e);
 			displayToast("error", "Strategy execution failed. Please try again.");
@@ -159,7 +167,7 @@ export default function StrategyReviewClient() {
 	if (loading) {
 		return (
 			<div className="flex min-h-screen items-center justify-center">
-				<div className="text-white">Loading strategy...</div>
+				<div className="text-foreground">Loading strategy...</div>
 			</div>
 		);
 	}
@@ -167,7 +175,7 @@ export default function StrategyReviewClient() {
 	if (!strategy) {
 		return (
 			<div className="flex min-h-screen items-center justify-center">
-				<div className="text-white">No strategy found</div>
+				<div className="text-foreground">No strategy found</div>
 			</div>
 		);
 	}
@@ -209,7 +217,7 @@ export default function StrategyReviewClient() {
 					<button
 						onClick={handleExecute}
 						disabled={submitDisabled}
-						className="flex items-center gap-2 bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
+						className="flex items-center gap-2 bg-accent px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						<Zap className="h-4 w-4" />
 						Execute Strategy
@@ -235,6 +243,20 @@ export default function StrategyReviewClient() {
 								🔒 {result.fhe_note}
 							</div>
 						)}
+
+						{txHash && (
+							<div className="mt-3 font-mono text-xs text-muted border border-border p-2">
+								<span className="text-muted mr-2">tx</span>
+								<span className="text-foreground">{txHash}</span>
+							</div>
+						)}
+
+						{ciphertextHandle && (
+							<div className="mt-3 font-mono text-xs text-muted border border-border p-2">
+								<span className="text-muted mr-2">ciphertext</span>
+								<span className="text-foreground">{ciphertextHandle}</span>
+							</div>
+						)}
 					</div>
 
 					<div className="space-y-6">
@@ -254,7 +276,7 @@ export default function StrategyReviewClient() {
 									step="0.1"
 									value={slippage}
 									onChange={(e) => setSlippage(Number(e.target.value))}
-									className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer accent-accent"
+									className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
 								/>
 								<div className="flex justify-between text-xs text-muted">
 									<span>0.1%</span>

@@ -8,7 +8,7 @@ const BuilderPage = dynamic(() => import("./components/BuilderPage"), {
 	ssr: false,
 	loading: () => (
 		<div className="flex items-center justify-center flex-1">
-			<div className="text-muted text-sm animate-pulse">Loading builder...</div>
+			<span className="terminal-loading">initializing</span>
 		</div>
 	),
 });
@@ -34,7 +34,7 @@ function BuilderFallback() {
 					</button>
 					<Link
 						href="/"
-						className="inline-flex items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+						className="inline-flex items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-foreground transition-colors"
 					>
 						Go home
 					</Link>
@@ -46,7 +46,7 @@ function BuilderFallback() {
 
 export default function Page() {
 	return (
-		<div className="web3-grid flex flex-col flex-1 min-h-0 mt-16">
+		<div className="flex flex-col flex-1 min-h-0 mt-16">
 			<ErrorBoundary fallback={<BuilderFallback />}>
 				<BuilderPage />
 			</ErrorBoundary>

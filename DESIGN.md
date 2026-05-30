@@ -15,7 +15,7 @@ Color strategy: Restrained. Near-black surface ramp, single blue accent used for
 | `--card` | `#111111` | Card and panel surface |
 | `--secondary` | `#1a1a1a` | Secondary / nested surface |
 | `--border` | `#2a2a2a` | Borders |
-| `--muted` | `#555555` | Secondary text, disabled |
+| `--muted` | `#888888` | Secondary text, disabled |
 | `--popover` | `#111111` | Popover surface |
 | `--input` | `#111111` | Input background |
 | `--sidebar` | `#0d0d0d` | Sidebar surface |
@@ -101,7 +101,7 @@ Lucide React throughout. `w-4 h-4` (16px) standard. `w-5 h-5` (20px) for section
 | Pending / at-risk | `--warning` | `#eab308` |
 | Error / liquidation | `--destructive` | `#ef4444` |
 | Active / selected / primary CTA | `--accent` | `#3b82f6` |
-| Disabled / secondary | `--muted` | `#555555` |
+| Disabled / secondary | `--muted` | `#888888` |
 
 State is always communicated by label + color, never color alone.
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { StepItem } from "./step-item";
 import type { ExecutionStep } from "./types";
 
@@ -11,6 +11,7 @@ interface AnimatedStepProps {
 }
 
 export function AnimatedStep({ steps, currentIndex, explorerBase }: AnimatedStepProps) {
+	const prefersReducedMotion = useReducedMotion();
 	const completedSteps = steps.slice(0, currentIndex);
 	const currentStep = steps[currentIndex];
 
@@ -36,12 +37,7 @@ export function AnimatedStep({ steps, currentIndex, explorerBase }: AnimatedStep
 									filter: `brightness(${brightness}) blur(${index * 0.3}px)`,
 								}}
 								exit={{ opacity: 0, y: 60, scale: 0.9 }}
-								transition={{
-									type: "spring",
-									damping: 22,
-									stiffness: 250,
-									mass: 0.7,
-								}}
+								transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", damping: 22, stiffness: 250, mass: 0.7 }}
 								className="absolute w-full transform-gpu"
 								style={{
 									transformOrigin: "center top",
@@ -67,11 +63,7 @@ export function AnimatedStep({ steps, currentIndex, explorerBase }: AnimatedStep
 						filter: "brightness(1) blur(0px)",
 					}}
 					exit={{ opacity: 0, y: 60, scale: 0.9 }}
-					transition={{
-						type: "spring",
-						damping: 20,
-						stiffness: 200,
-					}}
+					transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", damping: 20, stiffness: 200 }}
 					className="absolute w-full transform-gpu"
 					style={{
 						transformOrigin: "center top",

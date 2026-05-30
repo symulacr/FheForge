@@ -7,11 +7,10 @@ const LendingActionsDemo = dynamic(
 
 export default function LendingDemoPage() {
 	return (
-		<div className="container mx-auto py-8">
-			<h1 className="text-3xl font-bold mb-6">Lending Actions Demo</h1>
-			<p className="text-muted-foreground mb-6">
-				This page demonstrates the new lending action hooks (MC-36/37/38/44/45). Connect your wallet
-				to test the functionality.
+		<div className="container mx-auto py-8 px-4">
+			<h1 className="text-2xl font-medium mb-2 text-foreground">Lending</h1>
+			<p className="text-sm text-muted mb-6">
+				Supply and borrow using encrypted amounts. Connect your wallet to interact with the LendingPool contract on Arbitrum Sepolia.
 			</p>
 			<LendingActionsDemo />
 		</div>

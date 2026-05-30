@@ -34,21 +34,18 @@ export function EstimateCard({ estimate, operationType, selectedPair }: Estimate
 
 		return (
 			<div className={`${cardBaseStyle} bg-primary/5 border-primary/20`}>
-				<div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-					<div className="w-12 h-12 bg-accent/20" />
-				</div>
-				<p className="text-[10px] uppercase tracking-widest text-primary font-bold">
+				<p className="text-xs text-muted font-medium">
 					Estimated Output
 				</p>
 				<div className="flex items-baseline gap-2 mt-2">
-					<p className="text-3xl font-bold text-white leading-none">
+					<p className="text-3xl font-bold text-foreground leading-none">
 						{Number(estimatedOutput).toFixed(6)}
 					</p>
 					<p className="text-sm font-medium text-primary/80">{selectedPair?.token_out?.name}</p>
 				</div>
-				<div className="flex justify-between mt-4 pt-3 border-t border-white/5 text-[11px]">
+				<div className="flex justify-between mt-4 pt-3 border-t border-border text-[11px]">
 					<span className="text-muted">Max Slippage</span>
-					<span className="text-white font-mono">
+					<span className="text-foreground font-mono">
 						{((estimate?.slippage || 0) * 100).toFixed(2)}%
 					</span>
 				</div>
@@ -59,17 +56,14 @@ export function EstimateCard({ estimate, operationType, selectedPair }: Estimate
 	if (operationType === "SUPPLY") {
 		return (
 			<div className={`${cardBaseStyle} bg-primary/5 border-primary/20`}>
-				<div className="absolute -bottom-2 -right-2 p-3 opacity-10">
-					<div className="w-16 h-16 bg-accent/20" />
-				</div>
-				<p className="text-[10px] uppercase tracking-widest text-primary font-bold">
+				<p className="text-xs text-muted font-medium">
 					Supply Strategy
 				</p>
 				<div className="mt-2">
-					<p className="text-3xl font-bold text-white leading-none">
+					<p className="text-3xl font-bold text-foreground leading-none">
 						{Number(estimate?.supply_apy ?? estimate?.apy ?? 0).toFixed(2)}%
 					</p>
-					<p className="text-xs text-muted mt-2 tracking-wide font-medium">ESTIMATED NET APY</p>
+					<p className="text-xs text-muted mt-2 font-medium">ESTIMATED NET APY</p>
 				</div>
 			</div>
 		);
@@ -78,12 +72,12 @@ export function EstimateCard({ estimate, operationType, selectedPair }: Estimate
 	if (operationType === "BORROW") {
 		return (
 			<div className={`${cardBaseStyle} bg-secondary/10 border-border`}>
-				<p className="text-[10px] uppercase tracking-widest text-muted font-bold">Borrow Details</p>
+				<p className="text-xs text-muted font-medium">Borrow Details</p>
 
 				<div className="space-y-3 mt-3">
 					<div className="flex justify-between items-center">
 						<span className="text-xs text-muted">Amount Out</span>
-						<span className="text-sm font-bold text-white">
+						<span className="text-sm font-bold text-foreground">
 							{Number(estimate?.borrow_amount ?? estimate?.amount_out ?? 0).toFixed(4)}{" "}
 							{selectedPair?.token_out?.name}
 						</span>
@@ -94,7 +88,7 @@ export function EstimateCard({ estimate, operationType, selectedPair }: Estimate
 							{Number(estimate?.borrow_apy ?? estimate?.apy ?? 0).toFixed(2)}%
 						</span>
 					</div>
-					<div className="flex justify-between items-center pt-2 border-t border-white/5">
+					<div className="flex justify-between items-center pt-2 border-t border-border">
 						<span className="text-xs text-muted">LTV Ratio</span>
 						<span className="text-sm font-bold text-primary">
 							{Number(estimate?.ltv ?? estimate?.max_ltv ?? 0).toFixed(2)}%

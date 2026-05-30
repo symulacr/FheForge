@@ -44,13 +44,10 @@ export default function Home() {
 
 					<div className="relative mb-16 pt-8 pb-12 border-b border-border">
 						<div className="max-w-4xl">
-							<div className="text-[10px] uppercase tracking-[0.2em] text-accent mb-4">
-								Fully Homomorphic Encryption for DeFi
-							</div>
 							<h2 className="text-4xl sm:text-5xl lg:text-6xl font-medium text-foreground tracking-tight mb-6 leading-tight">
 								Build confidential
 								<br />
-								<span className="text-accent">leveraged strategies</span>
+								<span className="font-semibold">leveraged strategies</span>
 							</h2>
 							<p className="text-base sm:text-lg text-muted max-w-xl leading-relaxed mb-8">
 								FheForge is an FHE-powered strategy builder. Compose supply, borrow, and swap
