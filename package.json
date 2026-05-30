@@ -38,6 +38,7 @@
 	},
 	"dependencies": {
 		"@cofhe/sdk": "^0.5.2",
+		"@next/bundle-analyzer": "^16.2.6",
 		"@tanstack/react-query": "^5.100.14",
 		"@vercel/analytics": "^2.0.1",
 		"framer-motion": "^12.40.0",
