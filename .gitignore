@@ -240,3 +240,44 @@ archives/
 
 # .dockerignore (expected at backend/apps/.dockerignore)
 # .gitattributes (expected at root)
+
+# === IMPECCABLE DESIGN TOOL ARTIFACTS ===
+AGENTS.md
+DESIGN.md
+PRODUCT.md
+**/.impeccable/
+ui/.impeccable/
+
+# === DEPLOYMENT ANALYSIS ARTIFACTS ===
+contracts/deployments/coverage_summary.json
+contracts/deployments/flow_test_results.json
+contracts/deployments/gas_benchmarks.json
+
+# === SUBMODULE NOISE ===
+fheforge-demo/
+
+# === NPM LOCKFILE IN BUN PROJECT ===
+contracts/package-lock.json
+
+# === REAL ENV FILE (tracked accidentally) ===
+contracts/deployments/421614.env
+
+# === AUDIT OUTPUTS ===
+contracts/audits/wave12-audit-*.json
+
+# === STRAY ROOT SCREENSHOT ===
+/ui-screenshot-full.png
+
+# === BUILD-TIME MEDIA ===
+ui/public/videos/
+ui/public/screenshots/*.png
+
+# === CONTRACT ROOT AGENT DOCS ===
+contracts/FIX_MANIFEST.md
+contracts/REINEIRA_INTEGRATION.md
+contracts/ZK_VERIFIER_ROOT_CAUSE.md
+contracts/V2_ARCHITECTURE.md
+contracts/CONTRACT_AUDIT_FINDINGS.md
+
+# === AGENT ANALYSIS DOCS ===
+docs/archive/
