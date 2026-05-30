@@ -163,7 +163,10 @@ abstract contract FheForgeBase {
         return newBalance;
     }
 
-    function _verifyEquality(euint128 incoming, uint256 claimedPlain) internal returns (euint128 result) {
+    function _verifyEquality(
+        euint128 incoming,
+        uint256 claimedPlain
+    ) internal returns (euint128 result) {
         _validateCiphertext(incoming);
         euint128 claimedEnc = FHE.asEuint128(claimedPlain);
         ebool match_ = FHE.eq(incoming, claimedEnc);

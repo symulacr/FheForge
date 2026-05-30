@@ -1,15 +1,15 @@
-import { Expose } from "class-transformer";
+import { Expose } from 'class-transformer';
 
 export class UserDto {
-	@Expose()
-	id: string;
+  @Expose()
+  id: string;
 
-	@Expose()
-	walletAddress: string;
+  @Expose()
+  walletAddress: string;
 
-	@Expose()
-	chainId: number;
+  @Expose()
+  chainId: number;
 
-	@Expose()
-	username?: string;
+  @Expose()
+  username?: string;
 }

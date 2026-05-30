@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { StrategyRegistry } from "../contracts/StrategyRegistry.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
+import {StrategyRegistry} from "../contracts/StrategyRegistry.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
 
 /// @notice Fuzz tests for StrategyRegistry (MC-077).
 ///         Covers: strategy name length bounds (1..256 chars), apyTarget/loopCount
@@ -15,7 +15,7 @@ contract FuzzStrategyRegistry is FheForgeTestHelper {
     StrategyRegistry public registry;
 
     address public owner = makeAddr("owner");
-    address public user  = makeAddr("user");
+    address public user = makeAddr("user");
     address public vault = makeAddr("vault");
 
     bytes32 public constant WORKFLOW_HASH = keccak256("test-workflow");
@@ -49,11 +49,7 @@ contract FuzzStrategyRegistry is FheForgeTestHelper {
     }
 
     // ─── Fuzz 2: apyTarget and loopCount boundary values ──────────────────────
-    function testFuzzRegisterStrategyParams(
-        uint256 nameLen,
-        uint16 apyTarget,
-        uint8 loopCount
-    ) public {
+    function testFuzzRegisterStrategyParams(uint256 nameLen, uint16 apyTarget, uint8 loopCount) public {
         nameLen = bound(nameLen, 1, 256);
         string memory name = _makeString(nameLen);
 
@@ -61,7 +57,7 @@ contract FuzzStrategyRegistry is FheForgeTestHelper {
 
         (uint16 storedApy, uint8 storedLoop) = registry.getStrategyParams(id);
         assertEq(storedApy, apyTarget, "apyTarget mismatch");
-        assertEq(storedLoop, loopCount,  "loopCount mismatch");
+        assertEq(storedLoop, loopCount, "loopCount mismatch");
     }
 
     // ─── Fuzz 3: duplicate detection with random names ────────────────────────
@@ -105,7 +101,7 @@ contract FuzzStrategyRegistry is FheForgeTestHelper {
             registry.registerStrategy(name, wfHash);
         } else {
             uint256 id = registry.registerStrategy(name, wfHash);
-            ( , bytes32 storedHash, , , ) = registry.getStrategyMeta(id);
+            (, bytes32 storedHash,,,) = registry.getStrategyMeta(id);
             assertEq(storedHash, wfHash, "workflow hash mismatch");
         }
     }
@@ -114,7 +110,7 @@ contract FuzzStrategyRegistry is FheForgeTestHelper {
     // Register a strategy, then try to setActive with fuzzed IDs.
     function testFuzzSetActiveInvalidIds(uint256 registerCount, uint256 targetId) public {
         registerCount = bound(registerCount, 0, 5);
-        targetId      = bound(targetId, 0, 10);
+        targetId = bound(targetId, 0, 10);
 
         // Register strategies
         for (uint256 i = 0; i < registerCount; i++) {
@@ -132,22 +128,16 @@ contract FuzzStrategyRegistry is FheForgeTestHelper {
     }
 
     // ─── Fuzz 7: cross-chain strategy with param variations ───────────────────
-    function testFuzzReceiveCrossChainParams(
-        uint16 apyTarget,
-        uint8 loopCount,
-        uint256 nameLen
-    ) public {
+    function testFuzzReceiveCrossChainParams(uint16 apyTarget, uint8 loopCount, uint256 nameLen) public {
         nameLen = bound(nameLen, 1, 64);
         string memory name = _makeString(nameLen);
         address remoteCreator = makeAddr("remote");
 
         vm.prank(owner);
-        registry.receiveCrossChainStrategy(
-            1, 42, name, WORKFLOW_HASH, remoteCreator, apyTarget, loopCount
-        );
+        registry.receiveCrossChainStrategy(1, 42, name, WORKFLOW_HASH, remoteCreator, apyTarget, loopCount);
 
         // The first cross-chain strategy gets id=0 (strategyCount starts at 0)
-        ( , , address storedCreator, , ) = registry.getStrategyMeta(0);
+        (,, address storedCreator,,) = registry.getStrategyMeta(0);
         assertEq(storedCreator, remoteCreator);
     }
 

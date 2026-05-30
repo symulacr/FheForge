@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { TokenRegistry } from "../contracts/TokenRegistry.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
+import {TokenRegistry} from "../contracts/TokenRegistry.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
 
 /// @custom:mock
 contract TokenRegistryTest is FheForgeTestHelper {
@@ -40,20 +40,19 @@ contract TokenRegistryTest is FheForgeTestHelper {
         bool isBorrowable,
         bool isCollateral
     ) internal pure returns (TokenRegistry.TokenInfo memory info) {
-        return
-            TokenRegistry.TokenInfo({
-                token: token,
-                pythPriceId: priceId,
-                decimals: decimals,
-                isLendable: isLendable,
-                isBorrowable: isBorrowable,
-                isCollateral: isCollateral,
-                ltvBps: 7500,
-                liquidationBonusBps: 500,
-                borrowCap: 1_000_000 ether,
-                supplyCap: 2_000_000 ether,
-                enabled: true
-            });
+        return TokenRegistry.TokenInfo({
+            token: token,
+            pythPriceId: priceId,
+            decimals: decimals,
+            isLendable: isLendable,
+            isBorrowable: isBorrowable,
+            isCollateral: isCollateral,
+            ltvBps: 7500,
+            liquidationBonusBps: 500,
+            borrowCap: 1_000_000 ether,
+            supplyCap: 2_000_000 ether,
+            enabled: true
+        });
     }
 
     function testRegisterToken() public {
@@ -129,31 +128,12 @@ contract TokenRegistryTest is FheForgeTestHelper {
         vm.prank(owner);
         tokenRegistry.registerToken(_makeTokenInfo(TOKEN_A, PRICE_ID_A, 18, true, true, true));
 
-        TokenRegistry.TokenInfo memory updatedInfo = _makeTokenInfo(
-            TOKEN_A,
-            PRICE_ID_A,
-            18,
-            false,
-            false,
-            false
-        );
+        TokenRegistry.TokenInfo memory updatedInfo = _makeTokenInfo(TOKEN_A, PRICE_ID_A, 18, false, false, false);
 
         vm.prank(owner);
         tokenRegistry.updateTokenConfig(TOKEN_A, updatedInfo);
 
-        (
-            ,
-            ,
-            ,
-            ,
-            bool isLendable,
-            bool isBorrowable,
-            bool isCollateral,
-            bool enabled,
-            ,
-            ,
-
-        ) = tokenRegistry.tokens(TOKEN_A);
+        (,,,, bool isLendable, bool isBorrowable, bool isCollateral, bool enabled,,,) = tokenRegistry.tokens(TOKEN_A);
 
         assertFalse(isLendable);
         assertFalse(isBorrowable);
@@ -164,10 +144,7 @@ contract TokenRegistryTest is FheForgeTestHelper {
     function testUpdateTokenConfigRevertsOnZeroAddress() public {
         vm.prank(owner);
         vm.expectRevert(FheForgeBase.ZeroAddress.selector);
-        tokenRegistry.updateTokenConfig(
-            address(0),
-            _makeTokenInfo(address(0), PRICE_ID_A, 18, true, true, true)
-        );
+        tokenRegistry.updateTokenConfig(address(0), _makeTokenInfo(address(0), PRICE_ID_A, 18, true, true, true));
     }
 
     function testUpdateTokenConfigRevertsOnNonOwner() public {
@@ -176,10 +153,7 @@ contract TokenRegistryTest is FheForgeTestHelper {
 
         vm.prank(user);
         vm.expectRevert(FheForgeBase.OnlyOwner.selector);
-        tokenRegistry.updateTokenConfig(
-            TOKEN_A,
-            _makeTokenInfo(TOKEN_A, PRICE_ID_A, 18, false, false, false)
-        );
+        tokenRegistry.updateTokenConfig(TOKEN_A, _makeTokenInfo(TOKEN_A, PRICE_ID_A, 18, false, false, false));
     }
 
     function testDisableToken() public {

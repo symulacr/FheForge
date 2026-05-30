@@ -188,7 +188,8 @@ contract LendingPool is FheForgeBase {
 
     function requestBalanceReveal(address token) external payable {
         if (token == address(0)) revert ZeroAddress();
-        if (block.timestamp < lastRevealTime[msg.sender][token] + REVEAL_COOLDOWN) revert RevealCooldown();
+        if (block.timestamp < lastRevealTime[msg.sender][token] + REVEAL_COOLDOWN)
+            revert RevealCooldown();
         lastRevealTime[msg.sender][token] = block.timestamp;
         FHE.allowPublic(_ensureInitialized(supplyBalances[token][msg.sender]));
     }
@@ -228,7 +229,8 @@ contract LendingPool is FheForgeBase {
 
     function requestBorrowReveal(address token) external payable {
         if (token == address(0)) revert ZeroAddress();
-        if (block.timestamp < lastRevealTime[msg.sender][token] + REVEAL_COOLDOWN) revert RevealCooldown();
+        if (block.timestamp < lastRevealTime[msg.sender][token] + REVEAL_COOLDOWN)
+            revert RevealCooldown();
         lastRevealTime[msg.sender][token] = block.timestamp;
         FHE.allowPublic(_ensureInitialized(borrowBalances[token][msg.sender]));
     }
@@ -549,7 +551,7 @@ contract LendingPool is FheForgeBase {
         address debtToken,
         uint256 collateralAmount,
         uint256 borrowAmount
-    ) external view returns (bool) {
+    ) external view returns (bool liquidatable) {
         if (user == address(0)) revert ZeroAddress();
         if (collateralToken == address(0) || debtToken == address(0)) revert ZeroAddress();
         if (collateralAmount == 0 || borrowAmount == 0) return false;
@@ -580,8 +582,9 @@ contract LendingPool is FheForgeBase {
     }
 
     function flashFee(address token, uint256 amount) external view returns (uint256 fee) {
-        if (liquidReserve[token] == 0 && totalPlainBorrow[token] == 0)
+        if (liquidReserve[token] == 0 && totalPlainBorrow[token] == 0) {
             revert FlashLoanUnsupportedToken();
+        }
         return (amount * FLASH_FEE_BPS) / 10000;
     }
 

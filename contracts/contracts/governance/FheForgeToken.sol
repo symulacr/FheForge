@@ -11,12 +11,7 @@ contract FheForgeToken is ERC20, ERC20Votes, Ownable {
     constructor(
         string memory name_,
         string memory symbol_
-    )
-        ERC20(name_, symbol_)
-        ERC20Votes()
-        EIP712(name_, "1")
-        Ownable(msg.sender)
-    {}
+    ) ERC20(name_, symbol_) ERC20Votes() EIP712(name_, "1") Ownable(msg.sender) {}
 
     /// @notice Mint new tokens. Only callable by owner.
     function mint(address to, uint256 amount) external onlyOwner {
@@ -24,11 +19,7 @@ contract FheForgeToken is ERC20, ERC20Votes, Ownable {
     }
 
     /// @dev Required override: ERC20 and ERC20Votes both define _update.
-    function _update(
-        address from,
-        address to,
-        uint256 value
-    ) internal override(ERC20, ERC20Votes) {
+    function _update(address from, address to, uint256 value) internal override(ERC20, ERC20Votes) {
         super._update(from, to, value);
     }
 }

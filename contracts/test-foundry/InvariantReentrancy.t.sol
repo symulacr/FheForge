@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { IERC3156FlashBorrower } from "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { LendingPool } from "../contracts/LendingPool.sol";
-import { FHE, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
+import {IERC3156FlashBorrower} from "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {LendingPool} from "../contracts/LendingPool.sol";
+import {FHE, euint128, InEuint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {ITaskManager} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {MockTaskManager} from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
 
 // ──────────────────────────────────────────────────────────────────────────────
 //  Malicious flash-borrower that attempts to re-enter the LendingPool during
@@ -28,8 +28,8 @@ contract ReentrantFlashBorrower is IERC3156FlashBorrower {
     }
 
     constructor(LendingPool pool_, address token_, address attacker_) {
-        pool    = pool_;
-        token   = token_;
+        pool = pool_;
+        token = token_;
         attacker = attacker_;
     }
 
@@ -40,13 +40,10 @@ contract ReentrantFlashBorrower is IERC3156FlashBorrower {
 
     /// @notice onFlashLoan callback — if doReenter is set, attempt to re-enter
     ///         the pool via shield(), which is also nonReentrant.
-    function onFlashLoan(
-        address initiator,
-        address,
-        uint256 amount,
-        uint256 fee,
-        bytes calldata
-    ) external returns (bytes32) {
+    function onFlashLoan(address initiator, address, uint256 amount, uint256 fee, bytes calldata)
+        external
+        returns (bytes32)
+    {
         // Approve repayment
         MockERC20(token).approve(address(pool), amount + fee);
 
@@ -93,11 +90,11 @@ contract InvariantReentrancy is FheForgeTestHelper {
     LendingPool public pool;
     MockERC20 public token;
 
-    address public owner  = makeAddr("owner");
-    address public user   = makeAddr("user");
+    address public owner = makeAddr("owner");
+    address public user = makeAddr("user");
     address public liquidator = makeAddr("liquidator");
 
-    address private constant PYTH_MOCK  = address(0x1);
+    address private constant PYTH_MOCK = address(0x1);
     uint256 private constant DEFAULT_STALE = 3600;
 
     ReentrantFlashBorrower public reentrantBorrower;
@@ -105,7 +102,7 @@ contract InvariantReentrancy is FheForgeTestHelper {
     function setUp() public {
         _deployFheMocks();
         vm.startPrank(owner);
-        pool  = new LendingPool();
+        pool = new LendingPool();
         token = new MockERC20("Test", "TST", 18);
         pool.setComposer(owner);
         vm.stopPrank();
@@ -117,7 +114,7 @@ contract InvariantReentrancy is FheForgeTestHelper {
     ///         re-entering call (e.g., shield). This test verifies the guard.
     function testReentrancyBlockedViaFlashLoan() public {
         uint256 supplyAmount = 1000 ether;
-        uint256 flashAmount  = 100 ether;
+        uint256 flashAmount = 100 ether;
 
         // Seed pool
         _seedPool(supplyAmount);
@@ -145,7 +142,7 @@ contract InvariantReentrancy is FheForgeTestHelper {
     /// @notice Baseline — verify that flash loans work correctly when no reentrancy.
     function testFlashLoanNoReentrancy() public {
         uint256 supplyAmount = 1000 ether;
-        uint256 flashAmount  = 100 ether;
+        uint256 flashAmount = 100 ether;
 
         _seedPool(supplyAmount);
 
@@ -172,7 +169,7 @@ contract InvariantReentrancy is FheForgeTestHelper {
     ///         The guard reverts the inner call but the outer flashLoan completes.
     function testReentrancyStateConsistentAfterBlock() public {
         uint256 supplyAmount = 1000 ether;
-        uint256 flashAmount  = 100 ether;
+        uint256 flashAmount = 100 ether;
 
         _seedPool(supplyAmount);
 
@@ -275,12 +272,11 @@ contract InvariantReentrancy is FheForgeTestHelper {
         euint128 encAmount = FHE.asEuint128(amount);
         _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
-        pool.shield(address(token), amount, InEuint128({
-            ctHash: uint256(euint128.unwrap(encAmount)),
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        }));
+        pool.shield(
+            address(token),
+            amount,
+            InEuint128({ctHash: uint256(euint128.unwrap(encAmount)), securityZone: 0, utype: 6, signature: ""})
+        );
         vm.stopPrank();
 
         // I6: After successful shield, reserve increased by amount

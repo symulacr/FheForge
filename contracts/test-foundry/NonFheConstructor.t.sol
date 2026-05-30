@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { StrategyVault } from "../contracts/StrategyVault.sol";
-import { SwapRouter } from "../contracts/SwapRouter.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
+import {StrategyVault} from "../contracts/StrategyVault.sol";
+import {SwapRouter} from "../contracts/SwapRouter.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
 
 /// @custom:mock
 contract NonFheConstructorTest is FheForgeTestHelper {
@@ -26,13 +26,7 @@ contract NonFheConstructorTest is FheForgeTestHelper {
 
     function testSwapRouterConstructorRevertsOnZeroAddress() public {
         vm.expectRevert(FheForgeBase.ZeroAddress.selector);
-        new SwapRouter(
-            address(0),
-            PROD_MIN_DEADLINE,
-            PROD_MAX_DEADLINE,
-            PROD_EXEC_DELAY,
-            UNISWAP_ROUTER
-        );
+        new SwapRouter(address(0), PROD_MIN_DEADLINE, PROD_MAX_DEADLINE, PROD_EXEC_DELAY, UNISWAP_ROUTER);
     }
 
     function testSwapRouterRevertsOnZeroMinDeadline() public {
@@ -47,26 +41,16 @@ contract NonFheConstructorTest is FheForgeTestHelper {
 
     function testSwapRouterStoresExecutor() public {
         address fakeExecutor = address(0xCAFE);
-        SwapRouter router = new SwapRouter(
-            fakeExecutor,
-            PROD_MIN_DEADLINE,
-            PROD_MAX_DEADLINE,
-            PROD_EXEC_DELAY,
-            UNISWAP_ROUTER
-        );
+        SwapRouter router =
+            new SwapRouter(fakeExecutor, PROD_MIN_DEADLINE, PROD_MAX_DEADLINE, PROD_EXEC_DELAY, UNISWAP_ROUTER);
         assertEq(router.executor(), fakeExecutor);
         assertEq(router.owner(), address(this));
     }
 
     function testSwapRouterRejectsSameTokenIntent() public {
         address fakeExecutor = address(0xCAFE);
-        SwapRouter router = new SwapRouter(
-            fakeExecutor,
-            PROD_MIN_DEADLINE,
-            PROD_MAX_DEADLINE,
-            PROD_EXEC_DELAY,
-            UNISWAP_ROUTER
-        );
+        SwapRouter router =
+            new SwapRouter(fakeExecutor, PROD_MIN_DEADLINE, PROD_MAX_DEADLINE, PROD_EXEC_DELAY, UNISWAP_ROUTER);
         assertEq(router.executor(), fakeExecutor);
 
         // Deploy mock ERC20 tokens so submitSwapIntent's safeTransferFrom succeeds
@@ -76,13 +60,7 @@ contract NonFheConstructorTest is FheForgeTestHelper {
         tokenIn.approve(address(router), 100);
 
         // submit a valid intent so executeIntent doesn't revert with UnknownIntent
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100,
-            50,
-            PROD_MIN_DEADLINE
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100, 50, PROD_MIN_DEADLINE);
 
         // executeIntent with outputAmount=0 must revert with ZeroOutput
         vm.startPrank(fakeExecutor);
@@ -92,13 +70,8 @@ contract NonFheConstructorTest is FheForgeTestHelper {
     }
 
     function testSwapRouterDeadlineImmutablesAreSane() public {
-        SwapRouter router = new SwapRouter(
-            address(0xCAFE),
-            PROD_MIN_DEADLINE,
-            PROD_MAX_DEADLINE,
-            PROD_EXEC_DELAY,
-            UNISWAP_ROUTER
-        );
+        SwapRouter router =
+            new SwapRouter(address(0xCAFE), PROD_MIN_DEADLINE, PROD_MAX_DEADLINE, PROD_EXEC_DELAY, UNISWAP_ROUTER);
         assertEq(router.MIN_DEADLINE_OFFSET(), PROD_MIN_DEADLINE);
         assertEq(router.MAX_DEADLINE_OFFSET(), PROD_MAX_DEADLINE);
         assertEq(router.ROTATION_DELAY(), PROD_EXEC_DELAY);

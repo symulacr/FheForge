@@ -1,29 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { FheForgeToken } from "../contracts/governance/FheForgeToken.sol";
-import { FheForgeTimelock } from "../contracts/governance/FheForgeTimelock.sol";
-import { FheForgeGovernor } from "../contracts/governance/FheForgeGovernor.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IVotes } from "@openzeppelin/contracts/governance/utils/IVotes.sol";
+import {FheForgeToken} from "../contracts/governance/FheForgeToken.sol";
+import {FheForgeTimelock} from "../contracts/governance/FheForgeTimelock.sol";
+import {FheForgeGovernor} from "../contracts/governance/FheForgeGovernor.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 /// @custom:mock
 contract FheForgeGovernorTest is FheForgeTestHelper {
     // Governance parameters matching prod intent.
     // clock() uses block.number (Votes default), so voting delay/period are in blocks.
-    uint48  constant VOTING_DELAY  = 0;
-    uint32  constant VOTING_PERIOD = 100; // blocks
-    uint256 constant QUORUM_BPS    = 100; // 1 % of total supply
-    uint256 constant MIN_DELAY     = 2 days;
+    uint48 constant VOTING_DELAY = 0;
+    uint32 constant VOTING_PERIOD = 100; // blocks
+    uint256 constant QUORUM_BPS = 100; // 1 % of total supply
+    uint256 constant MIN_DELAY = 2 days;
 
-    FheForgeToken    token;
+    FheForgeToken token;
     FheForgeTimelock timelock;
     FheForgeGovernor governor;
 
-    address voter     = makeAddr("voter");
+    address voter = makeAddr("voter");
     address recipient = makeAddr("recipient");
-    address attacker  = makeAddr("attacker");
+    address attacker = makeAddr("attacker");
 
     function setUp() public {
         _deployFheMocks();
@@ -31,13 +31,7 @@ contract FheForgeGovernorTest is FheForgeTestHelper {
         // Deploy governance contracts
         token = new FheForgeToken("FheForge", "FHE");
         timelock = new FheForgeTimelock(MIN_DELAY, address(this));
-        governor = new FheForgeGovernor(
-            IVotes(address(token)),
-            timelock,
-            VOTING_DELAY,
-            VOTING_PERIOD,
-            QUORUM_BPS
-        );
+        governor = new FheForgeGovernor(IVotes(address(token)), timelock, VOTING_DELAY, VOTING_PERIOD, QUORUM_BPS);
 
         // Governor needs PROPOSER and EXECUTOR roles on the timelock
         bytes32 proposerRole = timelock.PROPOSER_ROLE();
@@ -68,21 +62,26 @@ contract FheForgeGovernorTest is FheForgeTestHelper {
         // getPastVotes requires timepoint < clock(), and the delegation
         // checkpoint lands at the current block.  Advance one block so
         // propose can query clock()-1 and find it.
-        vm.roll(block.number + 1);
+        vm.roll(block.number + 2);
 
         // --- Build a proposal: mint 100 tokens to recipient ---
-        address[] memory targets   = new address[](1);
-        targets[0]                 = address(token);
-        uint256[] memory values    = new uint256[](1);
-        values[0]                  = 0;
-        bytes[] memory calldatas   = new bytes[](1);
+        address[] memory targets = new address[](1);
+        targets[0] = address(token);
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = abi.encodeWithSelector(FheForgeToken.mint.selector, recipient, 100e18);
-        string memory description  = "Mint 100 tokens to recipient";
-        bytes32 descriptionHash    = keccak256(bytes(description));
+        string memory description = "Mint 100 tokens to recipient";
+        bytes32 descriptionHash = keccak256(bytes(description));
 
         // --- Propose ---
         vm.prank(voter);
         uint256 proposalId = governor.propose(targets, values, calldatas, description);
+        // Advance one block so the proposal transitions from Pending to
+        // Active (clock() > snapshot). With VOTING_DELAY = 0, the
+        // snapshot equals the propose block and state() requires
+        // snapshot < currentTimepoint to be Active.
+        vm.roll(block.number + 1);
 
         // --- Vote FOR ---
         vm.prank(voter);
@@ -109,9 +108,7 @@ contract FheForgeGovernorTest is FheForgeTestHelper {
 
     function testOnlyOwnerCanMint() public {
         vm.prank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
         token.mint(attacker, 100e18);
     }
 
@@ -124,14 +121,14 @@ contract FheForgeGovernorTest is FheForgeTestHelper {
         vm.roll(block.number + 1);
 
         // --- Build a proposal ---
-        address[] memory targets   = new address[](1);
-        targets[0]                 = address(token);
-        uint256[] memory values    = new uint256[](1);
-        values[0]                  = 0;
-        bytes[] memory calldatas   = new bytes[](1);
+        address[] memory targets = new address[](1);
+        targets[0] = address(token);
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = abi.encodeWithSelector(FheForgeToken.mint.selector, recipient, 100e18);
-        string memory description  = "Mint 100 tokens";
-        bytes32 descriptionHash    = keccak256(bytes(description));
+        string memory description = "Mint 100 tokens";
+        bytes32 descriptionHash = keccak256(bytes(description));
 
         // --- Propose and vote ---
         vm.prank(voter);

@@ -275,7 +275,7 @@ export function useFheVault() {
 	// MC-20/28: Pool supplyEth uses InEuint64
 	const supplyEth = async (amount: bigint): Promise<Hash> => {
 		const { pool } = requireAddresses();
-		validateEuint64(amount);
+		validateEuint128(amount);
 		setIsEncrypting(true);
 		try {
 			const enc = await encrypt128(amount);

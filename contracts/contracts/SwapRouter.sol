@@ -18,6 +18,7 @@ interface IUniswapV3SwapRouter {
         uint256 amountOutMinimum;
         uint160 sqrtPriceLimitX96;
     }
+
     struct ExactInputParams {
         bytes path;
         address recipient;
@@ -172,7 +173,10 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
     }
 
     /// @notice Execute a swap intent (executor only).
-    function executeIntent(bytes32 intentId, uint256 outputAmount) external nonReentrant whenNotPaused {
+    function executeIntent(
+        bytes32 intentId,
+        uint256 outputAmount
+    ) external nonReentrant whenNotPaused {
         if (msg.sender != executor) revert NotExecutor();
         SwapIntent storage i = intents[intentId];
         if (i.user == address(0)) revert UnknownIntent();

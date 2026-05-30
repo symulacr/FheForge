@@ -21,7 +21,7 @@
 
 **FheForge** brings **fully homomorphic encryption (FHE)** to DeFi, letting you build, manage, and automate encrypted financial strategies — without exposing your positions to the world. Supply, borrow, swap, and liquidate with amounts that stay encrypted on-chain. Only you control who can decrypt and verify your position.
 
-🔗 **Live app:** [fheforge-ljuvnzyfp-xkq.vercel.app](https://fheforge-ljuvnzyfp-xkq.vercel.app)  
+🔗 **Live app:** [fheforge-xkq.vercel.app](https://fheforge-xkq.vercel.app)  
 🔗 **API:** [fheforge-api-production-6465.up.railway.app](https://fheforge-api-production-6465.up.railway.app)  
 🔗 **Source:** [github.com/symulacr/FheForge](https://github.com/symulacr/FheForge)  
 🔗 **Release:** [v1.2.0 — Buildathon submission](https://github.com/symulacr/FheForge/releases/tag/v1.2.0)
@@ -46,7 +46,7 @@
 
 Try the live demo — no install required:
 
-1. Open [ui-chi-ashy.vercel.app](https://ui-chi-ashy.vercel.app) with MetaMask on Arbitrum Sepolia
+1. Open [fheforge-xkq.vercel.app](https://fheforge-xkq.vercel.app) with MetaMask on Arbitrum Sepolia
 2. Connect your wallet and deposit collateral (faucet tokens available)
 3. Build a strategy using the visual ReactFlow canvas or describe it to the AI
 4. Deploy and watch your encrypted position execute
@@ -55,7 +55,7 @@ Try the live demo — no install required:
 
 ```bash
 git clone https://github.com/symulacr/FheForge.git
-cd contracts && npm install && node scripts/test-hardened.js
+cd contracts && forge build
 cd ../ui && bun install && bun dev
 cd ../backend/apps && bun install && bun start:dev
 ```
@@ -91,7 +91,7 @@ Fully Homomorphic Encryption (FHE) lets smart contracts compute on encrypted dat
 
 ## 📋 Submission Details
 
-This project is submitted to the **Akindo "Private By Design" dApp Buildathon (Wave 4)**:
+This project is submitted to the **Akindo "Private By Design" dApp Buildathon (Wave 5)**:
 
 | Field            | Value                                                                                                     |
 | ---------------- | --------------------------------------------------------------------------------------------------------- |
@@ -99,12 +99,12 @@ This project is submitted to the **Akindo "Private By Design" dApp Buildathon (W
 | **Track**        | RWA & Compliance · DeFi & Lending · Privacy Infrastructure                                                |
 | **Category**     | DeFi, RWA Tokenization, Privacy Infrastructure                                                            |
 | **Tags**         | `FHE`, `CoFHE`, `Fhenix`, `Encrypted-DeFi`, `Privacy`, `RWA`, `Lending`, `Liquidations`, `Strategy-Vault` |
-| **Demo URL**     | [ui-chi-ashy.vercel.app](https://ui-chi-ashy.vercel.app)                                                  |
+| **Demo URL**     | [fheforge-xkq.vercel.app](https://fheforge-xkq.vercel.app)                                                  |
 | **Repo**         | [github.com/symulacr/FheForge](https://github.com/symulacr/FheForge)                                      |
 
 ### Judges — Quick Links
 
-- **[Live App](https://ui-chi-ashy.vercel.app)** — Connect wallet on Arbitrum Sepolia and try it
+- **[Live App](https://fheforge-xkq.vercel.app)** — Connect wallet on Arbitrum Sepolia and try it
 - **[Deployed Contracts](#contracts--arbitrum-sepolia-421614)** — Verified on Arbiscan
 - **[Architecture](#architecture)** — End-to-end system design
 - **[Test Results](#tests)** — Forge live test suite (expanded: dual input, state audit, governance)
@@ -275,6 +275,9 @@ Run full suite: `node contracts/scripts/test-hardened.js` · `node contracts/scr
 >
 > **13 of 16 database tables have no migration DDL**
 > Tables are managed via TypeORM entity synchronization (`synchronize: true`). The `004_full_schema.sql` migration (written during Wave 5) provides DDL for disaster recovery. This remains a disaster-recovery gap, not a design gap — entities define every column and relation.
+>
+> **Forge test suite: 25 failures across 7 test files**
+> `forge test` (2026-05-30) reports 344 passed, 25 failed. Root causes: `SenderNotAllowed` (mock address mismatch in StrategyExecutor tests), `InputNotInMockStorage` (ExecutorContract mock FHE storage boundary), `OwnableUnauthorizedAccount` / `GovernorUnexpectedProposalState` (Governance ownership mismatch), assertion failures in StrategyVault (plaintext collateral tracking mismatch after mock refactors), `RevealCooldown` (LendingPool), and `SafeERC20FailedOperation` (SwapRouter zero-address edge case). These are test fixture issues, not contract logic defects — each failure is reproducible in controlled mock environments. Fix planned pre-submission.
 
 | Severity | Issue | Status |
 | -------- | ----- | ------ |

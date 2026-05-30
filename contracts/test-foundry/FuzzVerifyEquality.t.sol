@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
-import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FHE, euint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {MockTaskManager} from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
+import {ITaskManager} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 
 /// @notice Test harness that exposes the internal _verifyEquality function for fuzz testing.
 ///         _verifyEquality(incoming, claimedPlain) returns the verified ciphertext
@@ -52,7 +52,7 @@ contract FuzzVerifyEquality is FheForgeTestHelper {
     ///         be initialized (FHE.select always returns an initialized handle),
     ///         but it represents the zero value (FHE.asEuint128(0)).
     function testFuzzEqualityMismatchReturnsInitialized(uint256 actualValue, uint256 claimedValue) public {
-        actualValue  = bound(actualValue,  0, type(uint128).max);
+        actualValue = bound(actualValue, 0, type(uint128).max);
         claimedValue = bound(claimedValue, 0, type(uint128).max);
         vm.assume(actualValue != claimedValue);
 
@@ -134,7 +134,10 @@ contract FuzzVerifyEquality is FheForgeTestHelper {
             assertTrue(FHE.isInitialized(harness.exposedVerifyEquality(encA, valueA)), "encA must match valueA");
             assertTrue(FHE.isInitialized(harness.exposedVerifyEquality(encB, valueB)), "encB must match valueB");
             // Cross-check: encA with valueB also matches since values are equal
-            assertTrue(FHE.isInitialized(harness.exposedVerifyEquality(encA, valueB)), "encA must match valueB when values equal");
+            assertTrue(
+                FHE.isInitialized(harness.exposedVerifyEquality(encA, valueB)),
+                "encA must match valueB when values equal"
+            );
         } else {
             // Different values — each should only match its own claim
             assertTrue(FHE.isInitialized(harness.exposedVerifyEquality(encA, valueA)), "encA must match valueA");

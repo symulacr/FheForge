@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { StrategyVault } from "../contracts/StrategyVault.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {StrategyVault} from "../contracts/StrategyVault.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {FHE, euint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /// @custom:mock
 contract StrategyVaultTest is FheForgeTestHelper {
@@ -118,7 +118,7 @@ contract StrategyVaultTest is FheForgeTestHelper {
         bytes32 posId = vault.openPosition(address(token), 100 ether, encHundredEther, 42, user);
         vm.stopPrank();
 
-        (uint256 sid, ) = vault.getPositionMeta(posId);
+        (uint256 sid,) = vault.getPositionMeta(posId);
         assertEq(sid, 42);
     }
 
@@ -135,13 +135,7 @@ contract StrategyVaultTest is FheForgeTestHelper {
     function testAddCollateralRevertsOnNonexistentPosition() public {
         vm.prank(composer);
         vm.expectRevert(StrategyVault.PositionNotFound.selector);
-        vault.addCollateral(
-            keccak256("nonexistent"),
-            address(token),
-            100 ether,
-            encHundredEther,
-            user
-        );
+        vault.addCollateral(keccak256("nonexistent"), address(token), 100 ether, encHundredEther, user);
     }
 
     function testAddCollateralRevertsOnZeroAmount() public {
@@ -269,14 +263,7 @@ contract StrategyVaultTest is FheForgeTestHelper {
         vm.roll(block.number + 2);
 
         vm.prank(otherUser);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                StrategyVault.NotPositionOwner.selector,
-                posId,
-                otherUser,
-                composer
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(StrategyVault.NotPositionOwner.selector, posId, otherUser, composer));
         vault.closePosition(posId, 100 ether, encHundredEther);
     }
 

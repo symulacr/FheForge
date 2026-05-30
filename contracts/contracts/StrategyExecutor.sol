@@ -25,8 +25,8 @@ contract StrategyExecutor is FheForgeBase {
     bytes4 public constant WITHDRAW_VAULT = 0x00000007;
     bytes4 public constant SWAP_UNISWAP_V3 = 0x00000008;
 
-
     error UnknownActionType(bytes4 actionType);
+
     struct Action {
         bytes4 actionType;
         bytes params;
@@ -52,8 +52,9 @@ contract StrategyExecutor is FheForgeBase {
     );
 
     constructor(address pool_, address vault_, address router_) FheForgeBase() {
-        if (pool_ == address(0) || vault_ == address(0) || router_ == address(0))
+        if (pool_ == address(0) || vault_ == address(0) || router_ == address(0)) {
             revert ZeroAddress();
+        }
         POOL = ILendingPool(pool_);
         VAULT = IStrategyVault(vault_);
         ROUTER = ISwapRouter(router_);
@@ -100,10 +101,20 @@ contract StrategyExecutor is FheForgeBase {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
             _ensureApproval(token, address(POOL), amount);
-            POOL.depositFor(token, amount, _verifyEquality(FHE.asEuint128(action.encAmount), amount), _msgSender());
+            POOL.depositFor(
+                token,
+                amount,
+                _verifyEquality(FHE.asEuint128(action.encAmount), amount),
+                _msgSender()
+            );
         } else if (action.actionType == BORROW_LTV) {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
-            POOL.borrowFor(token, amount, _verifyEquality(FHE.asEuint128(action.encAmount), amount), _msgSender());
+            POOL.borrowFor(
+                token,
+                amount,
+                _verifyEquality(FHE.asEuint128(action.encAmount), amount),
+                _msgSender()
+            );
         } else if (action.actionType == SWAP_INTENT) {
             (
                 address tokenIn,
@@ -120,7 +131,12 @@ contract StrategyExecutor is FheForgeBase {
             (address token, uint256 amount) = abi.decode(action.params, (address, uint256));
             IERC20(token).safeTransferFrom(_msgSender(), address(this), amount);
             _ensureApproval(token, address(POOL), amount);
-            POOL.repayFor(token, amount, _verifyEquality(FHE.asEuint128(action.encAmount), amount), _msgSender());
+            POOL.repayFor(
+                token,
+                amount,
+                _verifyEquality(FHE.asEuint128(action.encAmount), amount),
+                _msgSender()
+            );
         } else if (action.actionType == SWAP_UNISWAP_V3) {
             (address tokenIn, address tokenOut, uint24 fee, uint256 amountIn, uint256 minOut) = abi
                 .decode(action.params, (address, address, uint24, uint256, uint256));
@@ -158,7 +174,11 @@ contract StrategyExecutor is FheForgeBase {
             );
         } else if (action.actionType == WITHDRAW_VAULT) {
             (bytes32 positionId, uint256 amount) = abi.decode(action.params, (bytes32, uint256));
-            VAULT.closePosition(positionId, amount, _verifyEquality(FHE.asEuint128(action.encAmount), amount));
+            VAULT.closePosition(
+                positionId,
+                amount,
+                _verifyEquality(FHE.asEuint128(action.encAmount), amount)
+            );
         } else {
             revert UnknownActionType(action.actionType);
         }

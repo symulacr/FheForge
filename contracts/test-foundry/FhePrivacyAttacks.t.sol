@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { LendingPool } from "../contracts/LendingPool.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { FHE, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
-import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {LendingPool} from "../contracts/LendingPool.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {FHE, euint128, InEuint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {MockTaskManager} from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
+import {ITaskManager} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 
 /// @custom:mock
 contract FhePrivacyAttacksTest is FheForgeTestHelper {
@@ -37,7 +37,7 @@ contract FhePrivacyAttacksTest is FheForgeTestHelper {
         // Register with mock task manager
         MockTaskManager(getTaskManagerAddress()).MOCK_setInEuintKey(ctHash | (6 << 8), val);
         ITaskManager(getTaskManagerAddress()).allow(ctHash, address(pool));
-        return InEuint128({ ctHash: ctHash, securityZone: 0, utype: 6, signature: "" });
+        return InEuint128({ctHash: ctHash, securityZone: 0, utype: 6, signature: ""});
     }
 
     // ========== Test 1: Unauthorized requestLiquidityCheck reverts ==========

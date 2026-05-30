@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { StrategyRegistry } from "../contracts/StrategyRegistry.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
-import { FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {StrategyRegistry} from "../contracts/StrategyRegistry.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {ITaskManager} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
+import {FHE, euint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /// @custom:mock
 contract StrategyRegistryTest is FheForgeTestHelper {
@@ -160,13 +160,8 @@ contract StrategyRegistryTest is FheForgeTestHelper {
     function testRegisterStrategyWithParamsStoresMeta() public {
         uint256 id = registry.registerStrategy(STRATEGY_NAME, WORKFLOW_HASH, 1000, 2);
 
-        (
-            string memory name,
-            bytes32 wfHash,
-            address creator,
-            uint256 createdAt,
-            bool active
-        ) = registry.getStrategyMeta(id);
+        (string memory name, bytes32 wfHash, address creator, uint256 createdAt, bool active) =
+            registry.getStrategyMeta(id);
 
         assertEq(name, STRATEGY_NAME);
         assertEq(wfHash, WORKFLOW_HASH);
@@ -196,7 +191,7 @@ contract StrategyRegistryTest is FheForgeTestHelper {
 
         registry.setActive(id, false);
 
-        (, , , , bool active) = registry.getStrategyMeta(id);
+        (,,,, bool active) = registry.getStrategyMeta(id);
         assertFalse(active);
     }
 
@@ -206,7 +201,7 @@ contract StrategyRegistryTest is FheForgeTestHelper {
         registry.setActive(id, false);
         registry.setActive(id, true);
 
-        (, , , , bool active) = registry.getStrategyMeta(id);
+        (,,,, bool active) = registry.getStrategyMeta(id);
         assertTrue(active);
     }
 
@@ -229,13 +224,8 @@ contract StrategyRegistryTest is FheForgeTestHelper {
     }
 
     function testGetStrategyMetaReturnsDefaultForInactiveStrategy() public view {
-        (
-            string memory name,
-            bytes32 wfHash,
-            address creator,
-            uint256 createdAt,
-            bool active
-        ) = registry.getStrategyMeta(999);
+        (string memory name, bytes32 wfHash, address creator, uint256 createdAt, bool active) =
+            registry.getStrategyMeta(999);
 
         assertEq(bytes(name).length, 0);
         assertEq(wfHash, bytes32(0));
@@ -260,12 +250,7 @@ contract StrategyRegistryTest is FheForgeTestHelper {
         bytes32 expectedIntentId = keccak256(payload);
 
         vm.expectEmit(true, true, true, true, address(registry));
-        emit StrategyRegistry.CrossChainMessage(
-            destDomain,
-            expectedIntentId,
-            address(this),
-            payload
-        );
+        emit StrategyRegistry.CrossChainMessage(destDomain, expectedIntentId, address(this), payload);
         registry.broadcastStrategy(id, destDomain);
     }
 
@@ -288,13 +273,7 @@ contract StrategyRegistryTest is FheForgeTestHelper {
 
         vm.prank(owner);
         registry.receiveCrossChainStrategy(
-            sourceDomain,
-            sourceStrategyId,
-            STRATEGY_NAME,
-            WORKFLOW_HASH,
-            creator,
-            500,
-            2
+            sourceDomain, sourceStrategyId, STRATEGY_NAME, WORKFLOW_HASH, creator, 500, 2
         );
 
         // Strategy ID 0 is used for cross-chain (starts at 0, then ++ in function)
@@ -303,8 +282,7 @@ contract StrategyRegistryTest is FheForgeTestHelper {
         //   ++strategyCount;
         // So id = 0 for first cross-chain strategy, then strategyCount becomes 1
 
-        (string memory name, bytes32 wfHash, address storedCreator, , bool active) = registry
-            .getStrategyMeta(0);
+        (string memory name, bytes32 wfHash, address storedCreator,, bool active) = registry.getStrategyMeta(0);
 
         assertEq(name, STRATEGY_NAME);
         assertEq(wfHash, WORKFLOW_HASH);
@@ -386,10 +364,7 @@ contract StrategyRegistryTest is FheForgeTestHelper {
 
         // Vault calls incrementTvl
         euint128 amount = FHE.asEuint128(100 ether);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(amount)),
-            address(registry)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(amount)), address(registry));
 
         vm.prank(vault);
         registry.incrementTvl(id, amount);
@@ -427,10 +402,7 @@ contract StrategyRegistryTest is FheForgeTestHelper {
         uint256 id = registry.registerStrategy(STRATEGY_NAME, WORKFLOW_HASH);
 
         euint128 amount = FHE.asEuint128(100 ether);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(amount)),
-            address(registry)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(amount)), address(registry));
 
         vm.prank(vault);
         registry.decrementTvl(id, amount);

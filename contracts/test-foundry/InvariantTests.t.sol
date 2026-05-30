@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { SwapRouter } from "../contracts/SwapRouter.sol";
-import { ExecutorContract } from "../contracts/ExecutorContract.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {SwapRouter} from "../contracts/SwapRouter.sol";
+import {ExecutorContract} from "../contracts/ExecutorContract.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
 
 /// @notice Foundry invariant/fuzz tests for non-FHE protocol invariants (MC-073).
 ///         These tests validate that core constraints hold across various inputs.
@@ -30,24 +30,14 @@ contract InvariantTests is FheForgeTestHelper {
         tokenIn = new MockERC20("TokenIn", "TIN", 18);
         tokenOut = new MockERC20("TokenOut", "TOUT", 18);
         executorContract = new ExecutorContract();
-        router = new SwapRouter(
-            address(executorContract),
-            MIN_DL,
-            MAX_DL,
-            EXEC_DELAY,
-            UNISWAP_ROUTER
-        );
+        router = new SwapRouter(address(executorContract), MIN_DL, MAX_DL, EXEC_DELAY, UNISWAP_ROUTER);
         vm.stopPrank();
 
         vm.prank(owner);
         tokenIn.mint(user, 10000 ether);
     }
 
-    function testFuzzSubmitAndCancel(
-        uint128 amount,
-        uint128 minOut,
-        uint256 deadlineOffset
-    ) public {
+    function testFuzzSubmitAndCancel(uint128 amount, uint128 minOut, uint256 deadlineOffset) public {
         // Constrain inputs to valid ranges
         if (amount == 0) return;
         if (amount > 10000 ether) return; // user balance bound
@@ -57,13 +47,7 @@ contract InvariantTests is FheForgeTestHelper {
         vm.startPrank(user);
         tokenIn.approve(address(router), amount);
 
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            amount,
-            minOut,
-            deadlineOffset
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), amount, minOut, deadlineOffset);
 
         uint256 userBalanceBefore = tokenIn.balanceOf(user);
         router.cancelIntent(intentId);
@@ -74,37 +58,17 @@ contract InvariantTests is FheForgeTestHelper {
         assertEq(userBalanceAfter, userBalanceBefore + amount, "escrow leak on cancel");
     }
 
-    function testFuzzUniqueIntents(
-        uint128 amountA,
-        uint128 amountB,
-        uint128 minOutA,
-        uint128 minOutB
-    ) public {
+    function testFuzzUniqueIntents(uint128 amountA, uint128 amountB, uint128 minOutA, uint128 minOutB) public {
         if (amountA == 0 || amountB == 0) return;
         if (uint256(amountA) + uint256(amountB) > 10000 ether) return; // user balance bound + overflow protection
         if (minOutA > amountA || minOutB > amountB) return;
-        vm.assume(
-            keccak256(abi.encode(amountA, amountB)) != keccak256(abi.encode(amountA, amountB)) ||
-                true
-        );
+        vm.assume(keccak256(abi.encode(amountA, amountB)) != keccak256(abi.encode(amountA, amountB)) || true);
 
         vm.startPrank(user);
         tokenIn.approve(address(router), uint256(amountA) + uint256(amountB));
 
-        bytes32 idA = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            amountA,
-            minOutA,
-            MIN_DL
-        );
-        bytes32 idB = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            amountB,
-            minOutB,
-            MIN_DL
-        );
+        bytes32 idA = router.submitSwapIntent(address(tokenIn), address(tokenOut), amountA, minOutA, MIN_DL);
+        bytes32 idB = router.submitSwapIntent(address(tokenIn), address(tokenOut), amountB, minOutB, MIN_DL);
         vm.stopPrank();
 
         // Invariant: Different intents must have different IDs
@@ -136,42 +100,20 @@ contract InvariantTests is FheForgeTestHelper {
 
         if (offset < MIN_DL) {
             vm.expectRevert(SwapRouter.DeadlineTooShort.selector);
-            router.submitSwapIntent(
-                address(tokenIn),
-                address(tokenOut),
-                100 ether,
-                50 ether,
-                offset
-            );
+            router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 50 ether, offset);
         } else if (offset > MAX_DL) {
             vm.expectRevert(SwapRouter.DeadlineTooLong.selector);
-            router.submitSwapIntent(
-                address(tokenIn),
-                address(tokenOut),
-                100 ether,
-                50 ether,
-                offset
-            );
+            router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 50 ether, offset);
         } else {
-            bytes32 id = router.submitSwapIntent(
-                address(tokenIn),
-                address(tokenOut),
-                100 ether,
-                50 ether,
-                offset
-            );
-            (, , , uint256 dl) = router.getIntentMeta(id);
+            bytes32 id = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 50 ether, offset);
+            (,,, uint256 dl) = router.getIntentMeta(id);
             assertTrue(dl > block.timestamp + MIN_DL - 1, "deadline too early");
             assertTrue(dl < block.timestamp + MAX_DL + 1, "deadline too late");
         }
         vm.stopPrank();
     }
 
-    function testFuzzOnlyExecutorCanExecute(
-        uint256 amount,
-        uint256 minOut,
-        uint256 deadlineOffset
-    ) public {
+    function testFuzzOnlyExecutorCanExecute(uint256 amount, uint256 minOut, uint256 deadlineOffset) public {
         if (amount == 0) return;
         if (amount > 10000 ether) return; // user balance bound
         if (minOut == 0 || minOut > amount) return;
@@ -181,13 +123,7 @@ contract InvariantTests is FheForgeTestHelper {
 
         vm.startPrank(user);
         tokenIn.approve(address(router), amount);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            amount,
-            minOut,
-            deadlineOffset
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), amount, minOut, deadlineOffset);
         vm.stopPrank();
 
         vm.prank(randomCaller);
@@ -195,38 +131,25 @@ contract InvariantTests is FheForgeTestHelper {
         router.executeIntent(intentId, minOut);
     }
 
-    function testFuzzBalanceConservation(
-        uint128 amount,
-        uint128 minOut,
-        uint256 deadlineOffset
-    ) public {
+    function testFuzzBalanceConservation(uint128 amount, uint128 minOut, uint256 deadlineOffset) public {
         if (amount == 0) return;
         if (amount > 10000 ether) return; // user balance bound
         if (minOut == 0 || minOut > amount) return;
         vm.assume(deadlineOffset > MIN_DL - 1 && deadlineOffset < MAX_DL + 1);
 
-        uint256 totalBefore =
-            tokenIn.balanceOf(address(router)) + tokenIn.balanceOf(user) + tokenIn.balanceOf(owner);
+        uint256 totalBefore = tokenIn.balanceOf(address(router)) + tokenIn.balanceOf(user) + tokenIn.balanceOf(owner);
 
         vm.startPrank(user);
         tokenIn.approve(address(router), amount);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            amount,
-            minOut,
-            deadlineOffset
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), amount, minOut, deadlineOffset);
 
-        uint256 afterSubmit =
-            tokenIn.balanceOf(address(router)) + tokenIn.balanceOf(user) + tokenIn.balanceOf(owner);
+        uint256 afterSubmit = tokenIn.balanceOf(address(router)) + tokenIn.balanceOf(user) + tokenIn.balanceOf(owner);
         assertEq(afterSubmit, totalBefore, "balance changed on submit");
 
         router.cancelIntent(intentId);
         vm.stopPrank();
 
-        uint256 afterCancel =
-            tokenIn.balanceOf(address(router)) + tokenIn.balanceOf(user) + tokenIn.balanceOf(owner);
+        uint256 afterCancel = tokenIn.balanceOf(address(router)) + tokenIn.balanceOf(user) + tokenIn.balanceOf(owner);
         assertEq(afterCancel, totalBefore, "balance changed after cancel");
     }
 }

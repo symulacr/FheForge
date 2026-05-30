@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { SwapRouter } from "../contracts/SwapRouter.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {SwapRouter} from "../contracts/SwapRouter.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
 
 /// @custom:mock
 contract SwapRouterTest is FheForgeTestHelper {
@@ -60,13 +60,7 @@ contract SwapRouterTest is FheForgeTestHelper {
     function testSubmitSwapIntent() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
         vm.stopPrank();
 
         (address ti, address to, address u, uint256 dl) = router.getIntentMeta(intentId);
@@ -97,25 +91,13 @@ contract SwapRouterTest is FheForgeTestHelper {
     function testSubmitSwapIntentRevertsOnDeadlineTooShort() public {
         vm.prank(user);
         vm.expectRevert(SwapRouter.DeadlineTooShort.selector);
-        router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL - 1
-        );
+        router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL - 1);
     }
 
     function testSubmitSwapIntentRevertsOnDeadlineTooLong() public {
         vm.prank(user);
         vm.expectRevert(SwapRouter.DeadlineTooLong.selector);
-        router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MAX_DL + 1
-        );
+        router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MAX_DL + 1);
     }
 
     function testSubmitSwapIntentEscrowsTokens() public {
@@ -129,32 +111,20 @@ contract SwapRouterTest is FheForgeTestHelper {
     function testSubmitSwapIntentWithApproval() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
         vm.stopPrank();
 
         assertEq(tokenIn.balanceOf(address(router)), 100 ether);
         assertEq(tokenIn.balanceOf(user), 900 ether);
 
-        (, , address u, ) = router.getIntentMeta(intentId);
+        (,, address u,) = router.getIntentMeta(intentId);
         assertEq(u, user);
     }
 
     function testCancelIntentReturnsTokens() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
         router.cancelIntent(intentId);
         vm.stopPrank();
 
@@ -165,13 +135,7 @@ contract SwapRouterTest is FheForgeTestHelper {
     function testCancelIntentRevertsOnNonCreator() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
         vm.stopPrank();
 
         vm.prank(owner);
@@ -188,13 +152,7 @@ contract SwapRouterTest is FheForgeTestHelper {
     function testExecuteIntent() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
         vm.stopPrank();
 
         uint256 outputAmount = 70 ether;
@@ -209,20 +167,14 @@ contract SwapRouterTest is FheForgeTestHelper {
 
         assertEq(tokenOut.balanceOf(user), outputAmount);
         assertEq(tokenIn.balanceOf(executor), 100 ether);
-        (, , address u, ) = router.getIntentMeta(intentId);
+        (,, address u,) = router.getIntentMeta(intentId);
         assertEq(u, address(0));
     }
 
     function testExecuteIntentRevertsOnNonExecutor() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
         vm.stopPrank();
 
         vm.prank(user);
@@ -239,13 +191,7 @@ contract SwapRouterTest is FheForgeTestHelper {
     function testExecuteIntentRevertsOnZeroOutput() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
         vm.stopPrank();
 
         vm.prank(executor);
@@ -256,13 +202,7 @@ contract SwapRouterTest is FheForgeTestHelper {
     function testExecuteIntentRevertsOnInsufficientOutput() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
+        bytes32 intentId = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
         vm.stopPrank();
 
         vm.prank(executor);
@@ -293,20 +233,8 @@ contract SwapRouterTest is FheForgeTestHelper {
         vm.startPrank(user);
         tokenIn.approve(address(router), 1000 ether);
 
-        bytes32 intentA = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DL
-        );
-        bytes32 intentB = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            200 ether,
-            140 ether,
-            MIN_DL
-        );
+        bytes32 intentA = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DL);
+        bytes32 intentB = router.submitSwapIntent(address(tokenIn), address(tokenOut), 200 ether, 140 ether, MIN_DL);
         vm.stopPrank();
 
         assertTrue(intentA != intentB);

@@ -42,6 +42,16 @@ interface CofheClient {
 		execute: () => Promise<unknown>;
 	};
 	decryptForView: (ctHash: bigint, fheType: number) => { execute: () => Promise<bigint> };
+	decryptForTx: (
+		user: string,
+		token: string,
+		pool: string,
+		opts: { permit: unknown },
+	) => Promise<{
+		plaintext?: string;
+		proof?: string;
+		signature: string;
+	}>;
 	[key: string]: unknown;
 }
 

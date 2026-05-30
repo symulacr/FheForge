@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { StrategyExecutor } from "../contracts/StrategyExecutor.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { MockLendingPool } from "./MockLendingPool.sol";
-import { SwapRouter } from "../contracts/SwapRouter.sol";
-import { StrategyVault } from "../contracts/StrategyVault.sol";
-import { StrategyRegistry } from "../contracts/StrategyRegistry.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {StrategyExecutor} from "../contracts/StrategyExecutor.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {InEuint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {MockLendingPool} from "./MockLendingPool.sol";
+import {SwapRouter} from "../contracts/SwapRouter.sol";
+import {StrategyVault} from "../contracts/StrategyVault.sol";
+import {StrategyRegistry} from "../contracts/StrategyRegistry.sol";
 
 /// @custom:mock
 contract StrategyExecutorTest is FheForgeTestHelper {
@@ -56,9 +56,7 @@ contract StrategyExecutorTest is FheForgeTestHelper {
         vm.stopPrank();
         borrowToken.approve(address(pool), 1_000_000 ether);
         pool.shield(
-            address(borrowToken),
-            1_000_000 ether,
-            InEuint128({ ctHash: 0, securityZone: 0, utype: 6, signature: "" })
+            address(borrowToken), 1_000_000 ether, InEuint128({ctHash: 0, securityZone: 0, utype: 6, signature: ""})
         );
         pool.setComposer(address(executor));
 
@@ -157,12 +155,12 @@ contract StrategyExecutorTest is FheForgeTestHelper {
         actions[0] = StrategyExecutor.Action({
             actionType: executor.SHIELD_SUPPLY(),
             params: abi.encode(address(supplyToken), 100 ether),
-            encAmount: InEuint128({ ctHash: 0, securityZone: 0, utype: 6, signature: "" })
+            encAmount: InEuint128({ctHash: 0, securityZone: 0, utype: 6, signature: ""})
         });
 
         bytes32 strategyId = keccak256("supply-test");
         vm.prank(user);
-        bool completed = executor.executePipeline{ gas: 1_000_000 }(strategyId, actions);
+        bool completed = executor.executePipeline{gas: 1_000_000}(strategyId, actions);
         assertTrue(completed);
     }
 
@@ -171,7 +169,7 @@ contract StrategyExecutorTest is FheForgeTestHelper {
         actions[0] = StrategyExecutor.Action({
             actionType: hex"ffffffff",
             params: hex"",
-            encAmount: InEuint128({ ctHash: 0, securityZone: 0, utype: 6, signature: "" })
+            encAmount: InEuint128({ctHash: 0, securityZone: 0, utype: 6, signature: ""})
         });
 
         bytes32 strategyId = keccak256("invalid-action");
@@ -262,17 +260,17 @@ contract StrategyExecutorTest is FheForgeTestHelper {
         actions[0] = StrategyExecutor.Action({
             actionType: executor.SHIELD_SUPPLY(),
             params: abi.encode(address(supplyToken), 100 ether),
-            encAmount: InEuint128({ ctHash: 0, securityZone: 0, utype: 6, signature: "" })
+            encAmount: InEuint128({ctHash: 0, securityZone: 0, utype: 6, signature: ""})
         });
         actions[1] = StrategyExecutor.Action({
             actionType: executor.BORROW_LTV(),
             params: abi.encode(address(borrowToken), 50 ether),
-            encAmount: InEuint128({ ctHash: 0, securityZone: 0, utype: 6, signature: "" })
+            encAmount: InEuint128({ctHash: 0, securityZone: 0, utype: 6, signature: ""})
         });
 
         bytes32 strategyId = keccak256("multi-action");
         vm.prank(user);
-        bool completed = executor.executePipeline{ gas: 1_000_000 }(strategyId, actions);
+        bool completed = executor.executePipeline{gas: 1_000_000}(strategyId, actions);
         assertTrue(completed);
     }
 
@@ -281,7 +279,7 @@ contract StrategyExecutorTest is FheForgeTestHelper {
         actions[0] = StrategyExecutor.Action({
             actionType: executor.SHIELD_SUPPLY(),
             params: abi.encode(address(supplyToken), 100 ether),
-            encAmount: InEuint128({ ctHash: 0, securityZone: 0, utype: 6, signature: "" })
+            encAmount: InEuint128({ctHash: 0, securityZone: 0, utype: 6, signature: ""})
         });
 
         bytes32 strategyId = keccak256("gas-checkpoint");

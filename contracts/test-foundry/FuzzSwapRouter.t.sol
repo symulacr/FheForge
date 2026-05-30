@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { SwapRouter } from "../contracts/SwapRouter.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {SwapRouter} from "../contracts/SwapRouter.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
 
 /// @notice Fuzz tests for SwapRouter (MC-075).
 ///         Extends coverage beyond InvariantTests.t.sol with deadline boundary
@@ -12,25 +12,25 @@ import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
 ///         and executor timelock boundary fuzzing.
 /// @custom:mock
 contract FuzzSwapRouter is FheForgeTestHelper {
-    uint256 internal constant MIN_DL       = 30;
-    uint256 internal constant MAX_DL       = 7 days;
-    uint256 internal constant EXEC_DELAY   = 48 hours;
+    uint256 internal constant MIN_DL = 30;
+    uint256 internal constant MAX_DL = 7 days;
+    uint256 internal constant EXEC_DELAY = 48 hours;
     address internal constant UNISWAP_ROUTER = address(0x1);
 
     SwapRouter public router;
     MockERC20 public tokenIn;
     MockERC20 public tokenOut;
 
-    address public owner    = makeAddr("owner");
+    address public owner = makeAddr("owner");
     address public executor = makeAddr("executor");
-    address public user     = makeAddr("user");
+    address public user = makeAddr("user");
 
     function setUp() public {
         _deployFheMocks();
         vm.startPrank(owner);
-        tokenIn  = new MockERC20("TokenIn", "TIN", 18);
+        tokenIn = new MockERC20("TokenIn", "TIN", 18);
         tokenOut = new MockERC20("TokenOut", "TOUT", 18);
-        router   = new SwapRouter(executor, MIN_DL, MAX_DL, EXEC_DELAY, UNISWAP_ROUTER);
+        router = new SwapRouter(executor, MIN_DL, MAX_DL, EXEC_DELAY, UNISWAP_ROUTER);
         vm.stopPrank();
 
         vm.prank(owner);
@@ -44,12 +44,10 @@ contract FuzzSwapRouter is FheForgeTestHelper {
 
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 id = router.submitSwapIntent(
-            address(tokenIn), address(tokenOut), 100 ether, 50 ether, offset
-        );
+        bytes32 id = router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 50 ether, offset);
         vm.stopPrank();
 
-        (, , , uint256 dl) = router.getIntentMeta(id);
+        (,,, uint256 dl) = router.getIntentMeta(id);
         assertEq(dl, block.timestamp + offset, "deadline mismatch");
     }
 
@@ -57,22 +55,18 @@ contract FuzzSwapRouter is FheForgeTestHelper {
     // Contracts allow minAmountOut up to amountIn. Test various ratios.
     function testFuzzAmountAndMinOut(uint256 amountIn, uint256 minOut) public {
         amountIn = bound(amountIn, 1 ether, 10_000 ether);
-        minOut   = bound(minOut,   0,        amountIn);
+        minOut = bound(minOut, 0, amountIn);
 
         vm.startPrank(user);
         tokenIn.approve(address(router), amountIn);
 
         if (minOut == 0) {
             // minOut = 0 is allowed; submits fine but execution would need > 0
-            bytes32 id = router.submitSwapIntent(
-                address(tokenIn), address(tokenOut), amountIn, 0, MIN_DL
-            );
+            bytes32 id = router.submitSwapIntent(address(tokenIn), address(tokenOut), amountIn, 0, MIN_DL);
             (,,, uint256 dl) = router.getIntentMeta(id);
             assertTrue(dl > block.timestamp, "deadline not set");
         } else {
-            bytes32 id = router.submitSwapIntent(
-                address(tokenIn), address(tokenOut), amountIn, minOut, MIN_DL
-            );
+            bytes32 id = router.submitSwapIntent(address(tokenIn), address(tokenOut), amountIn, minOut, MIN_DL);
             (,,, uint256 dl) = router.getIntentMeta(id);
             assertTrue(dl > block.timestamp, "deadline not set");
         }
@@ -112,7 +106,7 @@ contract FuzzSwapRouter is FheForgeTestHelper {
         uint256 amountOutMin
     ) public {
         vm.assume(tokenInAddr != address(0) || tokenOutAddr != address(0));
-        amountIn   = bound(amountIn, 0, 1000 ether);
+        amountIn = bound(amountIn, 0, 1000 ether);
         amountOutMin = bound(amountOutMin, 0, amountIn);
 
         vm.prank(user);
@@ -152,9 +146,7 @@ contract FuzzSwapRouter is FheForgeTestHelper {
 
         vm.startPrank(user);
         tokenIn.approve(address(router), amount);
-        bytes32 id = router.submitSwapIntent(
-            address(tokenIn), address(tokenOut), amount, amount / 2, MIN_DL
-        );
+        bytes32 id = router.submitSwapIntent(address(tokenIn), address(tokenOut), amount, amount / 2, MIN_DL);
         vm.stopPrank();
 
         assertTrue(id != bytes32(0), "intent ID zero");
@@ -170,9 +162,7 @@ contract FuzzSwapRouter is FheForgeTestHelper {
         tokenIn.approve(address(router), amount);
 
         uint256 before = tokenIn.balanceOf(user);
-        bytes32 id = router.submitSwapIntent(
-            address(tokenIn), address(tokenOut), amount, amount / 2, MIN_DL
-        );
+        bytes32 id = router.submitSwapIntent(address(tokenIn), address(tokenOut), amount, amount / 2, MIN_DL);
         router.cancelIntent(id);
         uint256 afterBalance = tokenIn.balanceOf(user);
         vm.stopPrank();

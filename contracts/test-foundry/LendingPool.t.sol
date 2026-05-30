@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { LendingPool } from "../contracts/LendingPool.sol";
-import { PriceOracle } from "../contracts/PriceOracle.sol";
-import { FlashLoanReceiver } from "./FlashLoanReceiver.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { FHE, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
-import { WETH9 } from "../contracts/WETH9.sol";
-import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {LendingPool} from "../contracts/LendingPool.sol";
+import {PriceOracle} from "../contracts/PriceOracle.sol";
+import {FlashLoanReceiver} from "./FlashLoanReceiver.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {FHE, euint128, InEuint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {ITaskManager} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
+import {WETH9} from "../contracts/WETH9.sol";
+import {MockTaskManager} from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
 
 /// @custom:mock
 contract LendingPoolTest is FheForgeTestHelper {
@@ -129,10 +129,7 @@ contract LendingPoolTest is FheForgeTestHelper {
         // returns false for security zones < 128 (checks wrong byte), so the ACL
         // is consulted and LendingPool has no permission on the test-created handle.
         euint128 handle = FHE.asEuint128(supplyAmount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(handle)),
-            address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(handle)), address(pool));
 
         vm.startPrank(owner);
         token.approve(address(pool), supplyAmount);
@@ -166,12 +163,9 @@ contract LendingPoolTest is FheForgeTestHelper {
     /// @dev Deploy oracle + debtToken, configure prices/LTV, create a user position,
     ///      and fund the liquidator with borrowed debt tokens.
     ///      Collateral = token (existing), Debt = debtToken (fresh).
-    function _setupLiquidationPosition(
-        address user_,
-        address liquidator_,
-        uint256 collAmount,
-        uint256 borrowAmount
-    ) internal {
+    function _setupLiquidationPosition(address user_, address liquidator_, uint256 collAmount, uint256 borrowAmount)
+        internal
+    {
         // Deploy oracle and second token for debt under owner prank
         vm.startPrank(owner);
         oracle = new PriceOracle(PYTH_MOCK, DEFAULT_STALE);
@@ -187,10 +181,7 @@ contract LendingPoolTest is FheForgeTestHelper {
 
         // 1. Deposit collateral for user
         euint128 collHandle = FHE.asEuint128(collAmount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(collHandle)),
-            address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(collHandle)), address(pool));
         vm.startPrank(owner);
         token.mint(owner, collAmount);
         token.approve(address(pool), collAmount);
@@ -199,10 +190,7 @@ contract LendingPoolTest is FheForgeTestHelper {
 
         // 2. Pre-deposit debt tokens to the pool as liquidity
         euint128 liqHandle = FHE.asEuint128(borrowAmount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(liqHandle)),
-            address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(liqHandle)), address(pool));
         vm.startPrank(owner);
         debtToken.mint(owner, borrowAmount);
         debtToken.approve(address(pool), borrowAmount);
@@ -211,10 +199,7 @@ contract LendingPoolTest is FheForgeTestHelper {
 
         // 3. Borrow for user (tokens go to composer = owner)
         euint128 borrowHandle = FHE.asEuint128(borrowAmount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(borrowHandle)),
-            address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(borrowHandle)), address(pool));
         vm.startPrank(owner);
         pool.borrowFor(address(debtToken), borrowAmount, borrowHandle, user_);
         // Pass borrowed tokens to liquidator so they can repay
@@ -232,16 +217,7 @@ contract LendingPoolTest is FheForgeTestHelper {
 
         vm.prank(liquidator);
         vm.expectRevert(LendingPool.OracleNotSet.selector);
-        pool.liquidateWithProof(
-            user_,
-            address(token),
-            address(0x1),
-            1 ether,
-            uint128(1),
-            hex"00",
-            uint128(1),
-            hex"00"
-        );
+        pool.liquidateWithProof(user_, address(token), address(0x1), 1 ether, uint128(1), hex"00", uint128(1), hex"00");
     }
 
     function testLiquidateWithProofRevertWhenSelfLiquidation() public {
@@ -252,16 +228,7 @@ contract LendingPoolTest is FheForgeTestHelper {
 
         vm.prank(owner);
         vm.expectRevert(LendingPool.CannotSelfLiquidate.selector);
-        pool.liquidateWithProof(
-            owner,
-            address(token),
-            address(0x1),
-            1 ether,
-            uint128(1),
-            hex"00",
-            uint128(1),
-            hex"00"
-        );
+        pool.liquidateWithProof(owner, address(token), address(0x1), 1 ether, uint128(1), hex"00", uint128(1), hex"00");
     }
 
     function testLiquidateWithProofSuccessful() public {
@@ -274,18 +241,10 @@ contract LendingPoolTest is FheForgeTestHelper {
         _setupLiquidationPosition(user_, liquidator, collAmount, borrowAmount);
 
         // expectedSeized = 40 * (10000 + 500) / 10000 = 42 ether
-        uint256 expectedSeized =
-            (debtToCover * (pool.BPS_DEN() + pool.LIQUIDATION_BONUS_BPS())) / pool.BPS_DEN();
+        uint256 expectedSeized = (debtToCover * (pool.BPS_DEN() + pool.LIQUIDATION_BONUS_BPS())) / pool.BPS_DEN();
 
         vm.expectEmit(true, true, true, true, address(pool));
-        emit LendingPool.Liquidated(
-            liquidator,
-            user_,
-            address(token),
-            address(debtToken),
-            debtToCover,
-            expectedSeized
-        );
+        emit LendingPool.Liquidated(liquidator, user_, address(token), address(debtToken), debtToCover, expectedSeized);
 
         vm.prank(liquidator);
         pool.liquidateWithProof(
@@ -312,14 +271,7 @@ contract LendingPoolTest is FheForgeTestHelper {
         vm.prank(liquidator);
         vm.expectRevert(LendingPool.InsufficientCollateral.selector);
         pool.liquidateWithProof(
-            user_,
-            address(token),
-            address(debtToken),
-            debtToCover,
-            borrowAmount,
-            hex"",
-            collAmount,
-            hex""
+            user_, address(token), address(debtToken), debtToCover, borrowAmount, hex"", collAmount, hex""
         );
     }
 
@@ -338,25 +290,11 @@ contract LendingPoolTest is FheForgeTestHelper {
         if (debtToCoverWad < 20 ether) {
             vm.expectRevert(LendingPool.InsufficientCollateral.selector);
             pool.liquidateWithProof(
-                user_,
-                address(token),
-                address(debtToken),
-                debtToCoverWad,
-                borrowAmount,
-                hex"",
-                collAmount,
-                hex""
+                user_, address(token), address(debtToken), debtToCoverWad, borrowAmount, hex"", collAmount, hex""
             );
         } else {
             pool.liquidateWithProof(
-                user_,
-                address(token),
-                address(debtToken),
-                debtToCoverWad,
-                borrowAmount,
-                hex"",
-                collAmount,
-                hex""
+                user_, address(token), address(debtToken), debtToCoverWad, borrowAmount, hex"", collAmount, hex""
             );
         }
     }
@@ -374,19 +312,15 @@ contract LendingPoolTest is FheForgeTestHelper {
 
         euint128 encAmount = FHE.asEuint128(amount);
         _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(encAmount)),
-            address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
 
         vm.startPrank(user);
         token.approve(address(pool), amount);
-        pool.shield(address(token), amount, InEuint128({
-            ctHash: uint256(euint128.unwrap(encAmount)),
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        }));
+        pool.shield(
+            address(token),
+            amount,
+            InEuint128({ctHash: uint256(euint128.unwrap(encAmount)), securityZone: 0, utype: 6, signature: ""})
+        );
         vm.stopPrank();
 
         assertEq(pool.liquidReserve(address(token)), amount);
@@ -415,27 +349,21 @@ contract LendingPoolTest is FheForgeTestHelper {
         euint128 collEnc = FHE.asEuint128(collAmount);
         _mockEncVal(uint256(euint128.unwrap(collEnc)), collAmount);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(collEnc)), address(pool));
-        pool.shield(address(token), collAmount, InEuint128({
-            ctHash: uint256(euint128.unwrap(collEnc)),
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        }));
+        pool.shield(
+            address(token),
+            collAmount,
+            InEuint128({ctHash: uint256(euint128.unwrap(collEnc)), securityZone: 0, utype: 6, signature: ""})
+        );
 
         euint128 borrowEnc = FHE.asEuint128(borrowAmount);
         _mockEncVal(uint256(euint128.unwrap(borrowEnc)), borrowAmount);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(borrowEnc)), address(pool));
-        
+
         pool.borrowWithLtvCheck(
             address(token),
             address(token),
             borrowAmount,
-            InEuint128({
-                ctHash: uint256(euint128.unwrap(borrowEnc)),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
+            InEuint128({ctHash: uint256(euint128.unwrap(borrowEnc)), securityZone: 0, utype: 6, signature: ""}),
             50, // LTV 50%
             100
         );
@@ -465,12 +393,11 @@ contract LendingPoolTest is FheForgeTestHelper {
         euint128 collEnc = FHE.asEuint128(collAmount);
         _mockEncVal(uint256(euint128.unwrap(collEnc)), collAmount);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(collEnc)), address(pool));
-        pool.shield(address(token), collAmount, InEuint128({
-            ctHash: uint256(euint128.unwrap(collEnc)),
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        }));
+        pool.shield(
+            address(token),
+            collAmount,
+            InEuint128({ctHash: uint256(euint128.unwrap(collEnc)), securityZone: 0, utype: 6, signature: ""})
+        );
 
         euint128 borrowEnc = FHE.asEuint128(borrowAmount);
         _mockEncVal(uint256(euint128.unwrap(borrowEnc)), borrowAmount);
@@ -479,12 +406,7 @@ contract LendingPoolTest is FheForgeTestHelper {
             address(token),
             address(token),
             borrowAmount,
-            InEuint128({
-                ctHash: uint256(euint128.unwrap(borrowEnc)),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
+            InEuint128({ctHash: uint256(euint128.unwrap(borrowEnc)), securityZone: 0, utype: 6, signature: ""}),
             50,
             100
         );
@@ -494,12 +416,7 @@ contract LendingPoolTest is FheForgeTestHelper {
         pool.repayDebt(
             address(token),
             borrowAmount,
-            InEuint128({
-                ctHash: uint256(euint128.unwrap(borrowEnc)),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            InEuint128({ctHash: uint256(euint128.unwrap(borrowEnc)), securityZone: 0, utype: 6, signature: ""})
         );
         vm.stopPrank();
     }
@@ -514,12 +431,11 @@ contract LendingPoolTest is FheForgeTestHelper {
         euint128 encAmount = FHE.asEuint128(amount);
         _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
-        pool.shield(address(token), amount, InEuint128({
-            ctHash: uint256(euint128.unwrap(encAmount)),
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        }));
+        pool.shield(
+            address(token),
+            amount,
+            InEuint128({ctHash: uint256(euint128.unwrap(encAmount)), securityZone: 0, utype: 6, signature: ""})
+        );
 
         euint128 withdrawEnc = FHE.asEuint128(40 ether);
         _mockEncVal(uint256(euint128.unwrap(withdrawEnc)), 40 ether);
@@ -527,12 +443,7 @@ contract LendingPoolTest is FheForgeTestHelper {
         pool.partialUnshield(
             address(token),
             40 ether,
-            InEuint128({
-                ctHash: uint256(euint128.unwrap(withdrawEnc)),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            InEuint128({ctHash: uint256(euint128.unwrap(withdrawEnc)), securityZone: 0, utype: 6, signature: ""})
         );
         vm.stopPrank();
         assertEq(token.balanceOf(user), 40 ether);
@@ -557,12 +468,11 @@ contract LendingPoolTest is FheForgeTestHelper {
         euint128 encAmount = FHE.asEuint128(amount);
         _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
-        pool.shield(address(token), amount, InEuint128({
-            ctHash: uint256(euint128.unwrap(encAmount)),
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        }));
+        pool.shield(
+            address(token),
+            amount,
+            InEuint128({ctHash: uint256(euint128.unwrap(encAmount)), securityZone: 0, utype: 6, signature: ""})
+        );
 
         pool.unshieldWithProof(address(token), uint128(amount), hex"");
         vm.stopPrank();
@@ -579,12 +489,11 @@ contract LendingPoolTest is FheForgeTestHelper {
         euint128 encAmount = FHE.asEuint128(amount);
         _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
-        pool.shield(address(token), amount, InEuint128({
-            ctHash: uint256(euint128.unwrap(encAmount)),
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        }));
+        pool.shield(
+            address(token),
+            amount,
+            InEuint128({ctHash: uint256(euint128.unwrap(encAmount)), securityZone: 0, utype: 6, signature: ""})
+        );
         vm.stopPrank();
 
         vm.prank(owner);
@@ -618,24 +527,16 @@ contract LendingPoolTest is FheForgeTestHelper {
         euint128 encAmount = FHE.asEuint128(amount);
         _mockEncVal(uint256(euint128.unwrap(encAmount)), amount);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(encAmount)), address(pool));
-        pool.shieldEth{value: amount}(InEuint128({
-            ctHash: uint256(euint128.unwrap(encAmount)),
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        }));
+        pool.shieldEth{value: amount}(
+            InEuint128({ctHash: uint256(euint128.unwrap(encAmount)), securityZone: 0, utype: 6, signature: ""})
+        );
 
         euint128 withdrawEnc = FHE.asEuint128(4 ether);
         _mockEncVal(uint256(euint128.unwrap(withdrawEnc)), 4 ether);
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(withdrawEnc)), address(pool));
         pool.partialUnshieldEth(
             4 ether,
-            InEuint128({
-                ctHash: uint256(euint128.unwrap(withdrawEnc)),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            InEuint128({ctHash: uint256(euint128.unwrap(withdrawEnc)), securityZone: 0, utype: 6, signature: ""})
         );
         vm.stopPrank();
         assertEq(user.balance, 4 ether);
@@ -672,12 +573,7 @@ contract LendingPoolTest is FheForgeTestHelper {
             address(token),
             collAmount,
             borrowAmount,
-            InEuint128({
-                ctHash: uint256(euint128.unwrap(borrowEnc)),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            InEuint128({ctHash: uint256(euint128.unwrap(borrowEnc)), securityZone: 0, utype: 6, signature: ""})
         );
         vm.stopPrank();
     }
@@ -697,7 +593,7 @@ contract LendingPoolTest is FheForgeTestHelper {
         ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(handle)), address(pool));
 
         pool.depositFor(address(token), amount, handle, user);
-        
+
         // now borrow for user
         pool.borrowFor(address(token), amount, handle, user);
 

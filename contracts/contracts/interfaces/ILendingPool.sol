@@ -56,5 +56,5 @@ interface ILendingPool {
         address debtToken,
         uint256 collateralAmount,
         uint256 borrowAmount
-    ) external view returns (bool);
+    ) external view returns (bool liquidatable);
 }

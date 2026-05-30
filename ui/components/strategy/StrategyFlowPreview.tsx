@@ -28,7 +28,8 @@ export function StrategyFlowPreview({
 
 	const initialToken = getInitialToken();
 
-	const formatAmount = (amount: number) => {
+	const formatAmount = (amount: number | undefined) => {
+		if (amount == null) return "0";
 		if (amount < 0.001) return amount.toExponential(3);
 		return amount.toFixed(6).replace(/\.?0+$/, "");
 	};
@@ -96,8 +97,11 @@ export function StrategyFlowPreview({
 										{hasIn ? (
 											<div className="flex items-center gap-1 text-foreground">
 												<Image
-													src={assetIcons[step.tokenIn?.symbol] || "/icons/default.png"}
-													alt={step.tokenIn?.symbol}
+													src={
+														(step.tokenIn?.symbol && assetIcons[step.tokenIn.symbol]) ||
+														"/icons/default.png"
+													}
+													alt={step.tokenIn?.symbol ?? ""}
 													width={16}
 													height={16}
 													className="w-4 h-4 object-contain bg-card border border-border"
@@ -116,8 +120,11 @@ export function StrategyFlowPreview({
 										{hasOut ? (
 											<div className="flex items-center gap-1 text-foreground">
 												<Image
-													src={assetIcons[step.tokenOut?.symbol] || "/icons/default.png"}
-													alt={step.tokenOut?.symbol}
+													src={
+														(step.tokenOut?.symbol && assetIcons[step.tokenOut.symbol]) ||
+														"/icons/default.png"
+													}
+													alt={step.tokenOut?.symbol ?? ""}
 													width={16}
 													height={16}
 													className="w-4 h-4 object-contain bg-card border border-border"

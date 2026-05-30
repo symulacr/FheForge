@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ILendingPool } from "../contracts/interfaces/ILendingPool.sol";
-import { InEuint128, euint128, FHE } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ILendingPool} from "../contracts/interfaces/ILendingPool.sol";
+import {InEuint128, euint128, FHE} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 /// @notice Minimal LendingPool mock for StrategyExecutor tests.
 ///         Deployed as a real contract (not vm.mockCall) but avoids FHE
@@ -38,22 +38,12 @@ contract MockLendingPool is ILendingPool {
         return;
     }
 
-    function depositFor(
-        address token,
-        uint256 amount,
-        euint128,
-        address user
-    ) external onlyComposer {
+    function depositFor(address token, uint256 amount, euint128, address user) external onlyComposer {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         supplyBalances[token][user] += amount;
     }
 
-    function borrowFor(
-        address token,
-        uint256 amount,
-        euint128,
-        address user
-    ) external onlyComposer {
+    function borrowFor(address token, uint256 amount, euint128, address user) external onlyComposer {
         borrowBalances[token][user] += amount;
         IERC20(token).safeTransfer(user, amount);
     }
@@ -64,23 +54,38 @@ contract MockLendingPool is ILendingPool {
     }
 
     function borrowWithLtvCheck(
-        address /*collateralToken*/,
-        address /*borrowToken*/,
-        uint256 /*borrowAmount*/,
-        InEuint128 calldata /*encBorrowAmount*/,
-        uint128 /*ltvNum*/,
+        address,
+        /*collateralToken*/
+        address,
+        /*borrowToken*/
+        uint256,
+        /*borrowAmount*/
+        InEuint128 calldata,
+        /*encBorrowAmount*/
+        uint128,
+        /*ltvNum*/
         uint128 /*ltvDen*/
-    ) external returns (euint128 actual) {
+    )
+        external
+        returns (euint128 actual)
+    {
         return FHE.asEuint128(0);
     }
 
     function borrowWithOracle(
-        address /*collateralToken*/,
-        address /*borrowToken*/,
-        uint256 /*collateralAmount*/,
-        uint256 /*borrowAmount*/,
+        address,
+        /*collateralToken*/
+        address,
+        /*borrowToken*/
+        uint256,
+        /*collateralAmount*/
+        uint256,
+        /*borrowAmount*/
         InEuint128 calldata /*encBorrowAmount*/
-    ) external returns (euint128 actual) {
+    )
+        external
+        returns (euint128 actual)
+    {
         return FHE.asEuint128(0);
     }
 
@@ -109,15 +114,24 @@ contract MockLendingPool is ILendingPool {
     }
 
     function liquidateWithProof(
-        address /*user*/,
-        address /*collateralToken*/,
-        address /*debtToken*/,
-        uint256 /*debtToCover*/,
-        uint128 /*debtBalanceProof*/,
-        bytes calldata /*debtSig*/,
-        uint128 /*supplyBalanceProof*/,
+        address,
+        /*user*/
+        address,
+        /*collateralToken*/
+        address,
+        /*debtToken*/
+        uint256,
+        /*debtToCover*/
+        uint128,
+        /*debtBalanceProof*/
+        bytes calldata,
+        /*debtSig*/
+        uint128,
+        /*supplyBalanceProof*/
         bytes calldata /*supplySig*/
-    ) external {
+    )
+        external
+    {
         return;
     }
 
@@ -130,13 +144,7 @@ contract MockLendingPool is ILendingPool {
     }
 
     // ─── isLiquidatable (stub) ──────────────────────────────────────────────
-    function isLiquidatable(
-        address,
-        address,
-        address,
-        uint256,
-        uint256
-    ) external pure returns (bool) {
+    function isLiquidatable(address, address, address, uint256, uint256) external pure returns (bool) {
         return false;
     }
 }

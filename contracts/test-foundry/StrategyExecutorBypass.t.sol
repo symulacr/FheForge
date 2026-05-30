@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { StrategyExecutor } from "../contracts/StrategyExecutor.sol";
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { InEuint128, FHE, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { MockLendingPool } from "./MockLendingPool.sol";
-import { SwapRouter } from "../contracts/SwapRouter.sol";
-import { StrategyVault } from "../contracts/StrategyVault.sol";
-import { StrategyRegistry } from "../contracts/StrategyRegistry.sol";
+import {StrategyExecutor} from "../contracts/StrategyExecutor.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {InEuint128, FHE, euint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {MockLendingPool} from "./MockLendingPool.sol";
+import {SwapRouter} from "../contracts/SwapRouter.sol";
+import {StrategyVault} from "../contracts/StrategyVault.sol";
+import {StrategyRegistry} from "../contracts/StrategyRegistry.sol";
 
 /// @notice Bypass tests for StrategyExecutor (MC-077).
 ///         Verifies that:
@@ -33,14 +33,10 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
     /// @dev Valid InEuint128 needed for all executor actions after _verifyEquality was added
     ///      to the swap action types (SWAP_INTENT, SWAP_UNISWAP_V3).
     InEuint128 internal s_validEnc;
+
     function setUp() public {
         _deployFheMocks();
-        s_validEnc = InEuint128({
-            ctHash: 0,
-            securityZone: 0,
-            utype: 6,
-            signature: ""
-        });
+        s_validEnc = InEuint128({ctHash: 0, securityZone: 0, utype: 6, signature: ""});
 
         pool = new MockLendingPool();
         registry = new StrategyRegistry(0);
@@ -98,7 +94,7 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
 
         bytes32 strategyId = keccak256("swap-intent-now-validated");
         vm.prank(user);
-        bool completed = executor.executePipeline{ gas: 1_000_000 }(strategyId, actions);
+        bool completed = executor.executePipeline{gas: 1_000_000}(strategyId, actions);
 
         assertTrue(completed, "SWAP_INTENT should complete after equality check was added");
     }
@@ -116,7 +112,7 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
 
         bytes32 strategyId = keccak256("swap-uniswap-now-validated");
         vm.prank(user);
-        bool completed = executor.executePipeline{ gas: 1_000_000 }(strategyId, actions);
+        bool completed = executor.executePipeline{gas: 1_000_000}(strategyId, actions);
 
         assertTrue(completed, "SWAP_UNISWAP_V3 should complete after equality check was added");
     }
@@ -136,23 +132,14 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
         _execSingleAction(executor.REPAY_DEBT(), abi.encode(address(borrowToken), 25 ether));
 
         // DEPOSIT_VAULT
-        _execSingleAction(
-            executor.DEPOSIT_VAULT(),
-            abi.encode(address(supplyToken), 100 ether, uint256(1))
-        );
+        _execSingleAction(executor.DEPOSIT_VAULT(), abi.encode(address(supplyToken), 100 ether, uint256(1)));
 
         // ADD_COLLATERAL
         bytes32 posId = keccak256("pos");
-        _execSingleAction(
-            executor.ADD_COLLATERAL(),
-            abi.encode(posId, address(supplyToken), 50 ether)
-        );
+        _execSingleAction(executor.ADD_COLLATERAL(), abi.encode(posId, address(supplyToken), 50 ether));
 
         // WITHDRAW_VAULT
-        _execSingleAction(
-            executor.WITHDRAW_VAULT(),
-            abi.encode(posId, 25 ether)
-        );
+        _execSingleAction(executor.WITHDRAW_VAULT(), abi.encode(posId, 25 ether));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -164,34 +151,22 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
     ///         the else branch in _executeAction reverts with UnknownActionType.
     function testUnknownActionType_Reverts() public {
         StrategyExecutor.Action[] memory actions = new StrategyExecutor.Action[](1);
-        actions[0] = StrategyExecutor.Action({
-            actionType: hex"ffffffff",
-            params: hex"",
-            encAmount: s_validEnc
-        });
+        actions[0] = StrategyExecutor.Action({actionType: hex"ffffffff", params: hex"", encAmount: s_validEnc});
 
         bytes32 strategyId = keccak256("unknown-action-type");
         vm.prank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSelector(StrategyExecutor.UnknownActionType.selector, hex"ffffffff")
-        );
+        vm.expectRevert(abi.encodeWithSelector(StrategyExecutor.UnknownActionType.selector, hex"ffffffff"));
         executor.executePipeline(strategyId, actions);
     }
 
     /// @notice Zero bytes action type should also revert, not silently skip.
     function testUnknownActionType_ZeroBytes_Reverts() public {
         StrategyExecutor.Action[] memory actions = new StrategyExecutor.Action[](1);
-        actions[0] = StrategyExecutor.Action({
-            actionType: bytes4(0),
-            params: hex"",
-            encAmount: s_validEnc
-        });
+        actions[0] = StrategyExecutor.Action({actionType: bytes4(0), params: hex"", encAmount: s_validEnc});
 
         bytes32 strategyId = keccak256("zero-action-type");
         vm.prank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSelector(StrategyExecutor.UnknownActionType.selector, bytes4(0))
-        );
+        vm.expectRevert(abi.encodeWithSelector(StrategyExecutor.UnknownActionType.selector, bytes4(0)));
         executor.executePipeline(strategyId, actions);
     }
 
@@ -205,17 +180,11 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
 
         for (uint256 i; i < badTypes.length; ++i) {
             StrategyExecutor.Action[] memory actions = new StrategyExecutor.Action[](1);
-            actions[0] = StrategyExecutor.Action({
-                actionType: badTypes[i],
-                params: hex"",
-                encAmount: s_validEnc
-            });
+            actions[0] = StrategyExecutor.Action({actionType: badTypes[i], params: hex"", encAmount: s_validEnc});
 
             bytes32 strategyId = keccak256(abi.encode("edge", i));
             vm.prank(attacker);
-            vm.expectRevert(
-                abi.encodeWithSelector(StrategyExecutor.UnknownActionType.selector, badTypes[i])
-            );
+            vm.expectRevert(abi.encodeWithSelector(StrategyExecutor.UnknownActionType.selector, badTypes[i]));
             executor.executePipeline(strategyId, actions);
         }
     }
@@ -227,27 +196,21 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
     /// @notice Pool.depositFor has onlyComposer — direct EOA calls must revert.
     function testOnlyComposer_DirectCallToPool_Reverts() public {
         vm.prank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSignature("MockLendingPool_Unauthorized()")
-        );
+        vm.expectRevert(abi.encodeWithSignature("MockLendingPool_Unauthorized()"));
         pool.depositFor(address(supplyToken), 100 ether, FHE.asEuint128(0), attacker);
     }
 
     /// @notice Pool.borrowFor has onlyComposer — direct EOA calls must revert.
     function testOnlyComposer_BorrowForDirect_Reverts() public {
         vm.prank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSignature("MockLendingPool_Unauthorized()")
-        );
+        vm.expectRevert(abi.encodeWithSignature("MockLendingPool_Unauthorized()"));
         pool.borrowFor(address(borrowToken), 100 ether, FHE.asEuint128(0), attacker);
     }
 
     /// @notice Pool.repayFor has onlyComposer — direct EOA calls must revert.
     function testOnlyComposer_RepayForDirect_Reverts() public {
         vm.prank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSignature("MockLendingPool_Unauthorized()")
-        );
+        vm.expectRevert(abi.encodeWithSignature("MockLendingPool_Unauthorized()"));
         pool.repayFor(address(borrowToken), 100 ether, FHE.asEuint128(0), attacker);
     }
 
@@ -263,7 +226,7 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
 
         bytes32 strategyId = keccak256("composer-pipeline");
         vm.prank(user);
-        bool completed = executor.executePipeline{ gas: 1_000_000 }(strategyId, actions);
+        bool completed = executor.executePipeline{gas: 1_000_000}(strategyId, actions);
         assertTrue(completed);
 
         // Verify the state change went through (proving onlyComposer gate was passed)
@@ -276,15 +239,11 @@ contract StrategyExecutorBypassTest is FheForgeTestHelper {
 
     function _execSingleAction(bytes4 actionType, bytes memory params) internal {
         StrategyExecutor.Action[] memory actions = new StrategyExecutor.Action[](1);
-        actions[0] = StrategyExecutor.Action({
-            actionType: actionType,
-            params: params,
-            encAmount: s_validEnc
-        });
+        actions[0] = StrategyExecutor.Action({actionType: actionType, params: params, encAmount: s_validEnc});
 
         bytes32 strategyId = keccak256(abi.encode("single", actionType, block.number));
         vm.prank(user);
-        bool completed = executor.executePipeline{ gas: 1_000_000 }(strategyId, actions);
+        bool completed = executor.executePipeline{gas: 1_000_000}(strategyId, actions);
         assertTrue(completed);
     }
 }

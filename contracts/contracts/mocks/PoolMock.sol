@@ -106,8 +106,12 @@ contract PoolMock is ILendingPool {
     }
 
     function isLiquidatable(
-        address, address, address, uint256, uint256
-    ) external pure returns (bool) {
+        address,
+        address,
+        address,
+        uint256,
+        uint256
+    ) external pure returns (bool liquidatable) {
         return false;
     }
 

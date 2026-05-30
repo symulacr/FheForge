@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { PriceOracle } from "../contracts/PriceOracle.sol";
-import { PythStructs } from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { SimplePythMock } from "../contracts/mocks/SimplePythMock.sol";
+import {PriceOracle} from "../contracts/PriceOracle.sol";
+import {PythStructs} from "@pythnetwork/pyth-sdk-solidity/PythStructs.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {SimplePythMock} from "../contracts/mocks/SimplePythMock.sol";
 
 /// @notice Fuzz tests for PriceOracle (MC-076).
 ///         Covers: staleness thresholds, collateral factor boundary combinations,
@@ -19,7 +19,7 @@ contract FuzzPriceOracle is FheForgeTestHelper {
     PriceOracle public oracle;
 
     address public owner = makeAddr("owner");
-    address public user  = makeAddr("user");
+    address public user = makeAddr("user");
 
     address public constant TOKEN_A = address(0x100);
     address public constant TOKEN_B = address(0x200);
@@ -78,7 +78,7 @@ contract FuzzPriceOracle is FheForgeTestHelper {
     // ─── Fuzz 3: setSource with various decimals ─────────────────────────────-
     // token decimals must be > 0; staleThreshold must be >= 0.
     function testFuzzSetSourceDecimals(uint8 decimals, uint64 staleThresh) public {
-        decimals    = uint8(bound(uint256(decimals), 0, 18));
+        decimals = uint8(bound(uint256(decimals), 0, 18));
         staleThresh = uint64(bound(uint256(staleThresh), 0, 86400));
 
         vm.prank(owner);
@@ -103,12 +103,9 @@ contract FuzzPriceOracle is FheForgeTestHelper {
 
     // ─── Fuzz 5: convertToUsd with fallback prices ────────────────────────────
     // Fallback price is set; fuzz the amount and verify USD conversion.
-    function testFuzzConvertToUsdWithFallback(
-        uint256 fallbackPrice,
-        uint256 amount
-    ) public {
+    function testFuzzConvertToUsdWithFallback(uint256 fallbackPrice, uint256 amount) public {
         fallbackPrice = bound(fallbackPrice, 1, 1_000_000e18);
-        amount        = bound(amount,        1, 1_000_000e18);
+        amount = bound(amount, 1, 1_000_000e18);
 
         vm.prank(owner);
         oracle.setFallbackPrice(TOKEN_A, fallbackPrice);
@@ -116,7 +113,7 @@ contract FuzzPriceOracle is FheForgeTestHelper {
         // Without tokenDecimals set, the oracle defaults to 18 decimals for the divisor.
         // So convertToUsd = (amount * price) / 1e18.
         uint256 expected = (amount * fallbackPrice) / 1e18;
-        uint256 actual   = oracle.convertToUsd(TOKEN_A, amount);
+        uint256 actual = oracle.convertToUsd(TOKEN_A, amount);
 
         // Allow for small rounding differences (÷1e18 is exact here since both are WAD)
         assertApproxEqAbs(actual, expected, 1, "convertToUsd mismatch");
@@ -126,13 +123,13 @@ contract FuzzPriceOracle is FheForgeTestHelper {
     // convertFromUsd(convertToUsd(amount)) ≈ amount (roundtrip invariant).
     function testFuzzConvertRoundtrip(uint256 fallbackPrice, uint256 amount) public {
         fallbackPrice = bound(fallbackPrice, 1e18, 1_000_000e18);
-        amount        = bound(amount,        1,    1_000_000e18);
+        amount = bound(amount, 1, 1_000_000e18);
 
         vm.prank(owner);
         oracle.setFallbackPrice(TOKEN_A, fallbackPrice);
 
-        uint256 usdValue  = oracle.convertToUsd(TOKEN_A, amount);
-        uint256 back      = oracle.convertFromUsd(TOKEN_A, usdValue);
+        uint256 usdValue = oracle.convertToUsd(TOKEN_A, amount);
+        uint256 back = oracle.convertFromUsd(TOKEN_A, usdValue);
 
         // Round-trip should return the original amount (exact when decimals=18).
         assertApproxEqAbs(back, amount, 1, "roundtrip deviation");
@@ -193,12 +190,7 @@ contract FuzzPriceOracle is FheForgeTestHelper {
 
         pythMock.setPrice(
             ETH_PRICE_ID,
-            PythStructs.Price({
-                price: 2000 * 1e8,
-                conf: 1,
-                expo: -8,
-                publishTime: uint64(block.timestamp)
-            })
+            PythStructs.Price({price: 2000 * 1e8, conf: 1, expo: -8, publishTime: uint64(block.timestamp)})
         );
 
         assertFalse(oracle.isStale(TOKEN_A), "should be fresh at t=0");

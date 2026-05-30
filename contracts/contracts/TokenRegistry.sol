@@ -76,6 +76,7 @@ contract TokenRegistry is FheForgeBase {
     function getBorrowableTokens() external view returns (address[] memory result) {
         return _getTokensByFilter(TokenFilterType.Borrowable);
     }
+
     function getCollateralTokens() external view returns (address[] memory result) {
         return _getTokensByFilter(TokenFilterType.Collateral);
     }

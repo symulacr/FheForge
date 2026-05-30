@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { SwapRouter } from "../contracts/SwapRouter.sol";
-import { ExecutorContract } from "../contracts/ExecutorContract.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {SwapRouter} from "../contracts/SwapRouter.sol";
+import {ExecutorContract} from "../contracts/ExecutorContract.sol";
 // selector 0x118cdaa7 = OwnableUnauthorizedAccount(address) — hardcoded per TestHelper pattern
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
 
 /// @custom:mock
 contract ExecutorContractTest is FheForgeTestHelper {
@@ -32,13 +32,7 @@ contract ExecutorContractTest is FheForgeTestHelper {
 
         executorContract = new ExecutorContract();
 
-        router = new SwapRouter(
-            address(executorContract),
-            MIN_DEADLINE,
-            MAX_DEADLINE,
-            EXEC_DELAY,
-            address(0x1)
-        );
+        router = new SwapRouter(address(executorContract), MIN_DEADLINE, MAX_DEADLINE, EXEC_DELAY, address(0x1));
 
         tokenIn.mint(user, 100 ether);
 
@@ -49,13 +43,8 @@ contract ExecutorContractTest is FheForgeTestHelper {
     function testExecuteIntentViaContract() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DEADLINE
-        );
+        bytes32 intentId =
+            router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DEADLINE);
         vm.stopPrank();
 
         uint256 outputAmount = 70 ether;
@@ -70,7 +59,7 @@ contract ExecutorContractTest is FheForgeTestHelper {
 
         assertEq(tokenOut.balanceOf(user), outputAmount, "user should receive outputAmount");
 
-        (, , address u, ) = router.getIntentMeta(intentId);
+        (,, address u,) = router.getIntentMeta(intentId);
         if (u != address(0)) revert ExecutorContractTest_IntentNotDeleted();
     }
 
@@ -78,13 +67,8 @@ contract ExecutorContractTest is FheForgeTestHelper {
     function testExecuteIntentRejectsNonOwner() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DEADLINE
-        );
+        bytes32 intentId =
+            router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DEADLINE);
         vm.stopPrank();
 
         uint256 outputAmount = 70 ether;
@@ -135,13 +119,8 @@ contract ExecutorContractTest is FheForgeTestHelper {
     function testExecuteIntentRevertsWhenUnfunded() public {
         vm.startPrank(user);
         tokenIn.approve(address(router), 100 ether);
-        bytes32 intentId = router.submitSwapIntent(
-            address(tokenIn),
-            address(tokenOut),
-            100 ether,
-            70 ether,
-            MIN_DEADLINE
-        );
+        bytes32 intentId =
+            router.submitSwapIntent(address(tokenIn), address(tokenOut), 100 ether, 70 ether, MIN_DEADLINE);
         vm.stopPrank();
 
         uint256 outputAmount = 70 ether;

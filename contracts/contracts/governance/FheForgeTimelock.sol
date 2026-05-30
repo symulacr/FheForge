@@ -10,8 +10,10 @@ contract FheForgeTimelock is TimelockController {
     )
         TimelockController(
             minDelay,
-            new address[](0) /* proposers — set after governor deployed */,
-            new address[](0) /* executors — anyone */,
+            new address[](0),
+            /* proposers — set after governor deployed */
+            new address[](0),
+            /* executors — anyone */
             admin
         )
     {}

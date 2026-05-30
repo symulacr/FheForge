@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { FheForgeComposer } from "../contracts/FheForgeComposer.sol";
-import { StrategyRegistry } from "../contracts/StrategyRegistry.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
-import { VaultMock } from "../contracts/mocks/VaultMock.sol";
-import { PoolMock } from "../contracts/mocks/PoolMock.sol";
-import { RouterMock } from "../contracts/mocks/RouterMock.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {FheForgeComposer} from "../contracts/FheForgeComposer.sol";
+import {StrategyRegistry} from "../contracts/StrategyRegistry.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {InEuint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {MockTaskManager} from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
+import {VaultMock} from "../contracts/mocks/VaultMock.sol";
+import {PoolMock} from "../contracts/mocks/PoolMock.sol";
+import {RouterMock} from "../contracts/mocks/RouterMock.sol";
 
 /// @custom:mock
 contract FheForgeComposerTest is FheForgeTestHelper {
@@ -53,18 +53,10 @@ contract FheForgeComposerTest is FheForgeTestHelper {
     }
 
     /// @dev Helper to compute FHE handle and pre-store a mock value.
-    function _mockEncryptedValue(
-        uint256 ctHash,
-        uint8 utype,
-        int32 securityZone,
-        uint256 value
-    ) internal {
+    function _mockEncryptedValue(uint256 ctHash, uint8 utype, int32 securityZone, uint256 value) internal {
         uint256 hashMask = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000;
         uint256 uintTypeMask = 0x7F;
-        uint256 handle =
-            (ctHash & hashMask) |
-                ((utype & uintTypeMask) << 8) |
-                (uint256(uint32(securityZone)) & 0xFF);
+        uint256 handle = (ctHash & hashMask) | ((utype & uintTypeMask) << 8) | (uint256(uint32(securityZone)) & 0xFF);
         MockTaskManager(getTaskManagerAddress()).MOCK_setInEuintKey(handle, value);
     }
 
@@ -143,23 +135,10 @@ contract FheForgeComposerTest is FheForgeTestHelper {
         // Build encrypted params
         FheForgeComposer.OpenStrategyEncrypted memory e = FheForgeComposer.OpenStrategyEncrypted({
             collateral: InEuint128({
-                ctHash: uint256(keccak256("collateral")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
+                ctHash: uint256(keccak256("collateral")), securityZone: 0, utype: 6, signature: ""
             }),
-            supplyEnc: InEuint128({
-                ctHash: uint256(keccak256("supply")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
-            borrowEnc: InEuint128({
-                ctHash: uint256(keccak256("borrow")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            supplyEnc: InEuint128({ctHash: uint256(keccak256("supply")), securityZone: 0, utype: 6, signature: ""}),
+            borrowEnc: InEuint128({ctHash: uint256(keccak256("borrow")), securityZone: 0, utype: 6, signature: ""})
         });
 
         // Build strategy params
@@ -220,23 +199,10 @@ contract FheForgeComposerTest is FheForgeTestHelper {
 
         FheForgeComposer.OpenStrategyEncrypted memory e = FheForgeComposer.OpenStrategyEncrypted({
             collateral: InEuint128({
-                ctHash: uint256(keccak256("collateral")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
+                ctHash: uint256(keccak256("collateral")), securityZone: 0, utype: 6, signature: ""
             }),
-            supplyEnc: InEuint128({
-                ctHash: uint256(keccak256("supply")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
-            borrowEnc: InEuint128({
-                ctHash: uint256(keccak256("borrow")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            supplyEnc: InEuint128({ctHash: uint256(keccak256("supply")), securityZone: 0, utype: 6, signature: ""}),
+            borrowEnc: InEuint128({ctHash: uint256(keccak256("borrow")), securityZone: 0, utype: 6, signature: ""})
         });
 
         FheForgeComposer.OpenStrategyParams memory p = FheForgeComposer.OpenStrategyParams({
@@ -279,23 +245,10 @@ contract FheForgeComposerTest is FheForgeTestHelper {
 
         FheForgeComposer.OpenStrategyEncrypted memory e = FheForgeComposer.OpenStrategyEncrypted({
             collateral: InEuint128({
-                ctHash: uint256(keccak256("collateral")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
+                ctHash: uint256(keccak256("collateral")), securityZone: 0, utype: 6, signature: ""
             }),
-            supplyEnc: InEuint128({
-                ctHash: uint256(keccak256("supply")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
-            borrowEnc: InEuint128({
-                ctHash: uint256(keccak256("borrow")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            supplyEnc: InEuint128({ctHash: uint256(keccak256("supply")), securityZone: 0, utype: 6, signature: ""}),
+            borrowEnc: InEuint128({ctHash: uint256(keccak256("borrow")), securityZone: 0, utype: 6, signature: ""})
         });
 
         FheForgeComposer.OpenStrategyParams memory p = FheForgeComposer.OpenStrategyParams({
@@ -318,7 +271,7 @@ contract FheForgeComposerTest is FheForgeTestHelper {
             loopCount: 1
         });
 
-        (uint256 strategyId, ) = composer.openPosition(p, e);
+        (uint256 strategyId,) = composer.openPosition(p, e);
         assertEq(strategyId, 1);
         vm.stopPrank();
     }
@@ -341,23 +294,10 @@ contract FheForgeComposerTest is FheForgeTestHelper {
 
         FheForgeComposer.OpenStrategyEncrypted memory e = FheForgeComposer.OpenStrategyEncrypted({
             collateral: InEuint128({
-                ctHash: uint256(keccak256("collateral")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
+                ctHash: uint256(keccak256("collateral")), securityZone: 0, utype: 6, signature: ""
             }),
-            supplyEnc: InEuint128({
-                ctHash: uint256(keccak256("supply")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
-            borrowEnc: InEuint128({
-                ctHash: uint256(keccak256("borrow")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            supplyEnc: InEuint128({ctHash: uint256(keccak256("supply")), securityZone: 0, utype: 6, signature: ""}),
+            borrowEnc: InEuint128({ctHash: uint256(keccak256("borrow")), securityZone: 0, utype: 6, signature: ""})
         });
 
         FheForgeComposer.OpenStrategyParams memory p = FheForgeComposer.OpenStrategyParams({
@@ -380,7 +320,7 @@ contract FheForgeComposerTest is FheForgeTestHelper {
             loopCount: 0
         });
 
-        (uint256 strategyId, ) = composer.openPosition(p, e);
+        (uint256 strategyId,) = composer.openPosition(p, e);
         assertEq(strategyId, 1);
         vm.stopPrank();
     }
@@ -396,23 +336,10 @@ contract FheForgeComposerTest is FheForgeTestHelper {
 
         FheForgeComposer.RebalanceEncrypted memory e = FheForgeComposer.RebalanceEncrypted({
             addCollateralEnc: InEuint128({
-                ctHash: uint256(keccak256("addCollateral")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
+                ctHash: uint256(keccak256("addCollateral")), securityZone: 0, utype: 6, signature: ""
             }),
-            repayEnc: InEuint128({
-                ctHash: uint256(keccak256("repay")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
-            newBorrowEnc: InEuint128({
-                ctHash: uint256(keccak256("borrow")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            repayEnc: InEuint128({ctHash: uint256(keccak256("repay")), securityZone: 0, utype: 6, signature: ""}),
+            newBorrowEnc: InEuint128({ctHash: uint256(keccak256("borrow")), securityZone: 0, utype: 6, signature: ""})
         });
 
         FheForgeComposer.RebalanceParams memory p = FheForgeComposer.RebalanceParams({
@@ -446,23 +373,10 @@ contract FheForgeComposerTest is FheForgeTestHelper {
 
         FheForgeComposer.RebalanceEncrypted memory e = FheForgeComposer.RebalanceEncrypted({
             addCollateralEnc: InEuint128({
-                ctHash: uint256(keccak256("addCollateral")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
+                ctHash: uint256(keccak256("addCollateral")), securityZone: 0, utype: 6, signature: ""
             }),
-            repayEnc: InEuint128({
-                ctHash: uint256(keccak256("repay")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
-            newBorrowEnc: InEuint128({
-                ctHash: uint256(keccak256("borrow")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            repayEnc: InEuint128({ctHash: uint256(keccak256("repay")), securityZone: 0, utype: 6, signature: ""}),
+            newBorrowEnc: InEuint128({ctHash: uint256(keccak256("borrow")), securityZone: 0, utype: 6, signature: ""})
         });
 
         FheForgeComposer.RebalanceParams memory p = FheForgeComposer.RebalanceParams({
@@ -561,23 +475,10 @@ contract FheForgeComposerTest is FheForgeTestHelper {
     function testOpenPositionNoCollateralNoSupply() public {
         FheForgeComposer.OpenStrategyEncrypted memory e = FheForgeComposer.OpenStrategyEncrypted({
             collateral: InEuint128({
-                ctHash: uint256(keccak256("collateral")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
+                ctHash: uint256(keccak256("collateral")), securityZone: 0, utype: 6, signature: ""
             }),
-            supplyEnc: InEuint128({
-                ctHash: uint256(keccak256("supply")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            }),
-            borrowEnc: InEuint128({
-                ctHash: uint256(keccak256("borrow")),
-                securityZone: 0,
-                utype: 6,
-                signature: ""
-            })
+            supplyEnc: InEuint128({ctHash: uint256(keccak256("supply")), securityZone: 0, utype: 6, signature: ""}),
+            borrowEnc: InEuint128({ctHash: uint256(keccak256("borrow")), securityZone: 0, utype: 6, signature: ""})
         });
 
         FheForgeComposer.OpenStrategyParams memory p = FheForgeComposer.OpenStrategyParams({
@@ -601,7 +502,7 @@ contract FheForgeComposerTest is FheForgeTestHelper {
         });
 
         vm.prank(user);
-        (uint256 strategyId, ) = composer.openPosition(p, e);
+        (uint256 strategyId,) = composer.openPosition(p, e);
         assertEq(strategyId, 1);
     }
 }

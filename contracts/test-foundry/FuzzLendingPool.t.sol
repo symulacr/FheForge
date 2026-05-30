@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { MockERC20 } from "../contracts/MockERC20.sol";
-import { LendingPool } from "../contracts/LendingPool.sol";
-import { PriceOracle } from "../contracts/PriceOracle.sol";
-import { FheForgeBase } from "../contracts/FheForgeBase.sol";
-import { FheForgeTestHelper } from "./FheForgeTestHelper.sol";
-import { MockTaskManager } from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
-import { FHE, euint128, InEuint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { ITaskManager } from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
+import {MockERC20} from "../contracts/MockERC20.sol";
+import {LendingPool} from "../contracts/LendingPool.sol";
+import {PriceOracle} from "../contracts/PriceOracle.sol";
+import {FheForgeBase} from "../contracts/FheForgeBase.sol";
+import {FheForgeTestHelper} from "./FheForgeTestHelper.sol";
+import {MockTaskManager} from "../node_modules/@cofhe/mock-contracts/contracts/MockTaskManager.sol";
+import {FHE, euint128, InEuint128} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
+import {ITaskManager} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 
 /// @notice Fuzz + invariant tests for LendingPool (MC-074).
 ///         Covers: oracle-based borrow with random amounts, LTV parameter edge cases,
@@ -19,17 +19,17 @@ contract FuzzLendingPool is FheForgeTestHelper {
     MockERC20 public token;
     PriceOracle public oracle;
 
-    address public owner  = makeAddr("owner");
-    address public user   = makeAddr("user");
-    address private constant PYTH_MOCK  = address(0x1);
+    address public owner = makeAddr("owner");
+    address public user = makeAddr("user");
+    address private constant PYTH_MOCK = address(0x1);
     uint256 private constant DEFAULT_STALE = 3600;
 
     function setUp() public {
         _deployFheMocks();
         vm.startPrank(owner);
-        pool    = new LendingPool();
-        token   = new MockERC20("Test", "TST", 18);
-        oracle  = new PriceOracle(PYTH_MOCK, DEFAULT_STALE);
+        pool = new LendingPool();
+        token = new MockERC20("Test", "TST", 18);
+        oracle = new PriceOracle(PYTH_MOCK, DEFAULT_STALE);
 
         oracle.setCollateralFactor(address(token), 5000, 5500);
         oracle.setFallbackPrice(address(token), 1e18);
@@ -40,12 +40,9 @@ contract FuzzLendingPool is FheForgeTestHelper {
 
     // ─── Fuzz 1: oracle-based borrow with random amounts ──────────────────────
     // Collateral = 1..10_000 ether; borrow = 1..coll/2 (stays under 50% LTV).
-    function testFuzzBorrowWithOracleAmounts(
-        uint256 collAmount,
-        uint256 borrowAmount
-    ) public {
-        collAmount   = bound(collAmount,   1 ether,  10_000 ether);
-        borrowAmount = bound(borrowAmount, 1,        collAmount / 2);
+    function testFuzzBorrowWithOracleAmounts(uint256 collAmount, uint256 borrowAmount) public {
+        collAmount = bound(collAmount, 1 ether, 10_000 ether);
+        borrowAmount = bound(borrowAmount, 1, collAmount / 2);
 
         _provideLiquidity(address(token), borrowAmount);
 
@@ -56,7 +53,7 @@ contract FuzzLendingPool is FheForgeTestHelper {
             address(token),
             collAmount,
             borrowAmount,
-            InEuint128({ ctHash: ctHash, securityZone: 0, utype: 6, signature: "" })
+            InEuint128({ctHash: ctHash, securityZone: 0, utype: 6, signature: ""})
         );
         vm.stopPrank();
 
@@ -93,10 +90,7 @@ contract FuzzLendingPool is FheForgeTestHelper {
 
     // ─── Fuzz 3: LTV numerator/denominator edge cases ─────────────────────────
     // Contract requires ltvNum > 0, ltvDen > 0, and ltvNum <= ltvDen.
-    function testFuzzLtvRevertOnExceedsHundred(
-        uint128 ltvNum,
-        uint128 ltvDen
-    ) public {
+    function testFuzzLtvRevertOnExceedsHundred(uint128 ltvNum, uint128 ltvDen) public {
         ltvNum = uint128(bound(uint256(ltvNum), 1, 10000));
         ltvDen = uint128(bound(uint256(ltvDen), 1, 10000));
         vm.assume(ltvNum > ltvDen);
@@ -111,7 +105,7 @@ contract FuzzLendingPool is FheForgeTestHelper {
             address(token),
             address(token),
             10 ether,
-            InEuint128({ ctHash: ctHash, securityZone: 0, utype: 6, signature: "" }),
+            InEuint128({ctHash: ctHash, securityZone: 0, utype: 6, signature: ""}),
             ltvNum,
             ltvDen
         );
@@ -132,8 +126,8 @@ contract FuzzLendingPool is FheForgeTestHelper {
             address(token),
             address(token),
             10 ether,
-            InEuint128({ ctHash: ctHash, securityZone: 0, utype: 6, signature: "" }),
-            0,    // ltvNum = 0 → revert
+            InEuint128({ctHash: ctHash, securityZone: 0, utype: 6, signature: ""}),
+            0, // ltvNum = 0 → revert
             ltvDen
         );
         vm.stopPrank();
@@ -142,12 +136,9 @@ contract FuzzLendingPool is FheForgeTestHelper {
     // ─── Invariant: supply + borrow ≤ total deposits ──────────────────────────
     // After depositing depAmount and borrowing brwAmount (≤ 50% LTV),
     // the sum of liquidReserve + totalPlainBorrow must equal the initial deposit.
-    function testFuzzInvariantSupplyBorrowConservation(
-        uint256 depAmount,
-        uint256 brwAmount
-    ) public {
+    function testFuzzInvariantSupplyBorrowConservation(uint256 depAmount, uint256 brwAmount) public {
         depAmount = bound(depAmount, 10 ether, 1000 ether);
-        brwAmount = bound(brwAmount,  1,        depAmount / 2);
+        brwAmount = bound(brwAmount, 1, depAmount / 2);
 
         _provideLiquidity(address(token), depAmount);
         uint256 reserveAfterDeposit = pool.liquidReserve(address(token));
@@ -159,12 +150,11 @@ contract FuzzLendingPool is FheForgeTestHelper {
             address(token),
             depAmount,
             brwAmount,
-            InEuint128({ ctHash: ctHash, securityZone: 0, utype: 6, signature: "" })
+            InEuint128({ctHash: ctHash, securityZone: 0, utype: 6, signature: ""})
         );
         vm.stopPrank();
 
-        uint256 totalAfter = pool.liquidReserve(address(token))
-                           + pool.totalPlainBorrow(address(token));
+        uint256 totalAfter = pool.liquidReserve(address(token)) + pool.totalPlainBorrow(address(token));
 
         // Conservation: what went in (reserve) either stays as reserve
         // or moves to borrow. The sum must match.
@@ -173,9 +163,7 @@ contract FuzzLendingPool is FheForgeTestHelper {
 
     // ─── Fuzz 5: depositFor → borrowFor → repayFor round-trip ─────────────────
     // Fuzz amounts through the composer-only flow.
-    function testFuzzComposerDepositBorrowRepay(
-        uint256 amount
-    ) public {
+    function testFuzzComposerDepositBorrowRepay(uint256 amount) public {
         amount = bound(amount, 1 ether, 1000 ether);
 
         // Deposit
@@ -183,9 +171,7 @@ contract FuzzLendingPool is FheForgeTestHelper {
         token.mint(owner, amount);
         token.approve(address(pool), amount);
         euint128 depHandle = FHE.asEuint128(amount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(depHandle)), address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(depHandle)), address(pool));
         pool.depositFor(address(token), amount, depHandle, user);
         vm.stopPrank();
 
@@ -194,9 +180,7 @@ contract FuzzLendingPool is FheForgeTestHelper {
         // Borrow
         vm.startPrank(owner);
         euint128 brwHandle = FHE.asEuint128(amount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(brwHandle)), address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(brwHandle)), address(pool));
         pool.borrowFor(address(token), amount, brwHandle, user);
         vm.stopPrank();
 
@@ -208,9 +192,7 @@ contract FuzzLendingPool is FheForgeTestHelper {
         token.mint(owner, amount);
         token.approve(address(pool), amount);
         euint128 repayHandle = FHE.asEuint128(amount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(repayHandle)), address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(repayHandle)), address(pool));
         pool.repayFor(address(token), amount, repayHandle, user);
         vm.stopPrank();
 
@@ -224,18 +206,13 @@ contract FuzzLendingPool is FheForgeTestHelper {
         token.mint(owner, amount);
         token.approve(address(pool), amount);
         euint128 handle = FHE.asEuint128(amount);
-        ITaskManager(getTaskManagerAddress()).allow(
-            uint256(euint128.unwrap(handle)), address(pool)
-        );
+        ITaskManager(getTaskManagerAddress()).allow(uint256(euint128.unwrap(handle)), address(pool));
         pool.depositFor(address(tokenAddr), amount, handle, user);
         vm.stopPrank();
     }
 
-    function _createBorrowHandle(uint256 amount)
-        internal
-        returns (euint128 enc, uint256 ctHash)
-    {
-        enc    = FHE.asEuint128(amount);
+    function _createBorrowHandle(uint256 amount) internal returns (euint128 enc, uint256 ctHash) {
+        enc = FHE.asEuint128(amount);
         ctHash = uint256(euint128.unwrap(enc));
         _mockEncVal(ctHash, amount);
         ITaskManager(getTaskManagerAddress()).allow(ctHash, address(pool));
@@ -243,7 +220,7 @@ contract FuzzLendingPool is FheForgeTestHelper {
 
     function _mockEncVal(uint256 ctHash, uint256 value) internal {
         uint256 hashMask = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000;
-        uint256 handle   = (ctHash & hashMask) | (6 << 8); // utype 6 = euint128
+        uint256 handle = (ctHash & hashMask) | (6 << 8); // utype 6 = euint128
         MockTaskManager(getTaskManagerAddress()).MOCK_setInEuintKey(handle, value);
     }
 }

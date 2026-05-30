@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  fheforge-api:
+    build:
+      context: ./backend/apps
+      dockerfile: Dockerfile
+    container_name: fheforge-api
+    ports:
+      - "3001:3000"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      - NODE_ENV=development
+      - JWT_SECRET=2f9f1c433df5f4bb1ed9d486a864f0daf885e2ea628a6179c3ddf9f5d7ef6df2
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+      - SUPABASE_URL=https://igxjqbnsubwiqjhtgigi.supabase.co
+      - SUPABASE_KEY=sb_publishable_SBG90JaLRrt6kYBvUrCBeQ_5wxHab7N
+      - COFHE_RPC=https://sepolia-rollup.arbitrum.io/rpc
+      - PORT=3000
+      - STRATEGY_VAULT_ADDRESS=0xf3cB0A1b02128C630C2bca9b50151FbC350f6AFC
+      - LENDING_POOL_ADDRESS=0x6903df3E8f45497C3097A16E534787D6Fc9F58eF
+      - PRICE_ORACLE_ADDRESS=0xFB8fb4232f70bF41750515F54861b0698938ceDe
+      - STRATEGY_REGISTRY_ADDRESS=0xC1256f738f1bF9D08F8168eE48e34d4E929DDE9C
+      - COMPOSER_ADDRESS=0x65dB0572076f14b838327F5C2513f32b927Ec36E
+      - SWAP_ROUTER_ADDRESS=0x1136E5eF8bB8E189aE83894eCB2F0c67E3097Ea1
+      - EXECUTOR_ADDRESS=0x80EF32CE77f5DC7aA92d200f36357cd83ef8407D
+      - TOKEN_WETH=0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32
+      - TOKEN_USDC=0x150376EdEbc5AC48771655a61a795d828BeC8Df6
+    volumes:
+      - fheforge-api-logs:/app/logs
+    restart: "no"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  fheforge-api-logs:
