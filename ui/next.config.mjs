@@ -5,6 +5,7 @@ const nextConfig = {
   swcMinify: true,
   output: 'standalone',
   experimental: {
+    outputFileTracingRoot: new URL('..', import.meta.url).pathname,
     optimizePackageImports: [
       'lucide-react', 'framer-motion',
       '@radix-ui/react-accordion', '@radix-ui/react-dialog',
@@ -44,7 +45,12 @@ const nextConfig = {
     unoptimized: false,
     // Security: restrict remote image patterns to known, trusted sources
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { dev, isServer }) => {
+    if (!dev && !isServer) {
+      // Explicitly disable embedded source maps for production
+      // eval-source-map is dev-only; productionBrowserSourceMaps is already false
+      config.devtool = false
+    }
     config.experiments = { ...config.experiments, asyncWebAssembly: true };
     if (!isServer) {
       config.resolve.fallback = {
