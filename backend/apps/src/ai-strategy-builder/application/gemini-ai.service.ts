@@ -8,7 +8,7 @@ import {
 	GeminiRateLimitException,
 } from "../../common/exceptions/gemini-api.exception";
 import { StrategyStepResponseDto } from "../interfaces/dtos/strategy-step-response.dto";
-import type {
+import {
 	StrategyConstraints,
 	StrategyConstraintsService,
 } from "./strategy-constraints.service";

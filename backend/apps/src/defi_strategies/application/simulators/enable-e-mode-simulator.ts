@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { StrategyStepResponseDto } from "src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto";
-import type {
+import {
 	SimulationContext,
 	SimulationStepResult,
 } from "../../domain/simulation-engine.interface";

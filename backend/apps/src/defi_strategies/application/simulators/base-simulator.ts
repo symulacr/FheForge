@@ -1,5 +1,5 @@
 import { StrategyStepResponseDto } from "src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto";
-import type {
+import {
 	ActionSimulator,
 	SimulationContext,
 	SimulationStepResult,
