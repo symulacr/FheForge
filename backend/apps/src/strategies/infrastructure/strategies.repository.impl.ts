@@ -1,9 +1,9 @@
 import type { UUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import type { StrategyRow } from 'src/shared/infrastructure/database.types';
-import type { SupabaseService } from 'src/shared/infrastructure/supabase.service';
+import { SupabaseService } from 'src/shared/infrastructure/supabase.service';
 import { Strategy } from '../domain/strategies.entity';
-import type { StrategiesRepository } from '../domain/strategies.repository';
+import { StrategiesRepository } from '../domain/strategies.repository';
 
 @Injectable()
 export class StrategiesRepositoryImplement implements StrategiesRepository {

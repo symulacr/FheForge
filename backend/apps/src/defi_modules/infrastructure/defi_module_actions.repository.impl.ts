@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import type { DefiModuleActionRow } from 'src/shared/infrastructure/database.types';
-import type { SupabaseService } from '../../shared/infrastructure/supabase.service';
+import { SupabaseService } from '../../shared/infrastructure/supabase.service';
 import { DefiModuleAction } from '../domain/defi_module_actions.entity';
-import type { DefiModuleActionsRepository } from '../domain/defi_module_actions.repository';
+import { DefiModuleActionsRepository } from '../domain/defi_module_actions.repository';
 
 @Injectable()
 export class DefiModuleActionsRepositoryImplement implements DefiModuleActionsRepository {

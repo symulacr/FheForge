@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../domain/user.entity';
-import type { UserRepository } from '../domain/user.repository';
+import { UserRepository } from '../domain/user.repository';
 import type { CreateUserDto } from '../interfaces/dtos/create-user.dto';
 
 @Injectable()

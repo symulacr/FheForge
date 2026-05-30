@@ -1,0 +1,30 @@
+* text=auto eol=lf
+
+# Source code
+*.sol text diff=solidity
+*.ts text diff=typescript
+*.tsx text diff=typescript
+*.js text
+*.json text
+*.yaml text
+*.yml text
+*.toml text
+*.sql text
+
+# Documents
+*.md text diff=markdown
+
+# Binaries (never diff)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mp4 binary
+*.mov binary
+*.zip binary
+*.tar.gz binary
+
+# Lockfiles (linguist-generated)
+bun.lock linguist-generated=true
+package-lock.json linguist-generated=true

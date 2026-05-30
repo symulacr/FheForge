@@ -66,7 +66,7 @@ The `monitoring/prometheus.yml` scrapes `backend:3001`, `frontend:3000`, `node-e
 
 | Dimension | Assessment |
 |-----------|------------|
-| **Severity correct?** | **Yes, P0-SEC is correct.** I confirmed this independently: `contracts/.env` lines 5-28 show `PRIVATE_KEY`, `TESTER1_PRIVATE_KEY`, `TESTER2_PRIVATE_KEY`, `TESTER3_PRIVATE_KEY`, `DEPLOYER_PRIVATE_KEY` all set to `0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba`. Tests running as the deployer defeats isolation testing entirely. |
+| **Severity correct?** | **Yes, P0-SEC is correct.** I confirmed this independently: `contracts/.env` lines 5-28 show `PRIVATE_KEY`, `TESTER1_PRIVATE_KEY`, `TESTER2_PRIVATE_KEY`, `TESTER3_PRIVATE_KEY`, `DEPLOYER_PRIVATE_KEY` all set to `[REDACTED - use environment variables]`. Tests running as the deployer defeats isolation testing entirely. |
 | **Edge cases missed** | (1) **This key is ALSO leaked.** The deployer key in `contracts/.env` is `0xe6868d...` which is different from the backend `.env.development` key (`0xf0c35...`), but it's still exposed. The audit treated this as only a "test isolation" problem — it's also a **second leaked deployer key**. (2) If Hardhat tests deploy contracts with this key, those deployed contracts are owned by a publicly exposed key. (3) The `ETHERSCAN_API_KEY` on line 16 is also exposed — this is a P2 issue the audit missed. |
 | **Implementation risks** | Generating new keys is safe (`cast wallet new`). The risk is: (a) test scripts assume `TESTER1` has funds — new keys need separate test ETH funding; (b) some tests might implicitly rely on the deployer being the tester (e.g., `onlyOwner` calls that should fail but pass because tester=deployer). These tests will break when tester ≠ deployer — which is actually the intended behavior, but it could cause confusing CI failures. |
 | **Dependencies** | Depends on test infrastructure funding (test ETH to new addresses). If the project uses faucet-based funding, this is non-trivial. Also depends on contracts domain — if contracts tests use `PRIVATE_KEY` for deployments, those scripts need updating. |
@@ -250,7 +250,7 @@ The audit notes address chaos but doesn't flag that there's no reproducible depl
 The docker-compose exposes Prometheus (port 9090), Grafana (port 3000), Alertmanager (port 9093) without any TLS. If any of these are exposed to a network (even internally), credentials and data flow in plaintext. The audit misses this entirely.
 
 ### M8: The deployer key in `contracts/.env` is a SECOND leaked key (P0-SEC)
-The audit found 5 identical keys but treated it as only an isolation problem. Key `0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba` is in a **second** committed file (`contracts/.env` is NOT in `.gitignore`) — meaning TWO deployer keys are leaked, not one. This key should also be rotated on-chain.
+The audit found 5 identical keys but treated it as only an isolation problem. Key `[REDACTED - use environment variables]` is in a **second** committed file (`contracts/.env` is NOT in `.gitignore`) — meaning TWO deployer keys are leaked, not one. This key should also be rotated on-chain.
 
 ---
 

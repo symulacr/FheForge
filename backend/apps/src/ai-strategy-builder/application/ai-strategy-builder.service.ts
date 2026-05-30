@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { BuildStrategyDto } from '../interfaces/dtos/build-strategy.dto';
 import type { StrategyStepResponseDto } from '../interfaces/dtos/strategy-step-response.dto';
-import type { GasEstimationService } from './gas-estimation.service';
-import type { GeminiAiService } from './gemini-ai.service';
-import type { StrategyParserService } from './strategy-parser.service';
-import type { StrategyValidatorService } from './strategy-validator.service';
+import { GasEstimationService } from './gas-estimation.service';
+import { GeminiAiService } from './gemini-ai.service';
+import { StrategyParserService } from './strategy-parser.service';
+import { StrategyValidatorService } from './strategy-validator.service';
 
 @Injectable()
 export class AiStrategyBuilderService {

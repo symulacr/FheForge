@@ -4,6 +4,7 @@ import { CheckCircle2, CircleOff } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { assetIcons, agentIcons, chainIcons } from "@/lib/iconMap";
 import { Card } from "@/components/ui/card";
 
 interface Strategy {
@@ -94,7 +95,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 											className="relative w-7 h-7 border border-accent/30 overflow-hidden hover:border-accent/60 transition-all duration-200 bg-white cursor-help"
 											title={asset}
 										>
-											<Image src={asset} alt={asset} fill className="object-cover p-0.5" />
+											<Image src={assetIcons[asset] ?? assetIcons[asset?.toUpperCase()] ?? assetIcons[asset?.toLowerCase()] ?? "/icons/default-token.svg"} alt={asset} fill className="object-cover p-0.5" />
 										</div>
 									))}
 									{strategy.assets && strategy.assets.length > 2 && (
@@ -116,7 +117,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 											className="relative w-7 h-7 border border-border overflow-hidden hover:border-border transition-all duration-200 bg-white cursor-help"
 											title={agent}
 										>
-											<Image src={agent} alt={agent} fill className="object-cover p-0.5" />
+											<Image src={agentIcons[agent] ?? agentIcons[agent?.toUpperCase()] ?? agentIcons[agent?.toLowerCase()] ?? "/icons/default-agent.svg"} alt={agent} fill className="object-cover p-0.5" />
 										</div>
 									))}
 								</div>
@@ -133,7 +134,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 											className="relative w-7 h-7 border border-border overflow-hidden hover:border-border transition-all duration-200 bg-white cursor-help"
 											title={chain}
 										>
-											<Image src={chain} alt={chain} fill className="object-cover p-0.5" />
+											<Image src={chainIcons[chain] ?? chainIcons[chain?.toUpperCase()] ?? chainIcons[chain?.toLowerCase()] ?? "/icons/default-chain.svg"} alt={chain} fill className="object-cover p-0.5" />
 										</div>
 									))}
 								</div>

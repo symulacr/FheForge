@@ -1,7 +1,7 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import type { AiStrategyBuilderService } from '../application/ai-strategy-builder.service';
+import { AiStrategyBuilderService } from '../application/ai-strategy-builder.service';
 import type { BuildStrategyDto } from './dtos/build-strategy.dto';
 import { BuildStrategyResponseDto } from './dtos/build-strategy-response.dto';
 

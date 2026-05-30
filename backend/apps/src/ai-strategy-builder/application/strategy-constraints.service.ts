@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
-import type { DefiPairsService } from '../../defi_modules/application/defi_pairs.service';
+import { ConfigService } from '@nestjs/config';
+import { DefiPairsService } from '../../defi_modules/application/defi_pairs.service';
 import { OperationType } from '../../defi_modules/domain/operation-type.enum';
-import type { DefiTokenService } from '../../defi_token/application/defi_token.service';
+import { DefiTokenService } from '../../defi_token/application/defi_token.service';
 
 export interface AvailableOperation {
   type: OperationType;

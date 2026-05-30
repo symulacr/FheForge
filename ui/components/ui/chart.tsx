@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import * as RechartsPrimitive from "recharts";
+import dynamic from "next/dynamic";
 
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,43 @@ function useChart() {
 	return context;
 }
 
+
+// ── Type helpers (mirrors recharts types; no runtime dependency) ──
+type TooltipPayloadItem = {
+	name?: string | number;
+	value?: string | number | Array<string | number>;
+	dataKey?: string | number;
+	color?: string;
+	fill?: string;
+	payload?: Record<string, unknown>;
+	[key: string]: unknown;
+};
+
+type LegendPayloadItem = {
+	value: string;
+	color?: string;
+	dataKey?: string | number;
+	[key: string]: unknown;
+};
+
+// ── Dynamic recharts — ~5MB saved from initial bundle ──
+const ChartResponsiveContainer = dynamic(
+	() =>
+		import("recharts").then(
+			(m) => m.ResponsiveContainer as React.ComponentType<{ children: React.ReactNode }>,
+		),
+	{ ssr: false },
+);
+const ChartTooltip = dynamic(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- recharts defaultProps types conflict with next/dynamic
+	() => import("recharts").then((m) => m.Tooltip as React.ComponentType<any>),
+	{ ssr: false },
+);
+const ChartLegend = dynamic(
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- recharts defaultProps types conflict with next/dynamic
+	() => import("recharts").then((m) => m.Legend as React.ComponentType<any>),
+	{ ssr: false },
+);
 function ChartContainer({
 	id,
 	className,
@@ -42,7 +79,7 @@ function ChartContainer({
 	...props
 }: React.ComponentProps<"div"> & {
 	config: ChartConfig;
-	children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>["children"];
+	children: React.ReactNode;
 }) {
 	const uniqueId = React.useId();
 	const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
@@ -59,7 +96,7 @@ function ChartContainer({
 				{...props}
 			>
 				<ChartStyle id={chartId} config={config} />
-				<RechartsPrimitive.ResponsiveContainer>{children}</RechartsPrimitive.ResponsiveContainer>
+				<ChartResponsiveContainer>{children}</ChartResponsiveContainer>
 			</div>
 		</ChartContext.Provider>
 	);
@@ -94,8 +131,6 @@ ${colorConfig
 	);
 };
 
-const ChartTooltip = RechartsPrimitive.Tooltip;
-
 function ChartTooltipContent({
 	active,
 	payload,
@@ -110,14 +145,21 @@ function ChartTooltipContent({
 	color,
 	nameKey,
 	labelKey,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-	React.ComponentProps<"div"> & {
-		hideLabel?: boolean;
-		hideIndicator?: boolean;
-		indicator?: "line" | "dot" | "dashed";
-		nameKey?: string;
-		labelKey?: string;
-	}) {
+}: {
+	active?: boolean;
+	payload?: TooltipPayloadItem[];
+	label?: string;
+	labelClassName?: string;
+	labelFormatter?: (value: React.ReactNode, payload: unknown[]) => React.ReactNode;
+	formatter?: (value: unknown, name: string | number, item: unknown, index: number, payload: unknown) => React.ReactNode;
+	color?: string;
+	nameKey?: string;
+	labelKey?: string;
+} & React.ComponentProps<"div"> & {
+	hideLabel?: boolean;
+	hideIndicator?: boolean;
+	indicator?: "line" | "dot" | "dashed";
+}) {
 	const { config } = useChart();
 
 	const tooltipLabel = React.useMemo(() => {
@@ -164,7 +206,7 @@ function ChartTooltipContent({
 				{payload.map((item, index) => {
 					const key = `${nameKey || item.name || item.dataKey || "value"}`;
 					const itemConfig = getPayloadConfigFromPayload(config, item, key);
-					const indicatorColor = color || item.payload.fill || item.color;
+					const indicatorColor = color || item.payload?.fill || item.color;
 
 					return (
 						<div
@@ -230,7 +272,6 @@ function ChartTooltipContent({
 	);
 }
 
-const ChartLegend = RechartsPrimitive.Legend;
 
 function ChartLegendContent({
 	className,
@@ -239,7 +280,10 @@ function ChartLegendContent({
 	verticalAlign = "bottom",
 	nameKey,
 }: React.ComponentProps<"div"> &
-	Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+	{
+		payload?: LegendPayloadItem[];
+		verticalAlign?: "top" | "bottom" | "middle";
+	} & {
 		hideIcon?: boolean;
 		nameKey?: string;
 	}) {

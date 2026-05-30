@@ -16,8 +16,8 @@ You also MUST think outside the box: find things the prior analysis missed, fix 
 
 ### Deployer credentials (from contracts/.env)
 ```
-PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
-DEPLOYER_PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
+PRIVATE_KEY=[REDACTED - use environment variables]
+DEPLOYER_PRIVATE_KEY=[REDACTED - use environment variables]
 TESTER1-3_PRIVATE_KEY=SAME AS DEPLOYER
 ETHERSCAN_API_KEY=5QHW8JJHR3C5U65HGBYVD4VRXANWRIRFM7
 ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
@@ -107,8 +107,8 @@ Step 54: Update forge-deploy.ts for governance
 
 Step 55: Fund deployer wallet
   COMMAND: cast balance <DEPLOYER_ADDRESS> --rpc-url https://sepolia-rollup.arbitrum.io/rpc
-  PRIVATE_KEY: 0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
-  DERIVE_ADDRESS: cast wallet address --private-key 0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
+  PRIVATE_KEY: [REDACTED - use environment variables]
+  DERIVE_ADDRESS: cast wallet address --private-key [REDACTED - use environment variables]
   If balance < 0.1 ETH, get from Arb Sepolia faucet: https://www.alchemy.com/faucets/arbitrum-sepolia
   Expected cost: < 0.5 ETH for 12+ contracts + verification.
 
@@ -263,7 +263,7 @@ Step 78: Submit on Akindo platform
 
 ```bash
 # 1. Check wallet balance
-cast wallet address --private-key 0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
+cast wallet address --private-key [REDACTED - use environment variables]
 cast balance <ADDRESS> --rpc-url https://sepolia-rollup.arbitrum.io/rpc
 
 # 2. Deploy to testnet (if funded)

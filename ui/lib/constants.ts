@@ -30,7 +30,7 @@ export const PRELOADER_HIDE_DELAY = 100;
 export const TOAST_AUTO_DISMISS_DELAY = 5_000;
 
 /** Delay before a toast is removed from the DOM (ms) */
-export const TOAST_REMOVE_DELAY = 1_000_000;
+export const TOAST_REMOVE_DELAY = 1_000;
 
 /** Interval for polling transaction receipts (ms) */
 export const TX_POLLING_INTERVAL = 2_000;

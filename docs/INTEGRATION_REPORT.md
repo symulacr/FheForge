@@ -177,11 +177,11 @@ These are real unused variable issues, not false positives. `next build` treats 
 | Key | Location | Status |
 |-----|----------|--------|
 | `0xf0c35250...` | `backend/apps/.env.development:2` | ❌ STILL LEAKED — must be rotated on-chain first (MC-001), then removed (MC-002) |
-| `0xe6868d73...` | `contracts/.env:6` | ❌ STILL LEAKED — same key used for 5 roles (MC-001, MC-003) |
+| `[REDACTED - use environment variables]` | `contracts/.env:6` | ❌ STILL LEAKED — same key used for 5 roles (MC-001, MC-003) |
 
 ### 5.2 Duplicate Test Keys (MC-003 target)
 
-**Finding:** All 5 private keys in `contracts/.env` are identical (`0xe6868d73...`):
+**Finding:** All 5 private keys in `contracts/.env` are identical (`[REDACTED - use environment variables]`):
 - PRIVATE_KEY (line 6)
 - TESTER1_PRIVATE_KEY (line 25)
 - TESTER2_PRIVATE_KEY (line 26)

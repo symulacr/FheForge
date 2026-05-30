@@ -1,4 +1,9 @@
-import { LendingActionsDemo } from "@/components/lending/lending-actions-demo";
+import dynamic from "next/dynamic";
+
+const LendingActionsDemo = dynamic(
+	() => import("@/components/lending/lending-actions-demo").then((mod) => mod.LendingActionsDemo),
+	{ ssr: false },
+);
 
 export default function LendingDemoPage() {
 	return (

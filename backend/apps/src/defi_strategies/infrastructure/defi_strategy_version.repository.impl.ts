@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import type { SupabaseService } from '../../shared/infrastructure/supabase.service';
+import { SupabaseService } from '../../shared/infrastructure/supabase.service';
 import type { DefiStrategyVersion } from '../domain/defi_strategy_version.entity';
-import type { DefiStrategyVersionRepository } from '../domain/defi_strategy_version.repository';
+import { DefiStrategyVersionRepository } from '../domain/defi_strategy_version.repository';
 
 @Injectable()
 export class DefiStrategyVersionRepositoryImpl implements DefiStrategyVersionRepository {

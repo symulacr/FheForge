@@ -3,7 +3,7 @@
 **Target:** Akindo Wave Hacks Final Wave — 45,000 USDC pool  
 **Submission:** FheForge ONLY (one flagship)  
 **Deadline:** June 1 15:15 UTC  
-**Deployer key:** `0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba`  
+**Deployer key:** `[REDACTED - use environment variables]`  
 **All tester keys identical** to deployer key (accepted for hackathon)  
 **License:** MIT + Apache 2.0 dual  
 

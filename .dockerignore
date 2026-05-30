@@ -1,0 +1,17 @@
+node_modules/
+.git/
+.gitignore
+.env*
+*.md
+!README.md
+dist/
+build/
+.next/
+coverage/
+__pycache__/
+*.pyc
+.vercel/
+.railway/
+fheforge-demo/
+docs/
+backups/

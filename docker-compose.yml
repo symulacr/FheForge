@@ -13,10 +13,10 @@ services:
       - 1.1.1.1
     environment:
       - NODE_ENV=development
-      - JWT_SECRET=2f9f1c433df5f4bb1ed9d486a864f0daf885e2ea628a6179c3ddf9f5d7ef6df2
+      - JWT_SECRET=${JWT_SECRET}
       - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
       - SUPABASE_URL=https://igxjqbnsubwiqjhtgigi.supabase.co
-      - SUPABASE_KEY=sb_publishable_SBG90JaLRrt6kYBvUrCBeQ_5wxHab7N
+      - SUPABASE_KEY=${SUPABASE_KEY}
       - COFHE_RPC=https://sepolia-rollup.arbitrum.io/rpc
       - PORT=3000
       - STRATEGY_VAULT_ADDRESS=0xf3cB0A1b02128C630C2bca9b50151FbC350f6AFC

@@ -9,7 +9,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { DefiStrategyExecutionService } from '../application/defi_strategy_execution.service';
+import { DefiStrategyExecutionService } from '../application/defi_strategy_execution.service';
 import type { CreateDefiStrategyExecutionDto } from './dto/create_defi_strategy_execution.dto';
 import type { UpdateDefiStrategyExecutionDto } from './dto/update_defi_strategy_execution.dto';
 

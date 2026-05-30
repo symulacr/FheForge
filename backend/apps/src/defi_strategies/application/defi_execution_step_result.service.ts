@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import type { SupabaseService } from '../../shared/infrastructure/supabase.service';
+import { SupabaseService } from '../../shared/infrastructure/supabase.service';
 import { DefiExecutionStepResult } from '../domain/defi_execution_step_result.entity';
-import type { DefiExecutionStepResultRepository } from '../domain/defi_execution_step_result.repository';
+import { DefiExecutionStepResultRepository } from '../domain/defi_execution_step_result.repository';
 import type { CreateExecutionStepResultDto } from '../interfaces/dto/create_execution_step_result.dto';
 
 @Injectable()

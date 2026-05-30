@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { Public } from './auth/public.decorator';
-import type { FhenixStrategyService } from './shared/infrastructure/fhenix-strategy.service';
+import { FhenixStrategyService } from './shared/infrastructure/fhenix-strategy.service';
 
 @Controller()
 export class AppController {

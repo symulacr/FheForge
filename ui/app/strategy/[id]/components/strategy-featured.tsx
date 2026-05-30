@@ -9,6 +9,7 @@ import { ParticleTextEffect } from "@/components/effect/interactive-text-effect"
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { assetIcons, agentIcons, chainIcons } from "@/lib/iconMap";
 import type { Strategy } from "@/types/strategy.interface";
 
 interface Props {
@@ -233,7 +234,7 @@ export function FeaturedStrategies({ strategies }: Props) {
 														key={idx}
 														className="relative w-6 h-6 border border-accent/30 overflow-hidden transition-transform bg-white"
 													>
-														<Image src={asset} alt="Asset" fill className="object-cover p-0.5" />
+														<Image src={assetIcons[asset] ?? assetIcons[asset?.toUpperCase()] ?? assetIcons[asset?.toLowerCase()] ?? "/icons/default-token.svg"} alt="Asset" fill className="object-cover p-0.5" />
 													</div>
 												))}
 												{(trendingStrategy.assets?.length ?? 0) > 3 && (
@@ -254,7 +255,7 @@ export function FeaturedStrategies({ strategies }: Props) {
 														key={idx}
 														className="relative w-6 h-6 border border-border overflow-hidden transition-transform bg-white"
 													>
-														<Image src={agent} alt="Agent" fill className="object-cover p-0.5" />
+														<Image src={agentIcons[agent] ?? agentIcons[agent?.toUpperCase()] ?? agentIcons[agent?.toLowerCase()] ?? "/icons/default-agent.svg"} alt="Agent" fill className="object-cover p-0.5" />
 													</div>
 												))}
 											</div>
@@ -270,7 +271,7 @@ export function FeaturedStrategies({ strategies }: Props) {
 														key={idx}
 														className="relative w-6 h-6 border border-border overflow-hidden transition-transform bg-white"
 													>
-														<Image src={chain} alt="Chain" fill className="object-cover p-0.5" />
+														<Image src={chainIcons[chain] ?? chainIcons[chain?.toUpperCase()] ?? chainIcons[chain?.toLowerCase()] ?? "/icons/default-chain.svg"} alt="Chain" fill className="object-cover p-0.5" />
 													</div>
 												))}
 											</div>

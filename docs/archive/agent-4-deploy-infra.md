@@ -83,24 +83,24 @@ echo "backend/apps/.env.development" >> .gitignore  # verify line exists already
 ### MC-D4-03 · Use unique private keys for each test account
 
 **File:** `contracts/.env`  
-**Logic:** All five private keys (PRIVATE_KEY, TESTER1, TESTER2, TESTER3, DEPLOYER) are identical (`0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba`). This means every test runs as the deployer address, defeating isolation testing. Each test account must have a unique key (with test eth funded separately).
+**Logic:** All five private keys (PRIVATE_KEY, TESTER1, TESTER2, TESTER3, DEPLOYER) are identical (`[REDACTED - use environment variables]`). This means every test runs as the deployer address, defeating isolation testing. Each test account must have a unique key (with test eth funded separately).
 
 **Old:**
 ```env
-PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
-TESTER1_PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
-TESTER2_PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
-TESTER3_PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
-DEPLOYER_PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
+PRIVATE_KEY=[REDACTED - use environment variables]
+TESTER1_PRIVATE_KEY=[REDACTED - use environment variables]
+TESTER2_PRIVATE_KEY=[REDACTED - use environment variables]
+TESTER3_PRIVATE_KEY=[REDACTED - use environment variables]
+DEPLOYER_PRIVATE_KEY=[REDACTED - use environment variables]
 ```
 
 **New:**
 ```env
-PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
+PRIVATE_KEY=[REDACTED - use environment variables]
 TESTER1_PRIVATE_KEY=<unique-key-1>
 TESTER2_PRIVATE_KEY=<unique-key-2>
 TESTER3_PRIVATE_KEY=<unique-key-3>
-DEPLOYER_PRIVATE_KEY=0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba
+DEPLOYER_PRIVATE_KEY=[REDACTED - use environment variables]
 ```
 (TESTER1-3 keys generated via `cast wallet new`; each funded with test ETH from faucet.)
 

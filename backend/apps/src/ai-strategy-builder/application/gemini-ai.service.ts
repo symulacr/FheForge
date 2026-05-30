@@ -11,11 +11,9 @@ import {
   GeminiRateLimitException,
 } from '../../common/exceptions/gemini-api.exception';
 import type { StrategyStepResponseDto } from '../interfaces/dtos/strategy-step-response.dto';
-import type {
-  StrategyConstraints,
-  StrategyConstraintsService,
-} from './strategy-constraints.service';
-import type { StrategyTemplatesService } from './strategy-templates.service';
+import { StrategyConstraintsService } from './strategy-constraints.service';
+import type { StrategyConstraints } from './strategy-constraints.service';
+import { StrategyTemplatesService } from './strategy-templates.service';
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

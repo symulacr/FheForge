@@ -58,7 +58,7 @@
 - E2E test: needs MetaMask wallet on Arb Sepolia with test tokens
 
 ## Deployer creds
-- Key: `0xe6868d73b9c3c398baac27d3491414128e459fe51e2de1ae5af75c8e41c547ba`
+- Key: `[REDACTED - use environment variables]`
 - Etherscan: `5QHW8JJHR3C5U65HGBYVD4VRXANWRIRFM7`
 - Deployer address: `0x485534DE1BB491ed0D624dd9b9c3A89a140E58a8`
 - Balance: ~0.81 ETH on Arb Sepolia

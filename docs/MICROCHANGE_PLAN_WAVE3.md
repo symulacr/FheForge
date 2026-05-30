@@ -33,7 +33,7 @@
 - **Wave 2 Reclassification**: P1 → **P0-SEC** — "Key rotation is the ONLY true fix for leaked deployer keys"
 - **Final Priority**: **P0-SEC**
 - **Files**: (on-chain operation, no file change)
-- **Description**: Two deployer keys are leaked: `0xf0c35250...` in `backend/apps/.env.development` and `0xe6868d73...` in `contracts/.env`. For each key: (1) generate new key via `cast wallet new`, (2) fund new deployer with test ETH, (3) call `transferOwnership()` on all contracts (StrategyVault, LendingPool, SwapRouter, StrategyRegistry, PriceOracle, FheForgeComposer, ExecutorContract), (4) verify old key no longer has roles via `cast call <contract> "owner()"`. This must precede all other work.
+- **Description**: Two deployer keys are leaked: `0xf0c35250...` in `backend/apps/.env.development` and `[REDACTED - use environment variables]` in `contracts/.env`. For each key: (1) generate new key via `cast wallet new`, (2) fund new deployer with test ETH, (3) call `transferOwnership()` on all contracts (StrategyVault, LendingPool, SwapRouter, StrategyRegistry, PriceOracle, FheForgeComposer, ExecutorContract), (4) verify old key no longer has roles via `cast call <contract> "owner()"`. This must precede all other work.
 - **Dependencies**: None (can run isolated)
 - **Est. Effort**: 30 min per key = 1h total
 - **Safety Check**: After rotation, `cast call <contract> "owner()"` must NOT return the old deployer address for any contract
@@ -52,7 +52,7 @@
 - **Source Finding**: INFRA-P0-3 (W1)
 - **Final Priority**: **P0-SEC**
 - **Files**: `contracts/.env`
-- **Description**: All 5 private keys (PRIVATE_KEY, TESTER1, TESTER2, TESTER3, DEPLOYER) are identical (`0xe6868d73...`). Tests run as deployer, defeating isolation. Generate 3 unique keys via `cast wallet new` for TESTER1-3; fund each separately with test ETH. Keep DEPLOYER_PRIVATE_KEY as the new rotated key from MC-001.
+- **Description**: All 5 private keys (PRIVATE_KEY, TESTER1, TESTER2, TESTER3, DEPLOYER) are identical (`[REDACTED - use environment variables]`). Tests run as deployer, defeating isolation. Generate 3 unique keys via `cast wallet new` for TESTER1-3; fund each separately with test ETH. Keep DEPLOYER_PRIVATE_KEY as the new rotated key from MC-001.
 - **Dependencies**: MC-001 (deployer key must be rotated first)
 - **Est. Effort**: 10 min
 - **Safety Check**: `cast wallet address --private-key <tester1-key>` yields a different address than deployer

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { Contract, JsonRpcProvider } from 'ethers';
 import type { StrategyStepResponseDto } from '../../../ai-strategy-builder/interfaces/dtos/strategy-step-response.dto';
-import type { FhenixStrategyService } from '../../../shared/infrastructure/fhenix-strategy.service';
+import { FhenixStrategyService } from '../../../shared/infrastructure/fhenix-strategy.service';
 import type {
   SimulationContext,
   SimulationStepResult,

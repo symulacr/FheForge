@@ -392,17 +392,14 @@ export function useDefiBuilder() {
 						);
 					}
 				} else if (supplyNode) {
-					const joinNodes = nodes.filter((n) => n.data?.config?.operationType === "SWAP");
 					const supplyConfig = supplyNode.data.config;
 					const collateralEth = String(supplyConfig.amount ?? "0");
 					// F-03: apyTarget + loopCount no longer travel with openPosition.
 					// They live as plaintext on the registry's Strategy struct and
 					// should be set at `registerStrategy` time via the 4-arg overload
 					// (or via the composer's atomic register+open flow). The values
-					// computed below are kept for the `joinNodes`/apy display logic
-					// upstream but intentionally not forwarded to the vault.
-					void joinNodes;
-					void supplyConfig.apy;
+					// are kept for upstream display logic but intentionally not
+					// forwarded to the vault.
 					const strategyId = typeof record?.id === "number" ? record.id : 0;
 					const tokenSymbol = supplyConfig.tokenInSymbol?.toUpperCase() ?? "WETH";
 					const collateralToken = TOKEN_SYMBOL_MAP[tokenSymbol]?.address;

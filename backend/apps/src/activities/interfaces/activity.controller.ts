@@ -6,7 +6,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import type { ActivityService } from '../application/activity.service';
+import { ActivityService } from '../application/activity.service';
 import { ActivityMapper } from '../application/mappers/activity.mapper';
 import { ActivityResponseDto } from './dtos/activity-response.dto';
 import type { CreateActivityDto } from './dtos/create-activity.dto';

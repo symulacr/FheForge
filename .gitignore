@@ -173,6 +173,7 @@ Desktop.ini
 *.tar.gz
 *.tgz
 *.old
+backup/
 
 # === LINUX TEMP ===
 .fuse_hidden*
@@ -233,7 +234,9 @@ contracts/contracts/test/
 # === UI BUILD ARTIFACTS ===
 ui/.next/
 ui/tsconfig.tsbuildinfo
+
 # === ARCHIVED LEGACY SCRIPTS ===
 archives/
-.env.*.local
-fheforge-demo/
+
+# .dockerignore (expected at backend/apps/.dockerignore)
+# .gitattributes (expected at root)

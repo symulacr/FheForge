@@ -8,7 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { DefiStrategySimulationSnapshotService } from '../application/defi_strategy_simulation_snapshot.service';
+import { DefiStrategySimulationSnapshotService } from '../application/defi_strategy_simulation_snapshot.service';
 import type { CreateDefiStrategySimulationSnapshotDto } from './dto/create_defi_strategy_simulation_snapshot.dto';
 
 @ApiTags('DeFi Strategy Simulation Snapshots')

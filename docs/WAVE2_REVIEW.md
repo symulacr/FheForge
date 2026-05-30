@@ -87,7 +87,7 @@ All new findings discovered by Wave 2 critique agents:
 | M5 | Infrastructure | P2 | Railway JSON lacks `internal` network config for sensitive endpoints. Adding `internal: true` would prevent public internet access to `/metrics` etc. | Agent 4 |
 | M6 | Infrastructure | P2 | No deploy script / deploy automation. 16 JSON files in `contracts/deployments/` from various runs — no standardization. A `deploy.ts` script writing to `deployments/<chainId>.json` would prevent future address drift. | Agent 4 |
 | M7 | Infrastructure | P2 | Monitoring stack uses plain HTTP, no TLS. Prometheus (9090), Grafana (3000), Alertmanager (9093) all exposed without encryption. | Agent 4 |
-| M8 | Infrastructure | P0-SEC | Second leaked deployer key in `contracts/.env` — key `0xe6868d73...` is in a SECOND committed file (`contracts/.env` NOT in `.gitignore`). TWO deployer keys leaked, not one. | Agent 4 |
+| M8 | Infrastructure | P0-SEC | Second leaked deployer key in `contracts/.env` — key `[REDACTED - use environment variables]` is in a SECOND committed file (`contracts/.env` NOT in `.gitignore`). TWO deployer keys leaked, not one. | Agent 4 |
 | MF-1 | Integration/E2E | P0 | No integration test for backend-frontend contract mismatch. Single E2E probe that reads addresses from all config files, verifies on-chain bytecode, and fails with clear mismatch list would catch INFRA-P0-4/5/6 instantly. | Agent 5 |
 | MF-2 | Integration/E2E | P2 | No load/stress testing — what happens with 10 concurrent `shield` calls? Gas cost of Composer `openPosition`? SwapRouter with 100 intents per block? Backend `/health` under 1000 concurrent requests? | Agent 5 |
 | MF-3 | Integration/E2E | P1 | No chain reorganization / fork test. FHE operations are async — re-org could invalidate handles, cause handle reuse, or invalidate `allowTransient` ACL. FHE handle model assumes no reorg. | Agent 5 |
@@ -178,7 +178,7 @@ All new findings discovered by Wave 2 critique agents:
 - A second leaked deployer key was missed entirely.
 
 **Most Important Missed Finding:**
-- **M8 (Second leaked deployer key in contracts/.env, P0-SEC):** Key `0xe6868d73...` is in a SECOND committed file (`contracts/.env` is NOT in `.gitignore`). The audit treated 5 identical keys as an isolation problem only — but this key is also leaked and needs on-chain rotation. TWO deployer keys compromised, not one.
+- **M8 (Second leaked deployer key in contracts/.env, P0-SEC):** Key `[REDACTED - use environment variables]` is in a SECOND committed file (`contracts/.env` is NOT in `.gitignore`). The audit treated 5 identical keys as an isolation problem only — but this key is also leaked and needs on-chain rotation. TWO deployer keys compromised, not one.
 
 **Most Important Severity Change:**
 - **INFRA-P1-1: P1 → P0-SEC (key rotation):** The deployer key `0xf0c35...` is real and exposed. As long as it controls contracts on-chain, anyone can drain the protocol. On-chain rotation is the only true fix — calling this P1 creates the wrong priority signal. This should be the **very first action** in the entire remediation.

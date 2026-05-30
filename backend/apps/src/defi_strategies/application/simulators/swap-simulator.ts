@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { StrategyStepResponseDto } from '../../../ai-strategy-builder/interfaces/dtos/strategy-step-response.dto';
-import type { FhenixStrategyService } from '../../../shared/infrastructure/fhenix-strategy.service';
+import { FhenixStrategyService } from '../../../shared/infrastructure/fhenix-strategy.service';
 import type {
   SimulationContext,
   SimulationStepResult,

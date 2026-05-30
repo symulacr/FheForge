@@ -10,7 +10,10 @@ import { ErrorBoundary } from "@/components/shared/error-boundary";
 import Footer from "@/components/shared/footer";
 import { OnboardingBanner } from "@/components/shared/onboarding-banner";
 import { SkipLink } from "@/components/shared/skip-link";
-import AppProvider from "@/providers/fhenix-provider";
+const AppProvider = nextDynamic(
+	() => import("@/providers/fhenix-provider"),
+	{ ssr: false },
+);
 import { ToastProvider } from "@/providers/toast-provider";
 
 const UserProvider = nextDynamic(
