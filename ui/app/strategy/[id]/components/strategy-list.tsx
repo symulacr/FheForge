@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { SearchBar } from "@/components/shared/search-bar";
@@ -16,16 +17,30 @@ export function StrategyList({ strategies }: Props) {
 
 	const filtered = useMemo(() => {
 		let data = strategies;
-		if (searchQuery)
-			data = data.filter((s) => s.title?.toLowerCase().includes(searchQuery.toLowerCase()));
-		if (selectedTags.length > 0)
+		if (searchQuery) {
+			const query = searchQuery.toLowerCase();
+			data = data.filter((s) => s.title?.toLowerCase().includes(query));
+		}
+		if (selectedTags.length > 0) {
 			data = data.filter((s) => selectedTags.every((t) => s.tags?.includes(t)));
-		if (statusFilter !== "All") data = data.filter((s) => s.status === statusFilter);
+		}
+		if (statusFilter !== "All") {
+			data = data.filter((s) => s.status === statusFilter);
+		}
 		return data;
 	}, [strategies, searchQuery, selectedTags, statusFilter]);
 
 	return (
 		<div className="space-y-4">
+			{/* Header */}
+			<div className="flex items-center justify-between">
+				<h3 className="text-lg font-medium text-foreground">All Strategies</h3>
+				<span className="text-xs text-muted tabular-nums">
+					{filtered.length} {filtered.length === 1 ? "strategy" : "strategies"}
+				</span>
+			</div>
+
+			{/* Search & Filters */}
 			<SearchBar
 				searchQuery={searchQuery}
 				onSearchChange={setSearchQuery}
@@ -34,16 +49,17 @@ export function StrategyList({ strategies }: Props) {
 				statusFilter={statusFilter}
 				onStatusChange={setStatusFilter}
 			/>
-			{filtered.length === 0 && (
-				<div className="py-12 text-center border border-border">
-					<p className="text-muted text-sm mb-3">no strategies match your filters</p>
+
+			{/* Results */}
+			{filtered.length === 0 ? (
+				<div className="forge-card py-12 text-center">
+					<p className="text-muted text-sm mb-2">No strategies match your filters</p>
 					<Link href="/builder" className="text-xs text-accent hover:underline">
-						build one →
+						Build one
 					</Link>
 				</div>
-			)}
-			{filtered.length > 0 && (
-				<div className="grid gap-4">
+			) : (
+				<div className="grid gap-3">
 					{filtered.map((s) => (
 						<StrategyCard key={s.id} strategy={s} />
 					))}

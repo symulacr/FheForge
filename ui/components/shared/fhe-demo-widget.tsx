@@ -79,7 +79,7 @@ export function FheDemoWidget() {
 				cofheClient as {
 					decryptForView: (
 						hash: bigint,
-						fheType: typeof FheTypes.Uint128,
+						fheType: typeof FheTypes.Uint128
 					) => { execute: () => Promise<bigint> };
 				}
 			)
@@ -98,7 +98,7 @@ export function FheDemoWidget() {
 
 	if (!address) {
 		return (
-			<div className="forge-card p-6">
+			<div className="forge-card p-5">
 				<h3 className="text-sm font-medium text-foreground mb-2">FHE Encryption Demo</h3>
 				<p className="text-xs text-muted">Connect wallet to try FHE encryption.</p>
 			</div>
@@ -106,20 +106,22 @@ export function FheDemoWidget() {
 	}
 
 	return (
-		<div className="forge-card p-6">
+		<div className="forge-card p-5">
+			{/* Header */}
 			<div className="flex items-center justify-between mb-4">
 				<h3 className="text-sm font-medium text-foreground">FHE Encryption Demo</h3>
 				{isReady ? (
-					<span className="text-[10px] uppercase tracking-wider text-success border border-success/30 px-2 py-0.5">
+					<span className="badge-success text-[10px] uppercase tracking-wider px-2 py-0.5">
 						Ready
 					</span>
 				) : (
-					<span className="text-[10px] uppercase tracking-wider text-warning border border-warning/30 px-2 py-0.5">
-						Connecting...
+					<span className="badge-warning text-[10px] uppercase tracking-wider px-2 py-0.5">
+						Connecting
 					</span>
 				)}
 			</div>
 
+			{/* Input Row */}
 			<div className="flex flex-col sm:flex-row gap-3 mb-4">
 				<input
 					type="number"
@@ -127,7 +129,7 @@ export function FheDemoWidget() {
 					onChange={(e) => setInputValue(e.target.value)}
 					placeholder="Enter a number..."
 					disabled={isEncrypting || isDecrypting}
-					className="flex-1 bg-input border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-accent disabled:opacity-50"
+					className="flex-1 bg-input border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted transition-colors focus:outline-none focus:border-accent disabled:opacity-50"
 				/>
 				<button
 					onClick={handleEncrypt}
@@ -136,8 +138,8 @@ export function FheDemoWidget() {
 				>
 					{isEncrypting ? (
 						<span className="flex items-center gap-2">
-							<span className="w-3 h-3 border-2 border-accent/40 border-t-accent animate-spin" />
-							Encrypting...
+							<span className="spinner" />
+							Encrypting
 						</span>
 					) : (
 						"Encrypt"
@@ -145,13 +147,14 @@ export function FheDemoWidget() {
 				</button>
 			</div>
 
+			{/* Encrypted Handle */}
 			{encryptedHandle && (
 				<div className="mb-4 p-3 bg-secondary border border-border">
-					<div className="text-[10px] uppercase tracking-wider text-muted mb-1">
+					<div className="text-[10px] uppercase tracking-wider text-muted mb-1.5">
 						Encrypted Handle
 					</div>
 					<div className="flex items-center justify-between gap-3">
-						<code className="text-xs text-accent break-all">
+						<code className="text-xs text-accent break-all tabular-nums">
 							{truncateHash(encryptedHandle.ctHash)}
 						</code>
 						<button
@@ -161,8 +164,8 @@ export function FheDemoWidget() {
 						>
 							{isDecrypting ? (
 								<span className="flex items-center gap-2">
-									<span className="w-3 h-3 border-2 border-accent/40 border-t-accent animate-spin" />
-									Decrypting...
+									<span className="spinner" />
+									Decrypting
 								</span>
 							) : (
 								"Decrypt"
@@ -172,16 +175,22 @@ export function FheDemoWidget() {
 				</div>
 			)}
 
+			{/* Decrypted Value */}
 			{decryptedValue !== null && (
 				<div className="p-3 bg-secondary border border-border">
-					<div className="text-[10px] uppercase tracking-wider text-muted mb-1">
+					<div className="text-[10px] uppercase tracking-wider text-muted mb-1.5">
 						Decrypted Value
 					</div>
-					<div className="text-sm text-success font-mono">{decryptedValue}</div>
+					<code className="text-sm text-success tabular-nums">{decryptedValue}</code>
 				</div>
 			)}
 
-			{error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+			{/* Error */}
+			{error && (
+				<p className="mt-3 text-xs text-destructive" role="alert">
+					{error}
+				</p>
+			)}
 		</div>
 	);
 }

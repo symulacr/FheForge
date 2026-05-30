@@ -18,32 +18,37 @@ import Sidebar from "./Sidebar";
 
 const ReactFlow = dynamic(() => import("reactflow").then((mod) => mod.ReactFlow), {
 	ssr: false,
-	loading: () => <div>Loading builder...</div>,
-});
-const ReactFlowProvider = dynamic(() => import("reactflow").then((mod) => mod.ReactFlowProvider), {
-	ssr: false,
-	loading: () => null,
-});
-const Background = dynamic(() => import("reactflow").then((mod) => mod.Background), {
-	ssr: false,
-	loading: () => null,
-});
-const Controls = dynamic(() => import("reactflow").then((mod) => mod.Controls), {
-	ssr: false,
-	loading: () => null,
-});
-const MiniMap = dynamic(() => import("reactflow").then((mod) => mod.MiniMap), {
-	ssr: false,
-	loading: () => null,
+	loading: () => (
+		<div className="flex items-center justify-center h-full text-muted text-sm">
+			Loading builder...
+		</div>
+	),
 });
 
-const addEdge = (params: Edge | Connection, edges: Edge[]) => {
+const ReactFlowProvider = dynamic(
+	() => import("reactflow").then((mod) => mod.ReactFlowProvider),
+	{ ssr: false }
+);
+
+const Background = dynamic(() => import("reactflow").then((mod) => mod.Background), {
+	ssr: false,
+});
+
+const Controls = dynamic(() => import("reactflow").then((mod) => mod.Controls), {
+	ssr: false,
+});
+
+const MiniMap = dynamic(() => import("reactflow").then((mod) => mod.MiniMap), {
+	ssr: false,
+});
+
+function addEdge(params: Edge | Connection, edges: Edge[]) {
 	const id = (params as Edge).id ?? `e${edges.length + 1}`;
 	if (edges.find((e) => e.source === params.source && e.target === params.target)) {
 		return edges;
 	}
 	return [...edges, { id, ...params } as Edge];
-};
+}
 
 const nodeTypes = {
 	defiNode: DefiNode,
@@ -52,6 +57,7 @@ const nodeTypes = {
 function Builder() {
 	const { show, hide } = usePreloader();
 	const { data: modules = [], isFetching } = useDefiModules();
+
 	const prevFetching = useRef(isFetching);
 	if (isFetching !== prevFetching.current) {
 		prevFetching.current = isFetching;
@@ -65,14 +71,11 @@ function Builder() {
 		selectedNode,
 		showModal,
 		creating,
-
 		setSelectedNode,
 		setShowModal,
-
 		onNodesChange,
 		onEdgesChange,
 		setEdges,
-
 		addNode,
 		saveConfig,
 		createStrategy,
@@ -80,14 +83,13 @@ function Builder() {
 
 	const validateWorkflow = () => {
 		if (!nodes || nodes.length === 0) {
-			displayToast("error", "Please add at least one step before creating strategy.");
+			displayToast("error", "Add at least one step before creating a strategy.");
 			return false;
 		}
 
 		const hasUnconfigured = nodes.some((node) => !node.data?.config);
-
 		if (hasUnconfigured) {
-			displayToast("error", "Please configure and save all steps before creating strategy.");
+			displayToast("error", "Configure and save all steps before creating a strategy.");
 			return false;
 		}
 
@@ -100,7 +102,6 @@ function Builder() {
 
 		if (isFirstNode) {
 			const result = canBeFirstStep(operationType);
-
 			if (!result.valid) {
 				displayToast("error", result.message);
 				return;
@@ -119,15 +120,12 @@ function Builder() {
 		const targetNode = nodes.find((node) => node.id === connection.target);
 
 		if (!sourceNode || !targetNode) return false;
-
 		if (connection.source === connection.target) return false;
 
 		const sourceType = getOperationType(sourceNode);
 		const targetType = getOperationType(targetNode);
 
-		const result = validateConnection(sourceType, targetType);
-
-		return result.valid;
+		return validateConnection(sourceType, targetType).valid;
 	};
 
 	const handleConnect = (connection: Connection) => {
@@ -145,7 +143,7 @@ function Builder() {
 		}
 
 		const edgeExists = edges.some(
-			(edge) => edge.source === connection.source && edge.target === connection.target,
+			(edge) => edge.source === connection.source && edge.target === connection.target
 		);
 
 		if (edgeExists) {
@@ -155,7 +153,6 @@ function Builder() {
 
 		const sourceType = getOperationType(sourceNode);
 		const targetType = getOperationType(targetNode);
-
 		const result = validateConnection(sourceType, targetType);
 
 		if (!result.valid) {
@@ -167,21 +164,14 @@ function Builder() {
 	};
 
 	return (
-		<div className="flex flex-1 text-foreground px-6 pb-6 pt-4 min-h-0 gap-6">
-			<div className="w-80 custom-scroll pr-2">
+		<div className="flex flex-1 px-4 pb-4 pt-4 min-h-0 gap-4">
+			{/* Sidebar */}
+			<aside className="w-72 shrink-0 custom-scroll overflow-y-auto">
 				<Sidebar modules={modules} onSelect={handleAddNode} />
-			</div>
+			</aside>
 
-			<div
-				className="
-          flex-1
-          relative
-          glass
-         
-          overflow-hidden
-          border border-border
-        "
-			>
+			{/* Canvas */}
+			<div className="flex-1 relative glass border border-border overflow-hidden">
 				<ReactFlow
 					nodes={nodes}
 					edges={edges}
@@ -193,12 +183,13 @@ function Builder() {
 					onNodeClick={(_, node) => setSelectedNode(node)}
 					fitView
 				>
+					{/* Create Button */}
 					<button
 						onClick={() => {
 							if (!validateWorkflow()) return;
 							setShowModal(true);
 						}}
-						className="defi-btn-glass defi-create-btn active:scale-95 transition-transform"
+						className="defi-btn-glass defi-create-btn"
 						aria-label="Create strategy from current workflow"
 					>
 						Create Strategy
@@ -206,23 +197,22 @@ function Builder() {
 
 					<MiniMap
 						className="defi-minimap"
-						style={{
-							width: 140,
-							height: 90,
-						}}
+						style={{ width: 120, height: 80 }}
+						aria-label="Workflow minimap"
 					/>
 
-					<Controls />
+					<Controls aria-label="Zoom controls" />
 
 					<Background
 						variant={BackgroundVariant.Dots}
-						gap={25}
-						size={1.5}
-						color="rgba(59,130,246,0.15)"
+						gap={24}
+						size={1}
+						color="var(--border)"
 					/>
 				</ReactFlow>
 			</div>
 
+			{/* Config Panel */}
 			{selectedNode && (
 				<ConfigPanel
 					node={selectedNode}
@@ -232,6 +222,7 @@ function Builder() {
 				/>
 			)}
 
+			{/* Create Modal */}
 			<CreateStrategyModal
 				key={showModal ? "open" : "closed"}
 				open={showModal}

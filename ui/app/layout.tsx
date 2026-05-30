@@ -1,27 +1,28 @@
 import { Analytics } from "@vercel/analytics/next";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import type React from "react";
 import "./globals.css";
-import nextDynamic from "next/dynamic";
+import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { HeroSection } from "@/components/hero-section";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import Footer from "@/components/shared/footer";
 import { OnboardingBanner } from "@/components/shared/onboarding-banner";
 import { SkipLink } from "@/components/shared/skip-link";
-const AppProvider = nextDynamic(
-	() => import("@/providers/fhenix-provider"),
-	{ ssr: false },
-);
+
+const AppProvider = dynamic(() => import("@/providers/fhenix-provider"), {
+	ssr: false,
+});
+
 import { ToastProvider } from "@/providers/toast-provider";
 
-const UserProvider = nextDynamic(
+const UserProvider = dynamic(
 	() =>
 		import("@/providers/user-provider").then((mod) => ({
 			default: mod.UserProvider,
 		})),
-	{ ssr: false },
+	{ ssr: false }
 );
 
 import { Preloader } from "@/components/preloader";
@@ -34,20 +35,31 @@ validateEnvVars();
 const jetbrainsMono = JetBrains_Mono({
 	subsets: ["latin"],
 	variable: "--font-mono",
-	weight: ["400", "500", "700"],
+	weight: ["400", "500", "600", "700"],
+	display: "swap",
 });
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fheforge.app";
 
+export const viewport: Viewport = {
+	themeColor: "#09090b",
+	colorScheme: "dark",
+	width: "device-width",
+	initialScale: 1,
+};
+
 export const metadata: Metadata = {
 	metadataBase: new URL(baseUrl),
-	title: "FheForge",
+	title: {
+		default: "FheForge — Confidential DeFi Strategies",
+		template: "%s | FheForge",
+	},
 	description:
-		"FHE-encrypted DeFi strategy execution on Arbitrum Sepolia. Positions invisible on-chain until you reveal them.",
+		"Build and execute FHE-encrypted DeFi strategies on Arbitrum Sepolia. Your positions stay private on-chain.",
 	keywords: META_KEYWORDS,
-	authors: [{ name: "FheForge Team", url: baseUrl }],
+	authors: [{ name: "FheForge", url: baseUrl }],
 	openGraph: {
-		title: "FheForge",
+		title: "FheForge — Confidential DeFi Strategies",
 		description:
 			"FHE-encrypted DeFi protocol. Supply, borrow, and swap with encrypted amounts on Arbitrum Sepolia.",
 		url: baseUrl,
@@ -65,7 +77,7 @@ export const metadata: Metadata = {
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "FheForge – Fhenix DeFi Strategies & AI Yield Optimization",
+		title: "FheForge — Confidential DeFi Strategies",
 		description:
 			"FHE-encrypted DeFi protocol. Supply, borrow, and swap with encrypted amounts on Arbitrum Sepolia.",
 		images: ["/logo-fheforge.svg"],
@@ -76,13 +88,29 @@ export const metadata: Metadata = {
 		icon: "/logo-fheforge.svg",
 		apple: "/logo-fheforge.svg",
 	},
+	robots: {
+		index: true,
+		follow: true,
+	},
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+function LoadingFallback() {
 	return (
-		<html lang="en">
+		<div className="flex items-center justify-center min-h-screen">
+			<div className="text-muted text-sm">Loading...</div>
+		</div>
+	);
+}
+
+export default function RootLayout({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
+	return (
+		<html lang="en" className="bg-background">
 			<body
-				className={`min-h-screen ${jetbrainsMono.variable} font-mono bg-background text-foreground`}
+				className={`min-h-screen ${jetbrainsMono.variable} font-mono bg-background text-foreground antialiased`}
 			>
 				<ErrorBoundary>
 					<AppProvider>
@@ -90,13 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 							<Preloader />
 							<ToastProvider>
 								<UserProvider>
-									<Suspense
-										fallback={
-											<div className="flex items-center justify-center min-h-screen text-muted text-sm">
-												loading...
-											</div>
-										}
-									>
+									<Suspense fallback={<LoadingFallback />}>
 										<div className="min-h-screen flex flex-col">
 											<SkipLink />
 											<HeroSection />
@@ -104,7 +126,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 											<main
 												id="main-content"
 												tabIndex={-1}
-												className="flex-1 pt-[60px] flex flex-col"
+												className="flex-1 pt-12 flex flex-col"
 											>
 												{children}
 											</main>

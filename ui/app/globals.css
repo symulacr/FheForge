@@ -3,54 +3,77 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* =============================================================================
+   DESIGN TOKENS — Impeccable Style: Product Register
+   See DESIGN.md for full documentation
+   ============================================================================= */
+
 :root {
-  --background: #0a0a0a;
-  --foreground: #e0e0e0;
-
-  --card: #111111;
-  --card-foreground: #e0e0e0;
-
-  --primary: #ffffff;
-  --primary-foreground: #0a0a0a;
-
-  --secondary: #1a1a1a;
-  --muted: #888888;
-
-  --accent: #3b82f6; 
-  --accent-light: #60a5fa;
-
-  --success: #22c55e; 
-  --warning: #eab308; 
-  --destructive: #ef4444; 
-  --destructive-foreground: #ffffff;
-
-  --border: #2a2a2a;
-  --input: #111111;
+  /* Core palette — ink and paper */
+  --background: #09090b;
+  --foreground: #e4e4e7;
+  
+  /* Surfaces */
+  --card: #0f0f12;
+  --card-foreground: #e4e4e7;
+  --popover: #0f0f12;
+  --popover-foreground: #e4e4e7;
+  
+  /* Primary — inverted for buttons */
+  --primary: #fafafa;
+  --primary-foreground: #09090b;
+  
+  /* Secondary surface */
+  --secondary: #18181b;
+  --secondary-foreground: #a1a1aa;
+  
+  /* Muted — de-emphasized text */
+  --muted: #71717a;
+  --muted-foreground: #a1a1aa;
+  
+  /* Accent — single primary color, meaning-carrying */
+  --accent: #3b82f6;
+  --accent-foreground: #fafafa;
+  --accent-muted: #1d4ed8;
+  
+  /* Semantic states */
+  --success: #22c55e;
+  --success-foreground: #052e16;
+  --warning: #eab308;
+  --warning-foreground: #422006;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  
+  /* Structure */
+  --border: #27272a;
+  --input: #18181b;
   --ring: #3b82f6;
-
-  --radius: 0; 
-
-  --popover: #111111;
-  --popover-foreground: #e0e0e0;
-
+  
+  /* Radius — sharp edges for terminal aesthetic */
+  --radius: 0;
+  
+  /* Charts */
   --chart-1: #3b82f6;
   --chart-2: #22c55e;
   --chart-3: #eab308;
   --chart-4: #ef4444;
-  --chart-5: #888888;
-
-  --sidebar: #0d0d0d;
-  --sidebar-foreground: #e0e0e0;
+  --chart-5: #71717a;
+  
+  /* Sidebar */
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #e4e4e7;
   --sidebar-primary: #3b82f6;
-  --sidebar-primary-foreground: #0a0a0a;
-  --sidebar-accent: #1a1a1a;
-  --sidebar-accent-foreground: #e0e0e0;
-  --sidebar-border: #2a2a2a;
+  --sidebar-primary-foreground: #09090b;
+  --sidebar-accent: #18181b;
+  --sidebar-accent-foreground: #e4e4e7;
+  --sidebar-border: #27272a;
   --sidebar-ring: #3b82f6;
-
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  
+  /* Motion — Impeccable: restrained, feedback-only */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 220ms;
 }
 
 @theme inline {
@@ -63,8 +86,11 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -72,16 +98,25 @@
   --color-warning: var(--warning);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --radius-sm: 0;
   --radius-md: 0;
   --radius-lg: 0;
 }
 
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    border-radius: 0 !important;
-    font-family:
-      "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+    font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  }
+  
+  html {
+    font-feature-settings: "ss01", "ss02", "cv01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
@@ -89,22 +124,47 @@
     color: var(--foreground);
     background-color: var(--background);
   }
+  
+  /* Typography scale */
+  h1 { @apply text-2xl font-semibold tracking-tight; }
+  h2 { @apply text-xl font-semibold tracking-tight; }
+  h3 { @apply text-lg font-medium; }
+  
+  /* Focus states — accessibility */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
+/* =============================================================================
+   COMPONENT: Cards
+   Impeccable: subtle border glow on hover, no scale transforms
+   ============================================================================= */
 
 .forge-card {
   background: var(--card);
   border: 1px solid var(--border);
-  transition: border-color 0.15s ease;
+  transition: border-color var(--duration-fast) var(--ease-standard);
 }
+
 .forge-card:hover {
+  border-color: color-mix(in oklch, var(--accent) 50%, transparent);
+}
+
+.forge-card:focus-within {
   border-color: var(--accent);
 }
 
+/* =============================================================================
+   COMPONENT: Buttons
+   Impeccable: no scale on hover, color/border transitions only
+   ============================================================================= */
 
 .terminal-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 6px 14px;
   font-size: 13px;
@@ -114,62 +174,95 @@
   border: 1px solid var(--border);
   color: var(--foreground);
   cursor: pointer;
-  transition:
-    border-color 0.15s,
-    color 0.15s,
-    background 0.15s;
+  transition: 
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
 }
+
 .terminal-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.terminal-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 .terminal-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  pointer-events: none;
 }
+
 .terminal-btn.primary {
   border-color: var(--accent);
   color: var(--accent);
 }
+
 .terminal-btn.primary:hover {
   background: var(--accent);
-  color: #000;
+  color: var(--background);
 }
+
 .terminal-btn.danger {
   border-color: var(--destructive);
   color: var(--destructive);
 }
+
+.terminal-btn.danger:hover {
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+}
+
 .terminal-btn.success {
   border-color: var(--success);
   color: var(--success);
 }
 
+.terminal-btn.success:hover {
+  background: var(--success);
+  color: var(--success-foreground);
+}
+
+/* =============================================================================
+   COMPONENT: Glass panels
+   ============================================================================= */
 
 .glass {
   background: var(--card);
   border: 1px solid var(--border);
-}
-.glass:hover {
-  border-color: var(--accent);
+  transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
+.glass:hover {
+  border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+}
+
+/* =============================================================================
+   COMPONENT: DeFi Builder buttons
+   ============================================================================= */
 
 .defi-btn-glass {
-  padding: 8px 0;
+  padding: 8px 16px;
   font-size: 13px;
   font-weight: 500;
   color: var(--foreground);
-  background: transparent;
+  background: var(--secondary);
   border: 1px solid var(--border);
   cursor: pointer;
-  transition:
-    border-color 0.15s,
-    color 0.15s;
+  transition: 
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard);
 }
+
 .defi-btn-glass:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
+
 .defi-btn-glass:disabled {
   opacity: 0.35;
   cursor: not-allowed;
@@ -179,47 +272,68 @@
   position: absolute;
   right: 24px;
   bottom: 110px;
-  width: 132px;
+  min-width: 132px;
   z-index: 20;
 }
 
+/* =============================================================================
+   COMPONENT: ReactFlow minimap
+   ============================================================================= */
 
 .defi-minimap {
   background: var(--card);
   border: 1px solid var(--border);
   padding: 6px;
 }
+
 .defi-minimap .react-flow__minimap {
   background: transparent !important;
 }
+
 .defi-minimap .react-flow__minimap-mask {
   fill: transparent !important;
 }
+
 .defi-minimap .react-flow__minimap-viewport {
-  fill: rgba(59, 130, 246, 0.1) !important;
+  fill: color-mix(in oklch, var(--accent) 10%, transparent) !important;
   stroke: var(--accent) !important;
   stroke-width: 1px !important;
 }
+
 .defi-minimap .react-flow__minimap-node rect {
-  fill: rgba(255, 255, 255, 0.2) !important;
-  stroke: rgba(255, 255, 255, 0.4) !important;
+  fill: color-mix(in oklch, var(--foreground) 20%, transparent) !important;
+  stroke: color-mix(in oklch, var(--foreground) 40%, transparent) !important;
   stroke-width: 1px !important;
 }
+
 .react-flow__attribution {
   display: none !important;
 }
 
+/* =============================================================================
+   UTILITIES: Scrollbar
+   ============================================================================= */
 
 .custom-scroll::-webkit-scrollbar {
   width: 4px;
 }
-.custom-scroll::-webkit-scrollbar-thumb {
-  background-color: transparent;
-}
-.custom-scroll:hover::-webkit-scrollbar-thumb {
-  background-color: #333;
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  transition: background-color var(--duration-fast);
+}
+
+.custom-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+}
+
+/* =============================================================================
+   UTILITIES: Number inputs
+   ============================================================================= */
 
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
@@ -227,54 +341,40 @@ input::-webkit-inner-spin-button {
   margin: 0;
 }
 
-
-.text-success {
-  color: var(--success);
-}
-.text-warning {
-  color: var(--warning);
-}
-.text-danger {
-  color: var(--destructive);
-}
-.text-info {
-  color: var(--accent);
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 
+/* =============================================================================
+   UTILITIES: Semantic colors
+   ============================================================================= */
 
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--destructive); }
+.text-info { color: var(--accent); }
 
-/* Impeccable: replaces animate-bounce with exponential easing */
-@keyframes float-subtle {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-.animate-float-subtle {
-  animation: float-subtle 1.5s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .animate-float-subtle { animation: none; }
-}
+.bg-success { background-color: var(--success); }
+.bg-warning { background-color: var(--warning); }
+.bg-danger { background-color: var(--destructive); }
 
+/* =============================================================================
+   ANIMATIONS — Impeccable: restrained, respect reduced-motion
+   ============================================================================= */
+
+/* Terminal cursor blink */
 @keyframes blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
+
 .cursor::after {
   content: "_";
-  animation: blink 1s step-end infinite;
   color: var(--accent);
+  animation: blink 1s step-end infinite;
 }
 
 /* Terminal loading indicator */
-@keyframes terminal-blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
 .terminal-loading {
   display: inline-flex;
   align-items: center;
@@ -283,11 +383,72 @@ input::-webkit-inner-spin-button {
   color: var(--muted);
   font-family: inherit;
 }
+
 .terminal-loading::after {
   content: "_";
   color: var(--accent);
-  animation: terminal-blink 1s step-end infinite;
+  animation: blink 1s step-end infinite;
 }
+
+/* Spinner — minimal, 2px border */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in oklch, var(--accent) 30%, transparent);
+  border-top-color: var(--accent);
+  animation: spin 800ms linear infinite;
+}
+
+/* Reduced motion: disable all non-essential animation */
 @media (prefers-reduced-motion: reduce) {
-  .terminal-loading::after { animation: none; opacity: 1; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .cursor::after,
+  .terminal-loading::after {
+    animation: none;
+    opacity: 1;
+  }
+  
+  .spinner {
+    animation: none;
+    border-color: var(--accent);
+  }
+}
+
+/* =============================================================================
+   UTILITIES: Status badges
+   ============================================================================= */
+
+.badge-success {
+  border: 1px solid color-mix(in oklch, var(--success) 30%, transparent);
+  color: var(--success);
+  background: color-mix(in oklch, var(--success) 10%, transparent);
+}
+
+.badge-warning {
+  border: 1px solid color-mix(in oklch, var(--warning) 30%, transparent);
+  color: var(--warning);
+  background: color-mix(in oklch, var(--warning) 10%, transparent);
+}
+
+.badge-destructive {
+  border: 1px solid color-mix(in oklch, var(--destructive) 30%, transparent);
+  color: var(--destructive);
+  background: color-mix(in oklch, var(--destructive) 10%, transparent);
+}
+
+.badge-accent {
+  border: 1px solid color-mix(in oklch, var(--accent) 30%, transparent);
+  color: var(--accent);
+  background: color-mix(in oklch, var(--accent) 10%, transparent);
 }

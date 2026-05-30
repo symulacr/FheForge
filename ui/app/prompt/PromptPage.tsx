@@ -16,20 +16,22 @@ import type { StrategySimulate } from "@/types/strategy.type";
 
 const ExecutionModal = dynamic(
 	() => import("@/components/shared/execution-modal").then((m) => m.ExecutionModal),
-	{
-		ssr: false,
-	},
+	{ ssr: false }
 );
+
+const EXAMPLE_PROMPTS = [
+	"Create a gdot looping 3 loops",
+	"Supply DOT and borrow USDC",
+	"Maximize yield with moderate risk",
+] as const;
 
 export default function PromptPage() {
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
 	const [isExecutionOpen, setIsExecutionOpen] = useState(false);
 	const [strategyToExecute, setStrategyToExecute] = useState<BuildStrategyResponse | null>(null);
 
 	const {
 		tokens,
-		loading: _loading,
 		submitting,
 		strategyResult,
 		selectedToken,
@@ -42,28 +44,21 @@ export default function PromptPage() {
 		onNext,
 	} = useStrategyPrompt();
 
-	const handleExampleClick = (examplePrompt: string) => {
-		setPrompt(examplePrompt);
-	};
-
 	const charCount = useMemo(() => prompt.length, [prompt]);
 
 	const validatePromptForm = () => {
 		if (!selectedToken) {
-			displayToast("error", "Please select a starting token.");
+			displayToast("error", "Select a starting token.");
 			return false;
 		}
-
 		if (!tokenAmount || tokenAmount <= 0) {
-			displayToast("error", "Please enter a valid token amount.");
+			displayToast("error", "Enter a valid token amount.");
 			return false;
 		}
-
 		if (!prompt.trim()) {
-			displayToast("error", "Please enter your strategy prompt.");
+			displayToast("error", "Enter your strategy prompt.");
 			return false;
 		}
-
 		return true;
 	};
 
@@ -79,189 +74,148 @@ export default function PromptPage() {
 	};
 
 	return (
-		<div className="flex flex-1 min-h-[calc(100vh-120px)] items-center justify-center px-6 py-5 text-foreground">
-			<div className="flex w-full max-w-7xl items-start justify-center gap-6">
-				<div className="flex w-full max-w-[820px] flex-col relative overflow-hidden bg-card text-card-foreground border border-border p-6 transition-colors duration-300 hover:border-accent/50">
-					<div className="space-y-5">
-						<div className="space-y-1">
-							<h1 className="text-2xl font-semibold tracking-tight text-foreground">
-								Create Prompt Strategy
-							</h1>
-						</div>
+		<div className="flex flex-1 min-h-[calc(100vh-96px)] items-center justify-center px-4 py-6">
+			<div className="flex w-full max-w-6xl items-start justify-center gap-6">
+				{/* Main Form */}
+				<div className="w-full max-w-2xl forge-card p-6 space-y-6">
+					{/* Header */}
+					<div>
+						<h1 className="text-xl font-semibold text-foreground mb-1">
+							Create Prompt Strategy
+						</h1>
+						<p className="text-xs text-muted">
+							Describe your strategy in natural language.
+						</p>
+					</div>
 
-						<section className="space-y-2">
-							<h2 className="text-sm font-medium text-foreground">Starting Token & Amount</h2>
+					{/* Token Selection */}
+					<section className="space-y-2">
+						<label className="text-sm font-medium text-foreground">
+							Starting Token & Amount
+						</label>
+						<div className="flex gap-3">
+							{/* Amount Input */}
+							<input
+								type="number"
+								value={tokenAmount}
+								onChange={(e) => setTokenAmount(Number(e.target.value))}
+								min="0"
+								step="0.000001"
+								placeholder="0.00"
+								className="h-10 w-28 bg-input border border-border px-3 text-sm text-foreground text-center placeholder:text-muted transition-colors focus:outline-none focus:border-accent"
+							/>
 
-							<div className="flex gap-3">
-								<div className="relative w-32">
-									<input
-										type="number"
-										value={tokenAmount}
-										onChange={(e) => setTokenAmount(Number(e.target.value))}
-										min="0"
-										step="0.000001"
-										placeholder="Amount"
-										className="
-                      h-12 w-full
-                      border border-border
-                      bg-secondary
-                      pl-4 pr-4
-                      text-sm text-foreground text-center
-                      placeholder:text-muted
-                      outline-none transition-all duration-200
-
-                      hover:border-accent/50
-                      hover:bg-secondary
-                      focus:border-accent
-                      focus:bg-secondary
-
-                      [appearance:textfield]
-                      [&::-webkit-outer-spin-button]:appearance-none
-                      [&::-webkit-inner-spin-button]:appearance-none
-                    "
-									/>
-								</div>
-
-								<div className="relative flex-1 token-dropdown">
-									<div
-										onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-										className="
-                      h-12 w-full cursor-pointer
-                      border border-border
-                      bg-secondary
-                      pl-5 pr-12
-                      text-sm text-foreground
-                      outline-none transition-all duration-200
-
-                      hover:border-accent/50
-                      hover:bg-secondary
-                      focus:border-accent
-                      focus:bg-secondary
-
-                      flex items-center gap-3
-                    "
-									>
-										{selectedToken ? (
-											<>
-												<Image
-													src={
-														assetIcons[selectedToken] ||
-														assetIcons[selectedToken?.toUpperCase()] ||
-														assetIcons[selectedToken?.toLowerCase()] ||
-														"/icons/default.png"
-													}
-													alt={selectedToken}
-													width={20}
-													height={20}
-													className="w-5 h-5  object-contain bg-card border border-border"
-												/>
-												<span>
-													{tokens.find((t) => t.value === selectedToken)?.label || selectedToken}
-												</span>
-											</>
-										) : (
-											<span className="text-muted">Select token</span>
-										)}
-									</div>
-
-									<div className="pointer-events-none absolute inset-y-0 right-5 flex items-center">
-										<ChevronDown
-											className={`h-4 w-4 text-muted transition-transform ${isDropdownOpen ? "rotate-180" : ""}`}
-										/>
-									</div>
-
-									{isDropdownOpen && (
-										<>
-											<div
-												className="fixed inset-0 z-40"
-												onClick={() => setIsDropdownOpen(false)}
+							{/* Token Dropdown */}
+							<div className="relative flex-1">
+								<button
+									type="button"
+									onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+									className="h-10 w-full bg-input border border-border px-4 text-sm text-left text-foreground transition-colors hover:border-accent/50 focus:outline-none focus:border-accent flex items-center justify-between gap-2"
+								>
+									{selectedToken ? (
+										<span className="flex items-center gap-2">
+											<Image
+												src={
+													assetIcons[selectedToken] ??
+													assetIcons[selectedToken?.toUpperCase()] ??
+													"/icons/default.png"
+												}
+												alt={selectedToken}
+												width={16}
+												height={16}
+												className="w-4 h-4 object-contain"
 											/>
-											<div className="absolute top-full left-0 right-0 mt-2 z-50  border border-border bg-card   overflow-hidden">
-												{tokens.map((token) => (
-													<div
-														key={token.value}
+											{tokens.find((t) => t.value === selectedToken)?.label || selectedToken}
+										</span>
+									) : (
+										<span className="text-muted">Select token</span>
+									)}
+									<ChevronDown
+										className={`w-4 h-4 text-muted transition-transform ${
+											isDropdownOpen ? "rotate-180" : ""
+										}`}
+									/>
+								</button>
+
+								{isDropdownOpen && (
+									<>
+										<div
+											className="fixed inset-0 z-40"
+											onClick={() => setIsDropdownOpen(false)}
+										/>
+										<ul className="absolute top-full left-0 right-0 mt-1 z-50 border border-border bg-card max-h-48 overflow-y-auto">
+											{tokens.map((token) => (
+												<li key={token.value}>
+													<button
+														type="button"
 														onClick={() => {
 															setSelectedToken(token.value);
 															setIsDropdownOpen(false);
 														}}
-														className="flex items-center gap-3 px-5 py-3 text-sm text-foreground hover:bg-secondary cursor-pointer transition-colors"
+														className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-secondary transition-colors text-left"
 													>
 														<Image
 															src={
-																assetIcons[token.value] ||
-																assetIcons[token.value?.toUpperCase()] ||
-																assetIcons[token.value?.toLowerCase()] ||
+																assetIcons[token.value] ??
+																assetIcons[token.value?.toUpperCase()] ??
 																"/icons/default.png"
 															}
 															alt={token.value}
-															width={20}
-															height={20}
-															className="w-5 h-5  object-contain bg-card border border-border"
+															width={16}
+															height={16}
+															className="w-4 h-4 object-contain"
 														/>
-														<span>{token.label}</span>
-													</div>
-												))}
-											</div>
-										</>
-									)}
-								</div>
+														{token.label}
+													</button>
+												</li>
+											))}
+										</ul>
+									</>
+								)}
 							</div>
-						</section>
+						</div>
+					</section>
 
-						<section className="space-y-2">
-							<div className="flex items-center justify-between gap-4">
-								<h2 className="text-sm font-medium text-foreground">Strategy Prompt</h2>
-
-								<span className="text-xs text-muted">
-									{charCount}/{PROMPT_MAX_LENGTH}
-								</span>
+					{/* Prompt Input */}
+					<section className="space-y-2">
+						<div className="flex items-center justify-between">
+							<label className="text-sm font-medium text-foreground">
+								Strategy Prompt
+							</label>
+							<span className="text-xs text-muted tabular-nums">
+								{charCount}/{PROMPT_MAX_LENGTH}
+							</span>
+						</div>
+						<div className="bg-input border border-border p-4 transition-colors focus-within:border-accent">
+							<textarea
+								value={prompt}
+								onChange={(e) => setPrompt(e.target.value)}
+								maxLength={PROMPT_MAX_LENGTH}
+								placeholder="Example: Create a gdot looping 3 loops, Supply DOT and borrow USDC..."
+								className="h-24 w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted focus:outline-none"
+							/>
+							<div className="mt-2 flex items-center gap-2 text-xs text-muted">
+								<Sparkles className="w-3 h-3" />
+								<span>AI-powered strategy generation</span>
 							</div>
+						</div>
+					</section>
 
-							<div className=" border border-border bg-secondary p-4 ">
-								<textarea
-									value={prompt}
-									onChange={(e) => setPrompt(e.target.value)}
-									maxLength={PROMPT_MAX_LENGTH}
-									placeholder="Example: Create a gdot looping 3 loops, Supply DOT and borrow USDC, Maximize yield with moderate risk..."
-									className="h-[110px] w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted"
-								/>
-
-								<div className="mt-3 flex items-center justify-between gap-3">
-									<div className="flex items-center gap-2 text-xs text-muted">
-										<Sparkles className="h-3 w-3" />
-										<span>AI-powered strategy generation</span>
-									</div>
-								</div>
-							</div>
-						</section>
-					</div>
-
-					<div className="mt-5 flex items-center justify-end gap-3">
-						<button
-							onClick={onCancel}
-							className="h-11  border border-border bg-secondary px-5 text-sm font-medium text-muted transition hover:border-accent/50 hover:bg-secondary hover:text-foreground"
-						>
+					{/* Actions */}
+					<div className="flex items-center justify-end gap-3 pt-2">
+						<button onClick={onCancel} className="terminal-btn px-4 py-2">
 							Cancel
 						</button>
-
 						<button
 							onClick={handleNext}
 							disabled={submitting}
-							className="h-11  border border-border bg-secondary px-7 text-sm font-semibold text-foreground transition hover:border-accent/50 hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+							className="terminal-btn primary px-5 py-2"
 						>
 							{submitting ? (
-								<div className="flex items-center gap-2">
-									<motion.div
-										animate={{ rotate: 360 }}
-										transition={{
-											duration: 0.8,
-											ease: "linear",
-											repeat: Infinity,
-										}}
-										className="w-4 h-4 border-2 border-white/30 border-t-white/80 "
-									/>
-									<span>Generating...</span>
-								</div>
+								<span className="flex items-center gap-2">
+									<span className="spinner" />
+									Generating
+								</span>
 							) : (
 								"Generate Strategy"
 							)}
@@ -269,17 +223,18 @@ export default function PromptPage() {
 					</div>
 				</div>
 
-				<div className="w-[320px] shrink-0">
+				{/* Sidebar */}
+				<aside className="w-72 shrink-0">
 					{submitting ? (
 						<StrategyFlowSkeleton />
 					) : (
-						<AnimatePresence>
+						<AnimatePresence mode="wait">
 							{strategyResult ? (
 								<motion.div
 									key="strategy-result"
-									initial={{ opacity: 0, x: 16 }}
+									initial={{ opacity: 0, x: 12 }}
 									animate={{ opacity: 1, x: 0 }}
-									exit={{ opacity: 0, x: 16 }}
+									exit={{ opacity: 0, x: 12 }}
 									transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
 								>
 									<StrategyFlowPreview
@@ -289,96 +244,76 @@ export default function PromptPage() {
 									/>
 								</motion.div>
 							) : (
-						<div className="relative overflow-hidden  bg-card text-card-foreground  border border-border p-5  transition-all duration-300 hover:border-accent/50  ">
-							<div className="space-y-5">
-								<div className="flex items-center gap-2 text-yellow-400">
-									<Lightbulb className="h-4 w-4" />
-									<span className="text-sm font-semibold">Strategy Guide</span>
-								</div>
+								<motion.div
+									key="guide"
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									className="forge-card p-5 space-y-5"
+								>
+									{/* Guide Header */}
+									<div className="flex items-center gap-2 text-warning">
+										<Lightbulb className="w-4 h-4" />
+										<span className="text-sm font-medium">Strategy Guide</span>
+									</div>
 
-								<div className="space-y-3">
+									{/* Example Prompts */}
 									<div className="space-y-2">
-										<h3 className="text-xs font-medium text-muted">Example Prompts:</h3>
+										<h3 className="text-xs font-medium text-muted">Example Prompts</h3>
 										<div className="space-y-1">
-											<div
-												onClick={() => handleExampleClick("Create a gdot looping 3 loops")}
-												className="group text-xs text-muted p-3  bg-secondary border border-border cursor-pointer hover:bg-secondary hover:text-foreground hover:border-accent/30 transition-all duration-200"
-											>
-												<div className="flex items-center justify-between">
-													<span>&quot;Create a gdot looping 3 loops&quot;</span>
-													<span className="opacity-0 group-hover:opacity-100 transition-opacity text-accent/70">
-														→
+											{EXAMPLE_PROMPTS.map((example) => (
+												<button
+													key={example}
+													onClick={() => setPrompt(example)}
+													className="w-full text-left text-xs text-muted p-2.5 bg-secondary border border-border transition-colors hover:border-accent/30 hover:text-foreground group"
+												>
+													<span className="flex items-center justify-between">
+														<span>&quot;{example}&quot;</span>
+														<span className="opacity-0 group-hover:opacity-100 text-accent transition-opacity">
+															&rarr;
+														</span>
 													</span>
-												</div>
-											</div>
-											<div
-												onClick={() => handleExampleClick("Supply DOT and borrow USDC")}
-												className="group text-xs text-muted p-3  bg-secondary border border-border cursor-pointer hover:bg-secondary hover:text-foreground hover:border-accent/30 transition-all duration-200"
-											>
-												<div className="flex items-center justify-between">
-													<span>&quot;Supply DOT and borrow USDC&quot;</span>
-													<span className="opacity-0 group-hover:opacity-100 transition-opacity text-accent/70">
-														→
-													</span>
-												</div>
-											</div>
-											<div
-												onClick={() => handleExampleClick("Maximize yield with moderate risk")}
-												className="group text-xs text-muted p-3  bg-secondary border border-border cursor-pointer hover:bg-secondary hover:text-foreground hover:border-accent/30 transition-all duration-200"
-											>
-												<div className="flex items-center justify-between">
-													<span>&quot;Maximize yield with moderate risk&quot;</span>
-													<span className="opacity-0 group-hover:opacity-100 transition-opacity text-accent/70">
-														→
-													</span>
-												</div>
-											</div>
+												</button>
+											))}
 										</div>
 									</div>
-								</div>
 
-								<div className="space-y-3 border-t border-border pt-4">
-									<div className="space-y-2">
-										<h3 className="text-xs font-medium text-muted">Supported Operations:</h3>
+									{/* Operations */}
+									<div className="space-y-2 pt-4 border-t border-border">
+										<h3 className="text-xs font-medium text-muted">Supported Operations</h3>
 										<div className="grid grid-cols-2 gap-1 text-xs text-muted">
-											<div className="p-1.5 rounded bg-secondary border border-white/5 select-none">
-												Supply
-											</div>
-											<div className="p-1.5 rounded bg-secondary border border-white/5 select-none">
-												Borrow
-											</div>
-											<div className="p-1.5 rounded bg-secondary border border-white/5 select-none">
-												Swap
-											</div>
-											<div className="p-1.5 rounded bg-secondary border border-white/5 select-none">
-												Join Strategy
-											</div>
+											{["Supply", "Borrow", "Swap", "Join Strategy"].map((op) => (
+												<div
+													key={op}
+													className="p-1.5 bg-secondary border border-border text-center"
+												>
+													{op}
+												</div>
+											))}
 										</div>
 									</div>
-								</div>
 
-								<div className="space-y-3 border-t border-border pt-4">
-									<div className="space-y-2">
-										<h3 className="text-xs font-medium text-muted">Available Tokens:</h3>
+									{/* Tokens */}
+									<div className="space-y-2 pt-4 border-t border-border">
+										<h3 className="text-xs font-medium text-muted">Available Tokens</h3>
 										<div className="flex flex-wrap gap-1">
 											{tokens.map((token) => (
 												<span
 													key={token.value}
-													className="px-2 py-1 text-xs  bg-secondary text-muted border border-border select-none"
+													className="px-1.5 py-0.5 text-[10px] bg-secondary text-muted border border-border"
 												>
 													{token.label}
 												</span>
 											))}
 										</div>
 									</div>
-								</div>
-							</div>
-						</div>
-						)}
+								</motion.div>
+							)}
 						</AnimatePresence>
 					)}
-				</div>
+				</aside>
 			</div>
+
+			{/* Execution Modal */}
 			{strategyToExecute && (
 				<ExecutionModal
 					key={strategyToExecute ? "open" : "closed"}

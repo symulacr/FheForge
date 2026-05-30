@@ -32,29 +32,30 @@ export default function Home() {
 
 	const displayStrategies = useMemo(
 		() => (strategies.length > 0 ? strategies : SEED_STRATEGIES),
-		[strategies],
+		[strategies]
 	);
 
 	return (
 		<>
 			<Preloader />
-			<div className="flex h-auto min-h-[calc(100vh-110px)] mt-15 overflow-x-hidden">
-				<section className="flex-1 relative mx-auto w-full max-w-[1920px] px-4 sm:px-6 lg:px-8 py-6">
+			<div className="flex min-h-[calc(100vh-96px)] overflow-x-hidden">
+				<section className="flex-1 relative mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8 py-8">
 					<h1 className="sr-only">FheForge — confidential DeFi strategies</h1>
 
-					<div className="relative mb-16 pt-8 pb-12 border-b border-border">
-						<div className="max-w-4xl">
-							<h2 className="text-4xl sm:text-5xl lg:text-6xl font-medium text-foreground tracking-tight mb-6 leading-tight">
+					{/* Hero Section */}
+					<header className="relative mb-12 pt-6 pb-10 border-b border-border">
+						<div className="max-w-3xl">
+							<h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-foreground tracking-tight mb-4 leading-tight text-balance">
 								Build confidential
 								<br />
-								<span className="font-semibold">leveraged strategies</span>
+								<span className="text-accent">leveraged strategies</span>
 							</h2>
-							<p className="text-base sm:text-lg text-muted max-w-xl leading-relaxed mb-8">
+							<p className="text-sm sm:text-base text-muted max-w-xl leading-relaxed mb-6">
 								FheForge is an FHE-powered strategy builder. Compose supply, borrow, and swap
 								intents with encrypted inputs — your position data stays private on-chain.
 							</p>
 							<div className="flex flex-wrap items-center gap-4">
-								<Link href="/builder" className="terminal-btn primary text-sm px-6 py-3">
+								<Link href="/builder" className="terminal-btn primary px-5 py-2.5">
 									Open Builder
 								</Link>
 								<span className="text-xs text-muted">
@@ -63,27 +64,34 @@ export default function Home() {
 							</div>
 						</div>
 
-						<div className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 w-80">
-							<div className="forge-card p-4 mb-3 opacity-60">
-								<div className="text-[10px] text-muted mb-2">encrypt(uint128)</div>
-								<div className="text-xs text-accent font-mono break-all">0x7f3a...b2e9</div>
+						{/* Floating Cards */}
+						<div className="hidden lg:block absolute right-0 top-1/2 -translate-y-1/2 w-72">
+							<div className="forge-card p-4 mb-3 opacity-70">
+								<div className="text-[10px] text-muted uppercase tracking-wider mb-1.5">
+									encrypt(uint128)
+								</div>
+								<code className="text-xs text-accent break-all">0x7f3a...b2e9</code>
 							</div>
-							<div className="forge-card p-4 opacity-40 translate-x-4">
-								<div className="text-[10px] text-muted mb-2">decrypt(ctHash)</div>
-								<div className="text-xs text-success font-mono">1420.00</div>
+							<div className="forge-card p-4 opacity-50 translate-x-4">
+								<div className="text-[10px] text-muted uppercase tracking-wider mb-1.5">
+									decrypt(ctHash)
+								</div>
+								<code className="text-xs text-success tabular-nums">1,420.00</code>
 							</div>
 						</div>
-					</div>
+					</header>
 
-					<div className="mb-16 max-w-2xl">
+					{/* FHE Demo */}
+					<div className="mb-12 max-w-xl">
 						<FheDemoWidget />
 					</div>
 
-					<div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr] gap-6 min-h-[600px]">
-						<div className="w-full pr-2">
+					{/* Strategy Grid */}
+					<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+						<div className="w-full">
 							<FeaturedStrategies strategies={displayStrategies} />
 						</div>
-						<div className="w-full mt-15 pr-2">
+						<div className="w-full">
 							<StrategyList strategies={displayStrategies} />
 						</div>
 					</div>

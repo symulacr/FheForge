@@ -22,33 +22,38 @@ const CONTRACTS: ContractEntry[] = [
 ];
 
 function shortAddress(addr: string): string {
-	if (!addr) return "—";
-	return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+	if (!addr) return "--";
+	return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 export default function Footer() {
 	return (
-		<footer className="border-t border-border bg-background py-4 text-xs text-muted-foreground">
-			<div className="mx-auto flex max-w-screen-2xl flex-col gap-3 px-6 md:flex-row md:items-center md:justify-between">
-				<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-					<span className="font-bold uppercase tracking-widest text-foreground">FheForge</span>
-					<span aria-hidden>·</span>
-					<span>Arbitrum Sepolia (421614)</span>
-					<span aria-hidden>·</span>
-					<span>v{APP_VERSION}</span>
+		<footer className="border-t border-border bg-background py-3 text-xs text-muted">
+			<div className="mx-auto flex max-w-screen-2xl flex-col gap-2 px-4 md:flex-row md:items-center md:justify-between md:px-6">
+				{/* Brand & Network */}
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<span className="font-semibold uppercase tracking-widest text-foreground">
+						FheForge
+					</span>
+					<span className="text-border" aria-hidden>|</span>
+					<span>Arbitrum Sepolia</span>
+					<span className="text-border" aria-hidden>|</span>
+					<span className="tabular-nums">v{APP_VERSION}</span>
 				</div>
 
-				<ul className="flex flex-wrap items-center gap-x-3 gap-y-1">
+				{/* Contract Links */}
+				<ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
 					{CONTRACTS.filter((c) => c.address).map((c) => (
 						<li key={c.name}>
 							<Link
 								href={`${ARBITRUM_SEPOLIA_EXPLORER}/address/${c.address}`}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+								className="tabular-nums transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								aria-label={`${c.name} contract on Arbiscan: ${c.address}`}
 							>
-								{c.name}: {shortAddress(c.address)}
+								<span className="text-muted-foreground">{c.name}:</span>{" "}
+								<span className="text-foreground">{shortAddress(c.address)}</span>
 							</Link>
 						</li>
 					))}
