@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FheForge — Interactive Protocol Simulator v2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#fff;font-family:'Courier New',monospace;overflow:hidden}
+#app{display:grid;grid-template-columns:1fr 380px;height:100vh}
+#viewport{position:relative;overflow:hidden}
+#sidebar{background:#111;border-left:1px solid #242424;overflow-y:auto;display:flex;flex-direction:column}
+#sidebar h2{padding:12px 14px 8px;font-size:11px;color:#3b82f6;border-bottom:1px solid #242424;letter-spacing:1px}
+#strategy-list{padding:8px}
+#strategy-list .item{padding:8px 10px;margin:2px 0;border:1px solid #242424;cursor:pointer;font-size:10px;transition:all .15s}
+#strategy-list .item:hover{border-color:#3b82f6}
+#strategy-list .item.active{border-color:#3b82f6;background:rgba(59,130,246,0.1)}
+#strategy-list .item .name{color:#fff;font-weight:bold;font-size:11px}
+#strategy-list .item .desc{color:#9ca3af;font-size:9px;margin-top:2px}
+#strategy-list .item .meta{color:#6b7280;font-size:8px;margin-top:2px}
+#controls-bar{display:flex;gap:6px;padding:8px 14px;border-top:1px solid #242424;border-bottom:1px solid #242424;align-items:center}
+#controls-bar button{background:transparent;color:#3b82f6;border:1px solid #3b82f6;padding:5px 12px;font-family:inherit;font-size:10px;cursor:pointer}
+#controls-bar button:hover{background:#3b82f6;color:#0a0a0a}
+#controls-bar button:disabled{opacity:.3}
+#controls-bar .status{font-size:9px;color:#9ca3af;margin-left:auto}
+#controls-bar .status .live{color:#22c55e}
+#phase-bar{padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #242424}
+.phase-chip{padding:3px 10px;font-size:9px;border:1px solid #242424;background:transparent;color:#9ca3af;cursor:pointer}
+.phase-chip.done{color:#22c55e;border-color:#22c55e}
+.phase-chip.active{color:#3b82f6;border-color:#3b82f6;background:rgba(59,130,246,0.1)}
+.phase-chip.pending{color:#6b7280}
+#detail-panel{flex:1;overflow-y:auto;padding:10px 14px;display:none}
+#detail-panel .title{font-size:11px;color:#3b82f6;margin-bottom:6px}
+#detail-panel .row{display:flex;justify-content:space-between;padding:3px 0;font-size:9px;border-bottom:1px solid #1a1a1a}
+#detail-panel .row .label{color:#9ca3af}
+#detail-panel .row .value{color:#fff}
+#detail-panel .fhe-ops{margin-top:8px}
+#detail-panel .fhe-ops .op{background:#1a1a1a;padding:4px 8px;margin:2px 0;font-size:9px;color:#f59e0b;border-left:2px solid #f59e0b}
+#detail-panel .fhe-ops .op .gas{color:#9ca3af;font-size:8px;margin-left:8px}
+#canvas2d{width:100%;height:200px;border-top:1px solid #242424;cursor:pointer}
+#canvas2d-container{position:relative}
+#canvas2d-container .label{position:absolute;top:4px;left:8px;font-size:8px;color:#6b7280;z-index:2}
+#view-switch{position:absolute;top:12px;right:12px;z-index:10;display:flex;gap:4px}
+#view-switch button{background:transparent;color:#9ca3af;border:1px solid #242424;padding:4px 10px;font-family:inherit;font-size:9px;cursor:pointer}
+#view-switch button.active{color:#3b82f6;border-color:#3b82f6}
+#enc-indicator{position:absolute;top:12px;left:12px;z-index:10;font-size:9px;color:#f59e0b;background:rgba(10,10,10,0.85);padding:4px 10px;border:1px solid #f59e0b}
+@media(max-width:900px){#app{grid-template-columns:1fr}#sidebar{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="viewport">
+    <div id="enc-indicator">🔒 All Encrypted</div>
+    <div id="view-switch"><button id="view3d-btn" class="active">3D</button><button id="view2d-btn">2D</button></div>
+  </div>
+  <div id="sidebar">
+    <h2>⚡ Strategy Simulator</h2>
+    <div id="strategy-list"></div>
+    <div id="phase-bar"></div>
+    <div id="controls-bar">
+      <button id="play-btn">▶ Simulate</button>
+      <button id="reset-btn" disabled>⟲ Reset</button>
+      <button id="reveal-btn">🔍 Show Details</button>
+      <span class="status" id="sim-status">Select a strategy to simulate</span>
+    </div>
+    <div id="detail-panel"></div>
+    <div id="canvas2d-container"><div class="label">⏱ Strategy Timeline (2D)</div><canvas id="canvas2d"></canvas></div>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import{OrbitControls}from'three/addons/controls/OrbitControls.js';
+import{CSS2DRenderer,CSS2DObject}from'three/addons/renderers/CSS2DRenderer.js';
+
+// ──── SETUP ────
+let renderer,labelRenderer,controls,camera,scene;
+try{
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0a0a);
+  camera=new THREE.PerspectiveCamera(40,document.getElementById('viewport').clientWidth/document.getElementById('viewport').clientHeight,1,200);
+  camera.position.set(16,10,16);
+  renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+  renderer.setSize(document.getElementById('viewport').clientWidth,document.getElementById('viewport').clientHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  document.getElementById('viewport').appendChild(renderer.domElement);
+  labelRenderer=new CSS2DRenderer();labelRenderer.setSize(renderer.domElement.width,renderer.domElement.height);
+  labelRenderer.domElement.style.position='absolute';labelRenderer.domElement.style.top='0';labelRenderer.domElement.style.pointerEvents='none';
+  document.getElementById('viewport').appendChild(labelRenderer.domElement);
+  controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.05;
+  controls.autoRotate=true;controls.autoRotateSpeed=.6;controls.target.set(0,0,0);controls.maxPolarAngle=Math.PI/2.2;
+}catch(e){document.getElementById('viewport').innerHTML='<div style="padding:40px;color:#ef4444;font-size:14px">⚠ WebGL not available. Try a different browser or enable hardware acceleration.</div>'}
+
+if(scene){
+  const al=new THREE.AmbientLight(0x222244,.5);scene.add(al);
+  const dl=new THREE.DirectionalLight(0x3b82f6,1.2);dl.position.set(10,20,10);scene.add(dl);
+  const fl=new THREE.DirectionalLight(0x22c55e,.3);fl.position.set(-10,5,-10);scene.add(fl);
+  const gh=new THREE.GridHelper(28,28,0x242424,0x1a1a1a);gh.position.y=-3.5;scene.add(gh);
+
+  // Stars
+  const sg=new THREE.BufferGeometry();const sp=new Float32Array(2000*3);
+  for(let i=0;i<6000;i++)sp[i]=(Math.random()-.5)*180;
+  sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
+  scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0x3b82f6,size:.04,transparent:true,opacity:.25})));
+}
+
+// ──── CONTRACTS DATA ────
+const C=[
+  {id:'FheForgeBase',l:'FheForgeBase',s:'ACL • Auth • SafeMath',c:0x71717a,p:[0,1.5,0],z:1.1,en:false},
+  {id:'LendingPool',l:'LendingPool',s:'Supply • Borrow • Liquidate',c:0x3b82f6,p:[-4.5,0,3.5],z:1.0,en:true},
+  {id:'StrategyVault',l:'StrategyVault',s:'Encrypted Positions',c:0x22c55e,p:[3.5,0,3.5],z:1.0,en:true},
+  {id:'PriceOracle',l:'PriceOracle',s:'Pyth + Fallback',c:0x3b82f6,p:[-6,-.5,-1.5],z:.8,en:false},
+  {id:'TokenRegistry',l:'TokenRegistry',s:'Token Address Map',c:0x3b82f6,p:[-3.5,-1,-3.5],z:.7,en:false},
+  {id:'StrategyRegistry',l:'StrategyRegistry',s:'Strategy Meta + TVL',c:0x22c55e,p:[5.5,-.5,.5],z:.85,en:true},
+  {id:'FheForgeComposer',l:'Composer',s:'Strategy Orchestrator',c:0xf59e0b,p:[0,-.5,0],z:1.2,en:true},
+  {id:'SwapRouter',l:'SwapRouter',s:'Intent + Uniswap V3',c:0xa855f7,p:[4.5,0,-2.5],z:.85,en:false},
+  {id:'StrategyExecutor',l:'Exec',s:'8 Action Types',c:0xa855f7,p:[2.5,.5,-4.5],z:.7,en:false},
+  {id:'ExecutorContract',l:'ExecContract',s:'Ownable Executor',c:0xa855f7,p:[.5,-1.5,-5],z:.6,en:false},
+  {id:'FheForgeToken',l:'Token',s:'ERC20Votes',c:0xef4444,p:[-2,-1.5,5],z:.65,en:false},
+  {id:'FheForgeTimelock',l:'Timelock',s:'Delay + Execute',c:0xef4444,p:[0,-2,5.5],z:.65,en:false},
+  {id:'FheForgeGovernor',l:'Governor',s:'Voting + Quorum',c:0xef4444,p:[2,-1.5,5],z:.65,en:false},
+];
+
+const ext=[
+  {l:'CoFHE\nTaskManager',p:[-7,2.5,5.5],c:0x71717a},{l:'User\nWallet',p:[0,4.5,7],c:0x71717a},
+  {l:'Pyth\nOracle',p:[-8,-.5,-4],c:0x71717a},{l:'Uniswap V3',p:[7,0,-5],c:0x71717a},
+  {l:'FHESafeMath128',p:[3.5,2.5,5.5],c:0x71717a},{l:'Gemini AI',p:[-5,3.5,-3],c:0x71717a},
+  {l:'Backend API',p:[-3.5,3.5,-4.5],c:0x71717a},{l:'WETH9',p:[-1.5,-2.5,3.5],c:0x71717a},
+];
+
+// ──── DRAW ────
+const nodes={},meshes=[],coreColors={};
+function mkLabel(t,s,cl,sz=1){
+  const d=document.createElement('div');d.style.cssText='color:#fff;font-family:\'Courier New\',monospace;text-align:center;pointer-events:none';
+  const h=document.createElement('div');h.style.cssText=`font-size:${11*sz}px;font-weight:bold;color:${'#'+cl.toString(16).padStart(6,'0')}`;
+  h.textContent=t;d.appendChild(h);
+  if(s){const b=document.createElement('div');b.style.cssText=`font-size:${8*sz}px;color:#9ca3af;margin-top:2px`;b.textContent=s;d.appendChild(b)}
+  return new CSS2DObject(d);
+}
+
+C.forEach(c=>{
+  const g=new THREE.Group();g.position.set(c.p[0],c.p[1],c.p[2]);
+  const r=new THREE.Mesh(new THREE.RingGeometry(c.z*.85,c.z*1,32),new THREE.MeshBasicMaterial({color:c.c,transparent:true,opacity:.12,side:THREE.DoubleSide}));
+  r.rotation.x=-Math.PI/2;r.position.y=-c.z*.45;g.add(r);
+  const b=new THREE.Mesh(new THREE.BoxGeometry(c.z*.75,c.z*.35,c.z*.75),new THREE.MeshPhysicalMaterial({color:c.c,metalness:.7,roughness:.25,emissive:c.c,emissiveIntensity:.08,transparent:true,opacity:.9}));
+  b.position.y=.15;g.add(b);coreColors[c.id]=c.c;
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(b.geometry),new THREE.LineBasicMaterial({color:c.c,transparent:true,opacity:.25}));
+  e.position.y=.15;g.add(e);
+  scene.add(g);
+  const l=mkLabel(c.l,c.s,c.c,c.z);l.position.set(c.p[0],c.p[1]+c.z*.65,c.p[2]);scene.add(l);
+  nodes[c.id]={g,r,b,e,pos:new THREE.Vector3(c.p[0],c.p[1],c.p[2]),color:c.c,data:c};meshes.push(b);
+});
+
+ext.forEach(e=>{
+  const d=document.createElement('div');d.style.cssText='color:#9ca3af;font-family:\'Courier New\',monospace;text-align:center;font-size:8px;pointer-events:none';d.style.whiteSpace='pre-line';d.textContent=e.l;
+  const l=new CSS2DObject(d);l.position.set(e.p[0],e.p[1],e.p[2]);scene.add(l);
+  nodes[e.l]={pos:new THREE.Vector3(e.p[0],e.p[1],e.p[2]),color:e.c,isExternal:true};
+});
+
+// ──── CONNECTIONS ────
+const edges=[
+  ['FheForgeBase','LendingPool',0x3b82f6,'inherits'],['FheForgeBase','StrategyVault',0x22c55e,'inherits'],
+  ['FheForgeBase','FheForgeComposer',0xf59e0b,'inherits'],['FheForgeBase','SwapRouter',0xa855f7,'inherits'],
+  ['FheForgeBase','PriceOracle',0x3b82f6,'inherits'],['FheForgeBase','TokenRegistry',0x3b82f6,'inherits'],
+  ['FheForgeBase','StrategyRegistry',0x22c55e,'inherits'],['FheForgeBase','StrategyExecutor',0xa855f7,'inherits'],
+  ['LendingPool','PriceOracle',0x3b82f6,'oracle'],['StrategyVault','StrategyRegistry',0x22c55e,'TVL'],
+  ['Composer','StrategyVault',0xf59e0b,'openPos'],['Composer','LendingPool',0xf59e0b,'deposit/borrow'],
+  ['Composer','SwapRouter',0xf59e0b,'swap'],['SwapRouter','ExecutorContract',0xa855f7,'exec'],
+  ['Exec','LendingPool',0xa855f7,'actions'],['Token','Governor',0xef4444,'vote'],
+  ['Governor','Timelock',0xef4444,'queue'],
+  ['CoFHE\nTaskManager','FheForgeBase',0x71717a,'FHE ops'],['CoFHE\nTaskManager','LendingPool',0x71717a,'verify'],
+  ['CoFHE\nTaskManager','StrategyVault',0x71717a,'encrypt'],['Pyth\nOracle','PriceOracle',0x71717a,'price'],
+  ['Uniswap V3','SwapRouter',0x71717a,'DEX'],['User\nWallet','Composer',0x71717a,'strategies'],
+  ['User\nWallet','LendingPool',0x71717a,'lending'],['User\nWallet','StrategyVault',0x71717a,'vault'],
+  ['FHESafeMath128','FheForgeBase',0x71717a,'safe math'],['Gemini AI','Composer',0x71717a,'AI builder'],
+  ['Backend API','LendingPool',0x71717a,'events'],
+];
+const curves=[];
+edges.forEach(e=>{
+  const f=nodes[e[0]],t=nodes[e[1]];if(!f||!t)return;
+  const s=f.pos.clone(),en=t.pos.clone();const mid=new THREE.Vector3().addVectors(s,en).multiplyScalar(.5);mid.y+=2;
+  const pts=[];for(let k=0;k<=1;k+=.02){const p=new THREE.Vector3().lerpVectors(s,en,k);p.y+=Math.sin(k*Math.PI)*2;pts.push(p)}
+  const cv=new THREE.CatmullRomCurve3(pts);
+  const tube=new THREE.Mesh(new THREE.TubeGeometry(cv,32,.035,8,false),new THREE.MeshPhysicalMaterial({color:e[2],emissive:e[2],emissiveIntensity:.15,transparent:true,opacity:.35}));
+  scene.add(tube);curves.push({curve:cv,mesh:tube,color:e[2],from:e[0],to:e[1]});
+  if(e[3]){const mp=cv.getPoint(.5);const d=document.createElement('div');d.style.cssText='color:#6b7280;font-family:\'Courier New\',monospace;font-size:7px;pointer-events:none;background:rgba(10,10,10,.8);padding:1px 4px';d.textContent=e[3];const l2=new CSS2DObject(d);l2.position.copy(mp);l2.position.y+=.5;scene.add(l2)}
+});
+
+// ──── STRATEGIES ────
+const STRATEGIES={
+  supply:{name:'Supply',desc:'Supply USDC to lending pool',risk:'LOW',gas:'190k',apy:'5.2%',
+    phases:[
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect Wallet',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Grant Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
+      {name:'Execute',steps:[{node:'LendingPool',label:'Supply (shield)',fhe:['FHE.asEuint128','FHE.eq','FHE.select','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
+      {name:'Confirm',steps:[{node:'LendingPool',label:'Confirm Supply',fhe:[],gas:'-',en:false,event:'Confirm deposit on-chain'}]},
+    ]},
+  borrow:{name:'Borrow 50% LTV',desc:'Supply → Oracle → Borrow',risk:'MODERATE',gas:'355k',apy:'8.5%',
+    phases:[
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
+      {name:'Supply',steps:[{node:'LendingPool',label:'Supply',fhe:['FHE.asEuint128','FHE.eq','FHE.select','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
+      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price Check',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow LTV',fhe:['FHE.mul','FHE.lte','FHE.select'],gas:'210k',en:true}]},
+      {name:'Confirm',steps:[{node:'LendingPool',label:'emit Borrowed',fhe:[],gas:'-',en:false,event:'Confirm borrow on-chain'}]},
+    ]},
+  leverage:{name:'2x Leverage',desc:'Supply→Borrow→Swap→Re-supply',risk:'HIGH',gas:'835k',apy:'12.8%',
+    phases:[
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
+      {name:'Deploy',steps:[{node:'Composer',label:'openPosition',fhe:[],gas:'30k',en:false},{node:'StrategyVault',label:'Open Vault',fhe:['FHE.asEuint128','FHE.eq','FHE.select'],gas:'185k',en:true}]},
+      {name:'Finance',steps:[{node:'LendingPool',label:'Supply',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true},{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['FHE.mul','FHE.lte','FHE.select'],gas:'210k',en:true}]},
+      {name:'Swap',steps:[{node:'SwapRouter',label:'Swap',fhe:[],gas:'150k',en:false},{node:'LendingPool',label:'Re-supply',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
+      {name:'Done',steps:[{node:'Composer',label:'Strategy deployed on-chain',fhe:[],gas:'-',en:false,event:'Strategy deployed on-chain'}]},
+    ]},
+  liquidate:{name:'Liquidate',desc:'Detect→Verify→Liquidate underwater position',risk:'LOW',gas:'320k',apy:'N/A',
+    phases:[
+      {name:'Detect',steps:[{node:'PriceOracle',label:'Price Check',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'requestLiquidityCheck',fhe:['FHE.allowPublic'],gas:'45k',en:true}]},
+      {name:'Verify',steps:[{node:'CoFHE\nTaskManager',label:'Threshold Decrypt x2',fhe:['FHE.verifyDecryptResult','FHE.verifyDecryptResult'],gas:'200k',en:true}]},
+      {name:'Execute',steps:[{node:'PriceOracle',label:'_requireOracleHealthy',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'liquidateWithProof',fhe:[],gas:'60k',en:false}]},
+    ]},
+  full:{name:'Full Lifecycle',desc:'Connect→Permit→Supply→Borrow→Repay→Withdraw',risk:'MODERATE',gas:'620k',apy:'N/A',
+    phases:[
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
+      {name:'Deposit',steps:[{node:'LendingPool',label:'Supply',fhe:['FHE.asEuint128','FHE.eq','FHE.select','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
+      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['FHE.mul','FHE.lte','FHE.select'],gas:'210k',en:true}]},
+      {name:'Repay',steps:[{node:'LendingPool',label:'Repay',fhe:['FHE.eq','FHESafeMath128.tryDec'],gas:'145k',en:true}]},
+      {name:'Withdraw',steps:[{node:'LendingPool',label:'Withdraw',fhe:['FHE.eq','FHE.select','FHESafeMath128.tryDec'],gas:'60k',en:true}]},
+    ]},
+  loops:{name:'DCA ×5',desc:'5x Supply → Swap (loop collapsed)',risk:'MODERATE',gas:'~2.8M',apy:'15.2%',
+    phases:[
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
+      {name:'Supply',steps:[{node:'LendingPool',label:'Supply Batch 1',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
+      {name:'Swap',steps:[{node:'SwapRouter',label:'Swap Batch 1',fhe:[],gas:'150k',en:false}]},
+      {name:'Repeat ×3',steps:[{node:'LendingPool',label:'↻ Supply 2-4',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'435k',en:true,isLoop:true,loopCount:3},{node:'SwapRouter',label:'↻ Swap 2-4',fhe:[],gas:'450k',en:false,isLoop:true,loopCount:3}]},
+      {name:'Final',steps:[{node:'LendingPool',label:'Supply Final',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true},{node:'SwapRouter',label:'Swap Final',fhe:[],gas:'150k',en:false}]},
+    ]},
+  parallel:{name:'Parallel Multi',desc:'2 deposits + borrow simultaneously',risk:'MODERATE',gas:'~500k',apy:'10.5%',
+    phases:[
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
+      {name:'Parallel Deposit',steps:[{node:'LendingPool',label:'Supply ETH',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true,parallel:true},{node:'LendingPool',label:'Supply USDC',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true,parallel:true}]},
+      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['FHE.mul','FHE.lte','FHE.select'],gas:'210k',en:true}]},
+    ]},
+};
+
+// ──── SIM ENGINE ────
+let simState='idle',simStrategy=null,simPhase=0,simStep=-1,simTimer=null,simParticles=[];
+let showDetail=false,showEncrypted=true;
+
+class PartStream{
+  constructor(sc,cv,cnt=30,cl=0xf59e0b){
+    this.p=new Float32Array(cnt);this.sp=new Float32Array(cnt);this.pos=new Float32Array(cnt*3);this.cv=cv;
+    for(let i=0;i<cnt;i++){this.p[i]=Math.random();this.sp[i]=.3+Math.random()*.5}
+    this.geo=new THREE.BufferGeometry();this.geo.setAttribute('position',new THREE.BufferAttribute(this.pos,3));
+    this.mat=new THREE.PointsMaterial({color:cl,size:.1,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false});
+    this.mesh=new THREE.Points(this.geo,this.mat);sc.add(this.mesh);this.active=true;
+  }
+  upd(dt){if(!this.active)return;for(let i=0;i<this.p.length;i++){this.p[i]+=dt*this.sp[i]*.4;if(this.p[i]>1)this.p[i]-=1;const pt=this.cv.getPoint(this.p[i]);this.pos[i*3]=pt.x;this.pos[i*3+1]=pt.y;this.pos[i*3+2]=pt.z}this.geo.attributes.position.needsUpdate=true}
+  dispose(){scene.remove(this.mesh);this.mat.dispose();this.geo.dispose()}
+}
+
+function getCurve(f,t){
+  for(const c of curves)if(c.from===f&&c.to===t)return c.curve;
+  const fn=nodes[f],tn=nodes[t];if(!fn||!tn)return null;
+  const s=fn.pos.clone(),e=tn.pos.clone();const mid=new THREE.Vector3().addVectors(s,e).multiplyScalar(.5);mid.y+=2;
+  const pts=[];for(let k=0;k<=1;k+=.02){const p=new THREE.Vector3().lerpVectors(s,e,k);p.y+=Math.sin(k*Math.PI)*2;pts.push(p)}
+  return new THREE.CatmullRomCurve3(pts);
+}
+
+function clearParts(){simParticles.forEach(p=>p.dispose());simParticles=[]}
+function hlNode(id,on=true){
+  const n=nodes[id];if(!n||!n.b)return;
+  n.b.material.emissiveIntensity=on?.8:.08;if(n.r)n.r.material.opacity=on?.4:.12;
+}
+function clearHL(){C.forEach(c=>{const n=nodes[c.id];if(n&&n.b){n.b.material.emissiveIntensity=.08;if(n.r)n.r.material.opacity=.12}})}
+
+function renderPhaseChips(){
+  const bar=document.getElementById('phase-bar');
+  if(!simStrategy){bar.innerHTML='<div style="padding:3px 10px;font-size:9px;color:#6b7280">Select a strategy above to view phases</div>';return}
+  bar.innerHTML=simStrategy.phases.map((p,i)=>`<div class="phase-chip ${i<simPhase?'done':i===simPhase?'active':'pending'}" data-idx="${i}">${p.name}</div>`).join('');
+}
+
+function updateDetail(phaseIdx,stepIdx){
+  if(!showDetail||!simStrategy){document.getElementById('detail-panel').style.display='none';return}
+  const p=simStrategy.phases[phaseIdx];if(!p||!p.steps[stepIdx])return;
+  const s=p.steps[stepIdx];
+  let html=`<div class="title">📋 ${s.label}</div><div class="row"><span class="label">Phase</span><span class="value">${p.name}</span></div>
+    <div class="row"><span class="label">Contract</span><span class="value">${s.node}</span></div>
+    <div class="row"><span class="label">Gas</span><span class="value">${s.gas}</span></div>
+    <div class="row"><span class="label">Encrypted</span><span class="value">${s.en?'🔒 Yes':'🔓 No'}</span></div>`;
+  if(s.event)html+=`<div class="row"><span class="label">Event</span><span class="value" style="color:#22c55e">${s.event}</span></div>`;
+  if(s.fhe&&s.fhe.length){
+    html+=`<div class="fhe-ops"><div class="title" style="font-size:9px;color:#f59e0b">⚡ FHE Operations</div>`;
+    s.fhe.forEach(o=>{html+=`<div class="op">${o}<span class="gas">gas: ~120k (avg)</span></div>`});
+    html+=`</div>`;
+  }
+  document.getElementById('detail-panel').innerHTML=html;document.getElementById('detail-panel').style.display='block';
+}
+
+function runStep(phaseIdx,stepIdx){
+  if(!simStrategy||phaseIdx>=simStrategy.phases.length){
+    simState='done';document.getElementById('play-btn').textContent='↺ Replay';document.getElementById('reset-btn').disabled=false;
+    document.getElementById('sim-status').innerHTML='✅ Complete';clearParts();clearHL();controls.autoRotate=true;renderPhaseChips();return;
+  }
+  const p=simStrategy.phases[phaseIdx];
+  if(stepIdx>=p.steps.length){runStep(phaseIdx+1,0);return}
+  const s=p.steps[stepIdx];
+  clearHL();clearParts();
+  
+  // Highlight phase
+  simPhase=phaseIdx;simStep=stepIdx;renderPhaseChips();
+
+  // Highlight node
+  hlNode(s.node,true);
+
+  const fNode=nodes[s.node];
+  const status=document.getElementById('sim-status');
+  status.innerHTML=`${p.name}: ${s.label} ${s.fhe.length?`⚡ ${s.fhe[0]}`:''}`;
+  if(fNode&&!s.isLoop){
+    edges.forEach(e=>{if(e[0]===s.node||e[1]===s.node){const cv=getCurve(e[0],e[1]);if(cv){const ps=new PartStream(scene,cv,25,e[2]);simParticles.push(ps)}}});
+  }
+
+  // FHE badge on sidebar
+  const status=document.getElementById('sim-status');
+  status.innerHTML=`${p.name}: ${s.label} ${s.fhe.length?`⚡ ${s.fhe[0]}`:''}`;
+
+  // Detail panel
+  updateDetail(phaseIdx,stepIdx);
+
+  // Parallel steps: highlight ALL nodes in this phase
+  if(s.parallel){p.steps.forEach(st=>{if(st!==s)hlNode(st.node,true)});}
+
+  controls.autoRotate=false;
+  simState='running';
+  const dur=s.isLoop?.5:1.5;
+  simTimer=setTimeout(()=>runStep(phaseIdx,stepIdx+1),dur*1000);
+}
+
+// ──── UI ────
+const list=document.getElementById('strategy-list');
+Object.keys(STRATEGIES).forEach(k=>{
+  const s=STRATEGIES[k];
+  const div=document.createElement('div');div.className='item';
+  div.innerHTML=`<div class="name">${s.name}</div><div class="desc">${s.desc}</div><div class="meta">${s.risk} · ${s.gas} · APY ${s.apy}</div>`;
+  div.onclick=()=>{
+    document.querySelectorAll('.item').forEach(el=>el.classList.remove('active'));
+    div.classList.add('active');
+    clearTimeout(simTimer);simState='idle';clearParts();clearHL();
+    simStrategy=s;simPhase=0;simStep=-1;
+    renderPhaseChips();
+    document.getElementById('play-btn').textContent='▶ Simulate';document.getElementById('reset-btn').disabled=false;
+    document.getElementById('sim-status').innerHTML='Ready';
+    document.getElementById('detail-panel').style.display='none';
+    controls.autoRotate=true;
+  };
+  list.appendChild(div);
+});
+
+document.getElementById('play-btn').addEventListener('click',()=>{
+  if(!simStrategy){document.querySelector('.item')?.click();return}
+  if(simState==='running'){clearTimeout(simTimer);simState='paused';document.getElementById('play-btn').textContent='▶ Resume';return}
+  if(simState==='paused'){document.getElementById('play-btn').textContent='⏸ Pause';simState='running';runStep(simPhase,simStep);return}
+  simState='running';simPhase=0;simStep=0;
+  clearParts();clearHL();controls.autoRotate=false;
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  document.getElementById('sim-status').innerHTML='▶ Starting...';
+  runStep(0,0);
+});
+
+document.getElementById('reset-btn').addEventListener('click',()=>{
+  clearTimeout(simTimer);simState='idle';simStrategy=null;simPhase=0;simStep=-1;
+  clearParts();clearHL();document.getElementById('play-btn').textContent='▶ Simulate';
+  document.getElementById('reset-btn').disabled=true;
+  document.getElementById('sim-status').innerHTML='Ready — <span class="live">●</span>';
+  document.getElementById('detail-panel').style.display='none';document.getElementById('phase-bar').innerHTML='';
+  document.querySelectorAll('.item').forEach(el=>el.classList.remove('active'));
+  controls.autoRotate=true;
+});
+
+document.getElementById('reveal-btn').addEventListener('click',()=>{
+  showDetail=!showDetail;
+  document.getElementById('reveal-btn').textContent=showDetail?'🔍 Hide Details':'🔍 Show Details';
+  if(!showDetail)document.getElementById('detail-panel').style.display='none';
+});
+
+// ──── 2D CANVAS ────
+const can=document.getElementById('canvas2d');
+const ctx=can.getContext('2d');
+function resize2d(){can.width=can.parentElement.clientWidth;can.height=200;draw2d()}
+
+function draw2d(){
+  if(!simStrategy){ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,can.width,can.height);return}
+  const w=can.width,h=can.height;
+  ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,w,h);
+  const phases=simStrategy.phases;
+  const padL=80,padR=20,padT=40,padB=20;
+  const stepW=(w-padL-padR)/Math.max(1,phases.reduce((a,p)=>a+p.steps.length,0));
+  
+  let x=padL;const y0=padT;
+  phases.forEach((p,pi)=>{
+    const totalW=p.steps.length*stepW;
+    // Phase background
+    ctx.fillStyle=`rgba(255,255,255,${pi===simPhase?.03:.015})`;
+    ctx.fillRect(x,padT,totalW,h-padT-padB);
+    // Phase label
+    ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#3b82f6':'#6b7280';
+    ctx.font='10px Courier New';ctx.fillText(p.name,x+4,y0-8);
+    
+    p.steps.forEach((s,si)=>{
+      const sx=x+si*stepW;
+      // Node arrow
+      ctx.fillStyle=coreColors[s.node.split('\n')[0]]||0x71717a;ctx.font='8px Courier New';
+      ctx.fillText(s.node.replace('\n',' ').slice(0,12),sx+2,y0+12);
+      // Step label
+      ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#fff':'#6b7280';
+      ctx.font='7px Courier New';ctx.fillText(s.label.slice(0,16),sx+2,y0+28);
+      // FHE ops
+      if(s.fhe.length){
+        ctx.fillStyle='#f59e0b';ctx.font='6px Courier New';
+        ctx.fillText('⚡'+s.fhe[0].slice(0,14),sx+2,y0+42);
+      }
+      // Gas
+      if(s.gas!=='-'){ctx.fillStyle='#9ca3af';ctx.font='6px Courier New';ctx.fillText(s.gas,sx+2,y0+54)}
+      // Parallel indicator
+      if(s.parallel){ctx.fillStyle='#3b82f6';ctx.fillRect(sx,y0-2,stepW-2,2)}
+      // Loop indicator
+      if(s.isLoop){ctx.fillStyle='#a855f7';ctx.fillText('⟳ ×'+s.loopCount,sx+2,y0+66)}
+    });
+    x+=totalW;
+  });
+  
+  // Timeline line
+  ctx.strokeStyle='#242424';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,y0-14);ctx.lineTo(w-padR,y0-14);ctx.stroke();
+  
+  if(simState==='running'||simState==='done'){
+    const progX=padL+(w-padL-padR)*(simPhase/phases.length);
+    ctx.fillStyle='#3b82f6';ctx.fillRect(progX-1,y0-16,3,4);
+  }
+  
+  // Legend
+  ctx.fillStyle='#9ca3af';ctx.font='7px Courier New';
+  ctx.fillText('← Timeline →',w/2-30,h-5);
+}
+
+window.addEventListener('resize',resize2d);
+resize2d();
+
+// ──── VIEW SWITCH ────
+let viewMode='3d';
+document.getElementById('view2d-btn').addEventListener('click',()=>{
+  document.getElementById('view3d-btn').classList.remove('active');document.getElementById('view2d-btn').classList.add('active');
+  document.getElementById('viewport').style.display='none';document.getElementById('canvas2d').style.height='400px';resize2d();viewMode='2d';
+});
+document.getElementById('view3d-btn').addEventListener('click',()=>{
+  document.getElementById('view2d-btn').classList.remove('active');document.getElementById('view3d-btn').classList.add('active');
+  document.getElementById('viewport').style.display='block';document.getElementById('canvas2d').style.height='200px';viewMode='3d';
+});
+
+// ──── ANIMATION ────
+let t=0;
+function anim(){
+  requestAnimationFrame(anim);t+=.01;
+  if(renderer&&controls){
+    meshes.forEach((m,i)=>{const s=1+Math.sin(t*2+i)*.015;m.scale.set(s,1,s);if(m.material&&m.material.emissiveIntensity<.3)m.material.emissiveIntensity=.08+Math.sin(t*3+i*1.5)*.06});
+    curves.forEach((c,i)=>{if(c.mesh.material)c.mesh.material.opacity=.3+Math.sin(t*1.5+i*.5)*.12});
+    simParticles.forEach(p=>p.upd(.016));
+    controls.update();renderer.render(scene,camera);labelRenderer.render(scene,camera);
+  }
+  if(viewMode==='2d'&&simState==='running'&&t%1<.01)draw2d();
+}
+anim();
+
+// Click on 2D canvas to jump to phase
+can.addEventListener('click',e=>{
+  if(!simStrategy)return;
+  const rect=can.getBoundingClientRect();const mx=e.clientX-rect.left;
+  const phases=simStrategy.phases;const padL=80;const stepW=(can.width-padL-20)/Math.max(1,phases.reduce((a,p)=>a+p.steps.length,1));
+  let x=padL;
+  for(let i=0;i<phases.length;i++){
+    const w=phases[i].steps.length*stepW;
+    if(mx>=x&&mx<x+w){clearTimeout(simTimer);runStep(i,0);break}
+    x+=w;
+  }
+});
+
+console.log('✅ FheForge Interactive Simulator v2 loaded');
+</script>
+</body>
+</html>
