@@ -11,23 +11,23 @@ body{background:#0a0a0a;color:#fff;font-family:'Courier New',monospace;overflow:
 #sidebar{background:#111;border-left:1px solid #242424;overflow-y:auto;display:flex;flex-direction:column}
 #sidebar h2{padding:12px 14px 8px;font-size:11px;color:#3b82f6;border-bottom:1px solid #242424;letter-spacing:1px}
 #strategy-list{padding:8px}
-#strategy-list .item{padding:8px 10px;margin:2px 0;border:1px solid #242424;cursor:pointer;font-size:10px;transition:all .15s}
-#strategy-list .item:hover{border-color:#3b82f6}
-#strategy-list .item.active{border-color:#3b82f6;background:rgba(59,130,246,0.1)}
+#strategy-list .item{padding:10px 12px;margin:3px 0;border:1px solid #242424;cursor:pointer;font-size:10px;transition:all .15s}
+#strategy-list .item:hover{border-color:#3b82f6;transform:translateX(2px)}
+#strategy-list .item.active{border-color:#3b82f6;background:rgba(59,130,246,0.1);box-shadow:0 0 8px rgba(59,130,246,0.2)}
 #strategy-list .item .name{color:#fff;font-weight:bold;font-size:11px}
-#strategy-list .item .desc{color:#9ca3af;font-size:9px;margin-top:2px}
-#strategy-list .item .meta{color:#6b7280;font-size:8px;margin-top:2px}
-#controls-bar{display:flex;gap:6px;padding:8px 14px;border-top:1px solid #242424;border-bottom:1px solid #242424;align-items:center}
+#strategy-list .item .desc{color:#9ca3af;font-size:10px;margin-top:2px}
+#strategy-list .item .meta{color:#6b7280;font-size:9px;margin-top:2px}
+#controls-bar{display:flex;gap:6px;padding:8px 14px;border-top:1px solid #242424;border-bottom:1px solid #242424;align-items:center;flex-wrap:wrap}
 #controls-bar button{background:transparent;color:#3b82f6;border:1px solid #3b82f6;padding:5px 12px;font-family:inherit;font-size:10px;cursor:pointer}
 #controls-bar button:hover{background:#3b82f6;color:#0a0a0a}
 #controls-bar button:disabled{opacity:.3}
-#controls-bar .status{font-size:9px;color:#9ca3af;margin-left:auto}
+#controls-bar .status{font-size:10px;color:#9ca3af;margin-left:auto}
 #controls-bar .status .live{color:#22c55e}
 #phase-bar{padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #242424}
-.phase-chip{padding:3px 10px;font-size:9px;border:1px solid #242424;background:transparent;color:#9ca3af;cursor:pointer}
+.phase-chip{padding:3px 10px;font-size:10px;border:1px solid #242424;background:transparent;color:#9ca3af;cursor:pointer}
 .phase-chip.done{color:#22c55e;border-color:#22c55e}
 .phase-chip.active{color:#3b82f6;border-color:#3b82f6;background:rgba(59,130,246,0.1)}
-.phase-chip.pending{color:#6b7280}
+.phase-chip.pending{color:#9ca3af}
 #detail-panel{flex:1;overflow-y:auto;padding:10px 14px;display:none}
 #detail-panel .title{font-size:11px;color:#3b82f6;margin-bottom:6px}
 #detail-panel .row{display:flex;justify-content:space-between;padding:3px 0;font-size:9px;border-bottom:1px solid #1a1a1a}
@@ -38,30 +38,54 @@ body{background:#0a0a0a;color:#fff;font-family:'Courier New',monospace;overflow:
 #detail-panel .fhe-ops .op .gas{color:#9ca3af;font-size:8px;margin-left:8px}
 #canvas2d{width:100%;height:200px;border-top:1px solid #242424;cursor:pointer}
 #canvas2d-container{position:relative}
-#canvas2d-container .label{position:absolute;top:4px;left:8px;font-size:8px;color:#6b7280;z-index:2}
+#canvas2d-container .label{position:absolute;top:4px;left:8px;font-size:8px;color:#9ca3af;z-index:2}
 #view-switch{position:absolute;top:12px;right:12px;z-index:10;display:flex;gap:4px}
 #view-switch button{background:transparent;color:#9ca3af;border:1px solid #242424;padding:4px 10px;font-family:inherit;font-size:9px;cursor:pointer}
 #view-switch button.active{color:#3b82f6;border-color:#3b82f6}
 #enc-indicator{position:absolute;top:12px;left:12px;z-index:10;font-size:9px;color:#f59e0b;background:rgba(10,10,10,0.85);padding:4px 10px;border:1px solid #f59e0b}
-@media(max-width:900px){#app{grid-template-columns:1fr}#sidebar{display:none}}
+@media(max-width:900px){
+  #app{grid-template-columns:1fr;height:100dvh}
+  #sidebar{position:fixed;bottom:0;left:0;right:0;height:55%;border-left:none;border-top:1px solid #242424;z-index:20;overflow-y:auto;border-radius:0}
+  #viewport{height:45dvh}
+  #strategy-list{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:4px;padding:8px}
+  #strategy-list .item{flex:0 0 200px;white-space:nowrap}
+  #controls-bar{flex-wrap:wrap}
+  #phase-bar{overflow-x:auto;flex-wrap:nowrap}
+  #enc-indicator{font-size:7px;padding:2px 6px}
+  #view-switch{top:8px;right:8px}
+  #view-switch button{font-size:7px;padding:2px 6px}
+  #info{display:none}
+}
+#progress-bar{height:2px;background:#1a1a1a;margin:0 14px;position:relative}
+#progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .3s}
+*:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+button:focus-visible, .item:focus-visible{border-color:#3b82f6!important}
+#controls-legend{font-size:8px;color:#6b7280;padding:6px 0 2px;width:100%;white-space:nowrap;overflow-x:auto;border-top:1px solid #1a1a1a;margin-top:4px}
+[data-tt]{position:relative;cursor:help;border-bottom:1px dashed #9ca3af}
+[data-tt]:hover:after{content:attr(data-tt);position:absolute;bottom:100%;left:0;background:#1a1a1a;color:#fff;padding:4px 8px;font-size:9px;white-space:nowrap;border:1px solid #3b82f6;z-index:100;pointer-events:none}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="viewport">
-    <div id="enc-indicator">🔒 All Encrypted</div>
-    <div id="view-switch"><button id="view3d-btn" class="active">3D</button><button id="view2d-btn">2D</button></div>
+    <div id="enc-indicator" data-tt="All data encrypted via FHE — ciphertext never decrypted on-chain">🔒 All Encrypted</div>
+    <div id="view-switch"><button id="view3d-btn" class="active" aria-label="3D view">3D</button><button id="view2d-btn" aria-label="2D view">2D</button></div>
   </div>
   <div id="sidebar">
     <h2>⚡ Strategy Simulator</h2>
     <div id="strategy-list"></div>
     <div id="phase-bar"></div>
     <div id="controls-bar">
-      <button id="play-btn">▶ Simulate</button>
-      <button id="reset-btn" disabled>⟲ Reset</button>
-      <button id="reveal-btn">🔍 Show Details</button>
-      <span class="status" id="sim-status">Select a strategy to simulate</span>
+      <button id="back-btn" aria-label="Previous step" disabled>◀</button>
+      <button id="play-btn" aria-label="Play/Pause simulation" aria-pressed="false">▶ Simulate</button>
+      <button id="reset-btn" aria-label="Reset simulation" disabled>⟲ Reset</button>
+      <input type="range" id="speed-slider" min="0.5" max="3" step="0.5" value="1" style="width:50px;background:#1a1a1a;accent-color:#3b82f6;height:4px" aria-label="Simulation speed">
+      <span style="font-size:8px;color:#71717a;min-width:30px" id="speed-label">1×</span>
+      <button id="reveal-btn" aria-label="Toggle details">🔍 Show Details</button>
+      <span class="status" id="sim-status" aria-live="polite">Select a strategy to simulate</span>
+      <div id="controls-legend">⛓ FHE=Fully Homomorphic Encryption • APY=Annual Percentage Yield • LTV=Loan-to-Value • TVL=Total Value Locked • euint128=Encrypted uint128</div>
     </div>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
     <div id="detail-panel"></div>
     <div id="canvas2d-container"><div class="label">⏱ Strategy Timeline (2D)</div><canvas id="canvas2d"></canvas></div>
   </div>
@@ -84,14 +108,26 @@ try{
   camera.position.set(16,10,16);
   renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
   renderer.setSize(document.getElementById('viewport').clientWidth,document.getElementById('viewport').clientHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
   document.getElementById('viewport').appendChild(renderer.domElement);
   labelRenderer=new CSS2DRenderer();labelRenderer.setSize(renderer.domElement.width,renderer.domElement.height);
   labelRenderer.domElement.style.position='absolute';labelRenderer.domElement.style.top='0';labelRenderer.domElement.style.pointerEvents='none';
   document.getElementById('viewport').appendChild(labelRenderer.domElement);
   controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.05;
   controls.autoRotate=true;controls.autoRotateSpeed=.6;controls.target.set(0,0,0);controls.maxPolarAngle=Math.PI/2.2;
-}catch(e){document.getElementById('viewport').innerHTML='<div style="padding:40px;color:#ef4444;font-size:14px">⚠ WebGL not available. Try a different browser or enable hardware acceleration.</div>'}
+  controls.addEventListener('start',()=>{if(simState==='idle'){clearTimeout(autoRotateTimer);controls.autoRotate=true}});
+  controls.addEventListener('end',()=>{if(simState==='idle'){clearTimeout(autoRotateTimer);autoRotateTimer=setTimeout(()=>{controls.autoRotate=false},8e3)}});
+}catch(e){
+  const fb=document.createElement('div');
+  fb.id='webgl-fallback';
+  fb.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;text-align:center;padding:30px;background:#1a1a1a;border:1px solid #ef4444;max-width:500px';
+  fb.innerHTML='<h2 style="color:#ef4444;font-size:16px;margin-bottom:8px">⚠ 3D View Not Available</h2><p style="color:#a1a1aa;font-size:12px;line-height:1.5">Your browser does not support WebGL or the 3D libraries failed to load. Switch to 2D Timeline view below to continue exploring strategies.</p><p style="color:#71717a;font-size:11px;margin-top:12px">If you want 3D: try Chrome/Edge with hardware acceleration enabled.</p>';
+  document.getElementById('viewport').appendChild(fb);
+  // Show 2D canvas
+  const c2d=document.getElementById('canvas2d');
+  c2d.style.height='400px';
+  resize2d();
+}
 
 if(scene){
   const al=new THREE.AmbientLight(0x222244,.5);scene.add(al);
@@ -105,6 +141,17 @@ if(scene){
   sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
   scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0x3b82f6,size:.04,transparent:true,opacity:.25})));
 }
+
+// Global error handler for CDN/library load failures
+window.addEventListener('error',e=>{
+  const fb=document.getElementById('webgl-fallback');
+  if(!fb){
+    const d=document.createElement('div');d.id='webgl-fallback';
+    d.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:999;background:#ef4444;color:#fff;padding:10px 16px;font-size:11px;text-align:center';
+    d.textContent='⚠ An error occurred. Try refreshing the page or using Chrome with hardware acceleration.';
+    document.body.appendChild(d);
+  }
+});
 
 // ──── CONTRACTS DATA ────
 const C=[
@@ -185,111 +232,143 @@ edges.forEach(e=>{
   const cv=new THREE.CatmullRomCurve3(pts);
   const tube=new THREE.Mesh(new THREE.TubeGeometry(cv,32,.035,8,false),new THREE.MeshPhysicalMaterial({color:e[2],emissive:e[2],emissiveIntensity:.15,transparent:true,opacity:.35}));
   scene.add(tube);curves.push({curve:cv,mesh:tube,color:e[2],from:e[0],to:e[1]});
-  if(e[3]){const mp=cv.getPoint(.5);const d=document.createElement('div');d.style.cssText='color:#6b7280;font-family:\'Courier New\',monospace;font-size:7px;pointer-events:none;background:rgba(10,10,10,.8);padding:1px 4px';d.textContent=e[3];const l2=new CSS2DObject(d);l2.position.copy(mp);l2.position.y+=.5;scene.add(l2)}
+  if(e[3]){const mp=cv.getPoint(.5);const d=document.createElement('div');d.style.cssText='color:#9ca3af;font-family:\'Courier New\',monospace;font-size:7px;pointer-events:none;background:rgba(10,10,10,.8);padding:1px 4px';d.textContent=e[3];const l2=new CSS2DObject(d);l2.position.copy(mp);l2.position.y+=.5;scene.add(l2)}
 });
 
 // ──── STRATEGIES ────
 const STRATEGIES={
   supply:{name:'Supply',desc:'Supply USDC to lending pool',risk:'LOW',gas:'190k',apy:'5.2%',
     phases:[
-      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect Wallet',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Grant Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
-      {name:'Execute',steps:[{node:'LendingPool',label:'Supply (shield)',fhe:['FHE.asEuint128','FHE.eq','FHE.select','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect Wallet',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Grant Permit',fhe:['Grant permission'],gas:'45k',en:false}]},
+      {name:'Execute',steps:[{node:'LendingPool',label:'Supply (shield)',fhe:['Encrypt amount','Encrypted equality','Conditional select','Overflow check'],gas:'145k',en:true}]},
       {name:'Confirm',steps:[{node:'LendingPool',label:'Confirm Supply',fhe:[],gas:'-',en:false,event:'Confirm deposit on-chain'}]},
     ]},
   borrow:{name:'Borrow 50% LTV',desc:'Supply → Oracle → Borrow',risk:'MODERATE',gas:'355k',apy:'8.5%',
     phases:[
-      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
-      {name:'Supply',steps:[{node:'LendingPool',label:'Supply',fhe:['FHE.asEuint128','FHE.eq','FHE.select','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
-      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price Check',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow LTV',fhe:['FHE.mul','FHE.lte','FHE.select'],gas:'210k',en:true}]},
-      {name:'Confirm',steps:[{node:'LendingPool',label:'emit Borrowed',fhe:[],gas:'-',en:false,event:'Confirm borrow on-chain'}]},
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['Grant permission'],gas:'45k',en:false}]},
+      {name:'Supply',steps:[{node:'LendingPool',label:'Supply',fhe:['Encrypt amount','Encrypted equality','Conditional select','Overflow check'],gas:'145k',en:true}]},
+      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price Check',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow LTV',fhe:['Multiply encrypted','Encrypted comparison','Conditional select'],gas:'210k',en:true}]},
+      {name:'Confirm',steps:[{node:'LendingPool',label:'Borrow confirmed on-chain',fhe:[],gas:'-',en:false,event:'Confirm borrow on-chain'}]},
     ]},
   leverage:{name:'2x Leverage',desc:'Supply→Borrow→Swap→Re-supply',risk:'HIGH',gas:'835k',apy:'12.8%',
     phases:[
-      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
-      {name:'Deploy',steps:[{node:'Composer',label:'openPosition',fhe:[],gas:'30k',en:false},{node:'StrategyVault',label:'Open Vault',fhe:['FHE.asEuint128','FHE.eq','FHE.select'],gas:'185k',en:true}]},
-      {name:'Finance',steps:[{node:'LendingPool',label:'Supply',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true},{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['FHE.mul','FHE.lte','FHE.select'],gas:'210k',en:true}]},
-      {name:'Swap',steps:[{node:'SwapRouter',label:'Swap',fhe:[],gas:'150k',en:false},{node:'LendingPool',label:'Re-supply',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['Grant permission'],gas:'45k',en:false}]},
+      {name:'Deploy',steps:[{node:'Composer',label:'Open position',fhe:[],gas:'30k',en:false},{node:'StrategyVault',label:'Open Vault',fhe:['Encrypt amount','Encrypted equality','Conditional select'],gas:'185k',en:true}]},
+      {name:'Finance',steps:[{node:'LendingPool',label:'Supply',fhe:['Encrypted equality','Overflow check'],gas:'145k',en:true},{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['Multiply encrypted','Encrypted comparison','Conditional select'],gas:'210k',en:true}]},
+      {name:'Swap',steps:[{node:'SwapRouter',label:'Swap',fhe:[],gas:'150k',en:false},{node:'LendingPool',label:'Re-supply',fhe:['Encrypted equality','Overflow check'],gas:'145k',en:true}]},
       {name:'Done',steps:[{node:'Composer',label:'Strategy deployed on-chain',fhe:[],gas:'-',en:false,event:'Strategy deployed on-chain'}]},
     ]},
   liquidate:{name:'Liquidate',desc:'Detect→Verify→Liquidate underwater position',risk:'LOW',gas:'320k',apy:'N/A',
     phases:[
-      {name:'Detect',steps:[{node:'PriceOracle',label:'Price Check',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'requestLiquidityCheck',fhe:['FHE.allowPublic'],gas:'45k',en:true}]},
-      {name:'Verify',steps:[{node:'CoFHE\nTaskManager',label:'Threshold Decrypt x2',fhe:['FHE.verifyDecryptResult','FHE.verifyDecryptResult'],gas:'200k',en:true}]},
-      {name:'Execute',steps:[{node:'PriceOracle',label:'_requireOracleHealthy',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'liquidateWithProof',fhe:[],gas:'60k',en:false}]},
+      {name:'Detect',steps:[{node:'PriceOracle',label:'Price Check',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Check liquidity',fhe:['Public reveal'],gas:'45k',en:true}]},
+      {name:'Verify',steps:[{node:'CoFHE\nTaskManager',label:'Threshold Decrypt x2',fhe:['Threshold decrypt verify','Threshold decrypt verify'],gas:'200k',en:true}]},
+      {name:'Execute',steps:[{node:'PriceOracle',label:'Oracle health check',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Liquidate position',fhe:[],gas:'60k',en:false}]},
     ]},
   full:{name:'Full Lifecycle',desc:'Connect→Permit→Supply→Borrow→Repay→Withdraw',risk:'MODERATE',gas:'620k',apy:'N/A',
     phases:[
-      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
-      {name:'Deposit',steps:[{node:'LendingPool',label:'Supply',fhe:['FHE.asEuint128','FHE.eq','FHE.select','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
-      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['FHE.mul','FHE.lte','FHE.select'],gas:'210k',en:true}]},
-      {name:'Repay',steps:[{node:'LendingPool',label:'Repay',fhe:['FHE.eq','FHESafeMath128.tryDec'],gas:'145k',en:true}]},
-      {name:'Withdraw',steps:[{node:'LendingPool',label:'Withdraw',fhe:['FHE.eq','FHE.select','FHESafeMath128.tryDec'],gas:'60k',en:true}]},
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['Grant permission'],gas:'45k',en:false}]},
+      {name:'Deposit',steps:[{node:'LendingPool',label:'Supply',fhe:['Encrypt amount','Encrypted equality','Conditional select','Overflow check'],gas:'145k',en:true}]},
+      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['Multiply encrypted','Encrypted comparison','Conditional select'],gas:'210k',en:true}]},
+      {name:'Repay',steps:[{node:'LendingPool',label:'Repay',fhe:['Encrypted equality','Underflow check'],gas:'145k',en:true}]},
+      {name:'Withdraw',steps:[{node:'LendingPool',label:'Withdraw',fhe:['Encrypted equality','Conditional select','Underflow check'],gas:'60k',en:true}]},
     ]},
   loops:{name:'DCA ×5',desc:'5x Supply → Swap (loop collapsed)',risk:'MODERATE',gas:'~2.8M',apy:'15.2%',
     phases:[
-      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
-      {name:'Supply',steps:[{node:'LendingPool',label:'Supply Batch 1',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true}]},
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['Grant permission'],gas:'45k',en:false}]},
+      {name:'Supply',steps:[{node:'LendingPool',label:'Supply Batch 1',fhe:['Encrypted equality','Overflow check'],gas:'145k',en:true}]},
       {name:'Swap',steps:[{node:'SwapRouter',label:'Swap Batch 1',fhe:[],gas:'150k',en:false}]},
-      {name:'Repeat ×3',steps:[{node:'LendingPool',label:'↻ Supply 2-4',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'435k',en:true,isLoop:true,loopCount:3},{node:'SwapRouter',label:'↻ Swap 2-4',fhe:[],gas:'450k',en:false,isLoop:true,loopCount:3}]},
-      {name:'Final',steps:[{node:'LendingPool',label:'Supply Final',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true},{node:'SwapRouter',label:'Swap Final',fhe:[],gas:'150k',en:false}]},
+      {name:'Repeat ×3',steps:[{node:'LendingPool',label:'↻ Supply 2-4',fhe:['Encrypted equality','Overflow check'],gas:'435k',en:true,isLoop:true,loopCount:3},{node:'SwapRouter',label:'↻ Swap 2-4',fhe:[],gas:'450k',en:false,isLoop:true,loopCount:3}]},
+      {name:'Final',steps:[{node:'LendingPool',label:'Supply Final',fhe:['Encrypted equality','Overflow check'],gas:'145k',en:true},{node:'SwapRouter',label:'Swap Final',fhe:[],gas:'150k',en:false}]},
     ]},
   parallel:{name:'Parallel Multi',desc:'2 deposits + borrow simultaneously',risk:'MODERATE',gas:'~500k',apy:'10.5%',
     phases:[
-      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['FHE.allowSender'],gas:'45k',en:false}]},
-      {name:'Parallel Deposit',steps:[{node:'LendingPool',label:'Supply ETH',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true,parallel:true},{node:'LendingPool',label:'Supply USDC',fhe:['FHE.eq','FHESafeMath128.tryInc'],gas:'145k',en:true,parallel:true}]},
-      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['FHE.mul','FHE.lte','FHE.select'],gas:'210k',en:true}]},
+      {name:'Setup',steps:[{node:'User\nWallet',label:'Connect',fhe:[],gas:'-',en:false},{node:'FheForgeBase',label:'Permit',fhe:['Grant permission'],gas:'45k',en:false}]},
+      {name:'Parallel Deposit',steps:[{node:'LendingPool',label:'Supply ETH',fhe:['Encrypted equality','Overflow check'],gas:'145k',en:true,parallel:true},{node:'LendingPool',label:'Supply USDC',fhe:['Encrypted equality','Overflow check'],gas:'145k',en:true,parallel:true}]},
+      {name:'Borrow',steps:[{node:'PriceOracle',label:'Price',fhe:[],gas:'15k',en:false},{node:'LendingPool',label:'Borrow',fhe:['Multiply encrypted','Encrypted comparison','Conditional select'],gas:'210k',en:true}]},
     ]},
 };
 
 // ──── SIM ENGINE ────
 let simState='idle',simStrategy=null,simPhase=0,simStep=-1,simTimer=null,simParticles=[];
 let showDetail=false,showEncrypted=true;
+let autoRotateTimer=null,dirty2d=true,isPageVisible=true,lastTime=performance.now(),curveCache={};
 
+const MAX_PARTICLES=20,particlePool=[];
 class PartStream{
   constructor(sc,cv,cnt=30,cl=0xf59e0b){
     this.p=new Float32Array(cnt);this.sp=new Float32Array(cnt);this.pos=new Float32Array(cnt*3);this.cv=cv;
     for(let i=0;i<cnt;i++){this.p[i]=Math.random();this.sp[i]=.3+Math.random()*.5}
     this.geo=new THREE.BufferGeometry();this.geo.setAttribute('position',new THREE.BufferAttribute(this.pos,3));
     this.mat=new THREE.PointsMaterial({color:cl,size:.1,transparent:true,opacity:.8,blending:THREE.AdditiveBlending,depthWrite:false});
-    this.mesh=new THREE.Points(this.geo,this.mat);sc.add(this.mesh);this.active=true;
+    this.mesh=new THREE.Points(this.geo,this.mat);sc.add(this.mesh);this.active=true;this.cnt=cnt;
   }
+  reset(sc,cv,cnt,cl){
+    this.cv=cv;this.active=true;this.mat.color.setHex(cl);this.mesh.visible=true;this.cnt=cnt;
+    if(this.p.length!==cnt){this.p=new Float32Array(cnt);this.sp=new Float32Array(cnt);this.pos=new Float32Array(cnt*3);this.geo.setAttribute('position',new THREE.BufferAttribute(this.pos,3))}
+    for(let i=0;i<cnt;i++){this.p[i]=Math.random();this.sp[i]=.3+Math.random()*.5;this.pos[i*3]=this.pos[i*3+1]=this.pos[i*3+2]=0}
+    this.geo.attributes.position.needsUpdate=true;
+  }
+  deactivate(){this.active=false;this.mesh.visible=false}
   upd(dt){if(!this.active)return;for(let i=0;i<this.p.length;i++){this.p[i]+=dt*this.sp[i]*.4;if(this.p[i]>1)this.p[i]-=1;const pt=this.cv.getPoint(this.p[i]);this.pos[i*3]=pt.x;this.pos[i*3+1]=pt.y;this.pos[i*3+2]=pt.z}this.geo.attributes.position.needsUpdate=true}
   dispose(){scene.remove(this.mesh);this.mat.dispose();this.geo.dispose()}
 }
+function acquireParticle(sc,cv,cl){
+  const ps=particlePool.pop();
+  if(ps){ps.reset(sc,cv,25,cl);return ps}
+  return new PartStream(sc,cv,25,cl);
+}
+function releaseParticle(ps){
+  if(particlePool.length<MAX_PARTICLES){ps.deactivate();particlePool.push(ps)}
+  else ps.dispose();
+}
 
 function getCurve(f,t){
-  for(const c of curves)if(c.from===f&&c.to===t)return c.curve;
+  const key=f+'->'+t;
+  if(curveCache[key])return curveCache[key];
+  for(const c of curves)if(c.from===f&&c.to===t){curveCache[key]=c.curve;return c.curve}
   const fn=nodes[f],tn=nodes[t];if(!fn||!tn)return null;
   const s=fn.pos.clone(),e=tn.pos.clone();const mid=new THREE.Vector3().addVectors(s,e).multiplyScalar(.5);mid.y+=2;
   const pts=[];for(let k=0;k<=1;k+=.02){const p=new THREE.Vector3().lerpVectors(s,e,k);p.y+=Math.sin(k*Math.PI)*2;pts.push(p)}
-  return new THREE.CatmullRomCurve3(pts);
+  curveCache[key]=new THREE.CatmullRomCurve3(pts);
+  return curveCache[key];
 }
-
-function clearParts(){simParticles.forEach(p=>p.dispose());simParticles=[]}
 function hlNode(id,on=true){
   const n=nodes[id];if(!n||!n.b)return;
   n.b.material.emissiveIntensity=on?.8:.08;if(n.r)n.r.material.opacity=on?.4:.12;
 }
+function clearParts(){simParticles.forEach(p=>releaseParticle(p));simParticles=[]}
 function clearHL(){C.forEach(c=>{const n=nodes[c.id];if(n&&n.b){n.b.material.emissiveIntensity=.08;if(n.r)n.r.material.opacity=.12}})}
 
 function renderPhaseChips(){
   const bar=document.getElementById('phase-bar');
-  if(!simStrategy){bar.innerHTML='<div style="padding:3px 10px;font-size:9px;color:#6b7280">Select a strategy above to view phases</div>';return}
-  bar.innerHTML=simStrategy.phases.map((p,i)=>`<div class="phase-chip ${i<simPhase?'done':i===simPhase?'active':'pending'}" data-idx="${i}">${p.name}</div>`).join('');
+  if(!simStrategy){bar.innerHTML='<div style="padding:3px 10px;font-size:9px;color:#9ca3af">Select a strategy above to view phases</div>';return}
+  bar.innerHTML=simStrategy.phases.map((p,i)=>`<div class="phase-chip ${i<simPhase?'done':i===simPhase?'active':'pending'}" data-idx="${i}" tabindex="0" role="button" aria-label="Phase ${i+1}: ${p.name}">${p.name}</div>`).join('');
+}
+
+function attachPhaseChips(){
+  document.querySelectorAll('.phase-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const idx = parseInt(chip.dataset.idx);
+      clearTimeout(simTimer);
+      simState='idle';
+      document.getElementById('play-btn').textContent='▶ Simulate';document.getElementById('play-btn').setAttribute('aria-pressed','false');
+      runStep(idx, 0);
+    });
+  });
 }
 
 function updateDetail(phaseIdx,stepIdx){
   if(!showDetail||!simStrategy){document.getElementById('detail-panel').style.display='none';return}
   const p=simStrategy.phases[phaseIdx];if(!p||!p.steps[stepIdx])return;
   const s=p.steps[stepIdx];
-  let html=`<div class="title">📋 ${s.label}</div><div class="row"><span class="label">Phase</span><span class="value">${p.name}</span></div>
-    <div class="row"><span class="label">Contract</span><span class="value">${s.node}</span></div>
-    <div class="row"><span class="label">Gas</span><span class="value">${s.gas}</span></div>
+  let html=`<div class="title">📋 ${TT(s.label)}</div><div class="row"><span class="label">Phase</span><span class="value">${TT(p.name)}</span></div>
+    <div class="row"><span class="label">Contract</span><span class="value">${TT(s.node)}</span></div>
+    <div class="row"><span class="label">Gas</span><span class="value"><span data-tt="Estimated gas cost in gas units">${s.gas}</span></span></div>
     <div class="row"><span class="label">Encrypted</span><span class="value">${s.en?'🔒 Yes':'🔓 No'}</span></div>`;
-  if(s.event)html+=`<div class="row"><span class="label">Event</span><span class="value" style="color:#22c55e">${s.event}</span></div>`;
+  if(s.event)html+=`<div class="row"><span class="label">Event</span><span class="value" style="color:#22c55e">${TT(s.event)}</span></div>`;
   if(s.fhe&&s.fhe.length){
     html+=`<div class="fhe-ops"><div class="title" style="font-size:9px;color:#f59e0b">⚡ FHE Operations</div>`;
-    s.fhe.forEach(o=>{html+=`<div class="op">${o}<span class="gas">gas: ~120k (avg)</span></div>`});
+    s.fhe.forEach(o=>{html+=`<div class="op">${TT(o)}<span class="gas">gas: ~120k (avg)</span></div>`});
     html+=`</div>`;
   }
   document.getElementById('detail-panel').innerHTML=html;document.getElementById('detail-panel').style.display='block';
@@ -297,28 +376,34 @@ function updateDetail(phaseIdx,stepIdx){
 
 function runStep(phaseIdx,stepIdx){
   if(!simStrategy||phaseIdx>=simStrategy.phases.length){
-    simState='done';document.getElementById('play-btn').textContent='↺ Replay';document.getElementById('reset-btn').disabled=false;
-    document.getElementById('sim-status').innerHTML='✅ Complete';clearParts();clearHL();controls.autoRotate=true;renderPhaseChips();return;
+    simState='done';document.getElementById('play-btn').textContent='↺ Replay';document.getElementById('play-btn').setAttribute('aria-pressed','false');document.getElementById('reset-btn').disabled=false;
+    document.getElementById('sim-status').innerHTML='✅ Complete';clearParts();clearHL();controls.autoRotate=true;renderPhaseChips();attachPhaseChips();dirty2d=true;document.getElementById('progress-fill').style.width='100%';updateBackBtn();
+    document.getElementById('enc-indicator').textContent='✅ Complete';
+    document.getElementById('enc-indicator').style.borderColor='#22c55e';
+    document.getElementById('enc-indicator').style.color='#22c55e';return;
   }
   const p=simStrategy.phases[phaseIdx];
   if(stepIdx>=p.steps.length){runStep(phaseIdx+1,0);return}
   const s=p.steps[stepIdx];
-  clearHL();clearParts();
+  clearHL();clearParts();dirty2d=true;
   
   // Highlight phase
-  simPhase=phaseIdx;simStep=stepIdx;renderPhaseChips();
+  simPhase=phaseIdx;simStep=stepIdx;renderPhaseChips();attachPhaseChips();updateBackBtn();
 
   // Highlight node
   hlNode(s.node,true);
 
   const fNode=nodes[s.node];
   if(fNode&&!s.isLoop){
-    edges.forEach(e=>{if(e[0]===s.node||e[1]===s.node){const cv=getCurve(e[0],e[1]);if(cv){const ps=new PartStream(scene,cv,25,e[2]);simParticles.push(ps)}}});
+    edges.forEach(e=>{if(e[0]===s.node||e[1]===s.node){const cv=getCurve(e[0],e[1]);if(cv)simParticles.push(acquireParticle(scene,cv,e[2]))}});
   }
 
   // FHE badge on sidebar
   const status=document.getElementById('sim-status');
-  status.innerHTML=`${p.name}: ${s.label} ${s.fhe.length?`⚡ ${s.fhe[0]}`:''}`;
+  status.innerHTML=`${TT(p.name)}: ${TT(s.label)} ${s.fhe.length?`⚡ ${TT(s.fhe[0])}`:''}`;
+  document.getElementById('enc-indicator').textContent=s.en?'🔒 Encrypted':'🔓 Not Encrypted';
+  document.getElementById('enc-indicator').style.borderColor=s.en?'#f59e0b':'#6b7280';
+  document.getElementById('enc-indicator').style.color=s.en?'#f59e0b':'#9ca3af';
 
   // Detail panel
   updateDetail(phaseIdx,stepIdx);
@@ -328,25 +413,45 @@ function runStep(phaseIdx,stepIdx){
 
   controls.autoRotate=false;
   simState='running';
-  const dur=s.isLoop?.5:1.5;
+  const speed=parseFloat(document.getElementById('speed-slider').value);
+  const dur=(s.isLoop?.5:1.5)/speed;
   simTimer=setTimeout(()=>runStep(phaseIdx,stepIdx+1),dur*1000);
+  
+  // Update progress bar
+  let completedSteps=0;
+  for(let i=0;i<phaseIdx;i++)completedSteps+=simStrategy.phases[i].steps.length;
+  completedSteps+=stepIdx;
+  const totalSteps=simStrategy.phases.reduce((a,p)=>a+p.steps.length,0);
+  document.getElementById('progress-fill').style.width=(totalSteps>0?(completedSteps/totalSteps)*100:0)+'%';
+  
+  updateBackBtn();
 }
 
+const TT=(s)=>{const m={FHESafeMath128:'FHE Safe Math library for 128-bit encrypted integers',CoFHE:'Confidential FHE — off-chain compute network',euint128:'Encrypted unsigned integer (128-bit)',Permit:'Gasless token approval via EIP-2612 off-chain signature',encrypt:'Convert plaintext to encrypted FHE ciphertext',decrypt:'Convert FHE ciphertext back to plaintext',APY:'Annual Percentage Yield',LTV:'Loan-to-Value',TVL:'Total Value Locked',FHE:'Fully Homomorphic Encryption'};return s.replace(/FHESafeMath128|CoFHE|euint128|Permit|encrypt|decrypt|APY|LTV|TVL|FHE/g,t=>`<span data-tt="${m[t]}">${t}</span>`)}
 // ──── UI ────
 const list=document.getElementById('strategy-list');
 Object.keys(STRATEGIES).forEach(k=>{
   const s=STRATEGIES[k];
   const div=document.createElement('div');div.className='item';
-  div.innerHTML=`<div class="name">${s.name}</div><div class="desc">${s.desc}</div><div class="meta">${s.risk} · ${s.gas} · APY ${s.apy}</div>`;
+  const metaHtml=`${TT(s.risk)} · <span data-tt="Estimated gas cost in gas units">${s.gas}</span> · <span data-tt="Annual Percentage Yield">APY</span> ${s.apy}`;
+  div.innerHTML=`<div class="name">${TT(s.name)}</div><div class="desc">${TT(s.desc)}</div><div class="meta">${metaHtml}</div>`;
+  div.setAttribute('tabindex','0');
+  div.setAttribute('role','button');
+  div.setAttribute('aria-label',`Simulate ${s.name}: ${s.desc}`);
   div.onclick=()=>{
     document.querySelectorAll('.item').forEach(el=>el.classList.remove('active'));
     div.classList.add('active');
-    clearTimeout(simTimer);simState='idle';clearParts();clearHL();
+    clearTimeout(simTimer);simState='idle';clearParts();clearHL();dirty2d=true;
     simStrategy=s;simPhase=0;simStep=-1;
-    renderPhaseChips();
-    document.getElementById('play-btn').textContent='▶ Simulate';document.getElementById('reset-btn').disabled=false;
+    renderPhaseChips();attachPhaseChips();
+    updateBackBtn();
+    document.getElementById('progress-fill').style.width='0%';
+    document.getElementById('play-btn').textContent='▶ Simulate';document.getElementById('play-btn').setAttribute('aria-pressed','false');document.getElementById('reset-btn').disabled=false;
     document.getElementById('sim-status').innerHTML='Ready';
     document.getElementById('detail-panel').style.display='none';
+    document.getElementById('enc-indicator').textContent='🔒 All Encrypted';
+    document.getElementById('enc-indicator').style.borderColor='#f59e0b';
+    document.getElementById('enc-indicator').style.color='#f59e0b';
     controls.autoRotate=true;
   };
   list.appendChild(div);
@@ -354,22 +459,27 @@ Object.keys(STRATEGIES).forEach(k=>{
 
 document.getElementById('play-btn').addEventListener('click',()=>{
   if(!simStrategy){document.querySelector('.item')?.click();return}
-  if(simState==='running'){clearTimeout(simTimer);simState='paused';document.getElementById('play-btn').textContent='▶ Resume';return}
-  if(simState==='paused'){document.getElementById('play-btn').textContent='⏸ Pause';simState='running';runStep(simPhase,simStep);return}
+  if(simState==='running'){clearTimeout(simTimer);simState='paused';document.getElementById('play-btn').textContent='▶ Resume';document.getElementById('play-btn').setAttribute('aria-pressed','false');return}
+  if(simState==='paused'){document.getElementById('play-btn').textContent='⏸ Pause';document.getElementById('play-btn').setAttribute('aria-pressed','true');simState='running';runStep(simPhase,simStep);return}
   simState='running';simPhase=0;simStep=0;
-  clearParts();clearHL();controls.autoRotate=false;
-  document.getElementById('play-btn').textContent='⏸ Pause';
+  clearParts();clearHL();controls.autoRotate=false;dirty2d=true;
+  document.getElementById('play-btn').textContent='⏸ Pause';document.getElementById('play-btn').setAttribute('aria-pressed','true');
   document.getElementById('sim-status').innerHTML='▶ Starting...';
   runStep(0,0);
 });
 
 document.getElementById('reset-btn').addEventListener('click',()=>{
   clearTimeout(simTimer);simState='idle';simStrategy=null;simPhase=0;simStep=-1;
-  clearParts();clearHL();document.getElementById('play-btn').textContent='▶ Simulate';
+  clearParts();clearHL();dirty2d=true;document.getElementById('play-btn').textContent='▶ Simulate';document.getElementById('play-btn').setAttribute('aria-pressed','false');
   document.getElementById('reset-btn').disabled=true;
+  updateBackBtn();
+  document.getElementById('progress-fill').style.width='0%';
   document.getElementById('sim-status').innerHTML='Ready — <span class="live">●</span>';
   document.getElementById('detail-panel').style.display='none';document.getElementById('phase-bar').innerHTML='';
   document.querySelectorAll('.item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('enc-indicator').textContent='🔒 All Encrypted';
+  document.getElementById('enc-indicator').style.borderColor='#f59e0b';
+  document.getElementById('enc-indicator').style.color='#f59e0b';
   controls.autoRotate=true;
 });
 
@@ -379,13 +489,29 @@ document.getElementById('reveal-btn').addEventListener('click',()=>{
   if(!showDetail)document.getElementById('detail-panel').style.display='none';
 });
 
+function updateBackBtn(){
+  const btn=document.getElementById('back-btn');
+  btn.disabled=!(simStrategy&&!(simPhase===0&&simStep<=0));
+}
+
+document.getElementById('back-btn').addEventListener('click',()=>{
+  clearTimeout(simTimer);
+  let p=simPhase, s=simStep-1;
+  if(s<0&&p>0){p--;s=simStrategy.phases[p].steps.length-1}
+  if(p>=0)runStep(p,s);
+});
+
+document.getElementById('speed-slider').addEventListener('input',function(){
+  document.getElementById('speed-label').textContent=this.value+'×';
+});
+
 // ──── 2D CANVAS ────
 const can=document.getElementById('canvas2d');
 const ctx=can.getContext('2d');
-function resize2d(){can.width=can.parentElement.clientWidth;can.height=200;draw2d()}
+function resize2d(){can.width=can.parentElement.clientWidth;can.height=200;dirty2d=true;draw2d()}
 
 function draw2d(){
-  if(!simStrategy){ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,can.width,can.height);return}
+  if(!simStrategy){ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,can.width,can.height);dirty2d=false;return}
   const w=can.width,h=can.height;
   ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,w,h);
   const phases=simStrategy.phases;
@@ -399,7 +525,7 @@ function draw2d(){
     ctx.fillStyle=`rgba(255,255,255,${pi===simPhase?.03:.015})`;
     ctx.fillRect(x,padT,totalW,h-padT-padB);
     // Phase label
-    ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#3b82f6':'#6b7280';
+    ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#3b82f6':'#9ca3af';
     ctx.font='10px Courier New';ctx.fillText(p.name,x+4,y0-8);
     
     p.steps.forEach((s,si)=>{
@@ -408,15 +534,15 @@ function draw2d(){
       ctx.fillStyle=coreColors[s.node.split('\n')[0]]||0x71717a;ctx.font='8px Courier New';
       ctx.fillText(s.node.replace('\n',' ').slice(0,12),sx+2,y0+12);
       // Step label
-      ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#fff':'#6b7280';
-      ctx.font='7px Courier New';ctx.fillText(s.label.slice(0,16),sx+2,y0+28);
+      ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#fff':'#9ca3af';
+      ctx.font='9px Courier New';ctx.fillText(s.label.slice(0,16),sx+2,y0+28);
       // FHE ops
       if(s.fhe.length){
-        ctx.fillStyle='#f59e0b';ctx.font='6px Courier New';
+        ctx.fillStyle='#f59e0b';ctx.font='8px Courier New';
         ctx.fillText('⚡'+s.fhe[0].slice(0,14),sx+2,y0+42);
       }
       // Gas
-      if(s.gas!=='-'){ctx.fillStyle='#9ca3af';ctx.font='6px Courier New';ctx.fillText(s.gas,sx+2,y0+54)}
+      if(s.gas!=='-'){ctx.fillStyle='#9ca3af';ctx.font='8px Courier New';ctx.fillText(s.gas,sx+2,y0+54)}
       // Parallel indicator
       if(s.parallel){ctx.fillStyle='#3b82f6';ctx.fillRect(sx,y0-2,stepW-2,2)}
       // Loop indicator
@@ -434,8 +560,8 @@ function draw2d(){
   }
   
   // Legend
-  ctx.fillStyle='#9ca3af';ctx.font='7px Courier New';
-  ctx.fillText('← Timeline →',w/2-30,h-5);
+  ctx.fillStyle='#9ca3af';ctx.font='9px Courier New';
+  ctx.fillText('← Timeline →',w/2-30,h-5);dirty2d=false;
 }
 
 window.addEventListener('resize',resize2d);
@@ -465,20 +591,66 @@ document.getElementById('view3d-btn').addEventListener('click',()=>{
   document.getElementById('viewport').style.display='block';document.getElementById('canvas2d').style.height='200px';viewMode='3d';
   setTimeout(resize3d,50);
 });
+    
+    // ──── KEYBOARD SHORTCUTS ────
+    document.addEventListener('keydown', e=>{
+      if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+      switch(e.key){
+        case ' ':
+        case 'k':
+          e.preventDefault();
+          document.getElementById('play-btn').click();
+          break;
+        case 'ArrowRight':
+        case 'n':
+          // Skip to next step — find current step + advance
+          if(simStrategy&&simPhase>=0){
+            clearTimeout(simTimer);
+            runStep(simPhase, simStep+1);
+          }
+          break;
+        case 'ArrowLeft':
+        case 'p':
+          // Go back one step
+          if(simStrategy&&(simStep>0||simPhase>0)){
+            clearTimeout(simTimer);
+            let p=simPhase, s=simStep-1;
+            if(s<0){p--;s=simStrategy.phases[p].steps.length-1}
+            runStep(p, s);
+          }
+          break;
+        case 'r':
+          e.preventDefault();
+          document.getElementById('reset-btn').click();
+          break;
+        case 'd':
+          document.getElementById('reveal-btn').click();
+          break;
+      }
+    });
 
 // ──── ANIMATION ────
 let t=0;
 function anim(){
-  requestAnimationFrame(anim);t+=.01;
-  if(renderer&&controls){
+  requestAnimationFrame(anim);
+  const now=performance.now();
+  const dt=Math.min((now-lastTime)/1000,.1);
+  lastTime=now;
+  if(renderer&&controls&&isPageVisible){
+    t+=dt;
     meshes.forEach((m,i)=>{const s=1+Math.sin(t*2+i)*.015;m.scale.set(s,1,s);if(m.material&&m.material.emissiveIntensity<.3)m.material.emissiveIntensity=.08+Math.sin(t*3+i*1.5)*.06});
     curves.forEach((c,i)=>{if(c.mesh.material)c.mesh.material.opacity=.3+Math.sin(t*1.5+i*.5)*.12});
-    simParticles.forEach(p=>p.upd(.016));
+    simParticles.forEach(p=>p.upd(dt));
     controls.update();renderer.render(scene,camera);labelRenderer.render(scene,camera);
   }
-  if(viewMode==='2d'&&simState==='running'&&t%1<.01)draw2d();
+  if(viewMode==='2d'&&simState==='running'&&dirty2d){draw2d();dirty2d=false}
 }
 anim();
+document.addEventListener('visibilitychange',()=>{
+  isPageVisible=!document.hidden;
+  if(document.hidden&&simState==='running'){clearTimeout(simTimer);simState='paused';document.getElementById('play-btn').textContent='▶ Resume';document.getElementById('play-btn').setAttribute('aria-pressed','false')}
+  lastTime=performance.now();
+});
 
 // Click on 2D canvas to jump to phase
 can.addEventListener('click',e=>{
