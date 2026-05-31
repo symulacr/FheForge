@@ -5,47 +5,47 @@
 <title>FheForge — Interactive Protocol Simulator v2</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0a0a;color:#fff;font-family:'Courier New',monospace;overflow:hidden}
+body{background:#010202;color:#fff;font-family:'Courier New',monospace;overflow:hidden}
 #app{display:grid;grid-template-columns:1fr 380px;height:100vh}
 #viewport{position:relative;overflow:hidden}
-#sidebar{background:#111;border-left:1px solid #242424;overflow-y:auto;display:flex;flex-direction:column}
-#sidebar h2{padding:12px 14px 8px;font-size:11px;color:#3b82f6;border-bottom:1px solid #242424;letter-spacing:1px}
+#sidebar{background:#14161a;border-left:1px solid #44484d;overflow-y:auto;display:flex;flex-direction:column}
+  #sidebar h2{padding:12px 14px 8px;font-size:11px;color:#2981fb;border-bottom:1px solid #44484d;letter-spacing:1px}
 #strategy-list{padding:8px}
-#strategy-list .item{padding:10px 12px;margin:3px 0;border:1px solid #242424;cursor:pointer;font-size:10px;transition:all .15s}
-#strategy-list .item:hover{border-color:#3b82f6;transform:translateX(2px)}
-#strategy-list .item.active{border-color:#3b82f6;background:rgba(59,130,246,0.1);box-shadow:0 0 8px rgba(59,130,246,0.2)}
+#strategy-list .item{padding:10px 12px;margin:3px 0;border:1px solid #44484d;cursor:pointer;font-size:10px;transition:all .15s}
+  #strategy-list .item:hover{border-color:#6ba5fb;transform:translateX(2px)}
+  #strategy-list .item.active{border-color:#6ba5fb;background:rgba(107,165,251,0.1);box-shadow:0 0 8px rgba(107,165,251,0.2)}
 #strategy-list .item .name{color:#fff;font-weight:bold;font-size:11px}
-#strategy-list .item .desc{color:#9ca3af;font-size:10px;margin-top:2px}
-#strategy-list .item .meta{color:#6b7280;font-size:9px;margin-top:2px}
-#controls-bar{display:flex;gap:6px;padding:8px 14px;border-top:1px solid #242424;border-bottom:1px solid #242424;align-items:center;flex-wrap:wrap}
-#controls-bar button{background:transparent;color:#3b82f6;border:1px solid #3b82f6;padding:5px 12px;font-family:inherit;font-size:10px;cursor:pointer}
-#controls-bar button:hover{background:#3b82f6;color:#0a0a0a}
-#controls-bar button:disabled{opacity:.3}
-#controls-bar .status{font-size:10px;color:#9ca3af;margin-left:auto}
+#strategy-list .item .desc{color:#bbbec3;font-size:10px;margin-top:2px}
+#strategy-list .item .meta{color:#9b9fa5;font-size:9px;margin-top:2px}
+#controls-bar{display:flex;gap:6px;padding:8px 14px;border-top:1px solid #44484d;border-bottom:1px solid #44484d;align-items:center;flex-wrap:wrap}
+  #controls-bar button{background:transparent;color:#2981fb;border:1px solid #2981fb;padding:5px 12px;font-family:inherit;font-size:10px;cursor:pointer}
+  #controls-bar button:hover{background:#6ba5fb;color:#010202}
+#controls-bar button:disabled{opacity:.5}
+#controls-bar .status{font-size:10px;color:#bbbec3;margin-left:auto}
 #controls-bar .status .live{color:#22c55e}
-#phase-bar{padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #242424}
-.phase-chip{padding:3px 10px;font-size:10px;border:1px solid #242424;background:transparent;color:#9ca3af;cursor:pointer}
+#phase-bar{padding:8px 14px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #44484d}
+.phase-chip{padding:3px 10px;font-size:10px;border:1px solid #44484d;background:transparent;color:#bbbec3;cursor:pointer}
 .phase-chip.done{color:#22c55e;border-color:#22c55e}
-.phase-chip.active{color:#3b82f6;border-color:#3b82f6;background:rgba(59,130,246,0.1)}
-.phase-chip.pending{color:#9ca3af}
+  .phase-chip.active{color:#6ba5fb;border-color:#6ba5fb;background:rgba(107,165,251,0.1)}
+.phase-chip.pending{color:#bbbec3}
 #detail-panel{flex:1;overflow-y:auto;padding:10px 14px;display:none}
-#detail-panel .title{font-size:11px;color:#3b82f6;margin-bottom:6px}
-#detail-panel .row{display:flex;justify-content:space-between;padding:3px 0;font-size:9px;border-bottom:1px solid #1a1a1a}
-#detail-panel .row .label{color:#9ca3af}
+  #detail-panel .title{font-size:11px;color:#2981fb;margin-bottom:6px}
+#detail-panel .row{display:flex;justify-content:space-between;padding:3px 0;font-size:9px;border-bottom:1px solid #2b2e33}
+#detail-panel .row .label{color:#bbbec3}
 #detail-panel .row .value{color:#fff}
 #detail-panel .fhe-ops{margin-top:8px}
-#detail-panel .fhe-ops .op{background:#1a1a1a;padding:4px 8px;margin:2px 0;font-size:9px;color:#f59e0b;border-left:2px solid #f59e0b}
-#detail-panel .fhe-ops .op .gas{color:#9ca3af;font-size:8px;margin-left:8px}
-#canvas2d{width:100%;height:200px;border-top:1px solid #242424;cursor:pointer}
+#detail-panel .fhe-ops .op{background:#2b2e33;padding:4px 8px;margin:2px 0;font-size:9px;color:#f59e0b;border-left:2px solid #f59e0b}
+#detail-panel .fhe-ops .op .gas{color:#bbbec3;font-size:8px;margin-left:8px}
+#canvas2d{width:100%;height:200px;border-top:1px solid #44484d;cursor:pointer}
 #canvas2d-container{position:relative}
-#canvas2d-container .label{position:absolute;top:4px;left:8px;font-size:8px;color:#9ca3af;z-index:2}
+#canvas2d-container .label{position:absolute;top:4px;left:8px;font-size:8px;color:#bbbec3;z-index:2}
 #view-switch{position:absolute;top:12px;right:12px;z-index:10;display:flex;gap:4px}
-#view-switch button{background:transparent;color:#9ca3af;border:1px solid #242424;padding:4px 10px;font-family:inherit;font-size:9px;cursor:pointer}
-#view-switch button.active{color:#3b82f6;border-color:#3b82f6}
-#enc-indicator{position:absolute;top:12px;left:12px;z-index:10;font-size:9px;color:#f59e0b;background:rgba(10,10,10,0.85);padding:4px 10px;border:1px solid #f59e0b}
+#view-switch button{background:transparent;color:#bbbec3;border:1px solid #44484d;padding:4px 10px;font-family:inherit;font-size:9px;cursor:pointer}
+  #view-switch button.active{color:#6ba5fb;border-color:#6ba5fb}
+#enc-indicator{position:absolute;top:12px;left:12px;z-index:10;font-size:9px;color:#f59e0b;background:rgba(1,2,2,0.85);padding:4px 10px;border:1px solid #f59e0b}
 @media(max-width:900px){
   #app{grid-template-columns:1fr;height:100dvh}
-  #sidebar{position:fixed;bottom:0;left:0;right:0;height:55%;border-left:none;border-top:1px solid #242424;z-index:20;overflow-y:auto;border-radius:0}
+  #sidebar{position:fixed;bottom:0;left:0;right:0;height:55%;border-left:none;border-top:1px solid #44484d;z-index:20;overflow-y:auto;border-radius:0}
   #viewport{height:45dvh}
   #strategy-list{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:4px;padding:8px}
   #strategy-list .item{flex:0 0 200px;white-space:nowrap}
@@ -56,13 +56,14 @@ body{background:#0a0a0a;color:#fff;font-family:'Courier New',monospace;overflow:
   #view-switch button{font-size:7px;padding:2px 6px}
   #info{display:none}
 }
-#progress-bar{height:2px;background:#1a1a1a;margin:0 14px;position:relative}
-#progress-fill{height:100%;background:#3b82f6;width:0%;transition:width .3s}
-*:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
-button:focus-visible, .item:focus-visible{border-color:#3b82f6!important}
-#controls-legend{font-size:8px;color:#6b7280;padding:6px 0 2px;width:100%;white-space:nowrap;overflow-x:auto;border-top:1px solid #1a1a1a;margin-top:4px}
-[data-tt]{position:relative;cursor:help;border-bottom:1px dashed #9ca3af}
-[data-tt]:hover:after{content:attr(data-tt);position:absolute;bottom:100%;left:0;background:#1a1a1a;color:#fff;padding:4px 8px;font-size:9px;white-space:nowrap;border:1px solid #3b82f6;z-index:100;pointer-events:none}
+#progress-bar{height:2px;background:#2b2e33;margin:0 14px;position:relative}
+  #progress-fill{height:100%;background:#2981fb;width:0%;transition:width .3s}
+  *:focus-visible{outline:2px solid #2981fb;outline-offset:2px}
+  button:focus-visible, .item:focus-visible{border-color:#2981fb!important}
+#controls-legend{font-size:8px;color:#9b9fa5;padding:6px 0 2px;width:100%;white-space:nowrap;overflow-x:auto;border-top:1px solid #2b2e33;margin-top:4px}
+[data-tt]{position:relative;cursor:help;border-bottom:1px dashed #bbbec3}
+  [data-tt]:hover:after{content:attr(data-tt);position:absolute;bottom:100%;left:0;background:#2b2e33;color:#fff;padding:4px 8px;font-size:9px;white-space:nowrap;border:1px solid #2981fb;z-index:100;pointer-events:none}
+.done-mark{margin-left:4px;font-style:normal;font-size:11px}
 </style>
 </head>
 <body>
@@ -79,8 +80,8 @@ button:focus-visible, .item:focus-visible{border-color:#3b82f6!important}
       <button id="back-btn" aria-label="Previous step" disabled>◀</button>
       <button id="play-btn" aria-label="Play/Pause simulation" aria-pressed="false">▶ Simulate</button>
       <button id="reset-btn" aria-label="Reset simulation" disabled>⟲ Reset</button>
-      <input type="range" id="speed-slider" min="0.5" max="3" step="0.5" value="1" style="width:50px;background:#1a1a1a;accent-color:#3b82f6;height:4px" aria-label="Simulation speed">
-      <span style="font-size:8px;color:#71717a;min-width:30px" id="speed-label">1×</span>
+      <input type="range" id="speed-slider" min="0.5" max="3" step="0.5" value="1" style="width:50px;background:#2b2e33;accent-color:#2981fb;height:4px" aria-label="Simulation speed">
+      <span style="font-size:8px;color:#7d8086;min-width:30px" id="speed-label">1×</span>
       <button id="reveal-btn" aria-label="Toggle details">🔍 Show Details</button>
       <span class="status" id="sim-status" aria-live="polite">Select a strategy to simulate</span>
       <div id="controls-legend">⛓ FHE=Fully Homomorphic Encryption • APY=Annual Percentage Yield • LTV=Loan-to-Value • TVL=Total Value Locked • euint128=Encrypted uint128</div>
@@ -103,7 +104,7 @@ import{CSS2DRenderer,CSS2DObject}from'three/addons/renderers/CSS2DRenderer.js';
 // ──── SETUP ────
 let renderer,labelRenderer,controls,camera,scene;
 try{
-  scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0a0a);
+  scene=new THREE.Scene();scene.background=new THREE.Color(0x010202);
   camera=new THREE.PerspectiveCamera(40,document.getElementById('viewport').clientWidth/document.getElementById('viewport').clientHeight,1,200);
   camera.position.set(16,10,16);
   renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
@@ -120,8 +121,8 @@ try{
 }catch(e){
   const fb=document.createElement('div');
   fb.id='webgl-fallback';
-  fb.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;text-align:center;padding:30px;background:#1a1a1a;border:1px solid #ef4444;max-width:500px';
-  fb.innerHTML='<h2 style="color:#ef4444;font-size:16px;margin-bottom:8px">⚠ 3D View Not Available</h2><p style="color:#a1a1aa;font-size:12px;line-height:1.5">Your browser does not support WebGL or the 3D libraries failed to load. Switch to 2D Timeline view below to continue exploring strategies.</p><p style="color:#71717a;font-size:11px;margin-top:12px">If you want 3D: try Chrome/Edge with hardware acceleration enabled.</p>';
+  fb.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;text-align:center;padding:30px;background:#2b2e33;border:1px solid #dc2626;max-width:500px';
+  fb.innerHTML='<h2 style="color:#dc2626;font-size:16px;margin-bottom:8px">⚠ 3D View Not Available</h2><p style="color:#bbbec3;font-size:12px;line-height:1.5">Your browser does not support WebGL or the 3D libraries failed to load. Switch to 2D Timeline view below to continue exploring strategies.</p><p style="color:#949497;font-size:11px;margin-top:12px">If you want 3D: try Chrome/Edge with hardware acceleration enabled.</p>';
   document.getElementById('viewport').appendChild(fb);
   // Show 2D canvas
   const c2d=document.getElementById('canvas2d');
@@ -131,15 +132,15 @@ try{
 
 if(scene){
   const al=new THREE.AmbientLight(0x222244,.5);scene.add(al);
-  const dl=new THREE.DirectionalLight(0x3b82f6,1.2);dl.position.set(10,20,10);scene.add(dl);
+  const dl=new THREE.DirectionalLight(0x2981fb,1.2);dl.position.set(10,20,10);scene.add(dl);
   const fl=new THREE.DirectionalLight(0x22c55e,.3);fl.position.set(-10,5,-10);scene.add(fl);
-  const gh=new THREE.GridHelper(28,28,0x242424,0x1a1a1a);gh.position.y=-3.5;scene.add(gh);
+  const gh=new THREE.GridHelper(28,28,0x44484d,0x2b2e33);gh.position.y=-3.5;scene.add(gh);
 
   // Stars
   const sg=new THREE.BufferGeometry();const sp=new Float32Array(2000*3);
   for(let i=0;i<6000;i++)sp[i]=(Math.random()-.5)*180;
   sg.setAttribute('position',new THREE.BufferAttribute(sp,3));
-  scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0x3b82f6,size:.04,transparent:true,opacity:.25})));
+  scene.add(new THREE.Points(sg,new THREE.PointsMaterial({color:0x2981fb,size:.04,transparent:true,opacity:.25})));
 }
 
 // Global error handler for CDN/library load failures
@@ -147,7 +148,7 @@ window.addEventListener('error',e=>{
   const fb=document.getElementById('webgl-fallback');
   if(!fb){
     const d=document.createElement('div');d.id='webgl-fallback';
-    d.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:999;background:#ef4444;color:#fff;padding:10px 16px;font-size:11px;text-align:center';
+    d.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:999;background:#dc2626;color:#fff;padding:10px 16px;font-size:11px;text-align:center';
     d.textContent='⚠ An error occurred. Try refreshing the page or using Chrome with hardware acceleration.';
     document.body.appendChild(d);
   }
@@ -155,11 +156,11 @@ window.addEventListener('error',e=>{
 
 // ──── CONTRACTS DATA ────
 const C=[
-  {id:'FheForgeBase',l:'FheForgeBase',s:'ACL • Auth • SafeMath',c:0x71717a,p:[0,1.5,0],z:1.1,en:false},
-  {id:'LendingPool',l:'LendingPool',s:'Supply • Borrow • Liquidate',c:0x3b82f6,p:[-4.5,0,3.5],z:1.0,en:true},
+  {id:'FheForgeBase',l:'FheForgeBase',s:'ACL • Auth • SafeMath',c:0x7d8086,p:[0,1.5,0],z:1.1,en:false},
+  {id:'LendingPool',l:'LendingPool',s:'Supply • Borrow • Liquidate',c:0x2981fb,p:[-4.5,0,3.5],z:1.0,en:true},
   {id:'StrategyVault',l:'StrategyVault',s:'Encrypted Positions',c:0x22c55e,p:[3.5,0,3.5],z:1.0,en:true},
-  {id:'PriceOracle',l:'PriceOracle',s:'Pyth + Fallback',c:0x3b82f6,p:[-6,-.5,-1.5],z:.8,en:false},
-  {id:'TokenRegistry',l:'TokenRegistry',s:'Token Address Map',c:0x3b82f6,p:[-3.5,-1,-3.5],z:.7,en:false},
+  {id:'PriceOracle',l:'PriceOracle',s:'Pyth + Fallback',c:0x2981fb,p:[-6,-.5,-1.5],z:.8,en:false},
+  {id:'TokenRegistry',l:'TokenRegistry',s:'Token Address Map',c:0x2981fb,p:[-3.5,-1,-3.5],z:.7,en:false},
   {id:'StrategyRegistry',l:'StrategyRegistry',s:'Strategy Meta + TVL',c:0x22c55e,p:[5.5,-.5,.5],z:.85,en:true},
   {id:'FheForgeComposer',l:'Composer',s:'Strategy Orchestrator',c:0xf59e0b,p:[0,-.5,0],z:1.2,en:true},
   {id:'SwapRouter',l:'SwapRouter',s:'Intent + Uniswap V3',c:0xa855f7,p:[4.5,0,-2.5],z:.85,en:false},
@@ -171,10 +172,10 @@ const C=[
 ];
 
 const ext=[
-  {l:'CoFHE\nTaskManager',p:[-7,2.5,5.5],c:0x71717a},{l:'User\nWallet',p:[0,4.5,7],c:0x71717a},
-  {l:'Pyth\nOracle',p:[-8,-.5,-4],c:0x71717a},{l:'Uniswap V3',p:[7,0,-5],c:0x71717a},
-  {l:'FHESafeMath128',p:[3.5,2.5,5.5],c:0x71717a},{l:'Gemini AI',p:[-5,3.5,-3],c:0x71717a},
-  {l:'Backend API',p:[-3.5,3.5,-4.5],c:0x71717a},{l:'WETH9',p:[-1.5,-2.5,3.5],c:0x71717a},
+  {l:'CoFHE\nTaskManager',p:[-7,2.5,5.5],c:0x7d8086},{l:'User\nWallet',p:[0,4.5,7],c:0x7d8086},
+  {l:'Pyth\nOracle',p:[-8,-.5,-4],c:0x7d8086},{l:'Uniswap V3',p:[7,0,-5],c:0x7d8086},
+  {l:'FHESafeMath128',p:[3.5,2.5,5.5],c:0x7d8086},{l:'Gemini AI',p:[-5,3.5,-3],c:0x7d8086},
+  {l:'Backend API',p:[-3.5,3.5,-4.5],c:0x7d8086},{l:'WETH9',p:[-1.5,-2.5,3.5],c:0x7d8086},
 ];
 
 // ──── DRAW ────
@@ -183,7 +184,7 @@ function mkLabel(t,s,cl,sz=1){
   const d=document.createElement('div');d.style.cssText='color:#fff;font-family:\'Courier New\',monospace;text-align:center;pointer-events:none';
   const h=document.createElement('div');h.style.cssText=`font-size:${11*sz}px;font-weight:bold;color:${'#'+cl.toString(16).padStart(6,'0')}`;
   h.textContent=t;d.appendChild(h);
-  if(s){const b=document.createElement('div');b.style.cssText=`font-size:${8*sz}px;color:#9ca3af;margin-top:2px`;b.textContent=s;d.appendChild(b)}
+  if(s){const b=document.createElement('div');b.style.cssText=`font-size:${8*sz}px;color:#bbbec3;margin-top:2px`;b.textContent=s;d.appendChild(b)}
   return new CSS2DObject(d);
 }
 
@@ -201,28 +202,28 @@ C.forEach(c=>{
 });
 
 ext.forEach(e=>{
-  const d=document.createElement('div');d.style.cssText='color:#9ca3af;font-family:\'Courier New\',monospace;text-align:center;font-size:8px;pointer-events:none';d.style.whiteSpace='pre-line';d.textContent=e.l;
+  const d=document.createElement('div');d.style.cssText='color:#bbbec3;font-family:\'Courier New\',monospace;text-align:center;font-size:8px;pointer-events:none';d.style.whiteSpace='pre-line';d.textContent=e.l;
   const l=new CSS2DObject(d);l.position.set(e.p[0],e.p[1],e.p[2]);scene.add(l);
   nodes[e.l]={pos:new THREE.Vector3(e.p[0],e.p[1],e.p[2]),color:e.c,isExternal:true};
 });
 
 // ──── CONNECTIONS ────
 const edges=[
-  ['FheForgeBase','LendingPool',0x3b82f6,'inherits'],['FheForgeBase','StrategyVault',0x22c55e,'inherits'],
+  ['FheForgeBase','LendingPool',0x2981fb,'inherits'],['FheForgeBase','StrategyVault',0x22c55e,'inherits'],
   ['FheForgeBase','FheForgeComposer',0xf59e0b,'inherits'],['FheForgeBase','SwapRouter',0xa855f7,'inherits'],
-  ['FheForgeBase','PriceOracle',0x3b82f6,'inherits'],['FheForgeBase','TokenRegistry',0x3b82f6,'inherits'],
+  ['FheForgeBase','PriceOracle',0x2981fb,'inherits'],['FheForgeBase','TokenRegistry',0x2981fb,'inherits'],
   ['FheForgeBase','StrategyRegistry',0x22c55e,'inherits'],['FheForgeBase','StrategyExecutor',0xa855f7,'inherits'],
-  ['LendingPool','PriceOracle',0x3b82f6,'oracle'],['StrategyVault','StrategyRegistry',0x22c55e,'TVL'],
+  ['LendingPool','PriceOracle',0x2981fb,'oracle'],['StrategyVault','StrategyRegistry',0x22c55e,'TVL'],
   ['Composer','StrategyVault',0xf59e0b,'openPos'],['Composer','LendingPool',0xf59e0b,'deposit/borrow'],
   ['Composer','SwapRouter',0xf59e0b,'swap'],['SwapRouter','ExecutorContract',0xa855f7,'exec'],
   ['Exec','LendingPool',0xa855f7,'actions'],['Token','Governor',0xef4444,'vote'],
   ['Governor','Timelock',0xef4444,'queue'],
-  ['CoFHE\nTaskManager','FheForgeBase',0x71717a,'FHE ops'],['CoFHE\nTaskManager','LendingPool',0x71717a,'verify'],
-  ['CoFHE\nTaskManager','StrategyVault',0x71717a,'encrypt'],['Pyth\nOracle','PriceOracle',0x71717a,'price'],
-  ['Uniswap V3','SwapRouter',0x71717a,'DEX'],['User\nWallet','Composer',0x71717a,'strategies'],
-  ['User\nWallet','LendingPool',0x71717a,'lending'],['User\nWallet','StrategyVault',0x71717a,'vault'],
-  ['FHESafeMath128','FheForgeBase',0x71717a,'safe math'],['Gemini AI','Composer',0x71717a,'AI builder'],
-  ['Backend API','LendingPool',0x71717a,'events'],
+  ['CoFHE\nTaskManager','FheForgeBase',0x7d8086,'FHE ops'],['CoFHE\nTaskManager','LendingPool',0x7d8086,'verify'],
+  ['CoFHE\nTaskManager','StrategyVault',0x7d8086,'encrypt'],['Pyth\nOracle','PriceOracle',0x7d8086,'price'],
+  ['Uniswap V3','SwapRouter',0x7d8086,'DEX'],['User\nWallet','Composer',0x7d8086,'strategies'],
+  ['User\nWallet','LendingPool',0x7d8086,'lending'],['User\nWallet','StrategyVault',0x7d8086,'vault'],
+  ['FHESafeMath128','FheForgeBase',0x7d8086,'safe math'],['Gemini AI','Composer',0x7d8086,'AI builder'],
+  ['Backend API','LendingPool',0x7d8086,'events'],
 ];
 const curves=[];
 edges.forEach(e=>{
@@ -232,7 +233,7 @@ edges.forEach(e=>{
   const cv=new THREE.CatmullRomCurve3(pts);
   const tube=new THREE.Mesh(new THREE.TubeGeometry(cv,32,.035,8,false),new THREE.MeshPhysicalMaterial({color:e[2],emissive:e[2],emissiveIntensity:.15,transparent:true,opacity:.35}));
   scene.add(tube);curves.push({curve:cv,mesh:tube,color:e[2],from:e[0],to:e[1]});
-  if(e[3]){const mp=cv.getPoint(.5);const d=document.createElement('div');d.style.cssText='color:#9ca3af;font-family:\'Courier New\',monospace;font-size:7px;pointer-events:none;background:rgba(10,10,10,.8);padding:1px 4px';d.textContent=e[3];const l2=new CSS2DObject(d);l2.position.copy(mp);l2.position.y+=.5;scene.add(l2)}
+  if(e[3]){const mp=cv.getPoint(.5);const d=document.createElement('div');d.style.cssText='color:#bbbec3;font-family:\'Courier New\',monospace;font-size:7px;pointer-events:none;background:rgba(1,2,2,.8);padding:1px 4px';d.textContent=e[3];const l2=new CSS2DObject(d);l2.position.copy(mp);l2.position.y+=.5;scene.add(l2)}
 });
 
 // ──── STRATEGIES ────
@@ -341,8 +342,8 @@ function clearHL(){C.forEach(c=>{const n=nodes[c.id];if(n&&n.b){n.b.material.emi
 
 function renderPhaseChips(){
   const bar=document.getElementById('phase-bar');
-  if(!simStrategy){bar.innerHTML='<div style="padding:3px 10px;font-size:9px;color:#9ca3af">Select a strategy above to view phases</div>';return}
-  bar.innerHTML=simStrategy.phases.map((p,i)=>`<div class="phase-chip ${i<simPhase?'done':i===simPhase?'active':'pending'}" data-idx="${i}" tabindex="0" role="button" aria-label="Phase ${i+1}: ${p.name}">${p.name}</div>`).join('');
+  if(!simStrategy){bar.innerHTML='<div style="padding:3px 10px;font-size:9px;color:#bbbec3">Select a strategy above to view phases</div>';return}
+  bar.innerHTML=simStrategy.phases.map((p,i)=>`<div class="phase-chip ${i<simPhase?'done':i===simPhase?'active':'pending'}" data-idx="${i}" tabindex="0" role="button" aria-label="Phase ${i+1}: ${p.name}">${p.name}${i<simPhase?' <i class="done-mark">✓</i>':''}</div>`).join('');
 }
 
 function attachPhaseChips(){
@@ -402,8 +403,8 @@ function runStep(phaseIdx,stepIdx){
   const status=document.getElementById('sim-status');
   status.innerHTML=`${TT(p.name)}: ${TT(s.label)} ${s.fhe.length?`⚡ ${TT(s.fhe[0])}`:''}`;
   document.getElementById('enc-indicator').textContent=s.en?'🔒 Encrypted':'🔓 Not Encrypted';
-  document.getElementById('enc-indicator').style.borderColor=s.en?'#f59e0b':'#6b7280';
-  document.getElementById('enc-indicator').style.color=s.en?'#f59e0b':'#9ca3af';
+  document.getElementById('enc-indicator').style.borderColor=s.en?'#f59e0b':'#9b9fa5';
+  document.getElementById('enc-indicator').style.color=s.en?'#f59e0b':'#bbbec3';
 
   // Detail panel
   updateDetail(phaseIdx,stepIdx);
@@ -511,9 +512,9 @@ const ctx=can.getContext('2d');
 function resize2d(){can.width=can.parentElement.clientWidth;can.height=200;dirty2d=true;draw2d()}
 
 function draw2d(){
-  if(!simStrategy){ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,can.width,can.height);dirty2d=false;return}
+  if(!simStrategy){ctx.fillStyle='#010202';ctx.fillRect(0,0,can.width,can.height);dirty2d=false;return}
   const w=can.width,h=can.height;
-  ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#010202';ctx.fillRect(0,0,w,h);
   const phases=simStrategy.phases;
   const padL=80,padR=20,padT=40,padB=20;
   const stepW=(w-padL-padR)/Math.max(1,phases.reduce((a,p)=>a+p.steps.length,0));
@@ -525,16 +526,16 @@ function draw2d(){
     ctx.fillStyle=`rgba(255,255,255,${pi===simPhase?.03:.015})`;
     ctx.fillRect(x,padT,totalW,h-padT-padB);
     // Phase label
-    ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#3b82f6':'#9ca3af';
+    ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#2981fb':'#bbbec3';
     ctx.font='10px Courier New';ctx.fillText(p.name,x+4,y0-8);
     
     p.steps.forEach((s,si)=>{
       const sx=x+si*stepW;
       // Node arrow
-      ctx.fillStyle=coreColors[s.node.split('\n')[0]]||0x71717a;ctx.font='8px Courier New';
+      ctx.fillStyle=coreColors[s.node.split('\n')[0]]||0x7d8086;ctx.font='8px Courier New';
       ctx.fillText(s.node.replace('\n',' ').slice(0,12),sx+2,y0+12);
       // Step label
-      ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#fff':'#9ca3af';
+      ctx.fillStyle=pi<simPhase?'#22c55e':pi===simPhase?'#fff':'#bbbec3';
       ctx.font='9px Courier New';ctx.fillText(s.label.slice(0,16),sx+2,y0+28);
       // FHE ops
       if(s.fhe.length){
@@ -542,9 +543,9 @@ function draw2d(){
         ctx.fillText('⚡'+s.fhe[0].slice(0,14),sx+2,y0+42);
       }
       // Gas
-      if(s.gas!=='-'){ctx.fillStyle='#9ca3af';ctx.font='8px Courier New';ctx.fillText(s.gas,sx+2,y0+54)}
+      if(s.gas!=='-'){ctx.fillStyle='#bbbec3';ctx.font='8px Courier New';ctx.fillText(s.gas,sx+2,y0+54)}
       // Parallel indicator
-      if(s.parallel){ctx.fillStyle='#3b82f6';ctx.fillRect(sx,y0-2,stepW-2,2)}
+      if(s.parallel){ctx.fillStyle='#2981fb';ctx.fillRect(sx,y0-2,stepW-2,2)}
       // Loop indicator
       if(s.isLoop){ctx.fillStyle='#a855f7';ctx.fillText('⟳ ×'+s.loopCount,sx+2,y0+66)}
     });
@@ -552,15 +553,15 @@ function draw2d(){
   });
   
   // Timeline line
-  ctx.strokeStyle='#242424';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,y0-14);ctx.lineTo(w-padR,y0-14);ctx.stroke();
+  ctx.strokeStyle='#44484d';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(padL,y0-14);ctx.lineTo(w-padR,y0-14);ctx.stroke();
   
   if(simState==='running'||simState==='done'){
     const progX=padL+(w-padL-padR)*(simPhase/phases.length);
-    ctx.fillStyle='#3b82f6';ctx.fillRect(progX-1,y0-16,3,4);
+    ctx.fillStyle='#2981fb';ctx.fillRect(progX-1,y0-16,3,4);
   }
   
   // Legend
-  ctx.fillStyle='#9ca3af';ctx.font='9px Courier New';
+  ctx.fillStyle='#bbbec3';ctx.font='9px Courier New';
   ctx.fillText('← Timeline →',w/2-30,h-5);dirty2d=false;
 }
 
