@@ -312,8 +312,6 @@ function runStep(phaseIdx,stepIdx){
   hlNode(s.node,true);
 
   const fNode=nodes[s.node];
-  const status=document.getElementById('sim-status');
-  status.innerHTML=`${p.name}: ${s.label} ${s.fhe.length?`⚡ ${s.fhe[0]}`:''}`;
   if(fNode&&!s.isLoop){
     edges.forEach(e=>{if(e[0]===s.node||e[1]===s.node){const cv=getCurve(e[0],e[1]);if(cv){const ps=new PartStream(scene,cv,25,e[2]);simParticles.push(ps)}}});
   }
