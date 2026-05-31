@@ -441,6 +441,19 @@ function draw2d(){
 window.addEventListener('resize',resize2d);
 resize2d();
 
+// ──── 3D VIEWPORT RESIZE ────
+function resize3d(){
+  if(!renderer||!labelRenderer||!camera)return;
+  const vp=document.getElementById('viewport');
+  const w=vp.clientWidth,h=vp.clientHeight;
+  if(w===0||h===0)return;
+  camera.aspect=w/h;camera.updateProjectionMatrix();
+  renderer.setSize(w,h);labelRenderer.setSize(w,h);
+}
+window.addEventListener('resize',resize3d);
+// Initial 3D resize after layout settles
+setTimeout(resize3d,100);
+
 // ──── VIEW SWITCH ────
 let viewMode='3d';
 document.getElementById('view2d-btn').addEventListener('click',()=>{
@@ -450,6 +463,7 @@ document.getElementById('view2d-btn').addEventListener('click',()=>{
 document.getElementById('view3d-btn').addEventListener('click',()=>{
   document.getElementById('view2d-btn').classList.remove('active');document.getElementById('view3d-btn').classList.add('active');
   document.getElementById('viewport').style.display='block';document.getElementById('canvas2d').style.height='200px';viewMode='3d';
+  setTimeout(resize3d,50);
 });
 
 // ──── ANIMATION ────
