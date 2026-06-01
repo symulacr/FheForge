@@ -233,6 +233,9 @@ docs/WAVE*.md
 # === AGENT-GENERATED STATUS REPORTS (may contain leaked keys) ===
 contracts/STAGE_*_REPORT.md
 
+# === DUMMY / TEST CONTRACTS ===
+contracts/TestStyle.sol
+
 # === DEPLOYMENT ANALYSIS ARTIFACTS (not deployment records) ===
 contracts/deployments/blocker_root_causes.json
 contracts/deployments/calldata_leak_scan.json
