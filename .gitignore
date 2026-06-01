@@ -4,6 +4,12 @@ node_modules/
 vendor/
 .pnpm-store/
 
+# === LOCKFILES (bun.lock at root is the canonical lockfile; ignore others) ===
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+!/bun.lock
+
 # === BUILD ARTIFACTS ===
 .next/
 dist/
@@ -13,8 +19,8 @@ out/
 *.wasm
 
 # === FOUNDRY / HARDHAT ===
+# (contracts/lib/ handled by contracts/.gitignore: lib/* + !lib/forge-std/)
 broadcast/
-contracts/lib/
 contracts/cache/
 contracts/out/
 contracts/report.md
@@ -118,11 +124,11 @@ ui/.omc/
 .git-rewrite/
 
 # === AGENT-GENERATED DOCS (root) ===
-/CHECKPOINT.md
-/CODEBASE_MASTERY_DOSSIER.md
-/CONTRACT_INVESTIGATION_REPORT.md
-/DEFERRED_SECURITY.md
-/REMEDIATION_ROUND_11_SUMMARY.md
+/CHECKPOINT*.md
+/CODEBASE_MASTERY*.md
+/CONTRACT_INVESTIGATION*.md
+/DEFERRED_SECURITY*.md
+/REMEDIATION*.md
 
 # === AGENT-GENERATED DOCS (contracts) ===
 contracts/FINDINGS/
@@ -209,6 +215,9 @@ missing-endpoints-report.txt
 FORGE_REPLACEMENT_WORKFLOW.md
 
 # === AGENT-GENERATED ANALYSIS (docs) ===
+docs/*-findings.md
+docs/*-research.md
+docs/fheforge-demo-script.md
 docs/atlas-engine-rendering-findings.md
 docs/terminal-accessibility-findings.md
 docs/tui-renderer-color-engine-research.md
@@ -253,10 +262,9 @@ archives/
 # .dockerignore (expected at backend/apps/.dockerignore)
 # .gitattributes (expected at root)
 
-# === IMPECCABLE DESIGN TOOL ARTIFACTS ===
+# === IMPECCABLE / AGENT-GENERATED TOOL ARTIFACTS ===
+# AGENTS.md is an agent artifact; DESIGN.md and PRODUCT.md are real project docs (tracked)
 AGENTS.md
-DESIGN.md
-PRODUCT.md
 **/.impeccable/
 ui/.impeccable/
 
