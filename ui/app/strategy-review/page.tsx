@@ -4,7 +4,7 @@ const StrategyReviewClient = dynamic(() => import("./StrategyReviewClient"), {
 	ssr: false,
 	loading: () => (
 		<div className="flex min-h-screen items-center justify-center">
-			<div className="text-white animate-pulse">Loading strategy review...</div>
+			<div className="text-foreground animate-pulse">Loading strategy review...</div>
 		</div>
 	),
 });

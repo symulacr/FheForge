@@ -28,7 +28,7 @@ export default function CreateStrategyModal({ open, loading, onClose, onCreate }
 				onClick={onClose}
 			/>
 
-			<div className="relative w-full max-w-[440px] bg-card border border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+			<div className="relative w-full max-w-[440px] bg-card border border-border  overflow-hidden animate-in zoom-in-95 duration-200">
 				<button
 					onClick={onClose}
 					className="absolute right-6 top-6 p-1 text-muted hover:text-foreground hover:bg-secondary transition-colors z-20"
@@ -41,23 +41,23 @@ export default function CreateStrategyModal({ open, loading, onClose, onCreate }
 						<div className="w-14 h-14 bg-accent/10 border border-accent/30 flex items-center justify-center">
 							<Target className="w-7 h-7 text-accent" />
 						</div>
-						<h2 className="text-2xl font-bold text-foreground tracking-tight">New Strategy</h2>
+						<h2 className="text-2xl font-bold text-foreground tracking-tight">Create strategy</h2>
 						<p className="text-sm text-muted font-medium leading-relaxed">
-							Define a name for your automated execution workflow.
+							Name this strategy. You can add nodes and configure it in the builder.
 						</p>
 					</div>
 
 					<div className="space-y-6">
 						<div className="space-y-2">
-							<label className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] ml-1">
-								Strategy Identifier
+							<label className="text-xs text-muted font-medium ml-1">
+								Strategy name
 							</label>
 							<div className="relative group">
 								<input
 									value={name}
 									onChange={(e) => setName(e.target.value)}
 									onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-									placeholder="e.g. Yield Farming V1"
+									placeholder="e.g. ETH leveraged supply loop"
 									className="w-full bg-input border border-border focus:border-accent
                              p-4 text-foreground font-bold text-lg placeholder:text-muted transition-colors outline-none"
 								/>
@@ -70,15 +70,15 @@ export default function CreateStrategyModal({ open, loading, onClose, onCreate }
 						<Button
 							onClick={handleSubmit}
 							disabled={loading || !name.trim()}
-							className="w-full h-14 bg-accent hover:bg-accent/90 text-white font-bold transition-colors"
+							className="w-full h-14 bg-accent hover:bg-accent/90 text-foreground font-bold transition-colors"
 						>
 							{loading ? (
 								<div className="flex items-center gap-3">
-									<div className="w-5 h-5 border-2 border-white/30 border-t-white animate-spin" />
-									<span className="tracking-widest uppercase text-sm font-bold">Creating...</span>
+									<div className="w-5 h-5 border-2 border-foreground/30 border-t-foreground animate-spin" />
+									<span className="text-sm font-medium">Creating...</span>
 								</div>
 							) : (
-								<span className="tracking-widest uppercase text-sm font-bold">Create Strategy</span>
+								<span className="text-sm font-medium">Create strategy</span>
 							)}
 						</Button>
 					</div>

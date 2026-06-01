@@ -138,7 +138,7 @@ export const TransferButton = ({
 			<button
 				onClick={handleTransfer}
 				disabled={isDisabled}
-				className={`px-4 py-2 text-white transition-colors ${
+				className={`px-4 py-2 text-foreground transition-colors ${
 					isDisabled ? "bg-muted cursor-not-allowed opacity-60" : "bg-accent hover:bg-accent/90"
 				}`}
 			>

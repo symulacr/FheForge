@@ -232,7 +232,7 @@ export function FeaturedStrategies({ strategies }: Props) {
 												{trendingStrategy.assets?.slice(0, 3).map((asset: string, idx: number) => (
 													<div
 														key={idx}
-														className="relative w-6 h-6 border border-accent/30 overflow-hidden transition-transform bg-white"
+														className="relative w-6 h-6 border border-accent/30 overflow-hidden transition-transform bg-card"
 													>
 														<Image src={assetIcons[asset] ?? assetIcons[asset?.toUpperCase()] ?? assetIcons[asset?.toLowerCase()] ?? "/icons/default-token.svg"} alt="Asset" fill className="object-cover p-0.5" />
 													</div>
@@ -253,7 +253,7 @@ export function FeaturedStrategies({ strategies }: Props) {
 												{trendingStrategy.agents?.slice(0, 3).map((agent: string, idx: number) => (
 													<div
 														key={idx}
-														className="relative w-6 h-6 border border-border overflow-hidden transition-transform bg-white"
+														className="relative w-6 h-6 border border-border overflow-hidden transition-transform bg-card"
 													>
 														<Image src={agentIcons[agent] ?? agentIcons[agent?.toUpperCase()] ?? agentIcons[agent?.toLowerCase()] ?? "/icons/default-agent.svg"} alt="Agent" fill className="object-cover p-0.5" />
 													</div>
@@ -269,7 +269,7 @@ export function FeaturedStrategies({ strategies }: Props) {
 												{trendingStrategy.chains?.slice(0, 3).map((chain: string, idx: number) => (
 													<div
 														key={idx}
-														className="relative w-6 h-6 border border-border overflow-hidden transition-transform bg-white"
+														className="relative w-6 h-6 border border-border overflow-hidden transition-transform bg-card"
 													>
 														<Image src={chainIcons[chain] ?? chainIcons[chain?.toUpperCase()] ?? chainIcons[chain?.toLowerCase()] ?? "/icons/default-chain.svg"} alt="Chain" fill className="object-cover p-0.5" />
 													</div>

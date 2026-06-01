@@ -111,7 +111,7 @@ export function StrategyRebalance({ strategy }: StrategyRebalanceProps) {
 					id="collateral-token-select"
 					value={collateralToken}
 					onChange={(e) => setCollateralToken(e.target.value)}
-					className="w-full px-4 py-3 bg-card border border-border text-white text-sm"
+					className="w-full px-4 py-3 bg-card border border-border text-foreground text-sm"
 					disabled={isLoading}
 				>
 					{tokenOptions.map((token) => (
@@ -136,7 +136,7 @@ export function StrategyRebalance({ strategy }: StrategyRebalanceProps) {
 					value={addCollateralAmount}
 					onChange={(e) => setAddCollateralAmount(e.target.value.replace(/[^0-9.]/g, ""))}
 					placeholder="0.00"
-					className="w-full px-4 py-3 bg-card border border-border text-white text-lg placeholder:text-white/20"
+					className="w-full px-4 py-3 bg-card border border-border text-foreground text-lg placeholder:text-foreground/20"
 					disabled={isLoading}
 				/>
 			</div>
@@ -153,7 +153,7 @@ export function StrategyRebalance({ strategy }: StrategyRebalanceProps) {
 					id="borrow-token-select"
 					value={borrowToken}
 					onChange={(e) => setBorrowToken(e.target.value)}
-					className="w-full px-4 py-3 bg-card border border-border text-white text-sm"
+					className="w-full px-4 py-3 bg-card border border-border text-foreground text-sm"
 					disabled={isLoading}
 				>
 					{tokenOptions.map((token) => (
@@ -178,7 +178,7 @@ export function StrategyRebalance({ strategy }: StrategyRebalanceProps) {
 					value={newBorrowAmount}
 					onChange={(e) => setNewBorrowAmount(e.target.value.replace(/[^0-9.]/g, ""))}
 					placeholder="0.00"
-					className="w-full px-4 py-3 bg-card border border-border text-white text-lg placeholder:text-white/20"
+					className="w-full px-4 py-3 bg-card border border-border text-foreground text-lg placeholder:text-foreground/20"
 					disabled={isLoading}
 				/>
 			</div>
@@ -189,8 +189,8 @@ export function StrategyRebalance({ strategy }: StrategyRebalanceProps) {
 					className="flex items-center gap-2 p-3 border border-red-400/30 bg-red-400/5"
 					role="alert"
 				>
-					<AlertCircle className="w-4 h-4 text-red-400 shrink-0" aria-hidden />
-					<p className="text-red-400 text-sm">{error}</p>
+					<AlertCircle className="w-4 h-4 text-destructive shrink-0" aria-hidden />
+					<p className="text-destructive text-sm">{error}</p>
 				</div>
 			)}
 

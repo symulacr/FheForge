@@ -12,8 +12,11 @@ import { DefiModulesModule } from './defi_modules/defi_modules.module';
 import { DefiStrategiesModule } from './defi_strategies/defi_strategies.module';
 import { DefiTokenModule } from './defi_token/defi_token.module';
 import { EventIndexerModule } from './event-indexer/event-indexer.module';
+import { GovernanceModule } from './governance/governance.module';
+import { MarketsModule } from './markets/markets.module';
 import { MetricsController } from './metrics.controller';
-import { FhenixStrategyService } from './shared/infrastructure/fhenix-strategy.service';
+import { SharedModule } from './shared/shared.module';
+import { StatsModule } from './stats/stats.module';
 import { SupabaseModule } from './shared/supabase.module';
 import { StrategiesModule } from './strategies/strategies.module';
 import { UsersModule } from './users/users.module';
@@ -25,6 +28,7 @@ import { UsersModule } from './users/users.module';
       envFilePath: `.env.${process.env.NODE_ENV || 'development'}`,
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    SharedModule,
     AuthModule,
     SupabaseModule,
     UsersModule,
@@ -35,10 +39,12 @@ import { UsersModule } from './users/users.module';
     DefiTokenModule,
     AiStrategyBuilderModule,
     EventIndexerModule,
+    StatsModule,
+    MarketsModule,
+    GovernanceModule,
   ],
   controllers: [AppController, MetricsController],
   providers: [
-    FhenixStrategyService,
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,

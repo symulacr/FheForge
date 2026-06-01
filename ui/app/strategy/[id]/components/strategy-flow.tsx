@@ -72,7 +72,7 @@ export function StrategyFlow({ steps = [], initialCapital, loops, fee }: Strateg
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ duration: 0.4, delay: idx * 0.08 }}
 								className="relative w-full max-w-[360px] bg-card border
-                           border-border shadow-lg hover:border-accent/50
+                           border-border hover:border-accent/50
                            transition-colors duration-300 p-3 flex flex-col min-h-[120px]"
 							>
 								<div className="flex justify-between items-center mb-2">
@@ -116,7 +116,7 @@ export function StrategyFlow({ steps = [], initialCapital, loops, fee }: Strateg
 															alt={step.tokenIn.symbol}
 															width={16}
 															height={16}
-															className="w-4 h-4 object-contain bg-white border border-border"
+															className="w-4 h-4 object-contain bg-card border border-border"
 														/>
 													)}
 													<span>{step.tokenIn?.symbol || "N/A"}</span>
@@ -155,7 +155,7 @@ export function StrategyFlow({ steps = [], initialCapital, loops, fee }: Strateg
 															alt={step.tokenOut.symbol}
 															width={16}
 															height={16}
-															className="w-4 h-4 object-contain bg-white border border-border"
+															className="w-4 h-4 object-contain bg-card border border-border"
 														/>
 													)}
 													<span>{step.tokenOut?.symbol || "N/A"}</span>
@@ -183,7 +183,7 @@ export function StrategyFlow({ steps = [], initialCapital, loops, fee }: Strateg
 						animate={{ opacity: 1, x: 0 }}
 						transition={{ duration: 0.4 }}
 						className="bg-card border border-border
-                       shadow-lg hover:border-accent/50 transition-colors duration-500"
+                       hover:border-accent/50 transition-colors duration-500"
 					>
 						<div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
 							<h4 className="text-sm font-bold text-foreground tracking-wide">
@@ -210,7 +210,7 @@ export function StrategyFlow({ steps = [], initialCapital, loops, fee }: Strateg
 													alt={initialCapital.symbol}
 													width={16}
 													height={16}
-													className="w-4 h-4 object-contain bg-white border border-border"
+													className="w-4 h-4 object-contain bg-card border border-border"
 												/>
 											)}
 											<span>{initialCapital?.symbol || "N/A"}</span>

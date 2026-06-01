@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { FhenixStrategyService } from '../shared/infrastructure/fhenix-strategy.service';
 import { SupabaseModule } from '../shared/supabase.module';
 import { RewardsService } from './application/rewards.service';
 import { StrategyService } from './application/strategy.service';
@@ -13,9 +12,8 @@ import { StrategiesController } from './interfaces/stategies.controller';
   providers: [
     StrategyService,
     RewardsService,
-    FhenixStrategyService,
     { provide: StrategiesRepository, useClass: StrategiesRepositoryImplement },
   ],
-  exports: [StrategyService, RewardsService, FhenixStrategyService],
+  exports: [StrategyService, RewardsService],
 })
 export class StrategiesModule {}

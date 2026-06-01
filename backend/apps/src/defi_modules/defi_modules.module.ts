@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SupabaseModule } from 'src/shared/supabase.module';
 import { DefiTokenModule } from '../defi_token/defi_token.module';
-import { FhenixStrategyService } from '../shared/infrastructure/fhenix-strategy.service';
 import { DefiActionRequiredService } from './application/defi_action_required.service';
 import { DefiModuleActionsService } from './application/defi_module_actions.service';
 import { DefiModulesService } from './application/defi_modules.service';
@@ -35,7 +34,6 @@ import { DefiModulesController } from './interfaces/defi_modules.controller';
       provide: DefiActionRequiredRepository,
       useClass: DefiActionRequiredRepositoryImplement,
     },
-    FhenixStrategyService,
     DefiModulesService,
     DefiModuleActionsService,
     DefiPairsService,

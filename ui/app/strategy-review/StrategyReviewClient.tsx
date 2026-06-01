@@ -135,9 +135,9 @@ export default function StrategyReviewClient() {
 				borrowEnc: encBorrow,
 			};
 
-			const receipt = await openPosition(params, encrypted);
-			if (receipt) {
-				setTxHash(receipt);
+			const hash = await openPosition(params, encrypted);
+			if (hash && typeof hash === "string") {
+				setTxHash(hash);
 			}
 			if (params.workflowHash && params.workflowHash !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
 				setCiphertextHandle(params.workflowHash);

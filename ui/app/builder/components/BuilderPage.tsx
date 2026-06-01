@@ -176,8 +176,7 @@ function Builder() {
 				className="
           flex-1
           relative
-          glass
-         
+          forge-card
           overflow-hidden
           border border-border
         "

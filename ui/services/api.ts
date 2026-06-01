@@ -42,6 +42,22 @@ export const API_ENDPOINTS = {
 		BALANCE: (substrateAddress: string, tokenId: string) =>
 			`/users/balance/${substrateAddress}/${tokenId}`,
 	},
+
+	STATS: {
+		GET: () => `/stats`,
+	},
+
+	MARKETS: {
+		LIST: () => `/markets`,
+		PRICES: () => `/markets/prices`,
+	},
+
+	GOVERNANCE: {
+		PROPOSALS: () => `/governance/proposals`,
+		PROPOSAL: (id: string) => `/governance/proposals/${id}`,
+		VOTE: () => `/governance/vote`,
+		EXECUTE: (id: string) => `/governance/proposals/${id}/execute`,
+	},
 };
 
 // Typed API wrappers for safer consumption

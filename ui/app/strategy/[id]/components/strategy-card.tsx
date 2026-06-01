@@ -57,7 +57,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 								className={`flex items-center gap-0.5 text-[10px] font-medium px-2 py-0.5 ml-1.5 flex-shrink-0
                 ${
 									isActive
-										? "bg-green-500/10 text-green-500 border border-green-500/30"
+										? "text-success border border-success/30"
 										: "bg-destructive/10 text-destructive border border-destructive/30"
 								}
               `}
@@ -92,7 +92,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 									{strategy.assets?.slice(0, 2).map((asset, idx) => (
 										<div
 											key={`${asset}-${idx}`}
-											className="relative w-7 h-7 border border-accent/30 overflow-hidden hover:border-accent/60 transition-all duration-200 bg-white cursor-help"
+											className="relative w-7 h-7 border border-accent/30 overflow-hidden hover:border-accent/60 transition-all duration-200 bg-card cursor-help"
 											title={asset}
 										>
 											<Image src={assetIcons[asset] ?? assetIcons[asset?.toUpperCase()] ?? assetIcons[asset?.toLowerCase()] ?? "/icons/default-token.svg"} alt={asset} fill className="object-cover p-0.5" />
@@ -114,7 +114,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 									{strategy.agents?.slice(0, 2).map((agent, idx) => (
 										<div
 											key={`${agent}-${idx}`}
-											className="relative w-7 h-7 border border-border overflow-hidden hover:border-border transition-all duration-200 bg-white cursor-help"
+											className="relative w-7 h-7 border border-border overflow-hidden hover:border-border transition-all duration-200 bg-card cursor-help"
 											title={agent}
 										>
 											<Image src={agentIcons[agent] ?? agentIcons[agent?.toUpperCase()] ?? agentIcons[agent?.toLowerCase()] ?? "/icons/default-agent.svg"} alt={agent} fill className="object-cover p-0.5" />
@@ -131,7 +131,7 @@ export function StrategyCard({ strategy }: StrategyCardProps) {
 									{strategy.chains?.slice(0, 2).map((chain, idx) => (
 										<div
 											key={`${chain}-${idx}`}
-											className="relative w-7 h-7 border border-border overflow-hidden hover:border-border transition-all duration-200 bg-white cursor-help"
+											className="relative w-7 h-7 border border-border overflow-hidden hover:border-border transition-all duration-200 bg-card cursor-help"
 											title={chain}
 										>
 											<Image src={chainIcons[chain] ?? chainIcons[chain?.toUpperCase()] ?? chainIcons[chain?.toLowerCase()] ?? "/icons/default-chain.svg"} alt={chain} fill className="object-cover p-0.5" />

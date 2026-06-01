@@ -22,7 +22,7 @@ export default function Sidebar({ modules, onSelect }: SidebarProps) {
 			className="
         h-full flex flex-col
         glass
-        text-white
+        text-foreground
         overflow-hidden
       "
 		>
@@ -58,7 +58,7 @@ export default function Sidebar({ modules, onSelect }: SidebarProps) {
 
 					if (filtered.length === 0) {
 						return (
-							<p className="text-sm text-neutral-500 text-center pt-4">
+							<p className="text-sm text-muted text-center pt-4">
 								{search ? "No modules match your search." : "No modules available."}
 							</p>
 						);

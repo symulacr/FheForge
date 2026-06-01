@@ -9,11 +9,12 @@ import { StrategyConstraintsService } from './application/strategy-constraints.s
 import { StrategyParserService } from './application/strategy-parser.service';
 import { StrategyTemplatesService } from './application/strategy-templates.service';
 import { StrategyValidatorService } from './application/strategy-validator.service';
+import { AiStrategyBuilderAdvancedController } from './interfaces/ai-strategy-builder-advanced.controller';
 import { AiStrategyBuilderController } from './interfaces/ai-strategy-builder.controller';
 
 @Module({
   imports: [DefiModulesModule, DefiTokenModule, StrategiesModule],
-  controllers: [AiStrategyBuilderController],
+  controllers: [AiStrategyBuilderController, AiStrategyBuilderAdvancedController],
   providers: [
     AiStrategyBuilderService,
     StrategyParserService,

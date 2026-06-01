@@ -68,7 +68,7 @@ export default function StrategyTable() {
 				<div className="flex flex-col items-start gap-1">
 					<h1 className="text-2xl font-bold text-primary flex items-center gap-2 tracking-tight">
 						<Target className="w-6 h-6 text-primary" />
-						Strategy Hub
+						Strategies
 					</h1>
 					<div className="flex items-center gap-3">
 						<p className="text-sm text-muted font-medium">Strategy positions on Arbitrum Sepolia</p>
@@ -76,7 +76,7 @@ export default function StrategyTable() {
 						{!loading && strategies.length > 0 && (
 							<div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted/80 bg-tertiary/5 px-2 py-0.5 rounded border border-border">
 								<Cpu className="w-3 h-3" />
-								{strategies.length} Active
+								{strategies.length} strategies
 							</div>
 						)}
 					</div>
@@ -84,21 +84,21 @@ export default function StrategyTable() {
 
 				<Link
 					href="/builder"
-					className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary hover:text-white transition-all active:scale-95 group"
+					className="flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 text-primary text-sm font-medium hover:bg-primary hover:text-foreground transition-all active:scale-95 group"
 				>
 					<Plus
 						size={14}
 						strokeWidth={3}
 						className="group-hover:rotate-90 transition-transform duration-300"
 					/>
-					New Strategy
+					New strategy
 				</Link>
 			</div>
 
 			<div className="glass overflow-hidden border border-border min-h-[400px] flex flex-col">
 				{loading ? (
 					<div className="flex-1 flex items-center justify-center">
-						<span className="terminal-loading">synchronizing</span>
+						<span className="terminal-loading">loading strategies</span>
 					</div>
 				) : error ? (
 					<div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
@@ -169,17 +169,17 @@ export default function StrategyTable() {
 									return (
 										<tr
 											key={strategy.id}
-											className="group hover:bg-white/[0.01] transition-all duration-300"
+											className="group hover:bg-card/[0.01] transition-all duration-300"
 										>
 											<td className="px-4 py-5 align-top">
 												<div className="flex flex-col gap-1.5 max-w-[200px]">
 													<span
-														className="text-base font-bold text-white group-hover:text-primary transition-colors line-clamp-1 break-words"
+														className="text-base font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1 break-words"
 														title={strategy.name}
 													>
 														{strategy.name}
 													</span>
-													<span className="text-[9px] w-fit px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted font-black uppercase tracking-tighter">
+													<span className="text-[9px] w-fit px-1.5 py-0.5 rounded bg-card/5 border border-white/10 text-muted font-black uppercase tracking-tighter">
 														{strategy.context || "CoFHE"}
 													</span>
 												</div>
@@ -212,7 +212,7 @@ export default function StrategyTable() {
 																				onClick={() => {
 																					setExpandedStrategy(isExpanded ? null : strategy.id);
 																				}}
-																				className="flex items-center justify-center w-5 h-5 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all"
+																				className="flex items-center justify-center w-5 h-5 bg-primary/10 text-primary hover:bg-primary hover:text-foreground transition-all"
 																				aria-label={
 																					isExpanded
 																						? "Collapse steps"
@@ -228,7 +228,7 @@ export default function StrategyTable() {
 																		)}
 																	</div>
 
-																	<div className="flex items-center flex-wrap gap-y-2 gap-x-1.5 p-2.5 bg-white/[0.03] border border-white/10 w-fit max-w-full">
+																	<div className="flex items-center flex-wrap gap-y-2 gap-x-1.5 p-2.5 bg-card/[0.03] border border-white/10 w-fit max-w-full">
 																		{(() => {
 																			const sequence = [
 																				...steps.map((s) => s?.tokenIn?.symbol).filter(Boolean),
@@ -252,12 +252,12 @@ export default function StrategyTable() {
 																									className="object-cover"
 																								/>
 																							) : (
-																								<div className="w-full h-full flex items-center justify-center text-[6px] font-black text-white">
+																								<div className="w-full h-full flex items-center justify-center text-[6px] font-black text-foreground">
 																									{symbol?.slice(0, 2)}
 																								</div>
 																							)}
 																						</div>
-																						<span className="text-[9px] font-bold text-white/90 uppercase tracking-tight">
+																						<span className="text-[9px] font-bold text-foreground/90 uppercase tracking-tight">
 																							{symbol}
 																						</span>
 																					</div>
@@ -310,7 +310,7 @@ export default function StrategyTable() {
 																/>
 															) : (
 																<div className="w-full h-full flex items-center justify-center bg-neutral-900">
-																	<span className="text-[7px] font-black text-white">{symbol}</span>
+																	<span className="text-[7px] font-black text-foreground">{symbol}</span>
 																</div>
 															)}
 														</div>
@@ -325,7 +325,7 @@ export default function StrategyTable() {
 															setStrategyId(strategy.id);
 															setRunModal(true);
 														}}
-														className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white font-black text-[10px] transition-all border border-primary/20"
+														className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-foreground font-black text-[10px] transition-all border border-primary/20"
 													>
 														<Play size={10} fill="currentColor" />
 														RUN
@@ -333,7 +333,7 @@ export default function StrategyTable() {
 
 													<button
 														onClick={() => handleDeleteClick(strategy.id)}
-														className="p-2 bg-destructive/5 text-destructive hover:bg-destructive hover:text-white transition-all border border-destructive/10"
+														className="p-2 bg-destructive/5 text-destructive hover:bg-destructive hover:text-foreground transition-all border border-destructive/10"
 													>
 														<Trash2 size={12} />
 													</button>
@@ -350,8 +350,8 @@ export default function StrategyTable() {
 
 			<ConfirmModal
 				open={openConfirm}
-				title="Delete Strategy"
-				message="Are you sure you want to delete this module?"
+				title="Delete strategy"
+				message="Delete this strategy? This cannot be undone."
 				onConfirm={handleConfirmDelete}
 				onCancel={handleCancel}
 			/>

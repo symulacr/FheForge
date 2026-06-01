@@ -471,7 +471,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
 	return (
 		<>
-			<div onClick={onClose} className="fixed inset-0 bg-black/30 z-40" />
+			<div onClick={onClose} className="fixed inset-0 bg-background/60 z-40" />
 
 			<div
 				className="
@@ -491,14 +491,14 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 			>
 				<div className="px-6 py-5 border-b border-border flex justify-between items-start">
 					<div>
-						<p className="text-xs text-neutral-500 uppercase">{node.data.module?.name}</p>
+						<p className="text-xs text-muted uppercase">{node.data.module?.name}</p>
 
-						<h2 className="text-lg font-semibold text-white mt-1">{node.data.action?.name}</h2>
+						<h2 className="text-lg font-semibold text-foreground mt-1">{node.data.action?.name}</h2>
 					</div>
 
 					<button
 						onClick={onClose}
-						className="text-neutral-400 hover:text-white transition"
+						className="text-muted hover:text-foreground transition"
 						aria-label="Close configuration panel"
 					>
 						<X size={18} aria-hidden />
@@ -521,7 +521,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 					)}
 
 					{!pairsLoading && pairs.length === 0 && (
-						<div className="text-sm text-red-400 bg-card p-4 border border-border">
+						<div className="text-sm text-destructive bg-card p-4 border border-border">
 							No valid token pairs found for this action.
 						</div>
 					)}
@@ -529,7 +529,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 					{pairs.length > 0 && (
 						<>
 							<div className="space-y-3">
-								<label className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold ml-1">
+								<label className="text-[10px] uppercase tracking-widest text-muted font-bold ml-1">
 									Token In
 								</label>
 
@@ -540,13 +540,13 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 										onClick={() => setIsTokenInOpen(!isTokenInOpen)}
 										className="
                       w-full flex items-center justify-between pl-4 pr-10 py-3.5 
-                      bg-card border border-border text-white
+                      bg-card border border-border text-foreground
                       hover:bg-secondary hover:border-white/20 transition-all
                       disabled:opacity-50 disabled:cursor-not-allowed
                     "
 									>
 										<div className="flex items-center gap-3">
-											<div className="w-6 h-6 border border-white/20 overflow-hidden bg-neutral-800 flex items-center justify-center relative">
+											<div className="w-6 h-6 border border-white/20 overflow-hidden bg-card flex items-center justify-center relative">
 												{(() => {
 													const selectedToken = tokenInOptions.find((t) => t.id === tokenIn);
 													const symbol = selectedToken?.name || "";
@@ -609,9 +609,9 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 																}
 																setIsTokenInOpen(false);
 															}}
-															className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors"
+															className="flex items-center gap-3 px-4 py-3 hover:bg-secondary cursor-pointer transition-colors"
 														>
-															<div className="w-5 h-5 border border-border overflow-hidden bg-neutral-900 flex items-center justify-center relative">
+															<div className="w-5 h-5 border border-border overflow-hidden bg-secondary flex items-center justify-center relative">
 																{iconSrc ? (
 																	<Image
 																		src={iconSrc}
@@ -626,7 +626,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 																	</span>
 																)}
 															</div>
-															<span className="text-sm text-white">{token.name ?? ""}</span>
+															<span className="text-sm text-foreground">{token.name ?? ""}</span>
 															{tokenIn === token.id && (
 																<div className="ml-auto w-1 h-1 bg-primary animate-pulse" />
 															)}
@@ -651,14 +651,14 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 									className="
                     w-full px-5 py-4 
                     bg-card border border-border 
-                    text-white text-2xl font-semibold
-                    placeholder:text-white/20
+                    text-foreground text-2xl font-semibold
+                    placeholder:text-foreground/20
                     focus:outline-none focus:ring-2 focus:ring-primary/40
                     transition-all
                   "
 								/>
 								{error && (
-									<p className="text-red-400 text-[11px] ml-1" role="alert">
+									<p className="text-destructive text-[11px] ml-1" role="alert">
 										{error}
 									</p>
 								)}
@@ -666,7 +666,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 
 							{requiresTokenOut && (
 								<div className="space-y-3 pt-2">
-									<label className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold ml-1">
+									<label className="text-[10px] uppercase tracking-widest text-muted font-bold ml-1">
 										Token Out
 									</label>
 
@@ -674,10 +674,10 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 										<button
 											type="button"
 											onClick={() => setIsTokenOutOpen(!isTokenOutOpen)}
-											className="w-full flex items-center justify-between pl-4 pr-10 py-3.5 bg-card border border-border text-white hover:bg-secondary transition-all"
+											className="w-full flex items-center justify-between pl-4 pr-10 py-3.5 bg-card border border-border text-foreground hover:bg-secondary transition-all"
 										>
 											<div className="flex items-center gap-3">
-												<div className="w-6 h-6 border border-white/20 overflow-hidden bg-neutral-800 flex items-center justify-center relative">
+												<div className="w-6 h-6 border border-white/20 overflow-hidden bg-card flex items-center justify-center relative">
 													{(() => {
 														const selectedToken = tokenOutOptions.find((t) => t.id === tokenOut);
 														const symbol = selectedToken?.name || "";
@@ -738,9 +738,9 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 																	}
 																	setIsTokenOutOpen(false);
 																}}
-																className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors"
+																className="flex items-center gap-3 px-4 py-3 hover:bg-secondary cursor-pointer transition-colors"
 															>
-																<div className="w-5 h-5 border border-border overflow-hidden bg-neutral-900 flex items-center justify-center relative">
+																<div className="w-5 h-5 border border-border overflow-hidden bg-secondary flex items-center justify-center relative">
 																	{iconSrc ? (
 																		<Image
 																			src={iconSrc}
@@ -755,7 +755,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 																		</span>
 																	)}
 																</div>
-																<span className="text-sm text-white">{token.name ?? ""}</span>
+																<span className="text-sm text-foreground">{token.name ?? ""}</span>
 																{tokenOut === token.id && (
 																	<div className="ml-auto w-1 h-1 bg-secondary animate-pulse" />
 																)}
@@ -783,7 +783,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 					)}
 				</div>
 
-				<div className="p-6 border-t border-border bg-white/[0.02]">
+				<div className="p-6 border-t border-border bg-secondary">
 					{isSupply && (
 						<div className="mb-3 flex items-center gap-3">
 							<button
@@ -795,7 +795,7 @@ export default function ConfigPanel({ node, nodes, onSave, onClose }: Props) {
 								Reveal Collateral
 							</button>
 							{revealed !== null && (
-								<span className="text-sm text-white font-mono">{revealed}</span>
+								<span className="text-sm text-foreground font-mono">{revealed}</span>
 							)}
 						</div>
 					)}

@@ -196,6 +196,18 @@ lost+found/
 /research-findings.md
 /wt-*.md
 
+# === AGENT EXTRACTION / WORKFLOW ARTIFACTS ===
+forge-extracted/
+replacement/
+replacemtto/
+mockup/
+forge.zip:Zone.Identifier
+
+# === AGENT-GENERATED REPORTS ===
+TEST_SUITE_AUDIT.md
+missing-endpoints-report.txt
+FORGE_REPLACEMENT_WORKFLOW.md
+
 # === AGENT-GENERATED ANALYSIS (docs) ===
 docs/atlas-engine-rendering-findings.md
 docs/terminal-accessibility-findings.md
@@ -281,4 +293,7 @@ contracts/CONTRACT_AUDIT_FINDINGS.md
 
 # === AGENT ANALYSIS DOCS ===
 docs/archive/
+
+# === SUBMODULE WITHOUT GITMODULES (orphan gitlink) ===
+fheforge-demo/
 

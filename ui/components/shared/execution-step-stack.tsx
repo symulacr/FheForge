@@ -141,7 +141,7 @@ export default function StepStack({ steps, currentStep, allStepsCompleted }: Ste
 														animate={{ scale: 1 }}
 														transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 30 }}
 													>
-														<CheckCircle2 className="h-6 w-6 text-white" />
+														<CheckCircle2 className="h-6 w-6 text-foreground" />
 													</motion.div>
 												) : isActive ? (
 													<motion.div
@@ -150,7 +150,7 @@ export default function StepStack({ steps, currentStep, allStepsCompleted }: Ste
 															duration: 1.5,
 														}}
 													>
-														<Loader2Icon className="h-6 w-6 text-white animate-spin" />
+														<Loader2Icon className="h-6 w-6 text-foreground animate-spin" />
 													</motion.div>
 												) : (
 													<Circle className="h-6 w-6 text-foreground/40" />
@@ -162,9 +162,9 @@ export default function StepStack({ steps, currentStep, allStepsCompleted }: Ste
 													<h3
 														className={`font-semibold text-sm transition-colors ${
 															isActive
-																? "text-white"
+																? "text-foreground"
 																: isCompleted
-																	? "text-white"
+																	? "text-foreground"
 																	: "text-foreground/80"
 														}`}
 													>
@@ -178,16 +178,16 @@ export default function StepStack({ steps, currentStep, allStepsCompleted }: Ste
 															onClick={(e) => e.stopPropagation()}
 															className=""
 														>
-															<ExternalLinkIcon className="h-4 w-4 text-white/70 hover:text-white" />
+															<ExternalLinkIcon className="h-4 w-4 text-foreground/70 hover:text-foreground" />
 														</a>
 													)}
 												</div>
 												<div
 													className={`text-xs flex flex-row items-center gap-2 mt-2 transition-colors ${
 														isActive
-															? "text-white/95"
+															? "text-foreground/95"
 															: isCompleted
-																? "text-white/95"
+																? "text-foreground/95"
 																: "text-foreground/60"
 													}`}
 												>
@@ -233,7 +233,7 @@ export default function StepStack({ steps, currentStep, allStepsCompleted }: Ste
 													<motion.div
 														initial={{ opacity: 0 }}
 														animate={{ opacity: 1 }}
-														className="mt-2 text-xs font-medium text-white"
+														className="mt-2 text-xs font-medium text-foreground"
 													>
 														<motion.span
 															animate={{ opacity: [1, 0.7, 1] }}

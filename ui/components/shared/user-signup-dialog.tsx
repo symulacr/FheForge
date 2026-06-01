@@ -129,7 +129,7 @@ export function UserSignupDialog({ open, onOpenChange, onSuccess }: UserSignupDi
 					<Button
 						onClick={handleSignAndCreate}
 						disabled={isLoading}
-						className="w-full bg-accent hover:bg-accent/90 text-white"
+						className="w-full bg-accent hover:bg-accent/90 text-foreground"
 					>
 						{isLoading ? (
 							<span className="flex items-center gap-2">

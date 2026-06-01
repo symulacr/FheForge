@@ -29,7 +29,7 @@ export default function DefiNodeShell({
         relative w-[360px] min-h-[210px]
         border
         bg-card
-        text-white
+        text-foreground
         overflow-hidden
         transition-all duration-300
         ${selected ? "border-accent" : "border-border"}

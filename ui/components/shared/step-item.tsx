@@ -28,17 +28,17 @@ export function StepItem({ step, index, explorerBase }: StepItemProps) {
 				<div className="mt-0.5">
 					{step.status === "completed" && (
 						<div className="w-6 h-6 bg-success flex items-center justify-center">
-							<Check className="w-4 h-4 text-white" />
+							<Check className="w-4 h-4 text-foreground" />
 						</div>
 					)}
 					{step.status === "processing" && (
 						<div className="w-6 h-6 bg-accent flex items-center justify-center">
-							<Loader2 className="w-4 h-4 text-white animate-spin" />
+							<Loader2 className="w-4 h-4 text-foreground animate-spin" />
 						</div>
 					)}
 					{step.status === "failed" && (
 						<div className="w-6 h-6 bg-destructive flex items-center justify-center">
-							<AlertCircle className="w-4 h-4 text-white" />
+							<AlertCircle className="w-4 h-4 text-foreground" />
 						</div>
 					)}
 					{step.status === "pending" && (

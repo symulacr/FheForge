@@ -109,7 +109,7 @@ export default function RunStrategyModal({ open, onOpenChange, strategyId, onSim
 						<Button
 							disabled={!amount || Number(amount) <= 0 || loading}
 							onClick={handleRun}
-							className="w-full h-14 bg-accent hover:bg-accent/90 text-white font-bold transition-colors"
+							className="w-full h-14 bg-accent hover:bg-accent/90 text-foreground font-bold transition-colors"
 						>
 							{loading ? (
 								<div className="flex items-center gap-3">

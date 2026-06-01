@@ -52,7 +52,7 @@ export default function ConfirmModal({
 						<Button
 							onClick={onConfirm}
 							disabled={loading}
-							className="flex-1 h-12 bg-destructive hover:bg-destructive/90 text-white font-bold flex items-center justify-center gap-2"
+							className="flex-1 h-12 bg-destructive hover:bg-destructive/90 text-foreground font-bold flex items-center justify-center gap-2"
 						>
 							{loading ? (
 								<div className="w-5 h-5 border-2 border-white/30 border-t-white animate-spin" />

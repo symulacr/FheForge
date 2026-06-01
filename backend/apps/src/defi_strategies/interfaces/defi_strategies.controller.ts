@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -109,6 +110,16 @@ export class DefiStrategiesController {
     @Body() body: UpdateDefiStrategyVersionDto,
   ) {
     return this.defiStrategyVersionService.update(id, body);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Update strategy status (draft / published)' })
+  @ApiParam({ name: 'id', description: 'The ID of the DeFi strategy' })
+  public async updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: 'draft' | 'published',
+  ) {
+    return this.defiStrategiesService.update(id, { status });
   }
 
   @Delete('versions/:id')

@@ -93,7 +93,7 @@ export function SearchBar({
 							{selectedTags.length > 0 && (
 								<Badge
 									variant="secondary"
-									className="ml-1 h-5 w-5 p-0 flex items-center justify-center bg-accent text-white"
+									className="ml-1 h-5 w-5 p-0 flex items-center justify-center bg-accent text-foreground"
 								>
 									{selectedTags.length}
 								</Badge>

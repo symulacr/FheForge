@@ -9,8 +9,8 @@ type Props = {
 export function SupplyRightLabel({ apy }: { apy?: number }) {
 	return (
 		<div className="leading-none text-right">
-			<div className="text-[11px] uppercase tracking-wide text-white/65">APY</div>
-			<div className="mt-1 text-[18px] font-bold leading-none text-white">
+			<div className="text-[11px] uppercase tracking-wide text-muted">APY</div>
+			<div className="mt-1 text-[18px] font-bold leading-none text-foreground">
 				{formatPercent(apy, 0)}
 			</div>
 		</div>
@@ -22,7 +22,7 @@ export default function DefiNodeSupply({ data }: Props) {
 		<div className="pt-2">
 			<div className="flex min-h-[88px] items-center justify-center">
 				<div className="flex items-center gap-3">
-					<div className="text-[30px] font-semibold leading-none text-white">
+					<div className="text-[30px] font-semibold leading-none text-foreground">
 						{formatAmount(data.amount)}
 					</div>
 

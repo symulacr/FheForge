@@ -84,7 +84,7 @@ export function EstimateCard({ estimate, operationType, selectedPair }: Estimate
 					</div>
 					<div className="flex justify-between items-center">
 						<span className="text-xs text-muted">Borrow APY</span>
-						<span className="text-sm font-bold text-red-400">
+						<span className="text-sm font-bold text-destructive">
 							{Number(estimate?.borrow_apy ?? estimate?.apy ?? 0).toFixed(2)}%
 						</span>
 					</div>

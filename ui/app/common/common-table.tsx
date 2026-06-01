@@ -56,7 +56,7 @@ function VirtualRow<T extends { id: string }>(
 	return (
 		<div
 			style={style}
-			className="border border-border bg-card shadow-lg overflow-hidden hover:border-accent/50 transition-colors duration-300"
+			className="border border-border bg-card overflow-hidden hover:border-accent/50 transition-colors duration-300"
 		>
 			<div
 				className={`relative grid ${gridCols} items-center text-sm text-card-foreground px-6 py-3 pr-12`}
@@ -167,7 +167,7 @@ export function CommonTable<T extends { id: string }>({
 				{data.map((row) => (
 					<div
 						key={row.id}
-						className="border border-border bg-card shadow-lg overflow-hidden hover:border-accent/50 transition-colors duration-300"
+						className="border border-border bg-card overflow-hidden hover:border-accent/50 transition-colors duration-300"
 					>
 						<div
 							className={`relative grid ${gridCols} items-center text-sm text-card-foreground px-6 py-3 pr-12`}

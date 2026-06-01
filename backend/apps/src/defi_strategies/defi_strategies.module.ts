@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { FhenixStrategyService } from 'src/shared/infrastructure/fhenix-strategy.service';
 import { SupabaseModule } from '../shared/supabase.module';
 import { UsersModule } from '../users/users.module';
 import { DefiExecutionStepResultService } from './application/defi_execution_step_result.service';
@@ -47,7 +46,6 @@ import { DefiStrategySimulationSnapshotsController } from './interfaces/defi_str
     BorrowSimulator,
     SupplySimulator,
     EnableEModeSimulator,
-    FhenixStrategyService,
     DefiSimulationEngine,
     {
       provide: DefiStrategiesRepository,
@@ -75,7 +73,6 @@ import { DefiStrategySimulationSnapshotsController } from './interfaces/defi_str
     DefiStrategyVersionService,
     DefiStrategySimulationSnapshotService,
     DefiExecutionStepResultService,
-    FhenixStrategyService,
     DefiSimulationEngine,
   ],
 })

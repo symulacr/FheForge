@@ -349,7 +349,7 @@ export function ExecutionModal({
 				setCurrentStepIndex(executionSteps.length);
 				setAllStepsCompleted(true);
 				onStatusChange?.("completed");
-				displayToast("success", "🎉 All steps completed successfully!");
+				displayToast("success", "All steps completed.");
 
 				if (currentActivityId) {
 					await updateActivityMutation.mutateAsync({
@@ -409,11 +409,11 @@ export function ExecutionModal({
 			<DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto bg-card border border-border">
 				<DialogHeader className="pb-4 border-b border-border">
 					<DialogTitle className="text-2xl font-bold text-primary">
-						{allStepsCompleted ? "Execution Completed! 🎉" : "Execute Strategy"}
+						{allStepsCompleted ? "Execution complete." : "Execute strategy"}
 					</DialogTitle>
 					<p className="text-sm text-muted-foreground mt-1.5">
 						{allStepsCompleted
-							? `All ${executionSteps.length} steps completed successfully!`
+							? `All ${executionSteps.length} steps completed. Strategy is open on-chain.`
 							: `${subtitle} • Step ${currentStepIndex + 1} of ${executionSteps.length}`}
 					</p>
 				</DialogHeader>
@@ -544,7 +544,7 @@ export function ExecutionModal({
 				<div className="flex gap-3 mt-6 pt-4 border-t border-border">
 					{isExecuting ? (
 						<Button
-							className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-400/50 
+							className="flex-1 bg-destructive hover:bg-destructive/90 text-foreground font-bold  
                         ring-1 ring-red-500/40 transform transition-all duration-200"
 							onClick={handleCancel}
 						>
@@ -557,7 +557,7 @@ export function ExecutionModal({
 							</Button>
 							{!allStepsCompleted && (
 								<Button
-									className="flex-1 bg-accent hover:bg-accent/90 text-white font-semibold"
+									className="flex-1 bg-accent hover:bg-accent/90 text-foreground font-semibold"
 									onClick={startExecution}
 									disabled={!executionSteps.length || !isWalletConnected || isComposerPending}
 								>
