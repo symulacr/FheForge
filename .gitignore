@@ -223,6 +223,12 @@ docs/terminal-accessibility-findings.md
 docs/tui-renderer-color-engine-research.md
 docs/wt-color-cross-platform-issues.md
 docs/wt-font-rendering-pipeline.md
+docs/EXECUTION_PLAN_*.md
+docs/HANDOFF_*.md
+docs/INTEGRATION_REPORT.md
+docs/MICROCHANGE_PLAN_*.md
+docs/CONTINUATION_GOAL.md
+docs/WAVE*.md
 
 # === DEPLOYMENT ANALYSIS ARTIFACTS (not deployment records) ===
 contracts/deployments/blocker_root_causes.json
