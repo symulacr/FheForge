@@ -3,9 +3,7 @@ import withBundleAnalyzer from '@next/bundle-analyzer';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   swcMinify: true,
-  output: 'standalone',
   experimental: {
-    outputFileTracingRoot: new URL('..', import.meta.url).pathname,
     optimizePackageImports: [
       'lucide-react', 'framer-motion',
       '@radix-ui/react-accordion', '@radix-ui/react-dialog',
