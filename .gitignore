@@ -230,6 +230,9 @@ docs/MICROCHANGE_PLAN_*.md
 docs/CONTINUATION_GOAL.md
 docs/WAVE*.md
 
+# === AGENT-GENERATED STATUS REPORTS (may contain leaked keys) ===
+contracts/STAGE_*_REPORT.md
+
 # === DEPLOYMENT ANALYSIS ARTIFACTS (not deployment records) ===
 contracts/deployments/blocker_root_causes.json
 contracts/deployments/calldata_leak_scan.json
