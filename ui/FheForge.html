@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>FheForge — encrypted DeFi on Arbitrum Sepolia</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="theme.css?v=v30" />
+
+  <style>
+    @media (max-width: 980px) {
+      .home-grid, .cta-grid { grid-template-columns: minmax(0, 1fr) !important; }
+    }
+    @media (max-width: 720px) {
+      .mobile-nav { display: block !important; }
+      body { padding-bottom: 56px; }
+    }
+    /* Boot splash */
+    #boot {
+      position: fixed; inset: 0; display: grid; place-items: center;
+      background: var(--paper); color: var(--ink);
+      z-index: 100;
+      transition: opacity .35s ease;
+    }
+    #boot.gone { opacity: 0; pointer-events: none; }
+    #boot .mark {
+      font-family: "Instrument Serif", Georgia, serif;
+      font-size: 32px;
+      letter-spacing: -0.02em;
+      display: inline-flex; align-items: baseline; gap: 10px;
+    }
+    #boot .mark .dot { width: 8px; height: 8px; background: var(--accent); display: inline-block; transform: translateY(-2px); }
+    #boot small { font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.1em; color: var(--muted); margin-top: 18px; display: block; text-transform: uppercase; }
+  </style>
+
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <rect width="200" height="200" fill="#f6f2ea" />
+      <g transform="translate(60, 60)">
+        <rect width="80" height="80" fill="none" stroke="#3a2718" stroke-width="3" />
+        <rect x="14" y="14" width="52" height="52" fill="none" stroke="#cc9039" stroke-width="3" />
+        <circle cx="40" cy="40" r="4" fill="#cc9039" />
+        <text x="40" y="105" font-family="Instrument Serif, serif" font-size="22" fill="#3a2718" text-anchor="middle">FheForge</text>
+      </g>
+    </svg>
+  </template>
+
+  <script>
+    // Apply persisted theme synchronously to avoid flash
+    try {
+      const saved = localStorage.getItem("fheforge:theme");
+      if (saved === "light" || saved === "dark") {
+        document.documentElement.setAttribute("data-theme", saved);
+      } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    } catch {}
+  </script>
+</head>
+<body>
+  <div id="boot">
+    <div style="text-align: center;">
+      <span class="mark"><span class="dot"></span> FheForge</span>
+      <small>booting · cofhe-sdk · 421614</small>
+    </div>
+  </div>
+
+  <div id="root"></div>
+
+  <!-- React (pinned) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Tweaks shell -->
+  <script type="text/babel" src="tweaks-panel.jsx?v=v30"></script>
+
+  <!-- Shared components -->
+  <script type="text/babel" src="components.jsx?v=v30"></script>
+
+  <!-- Screens (order matters: builder-workspace before market) -->
+  <script type="text/babel" src="screens/landing.jsx?v=v30"></script>
+  <script type="text/babel" src="screens/dashboard.jsx?v=v30"></script>
+  <script type="text/babel" src="screens/lending.jsx?v=v30"></script>
+  <script type="text/babel" src="screens/builder-workspace.jsx?v=v30"></script>
+  <script type="text/babel" src="screens/market.jsx?v=v30"></script>
+  <script type="text/babel" src="screens/governance.jsx?v=v30"></script>
+  <script type="text/babel" src="screens/connect-modal.jsx?v=v30"></script>
+
+  <!-- App -->
+  <script type="text/babel" src="app.jsx?v=v30"></script>
+
+  <script>
+    const obs = new MutationObserver(() => {
+      if (document.getElementById("root").children.length) {
+        document.getElementById("boot").classList.add("gone");
+        setTimeout(() => document.getElementById("boot").remove(), 400);
+        obs.disconnect();
+      }
+    });
+    obs.observe(document.getElementById("root"), { childList: true });
+  </script>
+</body>
+</html>

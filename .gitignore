@@ -203,6 +203,7 @@ lost+found/
 /wt-*.md
 
 # === AGENT EXTRACTION / WORKFLOW ARTIFACTS ===
+forge.zip
 forge-extracted/
 replacement/
 replacemtto/
