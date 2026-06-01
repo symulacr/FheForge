@@ -10,6 +10,9 @@ export class PriceResponseDto {
   @ApiProperty({ example: 'Chainlink', description: 'Oracle source' })
   oracle: string;
 
-  @ApiProperty({ example: '2026-06-01T12:00:00Z', description: 'Last update timestamp' })
+  @ApiProperty({
+    example: '2026-06-01T12:00:00Z',
+    description: 'Last update timestamp',
+  })
   updatedAt: string;
 }

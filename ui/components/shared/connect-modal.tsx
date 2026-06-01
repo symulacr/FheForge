@@ -44,7 +44,7 @@ export function ConnectModal({ open, onClose }: ConnectModalProps): JSX.Element 
 	const [pulse, setPulse] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [nonce, setNonce] = useState<string | null>(null);
-	const [jwt, setJwt] = useState<string | null>(() => {
+	const [, setJwt] = useState<string | null>(() => {
 		if (typeof window === "undefined") return null;
 		return localStorage.getItem("fheforge:jwt");
 	});

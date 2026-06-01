@@ -21,10 +21,15 @@ export class ProposalResponseDto {
   @ApiProperty({ example: 'Increase WETH collateral factor to 85%' })
   title: string;
 
-  @ApiProperty({ example: 'Rationale: utilization has been consistently above 80%...' })
+  @ApiProperty({
+    example: 'Rationale: utilization has been consistently above 80%...',
+  })
   description: string;
 
-  @ApiProperty({ example: 'active', enum: ['pending', 'active', 'passed', 'rejected', 'executed'] })
+  @ApiProperty({
+    example: 'active',
+    enum: ['pending', 'active', 'passed', 'rejected', 'executed'],
+  })
   status: 'pending' | 'active' | 'passed' | 'rejected' | 'executed';
 
   @ApiProperty({ example: 1_245, description: 'Votes in favor' })
@@ -33,18 +38,29 @@ export class ProposalResponseDto {
   @ApiProperty({ example: 320, description: 'Votes against' })
   votesAgainst: number;
 
-  @ApiProperty({ example: '2026-06-10T00:00:00Z', description: 'Voting end time' })
+  @ApiProperty({
+    example: '2026-06-10T00:00:00Z',
+    description: 'Voting end time',
+  })
   endsAt: string;
 
-  @ApiProperty({ example: '0xProposerAddress', description: 'Proposer wallet address' })
+  @ApiProperty({
+    example: '0xProposerAddress',
+    description: 'Proposer wallet address',
+  })
   proposer: string;
 
-  @ApiProperty({ example: '2026-06-01T12:00:00Z', description: 'Proposal creation time' })
+  @ApiProperty({
+    example: '2026-06-01T12:00:00Z',
+    description: 'Proposal creation time',
+  })
   createdAt: string;
 
   @ApiProperty({ type: [VoteDto], description: '20 most recent votes' })
   recentVotes: VoteDto[];
 
-  @ApiProperty({ description: 'JSON payload: parameter changes to execute on-chain' })
+  @ApiProperty({
+    description: 'JSON payload: parameter changes to execute on-chain',
+  })
   payload: object;
 }

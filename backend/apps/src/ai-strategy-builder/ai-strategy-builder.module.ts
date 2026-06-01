@@ -14,7 +14,10 @@ import { AiStrategyBuilderController } from './interfaces/ai-strategy-builder.co
 
 @Module({
   imports: [DefiModulesModule, DefiTokenModule, StrategiesModule],
-  controllers: [AiStrategyBuilderController, AiStrategyBuilderAdvancedController],
+  controllers: [
+    AiStrategyBuilderController,
+    AiStrategyBuilderAdvancedController,
+  ],
   providers: [
     AiStrategyBuilderService,
     StrategyParserService,

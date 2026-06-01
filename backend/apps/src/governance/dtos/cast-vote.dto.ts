@@ -10,7 +10,10 @@ export class CastVoteDto {
   @IsBoolean()
   support: boolean;
 
-  @ApiProperty({ example: 1000, description: 'Vote weight (token balance or staked amount)' })
+  @ApiProperty({
+    example: 1000,
+    description: 'Vote weight (token balance or staked amount)',
+  })
   @IsNumber()
   @Min(1)
   weight: number;

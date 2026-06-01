@@ -12,7 +12,11 @@ export class StatsController {
   @Public()
   @Get()
   @ApiOperation({ summary: 'Get protocol statistics' })
-  @ApiResponse({ status: 200, description: 'Protocol stats', type: StatsResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Protocol stats',
+    type: StatsResponseDto,
+  })
   async getStats(): Promise<StatsResponseDto> {
     return this.statsService.getProtocolStats();
   }

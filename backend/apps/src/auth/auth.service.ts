@@ -72,7 +72,10 @@ export class AuthService {
       .from('auth_nonces')
       .select('*')
       .eq('wallet_address', normalizedAddress)
-      .single() as unknown as Promise<{ data: AuthNonceRow | null; error: unknown }>);
+      .single() as unknown as Promise<{
+      data: AuthNonceRow | null;
+      error: unknown;
+    }>);
 
     if (selectError || !stored) {
       throw new UnauthorizedException(

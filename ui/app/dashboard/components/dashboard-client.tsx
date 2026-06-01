@@ -226,7 +226,7 @@ function Overview({
 	locked,
 	netValue,
 	positionCount,
-	grantPermit,
+	grantPermit: _grantPermit,
 	onAddCollateral,
 }: {
 	locked: boolean;

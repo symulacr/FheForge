@@ -1,0 +1,11 @@
+title = "FheForge Gitleaks Config"
+version = 2
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public contract deployment addresses"
+paths = [
+  '''contracts\/deployments\/''',
+]

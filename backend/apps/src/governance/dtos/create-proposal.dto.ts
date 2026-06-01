@@ -7,11 +7,15 @@ export class CreateProposalDto {
   @MinLength(5)
   title: string;
 
-  @ApiProperty({ example: 'Rationale: utilization has been consistently above 80%...' })
+  @ApiProperty({
+    example: 'Rationale: utilization has been consistently above 80%...',
+  })
   @IsString()
   description: string;
 
-  @ApiProperty({ description: 'JSON payload: parameter changes to execute on-chain' })
+  @ApiProperty({
+    description: 'JSON payload: parameter changes to execute on-chain',
+  })
   @IsObject()
   payload: object;
 

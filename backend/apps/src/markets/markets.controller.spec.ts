@@ -30,7 +30,7 @@ describe('MarketsController', () => {
 
     it('should include known assets', async () => {
       const result = await controller.getAllMarkets();
-      const assets = result.map(m => m.asset);
+      const assets = result.map((m) => m.asset);
       expect(assets).toContain('USDC');
       expect(assets).toContain('ETH');
     });
@@ -48,7 +48,7 @@ describe('MarketsController', () => {
 
     it('should use Pyth as oracle', async () => {
       const result = await controller.getPrices();
-      expect(result.every(p => p.oracle === 'Pyth')).toBe(true);
+      expect(result.every((p) => p.oracle === 'Pyth')).toBe(true);
     });
   });
 });

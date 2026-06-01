@@ -8,7 +8,7 @@ export class StatsService {
 
   async getProtocolStats(): Promise<StatsResponseDto> {
     if (this.cache && Date.now() < this.cache.expiresAt) {
-      return this.cache.data;
+      return await Promise.resolve(this.cache.data);
     }
 
     const data: StatsResponseDto = {

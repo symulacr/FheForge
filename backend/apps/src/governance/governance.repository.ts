@@ -5,7 +5,8 @@ const MOCK_PROPOSALS: ProposalResponseDto[] = [
   {
     id: '550e8400-e29b-41d4-a716-446655440001',
     title: 'Increase WETH collateral factor to 85%',
-    description: 'Rationale: utilization has been consistently above 80% for the past 30 days.',
+    description:
+      'Rationale: utilization has been consistently above 80% for the past 30 days.',
     status: 'active',
     votesFor: 1245,
     votesAgainst: 320,
@@ -18,7 +19,8 @@ const MOCK_PROPOSALS: ProposalResponseDto[] = [
   {
     id: '550e8400-e29b-41d4-a716-446655440002',
     title: 'Add ARB as a collateral asset',
-    description: 'Proposal to add Arbitrum token as a new collateral asset with 65% liquidation threshold.',
+    description:
+      'Proposal to add Arbitrum token as a new collateral asset with 65% liquidation threshold.',
     status: 'active',
     votesFor: 890,
     votesAgainst: 45,
@@ -31,7 +33,8 @@ const MOCK_PROPOSALS: ProposalResponseDto[] = [
   {
     id: '550e8400-e29b-41d4-a716-446655440003',
     title: 'Reduce supply APY floor from 2% to 1%',
-    description: 'Market conditions suggest lowering the minimum supply APY to improve competitiveness.',
+    description:
+      'Market conditions suggest lowering the minimum supply APY to improve competitiveness.',
     status: 'passed',
     votesFor: 2100,
     votesAgainst: 150,
@@ -52,18 +55,23 @@ export class GovernanceRepository {
 
   async findAll(status?: string): Promise<ProposalResponseDto[]> {
     const all = Array.from(this.proposals.values());
-    if (!status) return all;
-    return all.filter((p) => p.status === status);
+    if (!status) return await Promise.resolve(all);
+    return await Promise.resolve(all.filter((p) => p.status === status));
   }
 
   async findById(id: string): Promise<ProposalResponseDto | undefined> {
     const proposal = this.proposals.get(id);
     if (!proposal) return undefined;
     const recentVotes = this.votes.get(id) ?? [];
-    return { ...proposal, recentVotes: recentVotes.slice(-20) };
+    return await Promise.resolve({
+      ...proposal,
+      recentVotes: recentVotes.slice(-20),
+    });
   }
 
-  async create(dto: Omit<ProposalResponseDto, 'id' | 'createdAt' | 'recentVotes'>): Promise<ProposalResponseDto> {
+  async create(
+    dto: Omit<ProposalResponseDto, 'id' | 'createdAt' | 'recentVotes'>,
+  ): Promise<ProposalResponseDto> {
     const proposal: ProposalResponseDto = {
       ...dto,
       id: crypto.randomUUID(),
@@ -71,12 +79,12 @@ export class GovernanceRepository {
       recentVotes: [],
     };
     this.proposals.set(proposal.id, proposal);
-    return proposal;
+    return await Promise.resolve(proposal);
   }
 
   async addVote(proposalId: string, vote: VoteDto): Promise<void> {
     const proposal = this.proposals.get(proposalId);
-    if (!proposal) return;
+    if (!proposal) return await Promise.resolve();
 
     const existing = this.votes.get(proposalId) ?? [];
     existing.push(vote);
@@ -89,11 +97,14 @@ export class GovernanceRepository {
     }
   }
 
-  async updateStatus(id: string, status: ProposalResponseDto['status']): Promise<ProposalResponseDto | undefined> {
+  async updateStatus(
+    id: string,
+    status: ProposalResponseDto['status'],
+  ): Promise<ProposalResponseDto | undefined> {
     const proposal = this.proposals.get(id);
     if (!proposal) return undefined;
     proposal.status = status;
     this.proposals.set(id, proposal);
-    return proposal;
+    return await Promise.resolve(proposal);
   }
 }

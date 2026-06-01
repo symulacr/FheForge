@@ -2,9 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { useAccount } from "wagmi";
-import { SEED_STRATEGIES } from "@/app/constants/seed-strategies";
 import { Preloader } from "@/components/preloader";
 import { usePreloader } from "@/providers/preloader-provider";
 import { getStrategies } from "@/services/defi-module-service";
@@ -73,12 +72,9 @@ export default function Home() {
 		}
 	}, [isConnected, grantPermit]);
 
-	const { data: strategies = [], isFetching } = useQuery<Strategy[]>({
+	const { isFetching } = useQuery<Strategy[]>({
 		queryKey: ["home-strategies"],
-		queryFn: async () => {
-			const data = await getStrategies();
-			return data.length > 0 ? data : SEED_STRATEGIES;
-		},
+		queryFn: getStrategies,
 	});
 
 	const prevFetching = useRef(isFetching);
@@ -87,11 +83,6 @@ export default function Home() {
 		if (isFetching) show();
 		else hide();
 	}
-
-	const displayStrategies = useMemo(
-		() => (strategies.length > 0 ? strategies : SEED_STRATEGIES),
-		[strategies],
-	);
 
 	return (
 		<>

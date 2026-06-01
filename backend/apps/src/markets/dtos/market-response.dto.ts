@@ -19,7 +19,7 @@ export class MarketResponseDto {
   @ApiProperty({ example: 3_200_000, description: 'Total value locked in USD' })
   tvl: number;
 
-  @ApiProperty({ example: 0.80, description: 'Liquidation threshold (0-1)' })
+  @ApiProperty({ example: 0.8, description: 'Liquidation threshold (0-1)' })
   liquidationThreshold: number;
 
   @ApiProperty({ example: 3_245.12, description: 'Oracle price in USD' })

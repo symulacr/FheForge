@@ -13,7 +13,11 @@ export class MarketsController {
   @Public()
   @Get()
   @ApiOperation({ summary: 'Get all lending markets' })
-  @ApiResponse({ status: 200, description: 'List of markets', type: [MarketResponseDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'List of markets',
+    type: [MarketResponseDto],
+  })
   async getAllMarkets(): Promise<MarketResponseDto[]> {
     return this.marketsService.getAllMarkets();
   }
@@ -21,7 +25,11 @@ export class MarketsController {
   @Public()
   @Get('prices')
   @ApiOperation({ summary: 'Get oracle prices for all assets' })
-  @ApiResponse({ status: 200, description: 'List of prices', type: [PriceResponseDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'List of prices',
+    type: [PriceResponseDto],
+  })
   async getPrices(): Promise<PriceResponseDto[]> {
     return this.marketsService.getPrices();
   }

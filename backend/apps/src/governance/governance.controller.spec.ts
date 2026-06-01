@@ -29,7 +29,7 @@ describe('GovernanceController', () => {
 
     it('should filter by status', async () => {
       const result = await controller.getProposals('active');
-      expect(result.every(p => p.status === 'active')).toBe(true);
+      expect(result.every((p) => p.status === 'active')).toBe(true);
     });
   });
 
@@ -42,7 +42,9 @@ describe('GovernanceController', () => {
     });
 
     it('should throw NotFoundException for unknown id', async () => {
-      await expect(controller.getProposal('unknown-id')).rejects.toThrow(NotFoundException);
+      await expect(controller.getProposal('unknown-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -63,10 +65,12 @@ describe('GovernanceController', () => {
   describe('POST /governance/vote', () => {
     it('should record a vote', async () => {
       const all = await controller.getProposals();
-      const active = all.find(p => p.status === 'active');
+      const active = all.find((p) => p.status === 'active');
       if (!active) return;
 
-      const req = { user: { address: '0xVoterTestAddress' } } as unknown as Request;
+      const req = {
+        user: { address: '0xVoterTestAddress' },
+      } as unknown as Request;
       const vote = await controller.castVote(
         { proposalId: active.id, support: true, weight: 100 },
         req,
@@ -76,7 +80,9 @@ describe('GovernanceController', () => {
     });
 
     it('should reject vote on non-existent proposal', async () => {
-      const req = { user: { address: '0xVoterTestAddress' } } as unknown as Request;
+      const req = {
+        user: { address: '0xVoterTestAddress' },
+      } as unknown as Request;
       await expect(
         controller.castVote(
           { proposalId: 'nonexistent', support: true, weight: 100 },
@@ -89,14 +95,16 @@ describe('GovernanceController', () => {
   describe('PATCH /governance/proposals/:id/execute', () => {
     it('should reject execution of non-passed proposal', async () => {
       const all = await controller.getProposals();
-      const active = all.find(p => p.status === 'active');
+      const active = all.find((p) => p.status === 'active');
       if (!active) return;
 
       await expect(controller.executeProposal(active.id)).rejects.toThrow();
     });
 
     it('should throw NotFoundException for unknown id', async () => {
-      await expect(controller.executeProposal('unknown-id')).rejects.toThrow(NotFoundException);
+      await expect(controller.executeProposal('unknown-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
