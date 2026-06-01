@@ -3,10 +3,45 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { SupabaseService } from '../shared/infrastructure/supabase.service';
 import { EventIndexerService } from './event-indexer.service';
 
+jest.mock('ethers', () => {
+  const actual = jest.requireActual('ethers');
+  return {
+    ...actual,
+    JsonRpcProvider: jest.fn().mockImplementation(() => ({
+      getNetwork: jest.fn().mockResolvedValue({ chainId: 421614 }),
+      getBlockNumber: jest.fn().mockResolvedValue(12345678),
+      getLogs: jest.fn().mockResolvedValue([]),
+      on: jest.fn(),
+      removeAllListeners: jest.fn(),
+    })),
+    Contract: jest.fn().mockImplementation(() => ({
+      on: jest.fn(),
+      removeAllListeners: jest.fn(),
+      queryFilter: jest.fn().mockResolvedValue([]),
+      getAddress: jest
+        .fn()
+        .mockResolvedValue('0x1234567890123456789012345678901234567890'),
+      interface: {
+        parseLog: jest
+          .fn()
+          .mockReturnValue({ name: 'PositionOpened', args: [] }),
+      },
+    })),
+  };
+});
+
 describe('MC-55: Event Indexer Service', () => {
   let service: EventIndexerService;
   let mockConfigService: Partial<ConfigService>;
   let mockSupabaseService: Partial<SupabaseService>;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
 
   beforeEach(async () => {
     mockConfigService = {
@@ -44,6 +79,10 @@ describe('MC-55: Event Indexer Service', () => {
     }).compile();
 
     service = module.get<EventIndexerService>(EventIndexerService);
+  });
+
+  afterEach(async () => {
+    await service.onModuleDestroy();
   });
 
   it('should be defined', () => {

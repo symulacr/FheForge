@@ -213,6 +213,10 @@ forge.zip:Zone.Identifier
 TEST_SUITE_AUDIT.md
 missing-endpoints-report.txt
 FORGE_REPLACEMENT_WORKFLOW.md
+AKINDO_WAVE_SUBMISSION.md
+
+# === LOCAL GITLEAKS (allowlist handled by .gitleaks.toml in repo) ===
+.gitleaksignore
 
 # === AGENT-GENERATED ANALYSIS (docs) ===
 docs/*-findings.md
