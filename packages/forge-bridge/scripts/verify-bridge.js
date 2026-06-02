@@ -66,10 +66,16 @@ function check(condition, label, detail) {
 // ---------------------------------------------------------------------------
 
 async function main() {
+	const isDryRun = process.argv.includes("--dry-run");
+
 	console.log(`\n${BOLD}${CYAN}═══ FheForge Bridge — E2E Verification ═══${RESET}\n`);
 
+	if (isDryRun) {
+		console.log(`  ${YELLOW}${BOLD}⚡ DRY RUN${RESET}${YELLOW}: skipping network-dependent operations.${RESET}\n`);
+	}
+
 	// ─────────────────────────────────────────────────────────────────────
-	// Check 1 — Bridge module loads and createBridge exists
+	// Check 1 — Bridge module loads and createBridge exists (LOCAL)
 	// ─────────────────────────────────────────────────────────────────────
 	console.log(`${BOLD}[1/6] Bridge Module${RESET}`);
 
@@ -113,95 +119,103 @@ async function main() {
 	}
 
 	// ─────────────────────────────────────────────────────────────────────
-	// Check 2 — API health endpoint reachable
+	// Check 2 — API health endpoint reachable (NETWORK)
 	// ─────────────────────────────────────────────────────────────────────
 	console.log(`\n${BOLD}[2/6] API Health${RESET}`);
 
-	try {
-		const { DEFAULT_CONFIG } = await import("../src/config.js");
-		const healthUrl = `${DEFAULT_CONFIG.apiBaseUrl}/health`;
-		const response = await fetch(healthUrl, {
-			signal: AbortSignal.timeout(10_000),
-		});
-		const healthOk = check(
-			response.ok,
-			`GET ${healthUrl}`,
-			`Status: ${response.status} ${response.statusText}`,
-		);
-		if (healthOk) {
-			try {
-				const body = await response.json();
-				check(
-					body !== null && typeof body === "object",
-					"Health response is valid JSON",
-					`Type: ${typeof body}`,
-				);
-			} catch {
-				// Not all health endpoints return JSON; still OK if status was 2xx
-				report("Health response body is parseable JSON", false, "Body is not JSON (non-critical)");
+	if (isDryRun) {
+		report("API health endpoint reachable", true, `${YELLOW}[SKIPPED — dry run]${RESET}`);
+	} else {
+		try {
+			const { DEFAULT_CONFIG } = await import("../src/config.js");
+			const healthUrl = `${DEFAULT_CONFIG.apiBaseUrl}/health`;
+			const response = await fetch(healthUrl, {
+				signal: AbortSignal.timeout(10_000),
+			});
+			const healthOk = check(
+				response.ok,
+				`GET ${healthUrl}`,
+				`Status: ${response.status} ${response.statusText}`,
+			);
+			if (healthOk) {
+				try {
+					const body = await response.json();
+					check(
+						body !== null && typeof body === "object",
+						"Health response is valid JSON",
+						`Type: ${typeof body}`,
+					);
+				} catch {
+					// Not all health endpoints return JSON; still OK if status was 2xx
+					report("Health response body is parseable JSON", false, "Body is not JSON (non-critical)");
+				}
 			}
+		} catch (err) {
+			check(false, "API health endpoint reachable", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
 		}
-	} catch (err) {
-		check(false, "API health endpoint reachable", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
 	}
 
 	// ─────────────────────────────────────────────────────────────────────
-	// Check 3 — JWT nonce endpoint returns valid nonce
+	// Check 3 — JWT nonce endpoint returns valid nonce (NETWORK)
 	// ─────────────────────────────────────────────────────────────────────
 	console.log(`\n${BOLD}[3/6] JWT Nonce${RESET}`);
 
-	try {
-		const { DEFAULT_CONFIG } = await import("../src/config.js");
-		const testAddress = "0x0000000000000000000000000000000000000000";
-		const nonceUrl = `${DEFAULT_CONFIG.apiBaseUrl}/auth/nonce/${testAddress}`;
-		const response = await fetch(nonceUrl, {
-			signal: AbortSignal.timeout(10_000),
-		});
+	if (isDryRun) {
+		report("JWT nonce endpoint reachable", true, `${YELLOW}[SKIPPED — dry run]${RESET}`);
+	} else {
+		try {
+			const { DEFAULT_CONFIG } = await import("../src/config.js");
+			const testAddress = "0x0000000000000000000000000000000000000000";
+			const nonceUrl = `${DEFAULT_CONFIG.apiBaseUrl}/auth/nonce/${testAddress}`;
+			const response = await fetch(nonceUrl, {
+				signal: AbortSignal.timeout(10_000),
+			});
 
-		// The endpoint might return 500 for unregistered addresses
-		// but we can still verify the route exists (not 404) and the API responds.
-		check(
-			response.status !== 404,
-			`Nonce route exists (${nonceUrl})`,
-			`Status: ${response.status} (expected 200 or 500; 404 would mean route is missing)`,
-		);
-
-		if (response.ok) {
-			const data = await response.json();
-			const hasNonce = check(
-				data && typeof data.nonce !== "undefined",
-				"Response contains 'nonce' field",
-				`nonce: ${data?.nonce ? `${String(data.nonce).slice(0, 32)}...` : "undefined"}`,
-			);
-			if (hasNonce) {
-				check(
-					typeof data.nonce === "string" && data.nonce.length > 0,
-					"Nonce is a non-empty string",
-					`Length: ${data.nonce.length}`,
-				);
-			}
-			// Check for optional message field
+			// The endpoint might return 500 for unregistered addresses
+			// but we can still verify the route exists (not 404) and the API responds.
 			check(
-				typeof data.message === "undefined" || typeof data.message === "string",
-				"Response 'message' field (if present) is a string",
-				data.message ? `Present, length: ${data.message.length}` : "Not present (optional)",
+				response.status !== 404,
+				`Nonce route exists (${nonceUrl})`,
+				`Status: ${response.status} (expected 200 or 500; 404 would mean route is missing)`,
 			);
-		} else {
-			// Endpoint responded but returned error (likely 500 for unregistered address)
-			// Verify the error response structure is valid JSON
-			try {
-				const errBody = await response.json();
-				check(
-					errBody !== null && typeof errBody === "object",
-					"Error response is valid JSON (endpoint is alive)",
-					`Body keys: ${Object.keys(errBody).join(", ")}`,
+
+			if (response.ok) {
+				const data = await response.json();
+				const hasNonce = check(
+					data && typeof data.nonce !== "undefined",
+					"Response contains 'nonce' field",
+					`nonce: ${data?.nonce ? `${String(data.nonce).slice(0, 32)}...` : "undefined"}`,
 				);
-			} catch {
-				report("Error response body is parseable JSON", false, "Could not parse error body (non-critical)");
+				if (hasNonce) {
+					check(
+						typeof data.nonce === "string" && data.nonce.length > 0,
+						"Nonce is a non-empty string",
+						`Length: ${data.nonce.length}`,
+					);
+				}
+				// Check for optional message field
+				check(
+					typeof data.message === "undefined" || typeof data.message === "string",
+					"Response 'message' field (if present) is a string",
+					data.message ? `Present, length: ${data.message.length}` : "Not present (optional)",
+				);
+			} else {
+				// Endpoint responded but returned error (likely 500 for unregistered address)
+				// Verify the error response structure is valid JSON
+				try {
+					const errBody = await response.json();
+					check(
+						errBody !== null && typeof errBody === "object",
+						"Error response is valid JSON (endpoint is alive)",
+						`Body keys: ${Object.keys(errBody).join(", ")}`,
+					);
+				} catch {
+					report("Error response body is parseable JSON", false, "Could not parse error body (non-critical)");
+				}
 			}
+		} catch (err) {
+			check(false, "JWT nonce endpoint reachable", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
 		}
-	} catch (err) {
-		check(false, "JWT nonce endpoint reachable", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
 	}
 
 	// ─────────────────────────────────────────────────────────────────────
@@ -240,95 +254,103 @@ async function main() {
 	}
 
 	// ─────────────────────────────────────────────────────────────────────
-	// Check 5 — viem publicClient connects to Arb Sepolia
+	// Check 5 — viem publicClient connects to Arb Sepolia (NETWORK)
 	// ─────────────────────────────────────────────────────────────────────
 	console.log(`\n${BOLD}[5/6] viem Chain Connection${RESET}`);
 
-	try {
-		const { createPublicClient, http } = await import("viem");
-		const { arbitrumSepolia } = await import("viem/chains");
+	if (isDryRun) {
+		report("viem publicClient connects to Arb Sepolia", true, `${YELLOW}[SKIPPED — dry run]${RESET}`);
+	} else {
+		try {
+			const { createPublicClient, http } = await import("viem");
+			const { arbitrumSepolia } = await import("viem/chains");
 
-		const publicClient = createPublicClient({
-			chain: arbitrumSepolia,
-			transport: http("https://arbitrum-sepolia.publicnode.com", {
-				timeout: 15_000,
-			}),
-		});
+			const publicClient = createPublicClient({
+				chain: arbitrumSepolia,
+				transport: http("https://arbitrum-sepolia.publicnode.com", {
+					timeout: 15_000,
+				}),
+			});
 
-		const blockNumber = await publicClient.getBlockNumber();
-		const blockOk = check(
-			blockNumber > 0n,
-			"getBlockNumber() returns block > 0",
-			`Block: ${blockNumber.toString()}`,
-		);
-
-		if (blockOk) {
-			// Check chain ID
-			const chainId = await publicClient.getChainId();
-			check(
-				chainId === 421614,
-				"getChainId() returns Arbitrum Sepolia (421614)",
-				`Chain ID: ${chainId}`,
+			const blockNumber = await publicClient.getBlockNumber();
+			const blockOk = check(
+				blockNumber > 0n,
+				"getBlockNumber() returns block > 0",
+				`Block: ${blockNumber.toString()}`,
 			);
 
-			// Check latest block has a timestamp
-			const block = await publicClient.getBlock({ blockTag: "latest" });
-			check(
-				block && block.timestamp > 0n,
-				"Latest block has valid timestamp",
-				`Timestamp: ${block.timestamp.toString()}`,
-			);
+			if (blockOk) {
+				// Check chain ID
+				const chainId = await publicClient.getChainId();
+				check(
+					chainId === 421614,
+					"getChainId() returns Arbitrum Sepolia (421614)",
+					`Chain ID: ${chainId}`,
+				);
+
+				// Check latest block has a timestamp
+				const block = await publicClient.getBlock({ blockTag: "latest" });
+				check(
+					block && block.timestamp > 0n,
+					"Latest block has valid timestamp",
+					`Timestamp: ${block.timestamp.toString()}`,
+				);
+			}
+		} catch (err) {
+			check(false, "viem publicClient connects to Arb Sepolia", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
 		}
-	} catch (err) {
-		check(false, "viem publicClient connects to Arb Sepolia", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
 	}
 
 	// ─────────────────────────────────────────────────────────────────────
-	// Check 6 — @cofhe/sdk mock mode can be initialized
+	// Check 6 — @cofhe/sdk mock mode can be initialized (NETWORK)
 	// ─────────────────────────────────────────────────────────────────────
 	console.log(`\n${BOLD}[6/6] @cofhe/sdk Initialization${RESET}`);
 
-	try {
-		// Check that the SDK core module loads
-		const sdk = await import("@cofhe/sdk");
-		const hasCore = check(
-			typeof sdk.createCofheClientBase === "function" &&
-				typeof sdk.createCofheConfigBase === "function",
-			"@cofhe/sdk core exports are accessible (createCofheClientBase, createCofheConfigBase)",
-			`createCofheClientBase=${typeof sdk.createCofheClientBase} createCofheConfigBase=${typeof sdk.createCofheConfigBase}`,
-		);
-
-		if (hasCore) {
-			// Try to create a config with mock/demo mode settings
-			const config = sdk.createCofheConfigBase({
-				supportedChains: [421614],
-				cofheContractAddress: "0x0000000000000000000000000000000000000000",
-				userAddress: "0x0000000000000000000000000000000000000000",
-				chainId: 421614,
-			});
-			check(
-				config !== null && typeof config === "object",
-				"createCofheConfigBase() returns config object with mock mode",
-				`Type: ${typeof config}, Keys: ${Object.keys(config).join(", ")}`,
+	if (isDryRun) {
+		report("@cofhe/sdk mock mode can be initialized", true, `${YELLOW}[SKIPPED — dry run]${RESET}`);
+	} else {
+		try {
+			// Check that the SDK core module loads
+			const sdk = await import("@cofhe/sdk");
+			const hasCore = check(
+				typeof sdk.createCofheClientBase === "function" &&
+					typeof sdk.createCofheConfigBase === "function",
+				"@cofhe/sdk core exports are accessible (createCofheClientBase, createCofheConfigBase)",
+				`createCofheClientBase=${typeof sdk.createCofheClientBase} createCofheConfigBase=${typeof sdk.createCofheConfigBase}`,
 			);
 
-			// Verify the config has mock-related properties
+			if (hasCore) {
+				// Try to create a config with mock/demo mode settings
+				const config = sdk.createCofheConfigBase({
+					supportedChains: [421614],
+					cofheContractAddress: "0x0000000000000000000000000000000000000000",
+					userAddress: "0x0000000000000000000000000000000000000000",
+					chainId: 421614,
+				});
+				check(
+					config !== null && typeof config === "object",
+					"createCofheConfigBase() returns config object with mock mode",
+					`Type: ${typeof config}, Keys: ${Object.keys(config).join(", ")}`,
+				);
+
+				// Verify the config has mock-related properties
+				check(
+					typeof config.mocks !== "undefined",
+					"Config has mocks property (mock mode available)",
+					`mocks: ${typeof config.mocks}`,
+				);
+			}
+
+			// Check that the permits sub-module loads
+			const permits = await import("@cofhe/sdk/permits");
 			check(
-				typeof config.mocks !== "undefined",
-				"Config has mocks property (mock mode available)",
-				`mocks: ${typeof config.mocks}`,
+				typeof permits.PermitUtils !== "undefined",
+				"@cofhe/sdk/permits exports PermitUtils",
+				`PermitUtils: ${typeof permits.PermitUtils}`,
 			);
+		} catch (err) {
+			check(false, "@cofhe/sdk mock mode can be initialized", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
 		}
-
-		// Check that the permits sub-module loads
-		const permits = await import("@cofhe/sdk/permits");
-		check(
-			typeof permits.PermitUtils !== "undefined",
-			"@cofhe/sdk/permits exports PermitUtils",
-			`PermitUtils: ${typeof permits.PermitUtils}`,
-		);
-	} catch (err) {
-		check(false, "@cofhe/sdk mock mode can be initialized", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
 	}
 
 	// ─────────────────────────────────────────────────────────────────────
