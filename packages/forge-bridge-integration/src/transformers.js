@@ -10,6 +10,19 @@
   var transformers = {};
 
   /* ──────────────────────────────────────────────
+     Module-level constants — created once,
+     shared across all transformer calls.
+     ────────────────────────────────────────────── */
+
+  var ACTION_MAP = {
+    supply: { label: 'Supply', kicker: 'SUP', swatch: '#22c55e', desc: 'Supply assets to lending pool' },
+    borrow: { label: 'Borrow', kicker: 'BRW', swatch: '#eab308', desc: 'Borrow assets from lending pool' },
+    swap: { label: 'Swap', kicker: 'SWP', swatch: '#3b82f6', desc: 'Swap tokens via DEX' },
+    repeat: { label: 'Repeat', kicker: 'RPT', swatch: '#888888', desc: 'Repeat previous action' },
+    settle: { label: 'Settle', kicker: 'STL', swatch: '#ef4444', desc: 'Settle/repay position' },
+  };
+
+  /* ──────────────────────────────────────────────
      transformMarkets
      API /markets → forge L_MARKETS format
      ────────────────────────────────────────────── */
@@ -151,27 +164,24 @@
       return defaultNodeTypes();
     }
     var nodeTypes = {};
-    var actionMap = {
-      supply: { label: 'Supply', kicker: 'SUP', swatch: '#22c55e', desc: 'Supply assets to lending pool' },
-      borrow: { label: 'Borrow', kicker: 'BRW', swatch: '#eab308', desc: 'Borrow assets from lending pool' },
-      swap: { label: 'Swap', kicker: 'SWP', swatch: '#3b82f6', desc: 'Swap tokens via DEX' },
-      repeat: { label: 'Repeat', kicker: 'RPT', swatch: '#888888', desc: 'Repeat previous action' },
-      settle: { label: 'Settle', kicker: 'STL', swatch: '#ef4444', desc: 'Settle/repay position' },
-    };
     modules.forEach(function (m) {
       var action = (m.action || m.type || '').toLowerCase();
-      if (actionMap[action]) {
-        nodeTypes[m.id || action] = Object.assign({}, actionMap[action], {
+      if (ACTION_MAP[action]) {
+        // Use object spread to avoid Object.assign intermediate allocation
+        nodeTypes[m.id || action] = {
+          ...ACTION_MAP[action],
           protocol: m.protocol || m.name || '',
-        });
+        };
       }
     });
     // Ensure defaults exist
-    var keys = Object.keys(actionMap);
+    var keys = Object.keys(ACTION_MAP);
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
-      if (!Object.values(nodeTypes).some(function (n) { return n.kicker === actionMap[k].kicker; })) {
-        nodeTypes[k] = Object.assign({}, actionMap[k]);
+      if (!Object.values(nodeTypes).some(function (n) { return n.kicker === ACTION_MAP[k].kicker; })) {
+        // Use object spread instead of Object.assign({}, ...) to avoid
+        // creating both an empty object and a copy
+        nodeTypes[k] = { ...ACTION_MAP[k] };
       }
     }
     return nodeTypes;
@@ -295,5 +305,7 @@
   transformers.calculateNetValue = calculateNetValue;
   transformers.calculateLTV = calculateLTV;
 
-  window.__transformers = transformers;
+  if (typeof window !== 'undefined') {
+    window.__transformers = transformers;
+  }
 })();
