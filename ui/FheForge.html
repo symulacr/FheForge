@@ -79,6 +79,24 @@
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
+  <!-- ESM importmap for bridge dependencies (viem, wagmi, cofhe, axios) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "viem": "https://esm.sh/viem@2.48",
+      "@wagmi/core": "https://esm.sh/@wagmi/core@2.22",
+      "@cofhe/sdk": "https://esm.sh/@cofhe/sdk@0.5",
+      "axios": "https://esm.sh/axios@1.7"
+    }
+  }
+  </script>
+
+  <!-- BRIDGE: Babel.transform monkey-patch (must load before text/babel scripts) -->
+  <script src="../packages/forge-bridge-integration/src/babel-transform-plugin.js"></script>
+
+  <!-- BRIDGE: Screen wrappers (wraps window.* screens with key={dataVersion}) -->
+  <script src="../packages/forge-bridge-integration/src/screen-override.js"></script>
+
   <!-- Tweaks shell -->
   <script type="text/babel" src="tweaks-panel.jsx?v=v30"></script>
 
@@ -96,6 +114,9 @@
 
   <!-- App -->
   <script type="text/babel" src="app.jsx?v=v30"></script>
+
+  <!-- BRIDGE: Integration adapter (DataFetcher, StateManager, lifecycle — loads last) -->
+  <script src="../packages/forge-bridge-integration/src/integration-adapter.js"></script>
 
   <script>
     const obs = new MutationObserver(() => {

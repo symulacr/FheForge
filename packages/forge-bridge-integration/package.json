@@ -1,0 +1,16 @@
+{
+	"name": "@fheforge/bridge-integration",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Forge frontend integration layer — Babel plugin, screen wrappers, data transformers",
+	"scripts": {
+		"test": "bun test --preload ./test/setup.js",
+		"type-check": "tsc --noEmit",
+		"lint": "cd ../../ && bunx biome check packages/forge-bridge-integration/src"
+	},
+	"devDependencies": {
+		"@babel/standalone": "7.29.0",
+		"typescript": "^5.0.0"
+	}
+}

@@ -1,0 +1,85 @@
+/**
+ * Global type declarations for browser globals used by the bridge integration layer.
+ */
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable no-var */
+
+interface Window {
+  __MOCK__: Record<string, any>;
+  __BRIDGE__: BridgeAPI;
+  __transformers: TransformersAPI;
+  __integration: IntegrationAPI;
+  __wrapScreens: () => void;
+  bridge: any;
+  Landing: any;
+  Dashboard: any;
+  Lending: any;
+  Market: any;
+  Governance: any;
+  ConnectModal: any;
+  React: typeof React;
+  ethereum: any;
+}
+
+interface BridgeAPI {
+  setMockData(key: string, value: any): void;
+  getMockData(key: string): any;
+  onDataUpdate(fn: (data: any) => void): () => void;
+  notify(): void;
+  _listeners: Set<Function>;
+  _dataVersion: number;
+}
+
+interface TransformersAPI {
+  transformMarkets(apiMarkets: any[]): any[];
+  transformPositions(supplies: any[], borrows: any[], markets: any[]): any[];
+  transformActivities(apiActivities: any[]): any[];
+  formatTicker(stats: Record<string, any>): string[];
+  transformStrategies(apiStrategies: any[]): any[];
+  transformProposals(apiProposals: any[]): any[];
+  transformNodeTypes(modules: any[]): Record<string, any>;
+  calculateNetValue(positions: any[]): string;
+  calculateLTV(positions: any[]): { ratio: string; gaugeValue: number };
+}
+
+interface IntegrationAPI {
+  StateManager: {
+    setMockData(key: string, value: any): void;
+    setBatchMockData(data: Record<string, any>): void;
+    getMockData(key: string): any;
+    clearMockData(): void;
+  };
+  DataFetcher: {
+    register(name: string, fetchFn: () => Promise<any>, intervalMs: number): void;
+    startAll(): void;
+    stopAll(): void;
+  };
+  Lifecycle: {
+    start(): void;
+    stop(): void;
+    isRunning(): boolean;
+  };
+}
+
+declare var Babel: {
+  transform: (code: string, options?: any) => { code: string; map?: any; ast?: any };
+  packages: {
+    types: {
+      identifier(name: string): any;
+      logicalExpression(operator: string, left: any, right: any): any;
+      optionalMemberExpression(object: any, property: any, computed: boolean, optional: boolean): any;
+      stringLiteral(value: string): any;
+      jsxExpressionContainer(expression: any): any;
+      memberExpression(object: any, property: any, computed?: boolean): any;
+    };
+  };
+};
+
+declare module 'bun:test' {
+  export const describe: (name: string, fn: () => void) => void;
+  export const it: (name: string, fn: () => void) => void;
+  export const expect: (value: any) => any;
+  export const beforeAll: (fn: () => void) => void;
+  export const afterAll: (fn: () => void) => void;
+}

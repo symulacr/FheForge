@@ -1,0 +1,299 @@
+/* ──────────────────────────────────────────────
+   Transformers — Pure functions that map
+   bridge adapter data shapes → forge mock-compatible shapes.
+   All functions are side-effect-free and browser-compatible.
+   ────────────────────────────────────────────── */
+
+(function () {
+  'use strict';
+
+  var transformers = {};
+
+  /* ──────────────────────────────────────────────
+     transformMarkets
+     API /markets → forge L_MARKETS format
+     ────────────────────────────────────────────── */
+  function transformMarkets(apiMarkets) {
+    if (!Array.isArray(apiMarkets)) return [];
+    return apiMarkets.map(function (m) {
+      return {
+        asset: m.asset || m.symbol || 'UNKNOWN',
+        supplyApy: formatApy(m.supplyRate || m.supplyApy),
+        borrowApy: formatApy(m.borrowRate || m.borrowApy),
+        util: m.utilization != null ? Math.round(m.utilization) : 0,
+        tvl: m.totalSupplyUsd || m.tvl || '0',
+        liq: m.liquidity || m.totalBorrowUsd || '0',
+        oracle: m.oraclePrice || m.price || '0',
+        price: m.price || m.oraclePrice || '0',
+      };
+    });
+  }
+
+  /* ──────────────────────────────────────────────
+     transformPositions
+     Supply/borrow objects → forge D_POSITIONS format
+     ────────────────────────────────────────────── */
+  function transformPositions(supplies, borrows, markets) {
+    var positions = [];
+    if (Array.isArray(supplies)) {
+      supplies.forEach(function (s) {
+        positions.push({
+          id: s.id || 'sup-' + (s.asset || Math.random().toString(36).slice(2, 8)),
+          venue: 'Lending Pool',
+          asset: s.asset || 'UNKNOWN',
+          side: 'supply',
+          amount: s.amountUsd || s.amount || '0',
+          apy: lookupApy(markets, s.asset, 'supply'),
+          liq: s.liquidationThreshold || '0',
+        });
+      });
+    }
+    if (Array.isArray(borrows)) {
+      borrows.forEach(function (b) {
+        positions.push({
+          id: b.id || 'bor-' + (b.asset || Math.random().toString(36).slice(2, 8)),
+          venue: 'Lending Pool',
+          asset: b.asset || 'UNKNOWN',
+          side: 'borrow',
+          amount: b.amountUsd || b.amount || '0',
+          apy: lookupApy(markets, b.asset, 'borrow'),
+          liq: b.liquidationThreshold || '0',
+        });
+      });
+    }
+    return positions;
+  }
+
+  /* ──────────────────────────────────────────────
+     transformActivities
+     API events → forge D_ACTIVITY format
+     ────────────────────────────────────────────── */
+  function transformActivities(apiActivities) {
+    if (!Array.isArray(apiActivities)) return [];
+    return apiActivities.map(function (a) {
+      return {
+        id: a.id || a.txHash || 'act-' + Math.random().toString(36).slice(2, 8),
+        block: a.blockNumber != null ? String(a.blockNumber) : '',
+        age: relativeTime(a.timestamp || a.createdAt),
+        what: a.description || a.type || 'Transaction',
+        kind: a.kind || a.action || 'swapped',
+        asset: a.asset || a.token || '',
+        delta: formatDelta(a.amount, a.side),
+      };
+    });
+  }
+
+  /* ──────────────────────────────────────────────
+     formatTicker
+     Stats → 9 formatted ticker strings
+     ────────────────────────────────────────────── */
+  function formatTicker(stats) {
+    var s = stats || {};
+    return [
+      '⧫ ' + (s.blockNumber || '—'),
+      'GAS: ' + (s.gasPrice ? s.gasPrice + ' gwei' : '—'),
+      'POOL: ' + (s.poolTvl || '—'),
+      'VAULT: ' + (s.vaultTvl || '—'),
+      'COMP: ' + (s.composerTvl || '—'),
+      'ENCRYPTED: ' + (s.encryptedOps || '—'),
+      'PERMITS: ' + (s.dailyPermits || '—'),
+      'STRATS: ' + (s.activeStrategies || '—'),
+      'DEPLOYS: ' + (s.composerDeploys || '—'),
+    ];
+  }
+
+  /* ──────────────────────────────────────────────
+     transformStrategies
+     API defi-strategies → forge D_STRATS format
+     ────────────────────────────────────────────── */
+  function transformStrategies(apiStrategies) {
+    if (!Array.isArray(apiStrategies)) return [];
+    return apiStrategies.map(function (s) {
+      return {
+        id: s.id || s.strategyId || 'strat-' + Math.random().toString(36).slice(2, 8),
+        name: s.name || 'Strategy',
+        apy: formatApy(s.apy || s.estimatedApy),
+        staked: s.totalStakedUsd || s.staked || '0',
+        loops: s.loopCount || s.loops || 0,
+        last: relativeTime(s.lastUpdated || s.updatedAt || s.createdAt),
+      };
+    });
+  }
+
+  /* ──────────────────────────────────────────────
+     transformProposals
+     Governance API → forge PROPOSALS format
+     ────────────────────────────────────────────── */
+  function transformProposals(apiProposals) {
+    if (!Array.isArray(apiProposals)) return [];
+    return apiProposals.map(function (p) {
+      return {
+        id: p.id || p.proposalId || 'prop-' + Math.random().toString(36).slice(2, 8),
+        title: p.title || 'Proposal',
+        status: (p.status || 'pending').toLowerCase(),
+        body: p.description || p.body || '',
+        forVotes: p.forVotes != null ? String(p.forVotes) : '0',
+        againstVotes: p.againstVotes != null ? String(p.againstVotes) : '0',
+        abstain: p.abstainVotes != null ? String(p.abstainVotes) : '0',
+        quorum: p.quorum ? String(p.quorum) : '0',
+        timeLeft: p.deadline ? relativeTime(p.deadline) : '—',
+        proposer: p.proposer || p.creator || '0x0000',
+      };
+    });
+  }
+
+  /* ──────────────────────────────────────────────
+     transformNodeTypes
+     Defi modules → node type definition map
+     ────────────────────────────────────────────── */
+  function transformNodeTypes(modules) {
+    if (!Array.isArray(modules)) {
+      return defaultNodeTypes();
+    }
+    var nodeTypes = {};
+    var actionMap = {
+      supply: { label: 'Supply', kicker: 'SUP', swatch: '#22c55e', desc: 'Supply assets to lending pool' },
+      borrow: { label: 'Borrow', kicker: 'BRW', swatch: '#eab308', desc: 'Borrow assets from lending pool' },
+      swap: { label: 'Swap', kicker: 'SWP', swatch: '#3b82f6', desc: 'Swap tokens via DEX' },
+      repeat: { label: 'Repeat', kicker: 'RPT', swatch: '#888888', desc: 'Repeat previous action' },
+      settle: { label: 'Settle', kicker: 'STL', swatch: '#ef4444', desc: 'Settle/repay position' },
+    };
+    modules.forEach(function (m) {
+      var action = (m.action || m.type || '').toLowerCase();
+      if (actionMap[action]) {
+        nodeTypes[m.id || action] = Object.assign({}, actionMap[action], {
+          protocol: m.protocol || m.name || '',
+        });
+      }
+    });
+    // Ensure defaults exist
+    var keys = Object.keys(actionMap);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (!Object.values(nodeTypes).some(function (n) { return n.kicker === actionMap[k].kicker; })) {
+        nodeTypes[k] = Object.assign({}, actionMap[k]);
+      }
+    }
+    return nodeTypes;
+  }
+
+  /* ──────────────────────────────────────────────
+     Portfolio metrics
+     ────────────────────────────────────────────── */
+  function calculateNetValue(positions) {
+    if (!Array.isArray(positions) || positions.length === 0) return '0.00';
+    var total = 0;
+    for (var i = 0; i < positions.length; i++) {
+      var amt = parseUsd(positions[i].amount);
+      if (positions[i].side === 'borrow') {
+        total -= amt;
+      } else {
+        total += amt;
+      }
+    }
+    return total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function calculateLTV(positions) {
+    if (!Array.isArray(positions) || positions.length === 0) return { ratio: '0.00', gaugeValue: 0 };
+    var totalSupply = 0;
+    var totalBorrow = 0;
+    for (var i = 0; i < positions.length; i++) {
+      var amt = parseUsd(positions[i].amount);
+      if (positions[i].side === 'borrow') {
+        totalBorrow += amt;
+      } else {
+        totalSupply += amt;
+      }
+    }
+    if (totalSupply === 0) return { ratio: '0.00', gaugeValue: 0 };
+    var ratio = (totalBorrow / totalSupply) * 100;
+    return {
+      ratio: ratio.toFixed(2),
+      gaugeValue: Math.min(Math.round(ratio), 100),
+    };
+  }
+
+  /* ──────────────────────────────────────────────
+     Internal helpers
+     ────────────────────────────────────────────── */
+
+  function formatApy(val) {
+    if (val == null) return '—';
+    var num = typeof val === 'string' ? parseFloat(val) : val;
+    if (isNaN(num)) return '—';
+    return num.toFixed(2) + '%';
+  }
+
+  function parseUsd(val) {
+    if (val == null) return 0;
+    if (typeof val === 'number') return val;
+    var cleaned = String(val).replace(/[$,]/g, '');
+    var num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  }
+
+  function relativeTime(timestamp) {
+    if (!timestamp) return '—';
+    var now = Date.now();
+    var then = new Date(timestamp).getTime();
+    if (isNaN(then)) return String(timestamp);
+    var diff = now - then;
+    var seconds = Math.floor(diff / 1000);
+    if (seconds < 0) return '0s';
+    if (seconds < 60) return seconds + 's';
+    var minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return minutes + 'm';
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + 'h';
+    var days = Math.floor(hours / 24);
+    return days + 'd';
+  }
+
+  function formatDelta(amount, side) {
+    if (amount == null) return '';
+    var prefix = side === 'borrow' || side === 'withdraw' ? '-' : '+';
+    var num = typeof amount === 'string' ? parseUsd(amount) : amount;
+    if (typeof num === 'number') {
+      return prefix + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    return prefix + String(amount);
+  }
+
+  function lookupApy(markets, asset, side) {
+    if (!Array.isArray(markets) || !asset) return '—';
+    for (var i = 0; i < markets.length; i++) {
+      var m = markets[i];
+      if ((m.asset || m.symbol) === asset) {
+        return side === 'supply' ? formatApy(m.supplyApy || m.supplyRate) : formatApy(m.borrowApy || m.borrowRate);
+      }
+    }
+    return '—';
+  }
+
+  function defaultNodeTypes() {
+    return {
+      supply: { label: 'Supply', kicker: 'SUP', swatch: '#22c55e', desc: 'Supply assets to lending pool', protocol: '' },
+      borrow: { label: 'Borrow', kicker: 'BRW', swatch: '#eab308', desc: 'Borrow assets from lending pool', protocol: '' },
+      swap: { label: 'Swap', kicker: 'SWP', swatch: '#3b82f6', desc: 'Swap tokens via DEX', protocol: '' },
+      repeat: { label: 'Repeat', kicker: 'RPT', swatch: '#888888', desc: 'Repeat previous action', protocol: '' },
+      settle: { label: 'Settle', kicker: 'STL', swatch: '#ef4444', desc: 'Settle/repay position', protocol: '' },
+    };
+  }
+
+  /* ──────────────────────────────────────────────
+     Export to window scope
+     ────────────────────────────────────────────── */
+
+  transformers.transformMarkets = transformMarkets;
+  transformers.transformPositions = transformPositions;
+  transformers.transformActivities = transformActivities;
+  transformers.formatTicker = formatTicker;
+  transformers.transformStrategies = transformStrategies;
+  transformers.transformProposals = transformProposals;
+  transformers.transformNodeTypes = transformNodeTypes;
+  transformers.calculateNetValue = calculateNetValue;
+  transformers.calculateLTV = calculateLTV;
+
+  window.__transformers = transformers;
+})();
