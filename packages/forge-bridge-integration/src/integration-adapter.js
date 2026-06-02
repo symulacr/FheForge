@@ -88,6 +88,12 @@
       this._intervals = {};
     },
 
+    /* Public: fetch a single named data source immediately.
+       Used by screen wrappers to trigger data fetches on mount. */
+    fetchNow: function (name) {
+      this._fetchOne(name);
+    },
+
     /* Fetch a single data source, with error handling */
     _fetchOne: function (name) {
       var cfg = this._fetchFns[name];
