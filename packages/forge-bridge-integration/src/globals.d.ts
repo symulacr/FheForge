@@ -8,9 +8,10 @@
 interface Window {
   __MOCK__: Record<string, any>;
   __BRIDGE__: BridgeAPI;
+  __bridgeBus: any;
   __transformers: TransformersAPI;
   __integration: IntegrationAPI;
-  __wrapScreens: () => void;
+  DataFetcherV2: any;
   bridge: any;
   Landing: any;
   Dashboard: any;
