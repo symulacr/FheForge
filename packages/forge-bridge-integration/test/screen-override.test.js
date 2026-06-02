@@ -117,49 +117,500 @@ describe('screen-override.js', () => {
   });
 });
 
-describe('BridgeConnectModal onNext interception', () => {
-  it('ConnectModal wrapper passes onNext through props', () => {
-    const FakeModal = function (props) {
+describe('BridgeConnectModal — setCtx interception for wallet connection', () => {
+  it('wraps setCtx to intercept connected transition', () => {
+    globalThis.window.ConnectModal = function (props) {
       return { type: 'modal', props };
     };
-    globalThis.window.ConnectModal = FakeModal;
     globalThis.window.__wrapScreens();
 
     const Wrapped = globalThis.window.ConnectModal;
-    const rendered = Wrapped({ onNext: 'original-onnext', customProp: 'test' });
+    const originalSetCtx = function () {};
 
-    // Should have onNext in props (intercepted)
-    expect(rendered.props.onNext).toBeDefined();
-    // The key should be set
-    expect(rendered.props.key).toBeDefined();
-    expect(typeof rendered.props.key).toBe('number');
+    // The wrapper returns a React element where setCtx is the wrapped version
+    var rendered = Wrapped({ setCtx: originalSetCtx });
+    var wrappedSetCtx = rendered.props.setCtx;
+
+    // setCtx should be wrapped (different from original)
+    expect(wrappedSetCtx).not.toBe(originalSetCtx);
+    expect(typeof wrappedSetCtx).toBe('function');
   });
 
-  it('BridgeConnectModal intercepts step 0 with wallet.connect call', () => {
-    const FakeModal = function (props) {
+  it('connects wallet and performs JWT flow when mock connected transition detected', async () => {
+    globalThis.window.ConnectModal = function (props) {
       return { type: 'modal', props };
     };
-    let connectCalled = false;
+
+    // Set up mock bridge with all required methods
+    let connectResolve = null;
+    let loginResolve = null;
     globalThis.window.bridge = {
       wallet: {
-        connect: function (walletId) {
-          connectCalled = true;
-          expect(walletId).toBe('metamask');
-          return Promise.resolve(['0x1234']);
+        connect: function (connectorId) {
+          return new Promise(function (resolve) {
+            connectResolve = resolve;
+          });
+        },
+        getAccount: function () { return '0xREAL_WALLET_ADDRESS_123'; },
+        getChainId: function () { return 421614; },
+        login: function () {
+          return new Promise(function (resolve) {
+            loginResolve = resolve;
+          });
+        },
+        isConnected: function () { return true; },
+      },
+      fhe: {
+        permitCheck: function () { return { unlocked: false, secondsLeft: 0 }; },
+        onPermitChange: function (cb) {
+          cb({ unlocked: false, secondsLeft: 0 });
+          return function () {};
         },
       },
     };
 
-    globalThis.window.ConnectModal = FakeModal;
     globalThis.window.__wrapScreens();
 
     const Wrapped = globalThis.window.ConnectModal;
-    const rendered = Wrapped({});
+    const ctx = { connected: false, address: null };
+    var setCtxCalls = [];
+    const originalSetCtx = function (update) {
+      if (typeof update === 'function') {
+        var result = update(ctx);
+        Object.assign(ctx, result);
+        setCtxCalls.push(result);
+      } else {
+        Object.assign(ctx, update);
+        setCtxCalls.push(update);
+      }
+    };
 
-    // Verify onNext is a function (the intercepted version)
-    expect(typeof rendered.props.onNext).toBe('function');
+    // Get the wrapped setCtx from the rendered element
+    var rendered = Wrapped({ ctx: ctx, setCtx: originalSetCtx, open: true });
+    var capturedSetCtx = rendered.props.setCtx;
+
+    // Now simulate the step 1→2 transition from original ConnectModal
+    // The mock onNext calls: setCtx(c => ({...c, connected: true, address: "0x9f3a2c4b1e0d8f7a6c5b4a39"}))
+    capturedSetCtx(function (prev) {
+      return { ...prev, connected: true, address: '0x9f3a2c4b1e0d8f7a6c5b4a39' };
+    });
+
+    // The wrapper should have detected the connected transition and started wallet connect
+    // It should NOT have passed the mock update through yet
+    expect(ctx.connected).toBe(false);
+
+    // Now resolve the wallet connect
+    if (connectResolve) connectResolve({ accounts: ['0xREAL_WALLET_ADDRESS_123'] });
+    await new Promise(function (r) { setTimeout(r, 10); });
+
+    // Now resolve the JWT login
+    if (loginResolve) loginResolve({ accessToken: 'real-jwt-token', userId: 'user-1', walletAddress: '0xREAL_WALLET_ADDRESS_123' });
+    await new Promise(function (r) { setTimeout(r, 10); });
+
+    // After both resolve, ctx should be updated with real address
+    expect(ctx.connected).toBe(true);
+    expect(ctx.address).toBe('0xREAL_WALLET_ADDRESS_123');
 
     // Cleanup
+    delete globalThis.window.bridge;
+  });
+
+  it('passes non-connection setCtx updates through immediately', () => {
+    globalThis.window.ConnectModal = function (props) {
+      return { type: 'modal', props };
+    };
+    globalThis.window.__wrapScreens();
+
+    const Wrapped = globalThis.window.ConnectModal;
+    const ctx = { connected: true, address: '0xabc', someOtherProp: 'val' };
+    const originalSetCtx = function (update) {
+      if (typeof update === 'function') {
+        Object.assign(ctx, update(ctx));
+      } else {
+        Object.assign(ctx, update);
+      }
+    };
+
+    var rendered = Wrapped({ ctx: ctx, setCtx: originalSetCtx });
+    var capturedSetCtx = rendered.props.setCtx;
+
+    // Non-connection update (ctx already connected)
+    capturedSetCtx({ someOtherProp: 'updated' });
+    expect(ctx.someOtherProp).toBe('updated');
+  });
+
+  it('passes non-mock connected transitions through immediately', () => {
+    globalThis.window.ConnectModal = function (props) {
+      return { type: 'modal', props };
+    };
+    globalThis.window.__wrapScreens();
+
+    const Wrapped = globalThis.window.ConnectModal;
+    const ctx = { connected: false, address: null };
+    const originalSetCtx = function (update) {
+      if (typeof update === 'function') {
+        Object.assign(ctx, update(ctx));
+      } else {
+        Object.assign(ctx, update);
+      }
+    };
+
+    var rendered = Wrapped({ ctx: ctx, setCtx: originalSetCtx });
+    var capturedSetCtx = rendered.props.setCtx;
+
+    // Transition to connected with a real-looking address (not mock)
+    capturedSetCtx(function (prev) {
+      return { ...prev, connected: true, address: '0x1234567890abcdef' };
+    });
+
+    // Should pass through since address doesn't match mock pattern
+    expect(ctx.connected).toBe(true);
+    expect(ctx.address).toBe('0x1234567890abcdef');
+  });
+});
+
+describe('BridgeConnectModal — grantPermit interception', () => {
+  it('wraps grantPermit to call bridge.fhe.permitGrant()', async () => {
+    globalThis.window.ConnectModal = function (props) {
+      return { type: 'modal', props };
+    };
+
+    let permitResolve = null;
+    globalThis.window.bridge = {
+      fhe: {
+        permitGrant: function () {
+          return new Promise(function (resolve) {
+            permitResolve = resolve;
+          });
+        },
+        permitCheck: function () { return { unlocked: false, secondsLeft: 0 }; },
+        onPermitChange: function (cb) {
+          cb({ unlocked: false, secondsLeft: 0 });
+          return function () {};
+        },
+      },
+      wallet: {
+        getAccount: function () { return '0xabc'; },
+        getChainId: function () { return 421614; },
+        isConnected: function () { return true; },
+      },
+    };
+
+    globalThis.window.__wrapScreens();
+
+    const Wrapped = globalThis.window.ConnectModal;
+    const ctx = { connected: true, address: '0xabc', permitUnlocked: false, permitSeconds: 0 };
+    var originalGrantCalled = false;
+    const originalGrant = function () { originalGrantCalled = true; };
+    const originalSetCtx = function (update) {
+      if (typeof update === 'function') {
+        Object.assign(ctx, update(ctx));
+      } else {
+        Object.assign(ctx, update);
+      }
+    };
+
+    var rendered = Wrapped({ ctx: ctx, setCtx: originalSetCtx, grantPermit: originalGrant });
+    var capturedGrantPermit = rendered.props.grantPermit;
+
+    // Call the wrapped grantPermit
+    capturedGrantPermit();
+
+    // Should not have called the original yet
+    expect(originalGrantCalled).toBe(false);
+    // ctx should not be updated yet
+    expect(ctx.permitUnlocked).toBe(false);
+
+    // Resolve the permit grant
+    if (permitResolve) permitResolve({ unlocked: true, secondsLeft: 900 });
+    await new Promise(function (r) { setTimeout(r, 10); });
+
+    // After resolution, ctx should be updated
+    expect(ctx.permitUnlocked).toBe(true);
+    expect(ctx.permitSeconds).toBe(900);
+
+    delete globalThis.window.bridge;
+  });
+
+  it('calls original grantPermit as fallback when bridge is not available', () => {
+    globalThis.window.ConnectModal = function (props) {
+      return { type: 'modal', props };
+    };
+
+    // No bridge on window
+    delete globalThis.window.bridge;
+
+    globalThis.window.__wrapScreens();
+
+    const Wrapped = globalThis.window.ConnectModal;
+    var originalGrantCalled = false;
+    const originalGrant = function () { originalGrantCalled = true; };
+    var rendered = Wrapped({ grantPermit: originalGrant });
+    var capturedGrantPermit = rendered.props.grantPermit;
+
+    capturedGrantPermit();
+
+    // Should have called the original since no bridge
+    expect(originalGrantCalled).toBe(true);
+  });
+});
+
+describe('BridgeConnectModal — network mismatch detection', () => {
+  it('detects wrong network and provides switch prompt', async () => {
+    globalThis.window.ConnectModal = function (props) {
+      return { type: 'modal', props };
+    };
+
+    var switchNetworkCalled = false;
+    var switchChainId = null;
+    globalThis.window.bridge = {
+      wallet: {
+        connect: function () { return Promise.resolve({ accounts: ['0xabc'] }); },
+        getAccount: function () { return '0xabc'; },
+        getChainId: function () { return 1; }, // Ethereum mainnet, not 421614
+        login: function () { return Promise.resolve({ accessToken: 'test' }); },
+        isConnected: function () { return true; },
+        switchNetwork: function (chainId) {
+          switchNetworkCalled = true;
+          switchChainId = chainId;
+          return Promise.resolve();
+        },
+        onChainChange: function () { return function () {}; },
+      },
+      fhe: {
+        permitCheck: function () { return { unlocked: false, secondsLeft: 0 }; },
+        onPermitChange: function (cb) {
+          cb({ unlocked: false, secondsLeft: 0 });
+          return function () {};
+        },
+      },
+    };
+
+    globalThis.window.__wrapScreens();
+
+    const Wrapped = globalThis.window.ConnectModal;
+    const ctx = { connected: false, address: null };
+    const originalSetCtx = function (update) {
+      if (typeof update === 'function') {
+        Object.assign(ctx, update(ctx));
+      } else {
+        Object.assign(ctx, update);
+      }
+    };
+
+    var rendered = Wrapped({ ctx: ctx, setCtx: originalSetCtx, open: true });
+    var capturedSetCtx = rendered.props.setCtx;
+
+    // Trigger the mock connected transition (step 1→2)
+    capturedSetCtx(function (prev) {
+      return { ...prev, connected: true, address: '0x9f3a2c4b1e0d8f7a6c5b4a39' };
+    });
+
+    // Wait for async flow to detect mismatch and call switchNetwork
+    await new Promise(function (r) { setTimeout(r, 100); });
+
+    // The connect flow should have detected chainId 1 !== 421614 and called switchNetwork
+    expect(switchNetworkCalled).toBe(true);
+    expect(switchChainId).toBe(421614);
+
+    delete globalThis.window.bridge;
+  });
+});
+
+describe('BridgeConnectModal — onPermitChange wiring', () => {
+  it('subscribes to bridge.fhe.onPermitChange on mount', () => {
+    var subscribeCb = null;
+    globalThis.window.ConnectModal = function (props) {
+      return { type: 'modal', props };
+    };
+
+    globalThis.window.bridge = {
+      wallet: {
+        getAccount: function () { return '0xabc'; },
+        getChainId: function () { return 421614; },
+        isConnected: function () { return true; },
+      },
+      fhe: {
+        permitGrant: function () { return Promise.resolve({ unlocked: true, secondsLeft: 900 }); },
+        permitCheck: function () { return { unlocked: false, secondsLeft: 0 }; },
+        onPermitChange: function (cb) {
+          subscribeCb = cb;
+          cb({ unlocked: false, secondsLeft: 0 });
+          return function () {};
+        },
+      },
+    };
+
+    globalThis.window.__wrapScreens();
+
+    const Wrapped = globalThis.window.ConnectModal;
+    const ctx = { connected: true, permitUnlocked: false, permitSeconds: 0 };
+    const originalSetCtx = function (update) {
+      if (typeof update === 'function') {
+        Object.assign(ctx, update(ctx));
+      } else {
+        Object.assign(ctx, update);
+      }
+    };
+
+    // Mount the component — effects run synchronously, triggering onPermitChange subscription
+    Wrapped({ ctx: ctx, setCtx: originalSetCtx });
+
+    // onPermitChange should have been called with initial state via the subscription
+    // Since it sets permitUnlocked=false, ctx.permitUnlocked should still be false
+    expect(ctx.permitUnlocked).toBe(false);
+    expect(ctx.permitSeconds).toBe(0);
+
+    // Now simulate permit state change
+    if (subscribeCb) {
+      subscribeCb({ unlocked: true, secondsLeft: 850 });
+    }
+
+    expect(ctx.permitUnlocked).toBe(true);
+    expect(ctx.permitSeconds).toBe(850);
+
+    delete globalThis.window.bridge;
+  });
+});
+
+describe('BridgeConnectModal — error handling', () => {
+  it('detects connection failure and does not advance step', async () => {
+    globalThis.window.ConnectModal = function (props) {
+      return { type: 'modal', props };
+    };
+
+    globalThis.window.bridge = {
+      wallet: {
+        connect: function () { return Promise.reject(new Error('User rejected connection')); },
+        getAccount: function () { return null; },
+        getChainId: function () { return 421614; },
+        login: function () { return Promise.reject(new Error('Not connected')); },
+        isConnected: function () { return false; },
+      },
+      fhe: {
+        permitCheck: function () { return { unlocked: false, secondsLeft: 0 }; },
+        onPermitChange: function (cb) {
+          cb({ unlocked: false, secondsLeft: 0 });
+          return function () {};
+        },
+      },
+    };
+
+    globalThis.window.__wrapScreens();
+
+    const Wrapped = globalThis.window.ConnectModal;
+    const ctx = { connected: false, address: null };
+    var setCtxCalls = [];
+    const originalSetCtx = function (update) {
+      if (typeof update === 'function') {
+        var result = update(ctx);
+        Object.assign(ctx, result);
+        setCtxCalls.push(result);
+      } else {
+        Object.assign(ctx, update);
+        setCtxCalls.push(update);
+      }
+    };
+
+    var rendered = Wrapped({ ctx: ctx, setCtx: originalSetCtx, open: true });
+    var capturedSetCtx = rendered.props.setCtx;
+
+    // Simulate mock connected transition
+    capturedSetCtx(function (prev) {
+      return { ...prev, connected: true, address: '0x9f3a2c4b1e0d8f7a6c5b4a39' };
+    });
+
+    // The mock update should be suppressed while connect is in progress
+    expect(ctx.connected).toBe(false);
+
+    // Wait for the async connect to fail
+    await new Promise(function (r) { setTimeout(r, 50); });
+
+    // ctx should NOT have been updated with connected=true since connect failed
+    // But we should set a connect error
+    expect(ctx.connected).toBe(false);
+    expect(ctx.address).toBeNull();
+
+    // The mock update must not have been applied
+    var hasMockUpdate = setCtxCalls.some(function (c) {
+      return c.address === '0x9f3a2c4b1e0d8f7a6c5b4a39';
+    });
+    expect(hasMockUpdate).toBe(false);
+
+    delete globalThis.window.bridge;
+  });
+
+  it('supports retry after connection failure', async () => {
+    globalThis.window.ConnectModal = function (props) {
+      return { type: 'modal', props };
+    };
+
+    var connectAttempts = 0;
+    globalThis.window.bridge = {
+      wallet: {
+        connect: function () {
+          connectAttempts++;
+          if (connectAttempts === 1) {
+            return Promise.reject(new Error('First attempt failed'));
+          }
+          return Promise.resolve({ accounts: ['0xRETRY_SUCCESS_123'] });
+        },
+        getAccount: function () {
+          return connectAttempts >= 2 ? '0xRETRY_SUCCESS_123' : null;
+        },
+        getChainId: function () { return 421614; },
+        login: function () {
+          if (connectAttempts < 2) return Promise.reject(new Error('Not connected'));
+          return Promise.resolve({ accessToken: 'jwt-after-retry', userId: 'u1', walletAddress: '0xRETRY_SUCCESS_123' });
+        },
+        isConnected: function () { return connectAttempts >= 2; },
+      },
+      fhe: {
+        permitCheck: function () { return { unlocked: false, secondsLeft: 0 }; },
+        onPermitChange: function (cb) {
+          cb({ unlocked: false, secondsLeft: 0 });
+          return function () {};
+        },
+      },
+    };
+
+    globalThis.window.__wrapScreens();
+
+    const Wrapped = globalThis.window.ConnectModal;
+    const ctx = { connected: false, address: null };
+    const originalSetCtx = function (update) {
+      if (typeof update === 'function') {
+        var result = update(ctx);
+        Object.assign(ctx, result);
+      } else {
+        Object.assign(ctx, update);
+      }
+    };
+
+    var rendered = Wrapped({ ctx: ctx, setCtx: originalSetCtx, open: true });
+    var capturedSetCtx = rendered.props.setCtx;
+
+    // First attempt — trigger mock connected transition
+    capturedSetCtx(function (prev) {
+      return { ...prev, connected: true, address: '0x9f3a2c4b1e0d8f7a6c5b4a39' };
+    });
+
+    // Wait for first attempt to fail
+    await new Promise(function (r) { setTimeout(r, 100); });
+    expect(connectAttempts).toBe(1);
+    expect(ctx.connected).toBe(false);
+
+    // Retry: trigger another connect transition
+    capturedSetCtx(function (prev) {
+      return { ...prev, connected: true, address: '0x9f3a2c4b1e0d8f7a6c5b4a39' };
+    });
+
+    // Wait for second attempt to succeed
+    await new Promise(function (r) { setTimeout(r, 100); });
+    expect(connectAttempts).toBe(2);
+    expect(ctx.connected).toBe(true);
+    expect(ctx.address).toBe('0xRETRY_SUCCESS_123');
+
     delete globalThis.window.bridge;
   });
 });

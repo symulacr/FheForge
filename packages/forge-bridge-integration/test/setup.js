@@ -37,6 +37,12 @@ globalThis.React = globalThis.React || {
     return [state, setState];
   },
   useEffect: function (fn) { if (typeof fn === 'function') fn(); return function () {}; },
+  useRef: function (initialValue) {
+    return { current: initialValue };
+  },
+  useCallback: function (fn, deps) {
+    return fn;
+  },
 };
 
 // Set up __MOCK__ and __BRIDGE__ globals (as in babel-transform-plugin.js)
