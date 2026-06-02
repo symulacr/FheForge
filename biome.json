@@ -7,6 +7,8 @@
 			"ui/**/*.{js,ts,tsx,json,md}",
 			"backend/apps/**/*.{js,ts,tsx,json,md}",
 			"contracts/**/*.{js,ts,tsx,json,md}",
+			"packages/**/*.{js,ts,tsx,json,md}",
+			"!packages/**/dist/",
 			"!bun.lock",
 			"!node_modules",
 			"!ui/.next",

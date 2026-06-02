@@ -15,6 +15,7 @@ pnpm-lock.yaml
 dist/
 build/
 out/
+packages/forge-bridge/dist/
 *.tsbuildinfo
 *.wasm
 

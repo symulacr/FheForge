@@ -3,7 +3,8 @@
 	"private": true,
 	"workspaces": [
 		"backend/apps",
-		"contracts"
+		"contracts",
+		"packages/forge-bridge"
 	],
 	"scripts": {
 		"dev:backend": "bun run --cwd backend/apps start:dev",
