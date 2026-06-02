@@ -67,7 +67,13 @@ function useBridgeContext() {
  * @returns {{ loading: boolean, data: any, error: any, execute: Function }}
  */
 function useAsyncAction(asyncFn) {
-	const [state, setState] = useState({ loading: false, data: null, error: null });
+	const [state, setState] = useState(
+		/** @type {{ loading: boolean, data: any, error: any }} */ ({
+			loading: false,
+			data: null,
+			error: null,
+		}),
+	);
 	const mountedRef = useRef(true);
 	const fnRef = useRef(asyncFn);
 	fnRef.current = asyncFn;
@@ -78,6 +84,7 @@ function useAsyncAction(asyncFn) {
 		};
 	}, []);
 
+	/** @type {(...args: any[]) => Promise<any>} */
 	const execute = useCallback(async (...args) => {
 		setState({ loading: true, data: null, error: null });
 		try {
@@ -105,13 +112,15 @@ function useAsyncAction(asyncFn) {
  * @returns {{ loading: boolean, data: any, error: any, refresh: Function }}
  */
 function useAutoFetch(fetchFn, intervalMs) {
-	const [state, setState] = useState({
-		loading: true,
-		data: null,
-		error: null,
-	});
+	const [state, setState] = useState(
+		/** @type {{ loading: boolean, data: any, error: any }} */ ({
+			loading: true,
+			data: null,
+			error: null,
+		}),
+	);
 	const mountedRef = useRef(true);
-	const intervalRef = useRef(null);
+	const intervalRef = useRef(/** @type {ReturnType<typeof setInterval> | null} */ (null));
 	const fetchRef = useRef(fetchFn);
 	fetchRef.current = fetchFn;
 
@@ -217,11 +226,13 @@ export function useBridge(config) {
 export function useWallet() {
 	const bridge = useBridgeContext();
 
-	const [walletState, setWalletState] = useState({
-		loading: false,
-		data: null,
-		error: null,
-	});
+	const [walletState, setWalletState] = useState(
+		/** @type {{ loading: boolean, data: any, error: any }} */ ({
+			loading: false,
+			data: null,
+			error: null,
+		}),
+	);
 	const mountedRef = useRef(true);
 
 	useEffect(() => {
@@ -248,6 +259,7 @@ export function useWallet() {
 		}
 	}, [bridge]);
 
+	/** @type {(connectorId: string) => Promise<any>} */
 	const connect = useCallback(
 		async (connectorId) => {
 			setWalletState({ loading: true, data: null, error: null });
@@ -313,6 +325,7 @@ export function useWallet() {
 		}
 	}, [bridge, snapshotWallet]);
 
+	/** @type {(chainId: number) => Promise<any>} */
 	const switchNetwork = useCallback(
 		async (chainId) => {
 			try {
@@ -332,6 +345,7 @@ export function useWallet() {
 
 	// Listen for chain/account changes
 	useEffect(() => {
+		/** @type {(() => void) | undefined} */
 		let unsub;
 		try {
 			unsub = bridge.wallet.onChainChange(() => {
@@ -389,13 +403,15 @@ export function useWallet() {
 export function usePermit() {
 	const bridge = useBridgeContext();
 
-	const [permitState, setPermitState] = useState({
-		loading: false,
-		data: null,
-		error: null,
-	});
+	const [permitState, setPermitState] = useState(
+		/** @type {{ loading: boolean, data: any, error: any }} */ ({
+			loading: false,
+			data: null,
+			error: null,
+		}),
+	);
 	const mountedRef = useRef(true);
-	const countdownRef = useRef(null);
+	const countdownRef = useRef(/** @type {ReturnType<typeof setInterval> | null} */ (null));
 
 	useEffect(() => {
 		return () => {
@@ -609,6 +625,7 @@ export function useGovernanceProposals(status) {
 export function useGovernanceVote() {
 	const bridge = useBridgeContext();
 
+	/** @type {(proposalId: string, support: boolean, votes: bigint) => Promise<any>} */
 	const castVote = useCallback(
 		async (proposalId, support, votes) => {
 			return bridge.api.governance.castVote({ proposalId, support, votes });
@@ -636,6 +653,7 @@ export function useGovernanceVote() {
 export function useBuilderSimulate() {
 	const bridge = useBridgeContext();
 
+	/** @type {(nodes: any[], edges: any[]) => Promise<any>} */
 	const simulate = useCallback(
 		async (nodes, edges) => {
 			return bridge.api.defiStrategies.simulateDefiStrategy({ nodes, edges });
@@ -663,6 +681,7 @@ export function useBuilderSimulate() {
 export function useBuilderAI() {
 	const bridge = useBridgeContext();
 
+	/** @type {(prompt: string) => Promise<any>} */
 	const build = useCallback(
 		async (prompt) => {
 			return bridge.api.aiBuilder.buildStrategy({ prompt });
@@ -690,6 +709,7 @@ export function useBuilderAI() {
 export function useBuilderDeploy() {
 	const bridge = useBridgeContext();
 
+	/** @type {(steps: any[]) => Promise<any>} */
 	const deploy = useCallback(
 		async (steps) => {
 			return bridge.api.defiStrategies.createDefiStrategy({ steps });
@@ -717,6 +737,7 @@ export function useBuilderDeploy() {
 export function useBuilderEstimate() {
 	const bridge = useBridgeContext();
 
+	/** @type {(operation: any) => Promise<any>} */
 	const estimate = useCallback(
 		async (operation) => {
 			return bridge.api.defiStrategies.simulateDefiStrategy({ operation, estimate: true });
@@ -759,7 +780,13 @@ export function useBuilderModules() {
 export function useFHE() {
 	const bridge = useBridgeContext();
 
-	const [state, setState] = useState({ loading: false, data: null, error: null });
+	const [state, setState] = useState(
+		/** @type {{ loading: boolean, data: any, error: any }} */ ({
+			loading: false,
+			data: null,
+			error: null,
+		}),
+	);
 	const mountedRef = useRef(true);
 
 	useEffect(() => {
@@ -768,6 +795,7 @@ export function useFHE() {
 		};
 	}, []);
 
+	/** @type {(plaintext: string | bigint, tokenAddress?: string) => Promise<any>} */
 	const encrypt = useCallback(
 		async (plaintext, tokenAddress) => {
 			setState({ loading: true, data: null, error: null });
@@ -787,6 +815,7 @@ export function useFHE() {
 		[bridge],
 	);
 
+	/** @type {(handle: any) => Promise<any>} */
 	const decrypt = useCallback(
 		async (handle) => {
 			setState({ loading: true, data: null, error: null });
