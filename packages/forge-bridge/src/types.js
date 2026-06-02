@@ -1,5 +1,43 @@
 /**
- * @typedef {'api' | 'contract' | 'wallet' | 'cofhe' | 'network'} BridgeErrorSource
+ * @typedef {'api' | 'contract' | 'wallet' | 'cofhe' | 'network' | 'config'} BridgeErrorSource
+ */
+
+/**
+ * @typedef {Object} BridgeStateSnapshot
+ * @property {string|null} address - Connected wallet address or null
+ * @property {number} chainId - Current chain ID
+ * @property {boolean} connected - Whether wallet is connected
+ * @property {boolean} hasJwt - Whether a JWT token is available
+ */
+
+/**
+ * @typedef {Object} BridgeFheSnapshot
+ * @property {boolean} permitUnlocked - Whether FHE permit is active
+ * @property {number} permitSecondsLeft - Seconds remaining before permit expiry
+ */
+
+/**
+ * @typedef {Object} BridgeStateData
+ * @property {BridgeStateSnapshot | null} wallet - Wallet adapter state (null if wallet not initialized)
+ * @property {BridgeFheSnapshot | null} fhe - FHE adapter state (null if FHE not initialized)
+ * @property {import('./config.js').BridgeConfig} config - Active configuration
+ */
+
+/**
+ * @typedef {Object} BridgeState
+ * @property {'idle' | 'loading' | 'success' | 'error'} status - Current status
+ * @property {BridgeStateData | null} data - State data
+ * @property {{ code: string, message: string, source: string, recoverable: boolean } | null} error - Error info if status is 'error'
+ */
+
+/**
+ * @typedef {Object} BridgeResult
+ * @property {import('./wallet.js').WalletAdapter} [wallet] - Wallet adapter (present on success)
+ * @property {import('./api.js').ApiAdapter} [api] - API adapter (present on success)
+ * @property {import('./contract.js').ContractAdapter} [contract] - Contract adapter (present on success)
+ * @property {import('./fhe.js').FheAdapter} [fhe] - FHE adapter (present on success)
+ * @property {() => BridgeState} getState - Returns a snapshot of all adapter states
+ * @property {import('./types.js').BridgeError} [error] - Error if initialization failed
  */
 
 /**
