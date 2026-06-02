@@ -144,7 +144,7 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
               right={
                 confirmDelete === d.id ? (
                   <span className="row" style={{ gap: 4 }}>
-                    <button
+                    <span
                       onClick={(e) => { e.stopPropagation(); deleteDraft(d.id); }}
                       style={{
                         border: "1px solid var(--danger)", background: "var(--danger)",
@@ -152,8 +152,8 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
                         fontSize: 10, letterSpacing: 0.08, textTransform: "uppercase",
                         padding: "3px 8px", cursor: "pointer",
                       }}
-                    >Delete</button>
-                    <button
+                    >Delete</span>
+                    <span
                       onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
                       style={{
                         border: "1px solid var(--hairline)", background: "var(--paper)",
@@ -161,14 +161,14 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
                         fontSize: 10, letterSpacing: 0.08, textTransform: "uppercase",
                         padding: "3px 8px", cursor: "pointer",
                       }}
-                    >Keep</button>
+                    >Keep</span>
                   </span>
                 ) : (
-                  <button
+                  <span
                     onClick={(e) => { e.stopPropagation(); setConfirmDelete(d.id); }}
                     style={{ border: 0, background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 14, padding: "2px 6px" }}
                     title="Delete draft"
-                  >×</button>
+                  >×</span>
                 )
               }
               selected={selectedId === d.id}
@@ -206,11 +206,11 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
               title={c.name}
               sub={`apy ${c.apy.toFixed(1)}% · ${c.deployers} deployers`}
               right={
-                <button
+                <span
                   onClick={(e) => { e.stopPropagation(); forkCommunity(c); }}
                   className="btn ghost sm" style={{ padding: "3px 8px", fontSize: 10 }}
                   title="Fork as a new draft"
-                >Fork</button>
+                >Fork</span>
               }
               onClick={() => forkCommunity(c)}
             />

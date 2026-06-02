@@ -91,6 +91,7 @@ function getSessionStorage() {
     const g = getGlobal();
     return g.sessionStorage || null;
   } catch {
+    console.warn('[ConnectInterceptor] sessionStorage not available');
     return null;
   }
 }
@@ -104,6 +105,7 @@ function getLocalStorage() {
     const g = getGlobal();
     return g.localStorage || null;
   } catch {
+    console.warn('[ConnectInterceptor] localStorage not available');
     return null;
   }
 }
@@ -165,7 +167,7 @@ function checkAndSwitchNetwork(chainId) {
   return getBridge()
     .then((bridge) => bridge.wallet.switchNetwork(REQUIRED_CHAIN_ID))
     .then(() => {
-      console.debug('[ConnectInterceptor] Network switched to Arbitrum Sepolia');
+      /* Network switched successfully */
     })
     .catch((switchErr) => {
       console.warn('[ConnectInterceptor] Network switch failed:', switchErr.message || switchErr);
@@ -187,9 +189,7 @@ function checkAndSwitchNetwork(chainId) {
 function executeWalletConnect(connectorId) {
   return getBridge()
     .then((bridge) => {
-      console.debug(
-        '[ConnectInterceptor] Connecting wallet' + (connectorId ? ' via ' + connectorId : '') + '...',
-      );
+      /* Connecting wallet */
       return bridge.wallet.connect(connectorId);
     })
     .then(() => getBridge())
@@ -212,11 +212,9 @@ function executeWalletConnect(connectorId) {
 function executeJwtLogin(address) {
   return getBridge()
     .then((bridge) => {
-      console.debug('[ConnectInterceptor] Performing JWT login for ' + address + '...');
       return bridge.wallet.login();
     })
     .then((loginResult) => {
-      console.debug('[ConnectInterceptor] JWT login successful');
       return loginResult;
     });
 }
@@ -231,7 +229,6 @@ function executeJwtLogin(address) {
 function executePermitGrant() {
   return getBridge()
     .then((bridge) => {
-      console.debug('[ConnectInterceptor] Granting FHE permit...');
       return bridge.fhe.permitGrant();
     })
     .then((permitResult) => {
@@ -243,7 +240,7 @@ function executePermitGrant() {
         secondsLeft = permitResult.secondsLeft != null ? permitResult.secondsLeft : 900;
       }
 
-      console.debug('[ConnectInterceptor] Permit granted (' + secondsLeft + 's)');
+      /* Permit granted */
       return { unlocked, secondsLeft };
     });
 }
@@ -293,7 +290,7 @@ function persistStep(step) {
     try {
       ss.setItem(SESSION_STORAGE_STEP_KEY, String(step));
     } catch {
-      /* non-fatal */
+      console.warn('[ConnectInterceptor] Failed to persist step to sessionStorage');
     }
   }
 }
@@ -342,10 +339,11 @@ function restoreProgress() {
         }
       })
       .catch(() => {
+        console.warn('[ConnectInterceptor] Failed to restore progress, resetting to step 0');
         persistStep(0);
       });
   } catch {
-    /* sessionStorage not available */
+    console.warn('[ConnectInterceptor] sessionStorage not available for restoreProgress');
   }
 }
 
@@ -381,7 +379,7 @@ function processStep0To1(connectorId) {
         try {
           ss.setItem(SESSION_STORAGE_CONNECTOR_KEY, connectorToUse);
         } catch {
-          /* non-fatal */
+          console.warn('[ConnectInterceptor] Failed to persist connector choice to sessionStorage');
         }
       }
 
@@ -421,7 +419,7 @@ function processStep1To2(address) {
           try {
             ls.setItem('auth_token', loginResult.accessToken);
           } catch {
-            /* non-fatal */
+            console.warn('[ConnectInterceptor] Failed to persist auth_token to localStorage');
           }
         }
       }
@@ -462,7 +460,6 @@ function processStep2To3() {
       persistStep(3);
       currentProcessingStep = null;
       connectFlowInProgress = false;
-      console.debug('[ConnectInterceptor] Connect flow complete.');
     })
     .catch((err) => {
       console.error('[ConnectInterceptor] Step 2→3 (permit grant) failed:', err.message || err);
@@ -479,7 +476,7 @@ function processStep2To3() {
  * Handle wallet disconnect: clear auth state, stop polling.
  */
 function handleDisconnect() {
-  console.debug('[ConnectInterceptor] Disconnect detected, clearing auth state.');
+  /* Disconnect detected, clearing auth state. */
 
   const ss = getSessionStorage();
   if (ss) {
@@ -487,7 +484,7 @@ function handleDisconnect() {
       ss.removeItem(SESSION_STORAGE_STEP_KEY);
       ss.removeItem(SESSION_STORAGE_CONNECTOR_KEY);
     } catch {
-      /* non-fatal */
+      console.warn('[ConnectInterceptor] Failed to clear sessionStorage on disconnect');
     }
   }
 
@@ -528,7 +525,7 @@ function onWalletConnected(walletData) {
     currentProcessingStep = 1;
 
     processStep1To2(walletData.address).catch(() => {
-      /* error already handled in processStep1To2 */
+      console.warn('[ConnectInterceptor] JWT login from BridgeBus event failed (error already emitted)');
     });
   }
 }
@@ -646,7 +643,10 @@ function wrapConnectModal(OriginalModal) {
         });
     }
 
-    // Modify props in-place to avoid creating a new object — saves one allocation per render
+    // Mutate props in-place to avoid unnecessary object allocation.
+    // In React production builds (used in browser via CDN), props objects
+    // are not frozen, so direct mutation is safe and avoids creating a
+    // new props object on every render.
     props.onNext = wrappedOnNext;
     props.grantPermit = wrappedGrantPermit;
 
@@ -716,6 +716,7 @@ function retryConnectFlow() {
     try {
       step = parseInt(ss.getItem(SESSION_STORAGE_STEP_KEY) || '0', 10);
     } catch {
+      console.warn('[ConnectInterceptor] Failed to read step from sessionStorage for retry');
       step = 0;
     }
   }
@@ -737,6 +738,7 @@ function retryConnectFlow() {
         return processStep1To2(address);
       })
       .catch(() => {
+        console.warn('[ConnectInterceptor] Retry flow failed, resetting state');
         connectFlowInProgress = false;
         currentProcessingStep = null;
       });

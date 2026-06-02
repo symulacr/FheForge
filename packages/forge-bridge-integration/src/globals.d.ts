@@ -10,7 +10,6 @@ interface Window {
   __BRIDGE__: BridgeAPI;
   __bridgeBus: any;
   __transformers: TransformersAPI;
-  __integration: IntegrationAPI;
   DataFetcherV2: any;
   bridge: any;
   Landing: any;
@@ -44,32 +43,11 @@ interface TransformersAPI {
   calculateLTV(positions: any[]): { ratio: string; gaugeValue: number };
 }
 
-interface IntegrationAPI {
-  StateManager: {
-    setMockData(key: string, value: any): void;
-    setBatchMockData(data: Record<string, any>): void;
-    getMockData(key: string): any;
-    clearMockData(): void;
-  };
-  DataFetcher: {
-    register(name: string, fetchFn: () => Promise<any>, intervalMs: number): void;
-    startAll(): void;
-    stopAll(): void;
-  };
-  Lifecycle: {
-    start(): void;
-    stop(): void;
-    isRunning(): boolean;
-  };
-}
-
 declare var Babel: {
   transform: (code: string, options?: any) => { code: string; map?: any; ast?: any };
   packages: {
     types: {
       identifier(name: string): any;
-      logicalExpression(operator: string, left: any, right: any): any;
-      optionalMemberExpression(object: any, property: any, computed: boolean, optional: boolean): any;
       stringLiteral(value: string): any;
       jsxExpressionContainer(expression: any): any;
       memberExpression(object: any, property: any, computed?: boolean): any;
