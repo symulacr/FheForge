@@ -6,6 +6,7 @@
 	"description": "Forge frontend integration layer — Babel plugin, screen wrappers, data transformers",
 	"scripts": {
 		"test": "bun test --preload ./test/setup.js",
+		"test:browser": "python3 ./test/browser/run.py",
 		"type-check": "tsc --noEmit",
 		"lint": "cd ../../ && bunx biome check packages/forge-bridge-integration/src"
 	},
