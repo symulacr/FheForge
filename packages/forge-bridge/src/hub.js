@@ -12,7 +12,8 @@ import { createWalletAdapter } from "./wallet.js";
 export function createBridge(config) {
 	const mergedConfig = createConfig(config);
 	const wallet = createWalletAdapter(mergedConfig);
-	const api = createApiAdapter(mergedConfig);
+	// Pass wallet adapter to API adapter for JWT lifecycle (token refresh on 401)
+	const api = createApiAdapter(mergedConfig, wallet);
 	const contract = createContractAdapter(mergedConfig);
 	const fhe = createFheAdapter(mergedConfig);
 
