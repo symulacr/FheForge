@@ -62,6 +62,24 @@ cd ../backend/apps && bun install && bun start:dev
 
 ---
 
+## Integration Planning Artifacts
+
+The `forge-integration/` directory contains the design and verification layer between the forge UI prototype and the backend (smart contracts + NestJS API):
+
+| Artifact | Path | Purpose |
+|----------|------|---------|
+| Backend Manifest | `forge-integration/backend-manifest.json` | 9 smart contracts, 58 API endpoints with FHE markers, error codes, READ/WRITE split |
+| Forge Manifest | `forge-integration/forge-manifest.json` | 13 forge UI files inventoried with mock data fields, 55 builder features, integration readiness |
+| Connections Matrix | `forge-integration/connections.json` | 31 cross-references linking forge screens to backend endpoints with effort estimates, state patterns |
+| Architecture Doc | `forge-integration/bridge-layer-architecture.md` | Bridge pattern design, Mermaid diagrams, TS types, builder canvas analysis |
+| JSON Schemas | `forge-integration/schemas/` | Draft-07 schemas validating all three manifests |
+| Verification Scripts | `forge-integration/scripts/` | 5 scripts (Python + Shell) validating schema conformance, cross-references, forge file integrity |
+| Changelog | `forge-integration/CHANGELOG.md` | Correction history from Phase 3 verification |
+
+All verification scripts pass via `bash forge-integration/scripts/check-all.sh`. Forge files in `ui/` are tracked via SHA256 checksums in `check-forge-immutable.sh`.
+
+---
+
 ## Problem
 
 Today's DeFi is a glass house. Every position, swap, and liquidation is public on-chain. Anyone can see:
