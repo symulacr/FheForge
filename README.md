@@ -80,6 +80,40 @@ All verification scripts pass via `bash forge-integration/scripts/check-all.sh`.
 
 ---
 
+## Bridge Layer (`@fheforge/bridge`)
+
+The bridge layer is a standalone adapter library at `packages/forge-bridge/` that connects frontends to FheForge's backend surfaces. **This phase wired backends only** — forge frontend integration is deferred.
+
+```
+packages/forge-bridge/
+├── src/
+│   ├── types.js       — BridgeError, WalletError, ApiError, ContractError, FheError
+│   ├── config.js      — Default config (API URL, chain, RPC)
+│   ├── wallet.js      — wagmi adapter (MetaMask, Rabby, WalletConnect)
+│   ├── api.js         — axios NestJS adapter (JWT lifecycle, in-memory cache)
+│   ├── contract.js    — viem contract adapter (9 contracts, read/write/simulate)
+│   ├── fhe.js         — @cofhe/sdk adapter (encrypt/decrypt/permit lifecycle)
+│   └── hub.js         — createBridge(config) factory wiring all adapters
+├── src/react/
+│   └── index.js       — 16 React hooks (useWallet, useMarkets, usePermit, etc.)
+├── scripts/
+│   └── verify-bridge.js   — E2E verification (--dry-run for offline)
+└── test/              — 237 unit tests (6 test files)
+```
+
+**Deep imports:**
+| Import Path | Provides |
+|---|---|
+| `@fheforge/bridge/core` | `createBridge`, config, types |
+| `@fheforge/bridge/adapters` | Wallet, API, contract, FHE adapters |
+| `@fheforge/bridge/react` | 16 React hooks + `BridgeProvider` |
+
+**Verified against:** NestJS API (production), Arbitrum Sepolia (chainId 421614), compiled ABIs (`contracts/out/*.json`).
+
+Run verification: `bun packages/forge-bridge/scripts/verify-bridge.js` (add `--dry-run` to skip network checks).
+
+---
+
 ## Problem
 
 Today's DeFi is a glass house. Every position, swap, and liquidation is public on-chain. Anyone can see:
