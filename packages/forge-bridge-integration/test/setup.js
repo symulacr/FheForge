@@ -22,26 +22,103 @@ globalThis.document = globalThis.document || {
   documentElement: { style: {} },
 };
 
-// Set up React global (for screen-override.js)
+// ─── React Mock State ──────────────────────────────────────────────────────
+// Tracks internal state across hook calls for testing.
+// Reset between tests via __REACT_MOCK__.reset()
+
+var _stateStack = [];
+var _stateIdx = 0;
+var _cleanupFns = [];
+var _effectFn = null; // tracks the most recent effect function
+
+// Set up React global (for screen-override.js and bridge-context.js)
 globalThis.React = globalThis.React || {
   createElement: function (comp, props) {
     var args = Array.prototype.slice.call(arguments);
     var children = args.length > 2 ? args.slice(2) : [];
     return { comp: comp, props: props || {}, children: children };
   },
+
   useState: function (init) {
-    var state = typeof init === 'function' ? init() : init;
+    var idx = _stateIdx++;
+    if (_stateStack[idx] === undefined) {
+      _stateStack[idx] = typeof init === 'function' ? init() : init;
+    }
     var setState = function (v) {
-      state = typeof v === 'function' ? v(state) : v;
+      _stateStack[idx] = typeof v === 'function' ? v(_stateStack[idx]) : v;
     };
-    return [state, setState];
+    return [_stateStack[idx], setState];
   },
-  useEffect: function (fn) { if (typeof fn === 'function') fn(); return function () {}; },
+
+  useEffect: function (fn) {
+    if (typeof fn === 'function') {
+      var cleanup = fn();
+      if (typeof cleanup === 'function') {
+        _cleanupFns.push(cleanup);
+      }
+      _effectFn = fn;
+    }
+    return function () {};
+  },
+
   useRef: function (initialValue) {
     return { current: initialValue };
   },
+
   useCallback: function (fn, deps) {
     return fn;
+  },
+
+  createContext: function (defaultValue) {
+    var ctx = {
+      _value: defaultValue,
+      _defaultValue: defaultValue,
+      Provider: function (props) {
+        ctx._value = props.value;
+        // Provider renders children
+        return props.children;
+      },
+      Consumer: function (props) {
+        return props.children(ctx._value);
+      },
+    };
+    ctx.Provider.displayName = 'BridgeContext.Provider';
+    return ctx;
+  },
+
+  useContext: function (ctx) {
+    return ctx._value !== undefined ? ctx._value : ctx._defaultValue;
+  },
+
+  useMemo: function (fn, deps) {
+    return fn();
+  },
+
+  useReducer: function (reducer, initialArg, init) {
+    var idx = _stateIdx++;
+    if (_stateStack[idx] === undefined) {
+      _stateStack[idx] = init ? init(initialArg) : initialArg;
+    }
+    var dispatch = function (action) {
+      _stateStack[idx] = reducer(_stateStack[idx], action);
+    };
+    return [_stateStack[idx], dispatch];
+  },
+};
+
+// Expose mock state helpers for test files
+globalThis.__REACT_MOCK__ = {
+  reset: function () {
+    _stateStack = [];
+    _stateIdx = 0;
+    _cleanupFns = [];
+    _effectFn = null;
+  },
+  getStateStack: function () { return _stateStack; },
+  getCleanupFns: function () { return _cleanupFns; },
+  runCleanups: function () {
+    _cleanupFns.forEach(function (fn) { fn(); });
+    _cleanupFns = [];
   },
 };
 
