@@ -643,15 +643,16 @@ function wrapConnectModal(OriginalModal) {
         });
     }
 
-    // Mutate props in-place to avoid unnecessary object allocation.
-    // In React production builds (used in browser via CDN), props objects
-    // are not frozen, so direct mutation is safe and avoids creating a
-    // new props object on every render.
-    props.onNext = wrappedOnNext;
-    props.grantPermit = wrappedGrantPermit;
-
+    // Create a fresh props object with wrapped callbacks.
+    // React 18 development mode freezes the original props object,
+    // so direct mutation (props.onNext = ...) would throw.
+    // Using a shallow spread is safe and well within budget for a
+    // rarely-rendered modal component.
     const React = getReact();
-    return React.createElement(OriginalModal, props);
+    return React.createElement(OriginalModal, Object.assign({}, props, {
+      onNext: wrappedOnNext,
+      grantPermit: wrappedGrantPermit,
+    }));
   }
 
   WrappedConnectModal.displayName = 'ConnectInterceptor(ConnectModal)';
