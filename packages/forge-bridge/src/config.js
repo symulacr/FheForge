@@ -19,6 +19,7 @@ export const DEFAULT_CONFIG = {
  * @property {string} apiBaseUrl - NestJS API base URL
  * @property {number} chainId - Arbitrum Sepolia chain ID
  * @property {string} rpcUrl - RPC URL for chain interaction
+ * @property {string} [walletConnectProjectId] - WalletConnect project ID
  */
 
 /**
