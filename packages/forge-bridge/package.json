@@ -12,7 +12,7 @@
 		"./react": "./src/react/index.js"
 	},
 	"scripts": {
-		"build": "bun build ./src/index.js --outdir=dist",
+		"build": "bun build ./src/index.js --outdir=dist --external viem --external @wagmi/core --external @wagmi/connectors --external axios --external @cofhe/sdk",
 		"type-check": "tsc --noEmit",
 		"lint": "cd ../../ && bunx biome check packages/forge-bridge/src",
 		"test": "bun test"
