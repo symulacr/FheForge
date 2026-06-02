@@ -81,10 +81,18 @@
      * Start public polling: ticker (30s) and markets (30s).
      * Idempotent — safe to call multiple times.
      * Does NOT require wallet connection.
+     *
+     * If demo mode is already active (startDemoMode was called before),
+     * real API polling is skipped to avoid overwriting demo data.
+     * Demo mode already provides realistic data for all public endpoints.
      */
     DataFetcherV2.prototype.startPublicPolling = function () {
       if (this._publicStarted) return;
       this._publicStarted = true;
+
+      // If demo mode is active, skip real API polling to prevent
+      // async responses from overriding the demo data.
+      if (this._demoStarted) return;
 
       // Fetch immediately on start, then poll at interval
       this._startInterval('public', 'ticker', this._fetchTicker.bind(this), this._pollIntervals.ticker);
@@ -213,6 +221,12 @@
     DataFetcherV2.prototype.startDemoMode = function () {
       if (this._demoStarted) return;
       this._demoStarted = true;
+
+      // Stop any existing public polling intervals so real API
+      // responses don't override the demo data later.
+      if (this._publicStarted) {
+        this._clearIntervalGroup('public');
+      }
 
       var data = this._generateDemoData();
 
@@ -466,6 +480,9 @@
     /**
      * Generic fetch pipeline: call adapter method, transform, write to BridgeBus.
      *
+     * If demo mode is active, the fetch is skipped entirely to prevent
+     * real API responses from overwriting the demo data.
+     *
      * @param {Object} spec
      * @param {Function}        spec.fetch      - Async function returning raw data
      * @param {Function|null}   spec.transform  - Transformer fn(rawData) → shaped data
@@ -475,6 +492,13 @@
      */
     DataFetcherV2.prototype._fetchAndTransform = function (spec) {
       var self = this;
+
+      // Skip real API calls when demo mode is active to prevent
+      // async responses from overwriting the demo data.
+      if (this._demoStarted) {
+        return Promise.resolve();
+      }
+
       return spec.fetch()
         .then(function (raw) {
           var transformed = spec.transform ? spec.transform(raw) : raw;
@@ -511,37 +535,28 @@
     /* ── Bridge Resolution ──────────────────────────── */
 
     /**
-     * Resolve the bridge adapter, retrying if not yet loaded.
-     * Uses the shared `getBridge` utility from get-bridge.js when available,
-     * falling back to inline polling if the shared utility is not loaded.
+     * Resolve the bridge adapter using the shared `getBridge` utility
+     * from get-bridge.js (exposed as window.__getBridge for IIFE consumers).
+     *
+     * Uses the same shared implementation as connect-interceptor.js to
+     * avoid duplicate setInterval retry logic.
+     *
      * @returns {Promise<Object>}
+     * @throws {Error} If window.__getBridge is not available
      */
     DataFetcherV2.prototype._getBridge = function () {
       if (this._bridge) return Promise.resolve(this._bridge);
 
-      var self = this;
       var sharedGetBridge = (typeof window !== 'undefined' && window.__getBridge) || null;
 
-      if (sharedGetBridge) {
-        return sharedGetBridge(10000, 100).then(function (bridge) {
-          self._bridge = bridge;
-          return bridge;
-        });
+      if (!sharedGetBridge) {
+        return Promise.reject(new Error('Shared getBridge utility not available'));
       }
 
-      // Fallback: inline polling if get-bridge.js hasn't loaded
-      return new Promise(function (resolve, reject) {
-        var retries = 0;
-        var check = setInterval(function () {
-          self._bridge = (typeof window !== 'undefined' ? window.bridge : null);
-          if (self._bridge) {
-            clearInterval(check);
-            resolve(self._bridge);
-          } else if (++retries > 20) {
-            clearInterval(check);
-            reject(new Error('Bridge adapter not loaded'));
-          }
-        }, 100);
+      var self = this;
+      return sharedGetBridge(10000, 100).then(function (bridge) {
+        self._bridge = bridge;
+        return bridge;
       });
     };
 
