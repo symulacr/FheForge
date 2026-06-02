@@ -117,6 +117,41 @@ const mockDataPlugin = function (api) {
           )
         );
       },
+
+      // v2: Program.exit — inject ForgeProvider wrapper around <App />
+      Program: {
+        exit(path) {
+          path.traverse({
+            CallExpression(nodePath) {
+              const callee = nodePath.node.callee;
+
+              // Must be xxx.render(...)
+              if (!t.isMemberExpression(callee)) return;
+              if (!t.isIdentifier(callee.property) || callee.property.name !== 'render') return;
+
+              // The object must be ReactDOM.createRoot(...)
+              const object = callee.object;
+              if (!t.isCallExpression(object)) return;
+
+              const objectCallee = object.callee;
+              if (!t.isMemberExpression(objectCallee)) return;
+              if (!t.isIdentifier(objectCallee.object) || objectCallee.object.name !== 'ReactDOM') return;
+              if (!t.isIdentifier(objectCallee.property) || objectCallee.property.name !== 'createRoot') return;
+
+              // Found ReactDOM.createRoot(...).render(...)
+              const renderArg = nodePath.node.arguments[0];
+              if (!renderArg) return;
+
+              // Wrap with ForgeProvider:
+              //   React.createElement(ForgeProvider, null, renderArg)
+              nodePath.node.arguments[0] = t.callExpression(
+                t.memberExpression(t.identifier('React'), t.identifier('createElement')),
+                [t.identifier('ForgeProvider'), t.nullLiteral(), renderArg]
+              );
+            },
+          });
+        },
+      },
     },
   };
 };
@@ -283,6 +318,126 @@ describe('mockDataPlugin - JSXAttribute visitor', () => {
 
       expect(output).toContain(`__MOCK__?.${mockKey}`);
     }
+  });
+});
+
+describe('mockDataPlugin - v2 Program.exit (ForgeProvider injection)', () => {
+  it('detects ReactDOM.createRoot().render() and injects ForgeProvider wrapper', () => {
+    const input = `ReactDOM.createRoot(document.getElementById('root')).render(<App />);`;
+    const output = Babel.transform(input, {
+      plugins: [mockDataPlugin],
+      presets: ['react'],
+      filename: 'app.jsx',
+    }).code;
+
+    // Should contain ForgeProvider wrapping App
+    expect(output).toContain('ForgeProvider');
+    expect(output).toMatch(/ForgeProvider[,\s\w]*null/);
+    // The original App should still be referenced
+    expect(output).toContain('App');
+  });
+
+  it('produces correct wrapping: React.createElement(ForgeProvider, null, ...)', () => {
+    const input = `ReactDOM.createRoot(document.getElementById('root')).render(<App />);`;
+    const output = Babel.transform(input, {
+      plugins: [mockDataPlugin],
+      presets: ['react'],
+      filename: 'app.jsx',
+    }).code;
+
+    // Should contain React.createElement(ForgeProvider, null, ...) wrapping
+    const hasForgeProviderCreateElement =
+      output.includes('createElement(ForgeProvider, null') ||
+      output.includes('createElement("ForgeProvider", null');
+    expect(hasForgeProviderCreateElement).toBe(true);
+  });
+
+  it('does not transform ReactDOM.render() (old API, no createRoot)', () => {
+    const input = `ReactDOM.render(<App />, document.getElementById('root'));`;
+    const output = Babel.transform(input, {
+      plugins: [mockDataPlugin],
+      presets: ['react'],
+      filename: 'app.jsx',
+    }).code;
+
+    // Should NOT contain ForgeProvider since there's no createRoot
+    // (Note: ForgeProvider identifier might appear in other contexts,
+    // but the wrapping should not happen)
+    const hasForgeProviderRender = output.includes('createElement(ForgeProvider');
+    expect(hasForgeProviderRender).toBe(false);
+  });
+
+  it('does not transform non-ReactDOM.createRoot patterns', () => {
+    const input = `someOtherApi.createRoot(document.getElementById('root')).render(<App />);`;
+    const output = Babel.transform(input, {
+      plugins: [mockDataPlugin],
+      presets: ['react'],
+      filename: 'app.jsx',
+    }).code;
+
+    // Should NOT contain ForgeProvider wrapping
+    const hasForgeProviderRender = output.includes('createElement(ForgeProvider');
+    expect(hasForgeProviderRender).toBe(false);
+  });
+
+  it('v1 visitors still work alongside v2 Program.exit (VariableDeclarator)', () => {
+    const input = `
+      const D_POSITIONS = [{id: "pos-1"}];
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    `;
+    const output = Babel.transform(input, {
+      plugins: [mockDataPlugin],
+      presets: ['react'],
+      filename: 'app.jsx',
+    }).code;
+
+    // v1: D_POSITIONS should be var with __MOCK__ lookup
+    expect(output).toContain('var D_POSITIONS');
+    expect(output).toContain('window?.__MOCK__?.D_POSITIONS');
+    // v2: Should contain ForgeProvider wrapping
+    expect(output).toContain('ForgeProvider');
+  });
+
+  it('v1 visitors work with v2 (JSXAttribute for Cipher)', () => {
+    const input = `
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <div>
+          <Cipher value="68,412.07" locked={true} />
+        </div>
+      );
+    `;
+    const output = Babel.transform(input, {
+      plugins: [mockDataPlugin],
+      presets: ['react'],
+      filename: 'app.jsx',
+    }).code;
+
+    // v1: Cipher value should be transformed to __MOCK__.PORTFOLIO_NET_VALUE
+    expect(output).toContain('__MOCK__?.PORTFOLIO_NET_VALUE');
+    // v2: Should contain ForgeProvider wrapping
+    expect(output).toContain('ForgeProvider');
+  });
+
+  it('handles empty/metadata-only render calls gracefully', () => {
+    // render() with no arguments should not error
+    const input = `ReactDOM.createRoot(document.getElementById('root')).render();`;
+    expect(() => {
+      Babel.transform(input, {
+        plugins: [mockDataPlugin],
+        presets: ['react'],
+        filename: 'app.jsx',
+      });
+    }).not.toThrow();
+  });
+
+  it('does not error on programs without createRoot pattern', () => {
+    const input = `const x = 42; console.log(x);`;
+    expect(() => {
+      Babel.transform(input, {
+        plugins: [mockDataPlugin],
+        filename: 'test.js',
+      });
+    }).not.toThrow();
   });
 });
 

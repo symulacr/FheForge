@@ -178,6 +178,50 @@
             )
           );
         },
+
+        /* ------------------------------------------------------
+           4. Program.exit (v2)
+              ReactDOM.createRoot(...).render(<App />)
+              → ReactDOM.createRoot(...).render(
+                  React.createElement(ForgeProvider, null, <App />)
+                )
+              Injects ForgeProvider wrapper around the root App component.
+              Runs after all other transforms complete.
+           ------------------------------------------------------ */
+        Program: {
+          exit: function (path) {
+            path.traverse({
+              CallExpression: function (nodePath) {
+                var callee = nodePath.node.callee;
+
+                // Must be xxx.render(...)
+                if (!t.isMemberExpression(callee)) return;
+                if (!t.isIdentifier(callee.property) || callee.property.name !== 'render') return;
+
+                // The object must be ReactDOM.createRoot(...)
+                var object = callee.object;
+                if (!t.isCallExpression(object)) return;
+
+                var objectCallee = object.callee;
+                if (!t.isMemberExpression(objectCallee)) return;
+                if (!t.isIdentifier(objectCallee.object) || objectCallee.object.name !== 'ReactDOM') return;
+                if (!t.isIdentifier(objectCallee.property) || objectCallee.property.name !== 'createRoot') return;
+
+                // Found ReactDOM.createRoot(...).render(...)
+                // Get the first render argument (the App component element)
+                var renderArg = nodePath.node.arguments[0];
+                if (!renderArg) return;
+
+                // Wrap with ForgeProvider:
+                //   React.createElement(ForgeProvider, null, renderArg)
+                nodePath.node.arguments[0] = t.callExpression(
+                  t.memberExpression(t.identifier('React'), t.identifier('createElement')),
+                  [t.identifier('ForgeProvider'), t.nullLiteral(), renderArg]
+                );
+              },
+            });
+          },
+        },
       },
     };
   };
