@@ -308,6 +308,13 @@ function useBridgeData() {
 	return ctx.data;
 }
 
+// ─── Expose ForgeProvider globally ───────────────────────────────────────────
+// The Babel plugin v2 references ForgeProvider as a bare global identifier
+// (React.createElement(ForgeProvider, ...)), so it must be available on window.
+if (typeof window !== 'undefined') {
+	window.ForgeProvider = ForgeProvider;
+}
+
 // ─── Exports ─────────────────────────────────────────────────────────────────
 
 export { BridgeContext, ForgeProvider, useBridge, useWallet, usePermit, useBridgeData };

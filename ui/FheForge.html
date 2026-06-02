@@ -98,6 +98,15 @@
   <!-- BRIDGE: Bridge init (loads @fheforge/bridge ESM, creates window.bridge with production defaults) -->
   <script type="module" src="../packages/forge-bridge/scripts/bridge-init.js"></script>
 
+  <!-- BRIDGE: DataFetcherV2 — public/authenticated split polling (replaces Phase 5 integration-adapter.js) -->
+  <script src="../packages/forge-bridge-integration/src/data-fetcher-v2.js"></script>
+
+  <!-- BRIDGE: ForgeProvider React Context — subscribes to BridgeBus, exposes window.ForgeProvider -->
+  <script type="module" src="../packages/forge-bridge-integration/src/bridge-context.js"></script>
+
+  <!-- BRIDGE: ConnectInterceptor — wallet connect flow via BridgeBus events -->
+  <script type="module" src="../packages/forge-bridge-integration/src/connect-interceptor.js"></script>
+
   <!-- BRIDGE: Babel.transform monkey-patch (must load before text/babel scripts) -->
   <script src="../packages/forge-bridge-integration/src/babel-transform-plugin.js"></script>
 
@@ -123,9 +132,6 @@
 
   <!-- BRIDGE: Transformers (shape mapping functions, exposes window.__transformers) -->
   <script src="../packages/forge-bridge-integration/src/transformers.js"></script>
-
-  <!-- BRIDGE: Integration adapter (DataFetcher, StateManager, lifecycle — loads last) -->
-  <script src="../packages/forge-bridge-integration/src/integration-adapter.js"></script>
 
   <script>
     const obs = new MutationObserver(() => {
