@@ -4,7 +4,7 @@
  * BridgeContext provides wallet, permit, and data state from BridgeBus
  * to the React component tree. ForgeProvider subscribes to BridgeBus
  * events in useEffect and updates state via useState, triggering React
- * re-renders WITHOUT re-mounting (no key={dataVersion} pattern).
+ * re-renders WITHOUT re-mounting (no dataVersion-as-key pattern).
  *
  * Backward compatibility: domain data is also written to window.__MOCK__
  * so the Babel plugin's mock interceptors still resolve.
@@ -109,7 +109,7 @@ const DATA_EVENT_MAP = [
  * On unmount:
  *   - Unsubscribes from all BridgeBus events (effect cleanup)
  *
- * No key={dataVersion} — state updates via Context.Provider value change
+ * No dataVersion-as-key — state updates via Context.Provider value change
  * trigger React re-renders naturally, preserving component state (scroll,
  * selections, form inputs).
  *
@@ -233,6 +233,12 @@ function ForgeProvider({ children }) {
 						bus: bridgeBus,
 					});
 					fetcher.startPublicPolling();
+					// Also populate all __MOCK__ keys with demo data so the
+					// app shows populated values on every screen without
+					// requiring wallet connection or real backend API calls.
+					if (typeof fetcher.startDemoMode === "function") {
+						fetcher.startDemoMode();
+					}
 				} catch (err) {
 					console.warn("[ForgeProvider] Failed to start polling:", err);
 				}

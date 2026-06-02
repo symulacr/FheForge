@@ -1,5 +1,5 @@
 /* ──────────────────────────────────────────────
-   ConnectInterceptor — Replaces BridgeConnectModal wrapper from Phase 5.
+   ConnectInterceptor — Replaces Phase 5 screen-level ConnectModal wrapper.
 
    Instead of wrapping window.ConnectModal with a complex HOC that
    intercepts setCtx, this module injects connect logic at the app.jsx
@@ -36,6 +36,8 @@
    sessionStorage persistence for refresh resilience.
    ────────────────────────────────────────────── */
 
+import getBridge from './get-bridge.js';
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 /** Session storage key used by the original ConnectModal component */
@@ -58,14 +60,14 @@ let connectFlowInProgress = false;
 /** @type {number|null} Current step being processed (0-3) */
 let currentProcessingStep = null;
 
+/** @type {Promise|null} Promise tracking the active flow to prevent race conditions */
+let currentFlowPromise = null;
+
 /** @type {Object|null} Reference to BridgeBus */
 let bus = null;
 
 /** @type {boolean} Whether BridgeBus listeners are registered */
 let listenersRegistered = false;
-
-/** @type {Array<{event: string, data: *}>} Recorded BridgeBus set calls (for testing) */
-let _recordedBusCalls = [];
 
 /** @type {Object|null} DataFetcherV2 instance for authenticated polling lifecycle */
 let _dataFetcherV2Instance = null;
@@ -104,41 +106,6 @@ function getLocalStorage() {
   } catch {
     return null;
   }
-}
-
-/**
- * Resolve the bridge adapter synchronously if available.
- * Falls back to async retry if not yet initialized.
- * The synchronous path eliminates unnecessary microtask hops.
- *
- * @returns {Object|null} Bridge adapter or null if not yet available
- */
-function getBridgeSync() {
-  const g = getGlobal();
-  return g.bridge || null;
-}
-
-/**
- * Get the bridge adapter, retrying if not yet initialized.
- * @returns {Promise<Object>}
- */
-function getBridge() {
-  const syncBridge = getBridgeSync();
-  if (syncBridge) return Promise.resolve(syncBridge);
-
-  return new Promise((resolve, reject) => {
-    let retries = 0;
-    const check = setInterval(() => {
-      const b = getBridgeSync();
-      if (b) {
-        clearInterval(check);
-        resolve(b);
-      } else if (++retries > 30) {
-        clearInterval(check);
-        reject(new Error('Bridge adapter not available after timeout'));
-      }
-    }, 100);
-  });
 }
 
 /**
@@ -198,7 +165,7 @@ function checkAndSwitchNetwork(chainId) {
   return getBridge()
     .then((bridge) => bridge.wallet.switchNetwork(REQUIRED_CHAIN_ID))
     .then(() => {
-      console.log('[ConnectInterceptor] Network switched to Arbitrum Sepolia');
+      console.debug('[ConnectInterceptor] Network switched to Arbitrum Sepolia');
     })
     .catch((switchErr) => {
       console.warn('[ConnectInterceptor] Network switch failed:', switchErr.message || switchErr);
@@ -220,7 +187,7 @@ function checkAndSwitchNetwork(chainId) {
 function executeWalletConnect(connectorId) {
   return getBridge()
     .then((bridge) => {
-      console.log(
+      console.debug(
         '[ConnectInterceptor] Connecting wallet' + (connectorId ? ' via ' + connectorId : '') + '...',
       );
       return bridge.wallet.connect(connectorId);
@@ -245,11 +212,11 @@ function executeWalletConnect(connectorId) {
 function executeJwtLogin(address) {
   return getBridge()
     .then((bridge) => {
-      console.log('[ConnectInterceptor] Performing JWT login for ' + address + '...');
+      console.debug('[ConnectInterceptor] Performing JWT login for ' + address + '...');
       return bridge.wallet.login();
     })
     .then((loginResult) => {
-      console.log('[ConnectInterceptor] JWT login successful');
+      console.debug('[ConnectInterceptor] JWT login successful');
       return loginResult;
     });
 }
@@ -264,7 +231,7 @@ function executeJwtLogin(address) {
 function executePermitGrant() {
   return getBridge()
     .then((bridge) => {
-      console.log('[ConnectInterceptor] Granting FHE permit...');
+      console.debug('[ConnectInterceptor] Granting FHE permit...');
       return bridge.fhe.permitGrant();
     })
     .then((permitResult) => {
@@ -276,7 +243,7 @@ function executePermitGrant() {
         secondsLeft = permitResult.secondsLeft != null ? permitResult.secondsLeft : 900;
       }
 
-      console.log('[ConnectInterceptor] Permit granted (' + secondsLeft + 's)');
+      console.debug('[ConnectInterceptor] Permit granted (' + secondsLeft + 's)');
       return { unlocked, secondsLeft };
     });
 }
@@ -419,10 +386,13 @@ function processStep0To1(connectorId) {
       }
 
       persistStep(1);
+      // Set currentProcessingStep BEFORE emitWalletConnected so the
+      // Guard 1 check in onWalletConnected is effective.
+      currentProcessingStep = 1;
       emitWalletConnected(result.address, result.chainId);
 
-      currentProcessingStep = 1;
-      return processStep1To2(result.address);
+      // Step 0 done — clear flow flag (next step will set its own)
+      connectFlowInProgress = false;
     })
     .catch((err) => {
       console.error('[ConnectInterceptor] Step 0→1 (wallet connect) failed:', err.message || err);
@@ -440,6 +410,9 @@ function processStep0To1(connectorId) {
  * @returns {Promise<void>}
  */
 function processStep1To2(address) {
+  connectFlowInProgress = true;
+  currentProcessingStep = 1;
+
   return executeJwtLogin(address)
     .then((loginResult) => {
       if (loginResult.accessToken) {
@@ -455,7 +428,7 @@ function processStep1To2(address) {
 
       persistStep(2);
       currentProcessingStep = 2;
-      return processStep2To3();
+      connectFlowInProgress = false;
     })
     .catch((err) => {
       console.error('[ConnectInterceptor] Step 1→2 (JWT login) failed:', err.message || err);
@@ -472,6 +445,9 @@ function processStep1To2(address) {
  * @returns {Promise<void>}
  */
 function processStep2To3() {
+  connectFlowInProgress = true;
+  currentProcessingStep = 2;
+
   return executePermitGrant()
     .then((permitResult) => {
       emitPermitGranted(permitResult.unlocked, permitResult.secondsLeft);
@@ -486,7 +462,7 @@ function processStep2To3() {
       persistStep(3);
       currentProcessingStep = null;
       connectFlowInProgress = false;
-      console.log('[ConnectInterceptor] Connect flow complete.');
+      console.debug('[ConnectInterceptor] Connect flow complete.');
     })
     .catch((err) => {
       console.error('[ConnectInterceptor] Step 2→3 (permit grant) failed:', err.message || err);
@@ -503,7 +479,7 @@ function processStep2To3() {
  * Handle wallet disconnect: clear auth state, stop polling.
  */
 function handleDisconnect() {
-  console.log('[ConnectInterceptor] Disconnect detected, clearing auth state.');
+  console.debug('[ConnectInterceptor] Disconnect detected, clearing auth state.');
 
   const ss = getSessionStorage();
   if (ss) {
@@ -532,6 +508,7 @@ function handleDisconnect() {
 
   connectFlowInProgress = false;
   currentProcessingStep = null;
+  currentFlowPromise = null;
 }
 
 // ─── BridgeBus Event Handlers ───────────────────────────────────────────────
@@ -543,6 +520,7 @@ function handleDisconnect() {
  * @param {{ connected: boolean, address: string, chainId: number }} walletData
  */
 function onWalletConnected(walletData) {
+  if (currentFlowPromise) return;
   if (currentProcessingStep === 1) return;
 
   if (walletData && walletData.connected && walletData.address && !connectFlowInProgress) {
@@ -567,7 +545,7 @@ function onWalletDisconnected() {
 /**
  * Wrap the original ConnectModal to inject real bridge callbacks.
  *
- * Unlike the Phase 5 BridgeConnectModal wrapper which intercepted
+ * Unlike the Phase 5 screen-level ConnectModal wrapper which intercepted
  * setCtx and polled sessionStorage, this wrapper does:
  *   1. Replaces grantPermit with bridge.fhe.permitGrant()
  *   2. Replaces onNext to detect step transitions and perform
@@ -580,21 +558,62 @@ function onWalletDisconnected() {
  */
 function wrapConnectModal(OriginalModal) {
   function WrappedConnectModal(props) {
+    // Save original prop references before in-place mutation
+    // (prevents wrappedOnNext/wrappedGrantPermit calling themselves recursively)
+    const origOnNext = props.onNext;
+    const origGrantPermit = props.grantPermit;
+
     function wrappedOnNext() {
       const currentStep = props.step != null ? props.step : 0;
 
+      let stepPromise;
+
       if (currentStep === 0) {
-        processStep0To1()
+        stepPromise = processStep0To1()
           .then(() => {
-            if (props.onNext) props.onNext();
+            const bus = window.__bridgeBus;
+            if (bus) bus.set('step:advanced', { from: currentStep, to: currentStep + 1 });
+            if (origOnNext) origOnNext();
           })
-          .catch(() => {
+          .catch((err) => {
             /* Error already emitted to BridgeBus. Modal stays at current step for retry. */
+            console.warn('[ConnectInterceptor] Step emitter failed:', err);
           });
+      } else if (currentStep === 1) {
+        stepPromise = getBridge()
+          .then((bridge) => {
+            const address = bridge.wallet.getAccount();
+            if (!address) throw new Error('Wallet not connected');
+            return processStep1To2(address);
+          })
+          .then(() => {
+            const bus = window.__bridgeBus;
+            if (bus) bus.set('step:advanced', { from: currentStep, to: currentStep + 1 });
+            if (origOnNext) origOnNext();
+          })
+          .catch((err) => {
+            /* Error already emitted to BridgeBus. */
+            console.warn('[ConnectInterceptor] Step emitter failed:', err);
+          });
+      } else if (currentStep === 2) {
+        stepPromise = executePermitGrant()
+          .then((permitResult) => {
+            emitPermitGranted(permitResult.unlocked, permitResult.secondsLeft);
+            const bus = window.__bridgeBus;
+            if (bus) bus.set('step:advanced', { from: currentStep, to: currentStep + 1 });
+            if (origOnNext) origOnNext();
+          })
+          .catch((err) => {
+            /* Error already emitted to BridgeBus. */
+            console.warn('[ConnectInterceptor] Step emitter failed:', err);
+          });
+      } else {
+        if (origOnNext) origOnNext();
         return;
       }
 
-      if (props.onNext) props.onNext();
+      // Chain this step after any existing flow to prevent race conditions
+      currentFlowPromise = (currentFlowPromise || Promise.resolve()).then(() => stepPromise);
     }
 
     function wrappedGrantPermit() {
@@ -602,7 +621,7 @@ function wrapConnectModal(OriginalModal) {
         return;
       }
 
-      getBridge()
+      return getBridge()
         .then((bridge) => {
           if (bridge.fhe && bridge.fhe.permitGrant) {
             return bridge.fhe.permitGrant();
@@ -616,27 +635,23 @@ function wrapConnectModal(OriginalModal) {
           emitPermitGranted(unlocked, secondsLeft);
           persistStep(3);
 
-          if (props.grantPermit) {
-            props.grantPermit();
+          if (origGrantPermit) {
+            origGrantPermit();
           }
         })
         .catch((err) => {
           console.error('[ConnectInterceptor] Permit grant failed:', err.message || err);
           emitError('permit_grant', err);
-          if (props.grantPermit) {
-            props.grantPermit();
-          }
+          // Only call grantPermit on success — removed from error path.
         });
     }
 
+    // Modify props in-place to avoid creating a new object — saves one allocation per render
+    props.onNext = wrappedOnNext;
+    props.grantPermit = wrappedGrantPermit;
+
     const React = getReact();
-    return React.createElement(
-      OriginalModal,
-      Object.assign({}, props, {
-        onNext: wrappedOnNext,
-        grantPermit: wrappedGrantPermit,
-      }),
-    );
+    return React.createElement(OriginalModal, props);
   }
 
   WrappedConnectModal.displayName = 'ConnectInterceptor(ConnectModal)';
@@ -742,6 +757,7 @@ function getState() {
 function _resetForTest() {
   connectFlowInProgress = false;
   currentProcessingStep = null;
+  currentFlowPromise = null;
 }
 
 /** Set BridgeBus instance (testing only). */
@@ -762,36 +778,30 @@ export {
   checkAndSwitchNetwork,
   restoreProgress,
   getState,
-  _resetForTest,
-  _setBridgeBus,
 };
 
-/** Set the BridgeBus instance (for testing). */
-function _setBridgeBus(bridgeBus) {
-  bus = bridgeBus;
-}
-
-// ─── Self-Initialize in Browser ─────────────────────────────────────────────
+// ─── Self-Initialize ────────────────────────────────────────────────────────
+// In a browser, also wraps ConnectModal and registers DOM listeners.
+// In test environments (Bun), makes internals available via globalThis
+// for test access without polluting the module's public API.
 
 const g = getGlobal();
-if (typeof window !== 'undefined') {
-  // Guard: only initialize once (window.__MOCK__ may already exist from babel-transform-plugin.js
-  // or from previous initialization in tests).  The old typeof __MOCK__ === 'undefined' check
-  // prevented initialization in production because babel-transform-plugin.js creates __MOCK__
-  // before this module runs (deferred module script order).
-  if (!g.__ConnectInterceptor) {
-    g.__ConnectInterceptor = {
-      init,
-      wrapConnectModal,
-      processStep0To1,
-      processStep1To2,
-      processStep2To3,
-      handleDisconnect,
-      retryConnectFlow,
-      getState,
-      _resetForTest,
-    };
+if (!g.__ConnectInterceptor) {
+  g.__ConnectInterceptor = {
+    init,
+    wrapConnectModal,
+    processStep0To1,
+    processStep1To2,
+    processStep2To3,
+    handleDisconnect,
+    retryConnectFlow,
+    getState,
+    _resetForTest,
+    _setBridgeBus,
+  };
 
+  // Browser-only: auto-init when DOM is ready
+  if (typeof document !== 'undefined') {
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
       init();
     } else {

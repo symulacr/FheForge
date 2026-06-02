@@ -1075,4 +1075,219 @@ describe('DataFetcherV2', function () {
       });
     });
   });
+
+  /* ──────────────────────────────────────────────
+     Demo Mode Tests (VAL-POSTFIX-DATA-001)
+     ────────────────────────────────────────────── */
+  describe('startDemoMode', function () {
+    beforeEach(function () {
+      // Reset window.__MOCK__ before each demo mode test
+      if (typeof window !== 'undefined' && window.__MOCK__) {
+        // Clear all keys so we start fresh
+        Object.keys(window.__MOCK__).forEach(function (k) { delete window.__MOCK__[k]; });
+      }
+    });
+
+    it('has startDemoMode method', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      expect(typeof fetcher.startDemoMode).toBe('function');
+    });
+
+    it('populates 25+ keys in window.__MOCK__', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      // Ensure __MOCK__ exists
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      var keyCount = Object.keys(window.__MOCK__).length;
+      expect(keyCount).toBeGreaterThanOrEqual(25);
+    });
+
+    it('populates MOCK_CONSTANTS keys (TICKER_ITEMS, L_MARKETS, etc.)', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.TICKER_ITEMS).toBeDefined();
+      expect(window.__MOCK__.L_MARKETS).toBeDefined();
+      expect(window.__MOCK__.D_ACTIVITY).toBeDefined();
+      expect(window.__MOCK__.D_POSITIONS).toBeDefined();
+      expect(window.__MOCK__.D_STRATS).toBeDefined();
+      expect(window.__MOCK__.PROPOSALS).toBeDefined();
+      expect(window.__MOCK__.NODE_TYPES).toBeDefined();
+      expect(window.__MOCK__.COMMUNITY).toBeDefined();
+      expect(window.__MOCK__.TEMPLATES).toBeDefined();
+      expect(window.__MOCK__.DEFAULT_CONFIG).toBeDefined();
+      expect(window.__MOCK__.DEMO_ROWS).toBeDefined();
+    });
+
+    it('TICKER_ITEMS has 4+ realistic items', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.TICKER_ITEMS.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it('L_MARKETS has 5+ market entries', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.L_MARKETS.length).toBeGreaterThanOrEqual(5);
+      window.__MOCK__.L_MARKETS.forEach(function (m) {
+        expect(m.asset).toBeDefined();
+        expect(m.supplyApy).toBeDefined();
+        expect(m.borrowApy).toBeDefined();
+      });
+    });
+
+    it('D_ACTIVITY has 6+ activity entries', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.D_ACTIVITY.length).toBeGreaterThanOrEqual(6);
+      window.__MOCK__.D_ACTIVITY.forEach(function (a) {
+        expect(a.id).toBeDefined();
+        expect(a.what).toBeDefined();
+        expect(a.kind).toBeDefined();
+      });
+    });
+
+    it('D_POSITIONS has 5+ position entries', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.D_POSITIONS.length).toBeGreaterThanOrEqual(5);
+      window.__MOCK__.D_POSITIONS.forEach(function (p) {
+        expect(p.id).toBeDefined();
+        expect(p.venue).toBeDefined();
+        expect(p.asset).toBeDefined();
+        expect(p.side).toBeDefined();
+        expect(p.amount).toBeDefined();
+      });
+    });
+
+    it('D_STRATS has 3+ strategy entries', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.D_STRATS.length).toBeGreaterThanOrEqual(3);
+      window.__MOCK__.D_STRATS.forEach(function (s) {
+        expect(s.id).toBeDefined();
+        expect(s.name).toBeDefined();
+        expect(s.apy).toBeDefined();
+      });
+    });
+
+    it('PROPOSALS has 5+ proposal entries', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.PROPOSALS.length).toBeGreaterThanOrEqual(5);
+      window.__MOCK__.PROPOSALS.forEach(function (p) {
+        expect(p.id).toBeDefined();
+        expect(p.title).toBeDefined();
+        expect(p.status).toBeDefined();
+      });
+    });
+
+    it('COMMUNITY has 5+ community entries', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.COMMUNITY.length).toBeGreaterThanOrEqual(5);
+      window.__MOCK__.COMMUNITY.forEach(function (c) {
+        expect(c.id).toBeDefined();
+        expect(c.name).toBeDefined();
+        expect(c.author).toBeDefined();
+        expect(c.apy).toBeDefined();
+      });
+    });
+
+    it('NODE_TYPES has all 5 node type definitions', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      var nt = window.__MOCK__.NODE_TYPES;
+      expect(nt.supply).toBeDefined();
+      expect(nt.borrow).toBeDefined();
+      expect(nt.swap).toBeDefined();
+      expect(nt.repeat).toBeDefined();
+      expect(nt.settle).toBeDefined();
+      expect(nt.supply.label).toBeDefined();
+      expect(nt.supply.kicker).toBeDefined();
+      expect(nt.supply.swatch).toBeDefined();
+      expect(nt.supply.desc).toBeDefined();
+    });
+
+    it('writes data to BridgeBus events when bus is available', function () {
+      // Use a bus with start() called so it accepts public domain writes
+      bus.start();
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      fetcher.startDemoMode();
+
+      // Check that data events were emitted
+      var state = bus.getState();
+      expect(state.public.ticker).toBeDefined();
+      expect(Array.isArray(state.public.ticker)).toBe(true);
+      expect(state.public.markets).toBeDefined();
+      expect(Array.isArray(state.public.markets)).toBe(true);
+      expect(state.public.activities).toBeDefined();
+      expect(Array.isArray(state.public.activities)).toBe(true);
+      expect(state.authed.positions).toBeDefined();
+      expect(Array.isArray(state.authed.positions)).toBe(true);
+      expect(state.authed.strategies).toBeDefined();
+      expect(Array.isArray(state.authed.strategies)).toBe(true);
+      expect(state.authed.proposals).toBeDefined();
+      expect(Array.isArray(state.authed.proposals)).toBe(true);
+      expect(state.authed.nodeTypes).toBeDefined();
+      expect(state.authed.walletBalance).toBeDefined();
+    });
+
+    it('is idempotent — second call does not overwrite data', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      var keyCount1 = Object.keys(window.__MOCK__).length;
+
+      // Call again
+      fetcher.startDemoMode();
+      var keyCount2 = Object.keys(window.__MOCK__).length;
+
+      // Should have same number of keys (not doubled)
+      expect(keyCount2).toBe(keyCount1);
+    });
+
+    it('generates realistic ticker items with crypto pairs', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      var ticker = window.__MOCK__.TICKER_ITEMS;
+      expect(Array.isArray(ticker)).toBe(true);
+      ticker.forEach(function (item) {
+        expect(typeof item).toBe('string');
+        expect(item.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('VALUE_TO_MOCK_KEY Cipher values are populated', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher.startDemoMode();
+      expect(window.__MOCK__.PORTFOLIO_NET_VALUE).toBeDefined();
+      expect(window.__MOCK__.PORTFOLIO_LTV).toBeDefined();
+      expect(window.__MOCK__.DEMO_SUPPLIED_VALUE).toBeDefined();
+      expect(window.__MOCK__.DEMO_BORROWED_VALUE).toBeDefined();
+      expect(window.__MOCK__.WALLET_BALANCE).toBeDefined();
+      expect(window.__MOCK__.DEMO_ROWS).toBeDefined();
+    });
+
+    it('works without a BridgeBus (safe fallback)', function () {
+      // No bus — _writeMockData still writes to __MOCK__
+      window.__MOCK__ = window.__MOCK__ || {};
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: null, transformers: xf });
+      expect(function () {
+        fetcher.startDemoMode();
+      }).not.toThrow();
+      expect(window.__MOCK__.TICKER_ITEMS).toBeDefined();
+      expect(window.__MOCK__.L_MARKETS).toBeDefined();
+    });
+  });
 });
