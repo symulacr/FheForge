@@ -181,6 +181,7 @@ function createMockBridge() {
  */
 function createMockBus() {
   var listeners = {};
+  var _authEnabled = false;
 
   return {
     on: function (event, callback) {
@@ -215,8 +216,16 @@ function createMockBus() {
     },
     reset: function () {
       this._resetCalled = true;
+      _authEnabled = false;
     },
     start: function () {},
+    enableAuthenticated: function () {
+      _authEnabled = true;
+    },
+    disableAuthenticated: function () {
+      _authEnabled = false;
+    },
+    isAuthenticated: function () { return _authEnabled; },
     _resetCalled: false,
     _setCalls: [],
   };

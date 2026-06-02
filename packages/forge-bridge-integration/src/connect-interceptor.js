@@ -67,6 +67,9 @@ let listenersRegistered = false;
 /** @type {Array<{event: string, data: *}>} Recorded BridgeBus set calls (for testing) */
 let _recordedBusCalls = [];
 
+/** @type {Object|null} DataFetcherV2 instance for authenticated polling lifecycle */
+let _dataFetcherV2Instance = null;
+
 // ─── Global Resolution Helpers ──────────────────────────────────────────────
 
 /**
@@ -145,6 +148,32 @@ function getBridge() {
  */
 function getReact() {
   return globalThis.React || (typeof window !== 'undefined' && window.React) || null;
+}
+
+// ─── DataFetcherV2 Lifecycle ──────────────────────────────────────────────────
+
+/**
+ * Get or lazily create the DataFetcherV2 instance for authenticated polling.
+ * Uses a module-level singleton so start/stop lifecycle is consistent.
+ *
+ * @returns {Object|null} DataFetcherV2 instance or null if not available
+ */
+function getDataFetcherV2() {
+  if (_dataFetcherV2Instance) return _dataFetcherV2Instance;
+
+  const g = getGlobal();
+  if (g.DataFetcherV2 && g.__bridgeBus) {
+    try {
+      _dataFetcherV2Instance = new g.DataFetcherV2({
+        bus: g.__bridgeBus,
+      });
+    } catch (err) {
+      console.warn('[ConnectInterceptor] Failed to create DataFetcherV2:', err.message || err);
+      return null;
+    }
+  }
+
+  return _dataFetcherV2Instance;
 }
 
 // ─── Network Mismatch Detection ─────────────────────────────────────────────
@@ -446,6 +475,14 @@ function processStep2To3() {
   return executePermitGrant()
     .then((permitResult) => {
       emitPermitGranted(permitResult.unlocked, permitResult.secondsLeft);
+
+      // Start authenticated polling after successful permit grant
+      // (VAL-REARCH-DATA-003, VAL-REARCH-CONNECT-012)
+      const fetcher = getDataFetcherV2();
+      if (fetcher) {
+        fetcher.startAuthenticatedPolling();
+      }
+
       persistStep(3);
       currentProcessingStep = null;
       connectFlowInProgress = false;
@@ -478,9 +515,19 @@ function handleDisconnect() {
     }
   }
 
+  // Stop authenticated polling (VAL-REARCH-DATA-003, VAL-REARCH-CONNECT-012)
+  const fetcher = getDataFetcherV2();
+  if (fetcher) {
+    fetcher.stopAuthenticatedPolling();
+  }
+
   if (bus) {
     bus.set('wallet:disconnected', { connected: false, address: null, chainId: null });
     bus.set('permit:expired', { unlocked: false, secondsLeft: 0 });
+    // Clear authed domain data and disable authenticated writes (VAL-REARCH-CONNECT-012)
+    if (bus.disableAuthenticated) {
+      bus.disableAuthenticated();
+    }
   }
 
   connectFlowInProgress = false;
