@@ -774,22 +774,28 @@ function _setBridgeBus(bridgeBus) {
 // ─── Self-Initialize in Browser ─────────────────────────────────────────────
 
 const g = getGlobal();
-if (typeof window !== 'undefined' && typeof window.__MOCK__ === 'undefined') {
-  g.__ConnectInterceptor = {
-    init,
-    wrapConnectModal,
-    processStep0To1,
-    processStep1To2,
-    processStep2To3,
-    handleDisconnect,
-    retryConnectFlow,
-    getState,
-    _resetForTest,
-  };
+if (typeof window !== 'undefined') {
+  // Guard: only initialize once (window.__MOCK__ may already exist from babel-transform-plugin.js
+  // or from previous initialization in tests).  The old typeof __MOCK__ === 'undefined' check
+  // prevented initialization in production because babel-transform-plugin.js creates __MOCK__
+  // before this module runs (deferred module script order).
+  if (!g.__ConnectInterceptor) {
+    g.__ConnectInterceptor = {
+      init,
+      wrapConnectModal,
+      processStep0To1,
+      processStep1To2,
+      processStep2To3,
+      handleDisconnect,
+      retryConnectFlow,
+      getState,
+      _resetForTest,
+    };
 
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    init();
-  } else {
-    document.addEventListener('DOMContentLoaded', () => init());
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      init();
+    } else {
+      document.addEventListener('DOMContentLoaded', () => init());
+    }
   }
 }

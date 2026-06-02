@@ -239,4 +239,139 @@
     options.plugins.unshift(mockDataPlugin);
     return origTransform.call(this, code, options);
   };
+
+  /* ──────────────────────────────────────────────
+     Override Babel.transformScriptTags
+
+     Babel standalone uses an INTERNAL transform function reference
+     (the minified variable FEe) to process text/babel scripts—
+     NOT the public Babel.transform API.  Our monkey-patch of
+     Babel.transform therefore has NO EFFECT on text/babel scripts.
+
+     Fix: replace Babel.transformScriptTags entirely so that it
+     calls the patched Babel.transform instead of the internal
+     FEe closure.
+
+     This reimplements the same logic (find text/babel scripts,
+     load external src via XHR, transform, append to <head>) but
+     feeds all input through Babel.transform, which now includes
+     the mockDataPlugin.
+     ────────────────────────────────────────────── */
+
+  (function () {
+    if (typeof Babel.transformScriptTags !== 'function') return;
+
+    var SCRIPT_TYPES = new Set(['text/jsx', 'text/babel']);
+
+    /**
+     * Build Babel options compatible with what the internal
+     * buildBabelOptions produces for plain scripts.
+     */
+    function buildOptions(scriptEl, filename) {
+      return {
+        filename: filename,
+        presets: ['react', 'env'],
+        sourceMaps: 'inline',
+        sourceFileName: filename,
+      };
+    }
+
+    /**
+     * Process text/babel scripts using Babel.transform (patched).
+     * Mirrors the original runScripts + loadScripts + run pipeline.
+     */
+    function runScriptsWithPatchedTransform(scripts) {
+      var headEl = document.getElementsByTagName('head')[0];
+      if (!headEl) headEl = document.head || document.documentElement;
+
+      if (!scripts) {
+        scripts = document.getElementsByTagName('script');
+      }
+
+      // Collect text/babel scripts in document order
+      var jsxScripts = [];
+      for (var i = 0; i < scripts.length; i++) {
+        var s = scripts.item ? scripts.item(i) : scripts[i];
+        var type = (s.type || '').split(';')[0];
+        if (SCRIPT_TYPES.has(type)) {
+          jsxScripts.push(s);
+        }
+      }
+
+      if (jsxScripts.length === 0) return;
+
+      console.warn(
+        'You are using the in-browser Babel transformer. ' +
+        'Be sure to precompile your scripts for production - https://babeljs.io/docs/setup/',
+      );
+
+      // ── Load scripts sequentially ──────────────────────
+      var contents = [];
+      var loaded = 0;
+
+      function loadNext(idx) {
+        if (idx >= jsxScripts.length) {
+          // All loaded — transform and execute in order
+          flushAll();
+          return;
+        }
+
+        var script = jsxScripts[idx];
+        var src = script.getAttribute('src');
+
+        if (src) {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', src, true);
+          if ('overrideMimeType' in xhr) xhr.overrideMimeType('text/plain');
+          xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4) {
+              if (xhr.status === 0 || xhr.status === 200) {
+                contents[idx] = xhr.responseText;
+              } else {
+                console.error('[BabelPlugin] Could not load script:', src);
+                contents[idx] = null;
+              }
+              loadNext(idx + 1);
+            }
+          };
+          xhr.send(null);
+        } else {
+          contents[idx] = script.innerHTML;
+          loadNext(idx + 1);
+        }
+      }
+
+      function flushAll() {
+        for (var j = 0; j < jsxScripts.length; j++) {
+          var content = contents[j];
+          if (content === null || content === undefined) continue;
+
+          var scriptEl = jsxScripts[j];
+          var filename = scriptEl.getAttribute('src') || 'Inline Babel script';
+
+          try {
+            var result = Babel.transform(content, buildOptions(scriptEl, filename));
+            var out = document.createElement('script');
+            out.text = result.code;
+            headEl.appendChild(out);
+          } catch (err) {
+            console.error('[BabelPlugin] Transform error for', filename, err);
+          }
+        }
+      }
+
+      loadNext(0);
+    }
+
+    // Replace the built-in transformScriptTags with our version
+    Babel.transformScriptTags = runScriptsWithPatchedTransform;
+
+    // Babel.disableScriptTags() was called right after Babel loaded, so the
+    // auto-processing on DOMContentLoaded was suppressed.  Now that our
+    // patched transformScriptTags is in place, trigger the processing of
+    // all text/babel scripts manually.
+    if (typeof runScriptsWithPatchedTransform === 'function') {
+      runScriptsWithPatchedTransform();
+    }
+  })();
 })();
