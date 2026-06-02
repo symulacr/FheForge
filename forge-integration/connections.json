@@ -1,17 +1,16 @@
 {
   "version": "1.0",
   "generated": "2026-06-02",
-  "mission": "Phase 2: Integration Layer Design — Backend↔Forge Mapping",
-  "description": "Cross-reference matrix linking backend-manifest → forge-manifest. Maps each forge element to its backend source with effort estimates, wallet context field mapping, connect modal step mapping, loading/error/empty states, gaps analysis, and dependency graph.",
+  "mission": "Phase 2: Integration Layer Design \u2014 Backend\u2194Forge Mapping",
+  "description": "Cross-reference matrix linking backend-manifest \u2192 forge-manifest. Maps each forge element to its backend source with effort estimates, wallet context field mapping, connect modal step mapping, loading/error/empty states, gaps analysis, and dependency graph.",
   "prerequisites": {
     "backendManifest": "forge-integration/backend-manifest.json",
     "forgeManifest": "forge-integration/forge-manifest.json"
   },
-
   "connections": [
     {
       "id": "conn-hero-permit-demo",
-      "forgeElement": "Landing page DemoCard — mock portfolio demo cycle",
+      "forgeElement": "Landing page DemoCard \u2014 mock portfolio demo cycle",
       "forgeFile": "ui/screens/landing.jsx",
       "forgeSection": "DemoCard",
       "forgeType": "screen-section",
@@ -28,7 +27,7 @@
     },
     {
       "id": "conn-ticker-stats",
-      "forgeElement": "Landing page Ticker — scrolling protocol stats",
+      "forgeElement": "Landing page Ticker \u2014 scrolling protocol stats",
       "forgeFile": "ui/screens/landing.jsx",
       "forgeSection": "Ticker",
       "forgeType": "screen-section",
@@ -38,16 +37,16 @@
       "effort": "1d",
       "loadingState": "show cached/fallback stats; use last-known values from sessionStorage while fresh data loads",
       "errorState": "keep scrolling ticker with stale data; add error indicator (muted warning icon) if refresh fails",
-      "emptyState": "show placeholder stats ('block #—', 'gas · —', etc.) with muted styling",
+      "emptyState": "show placeholder stats ('block #\u2014', 'gas \u00b7 \u2014', etc.) with muted styling",
       "fhePath": false,
       "publicPath": true,
       "notes": "Pure public data endpoint, no encryption needed. Ticker auto-refreshes every 30s. Polling interval configurable."
     },
     {
       "id": "conn-dashboard-positions",
-      "forgeElement": "Dashboard positions list — user's on-chain positions",
+      "forgeElement": "Dashboard positions list \u2014 user's on-chain positions",
       "forgeFile": "ui/screens/dashboard.jsx",
-      "forgeSection": "Dashboard() — List rail: Positions group",
+      "forgeSection": "Dashboard() \u2014 List rail: Positions group",
       "forgeType": "screen-section",
       "backendSource": "LendingPool.getSupplyBalance(), LendingPool.getBorrowBalance(), StrategyVault.getUserPositions() + PriceOracle.convertToUsd()",
       "backendType": "contract-read",
@@ -62,9 +61,9 @@
     },
     {
       "id": "conn-dashboard-strategies",
-      "forgeElement": "Dashboard strategies list — user's active strategies",
+      "forgeElement": "Dashboard strategies list \u2014 user's active strategies",
       "forgeFile": "ui/screens/dashboard.jsx",
-      "forgeSection": "Dashboard() — List rail: Strategies group",
+      "forgeSection": "Dashboard() \u2014 List rail: Strategies group",
       "forgeType": "screen-section",
       "backendSource": "GET /defi-strategies?owner={walletAddress}",
       "backendType": "api",
@@ -79,9 +78,9 @@
     },
     {
       "id": "conn-dashboard-activity",
-      "forgeElement": "Dashboard activity list — recent user activity",
+      "forgeElement": "Dashboard activity list \u2014 recent user activity",
       "forgeFile": "ui/screens/dashboard.jsx",
-      "forgeSection": "Dashboard() — List rail: Recent Activity group",
+      "forgeSection": "Dashboard() \u2014 List rail: Recent Activity group",
       "forgeType": "screen-section",
       "backendSource": "GET /activities?userAddress={walletAddress}&limit=10",
       "backendType": "api",
@@ -96,7 +95,7 @@
     },
     {
       "id": "conn-dashboard-overview",
-      "forgeElement": "Dashboard Overview — stat tiles (Net value, LTV, Permit status, Gas/ETH)",
+      "forgeElement": "Dashboard Overview \u2014 stat tiles (Net value, LTV, Permit status, Gas/ETH)",
       "forgeFile": "ui/screens/dashboard.jsx",
       "forgeSection": "Overview",
       "forgeType": "screen-section",
@@ -106,16 +105,16 @@
       "effort": "3d",
       "loadingState": "skeleton stat tiles with pulsing; Cipher components in locked state",
       "errorState": "muted stat value with warning icon; tooltip with error detail",
-      "emptyState": "tiles show '—' when no wallet connected or no positions exist",
+      "emptyState": "tiles show '\u2014' when no wallet connected or no positions exist",
       "fhePath": true,
       "publicPath": true,
-      "notes": "Net value (FHE path: encrypted balances × public oracle prices), LTV (public health factor), Permit status (cofhe SDK), Gas/ETH (public provider balance). Mixed FHE/public path."
+      "notes": "Net value (FHE path: encrypted balances \u00d7 public oracle prices), LTV (public health factor), Permit status (cofhe SDK), Gas/ETH (public provider balance). Mixed FHE/public path."
     },
     {
       "id": "conn-lending-markets",
-      "forgeElement": "Lending screen — market list (5 markets with APY/TVL/util)",
+      "forgeElement": "Lending screen \u2014 market list (5 markets with APY/TVL/util)",
       "forgeFile": "ui/screens/lending.jsx",
-      "forgeSection": "Lending() — List rail: markets",
+      "forgeSection": "Lending() \u2014 List rail: markets",
       "forgeType": "screen-section",
       "backendSource": "GET /markets",
       "backendType": "api",
@@ -130,15 +129,15 @@
     },
     {
       "id": "conn-lending-action-supply",
-      "forgeElement": "Lending screen — supply action (amount input, encrypt, submit)",
+      "forgeElement": "Lending screen \u2014 supply action (amount input, encrypt, submit)",
       "forgeFile": "ui/screens/lending.jsx",
-      "forgeSection": "LendAction — Supply panel",
+      "forgeSection": "LendAction \u2014 Supply panel",
       "forgeType": "screen-section",
       "backendSource": "LendingPool.shield() / shieldEth()",
       "backendType": "contract-write",
       "backendRef": "lending-pool",
       "effort": "3d",
-      "loadingState": "amount input disabled with spinner; 'Encrypting amount…' label; tx pending overlay with tx hash",
+      "loadingState": "amount input disabled with spinner; 'Encrypting amount\u2026' label; tx pending overlay with tx hash",
       "errorState": "inline error on input (insufficient balance, permit required); tx failure toast with retry; gas estimation failure fallback",
       "emptyState": "amount input empty with placeholder '0.00'; no position state shown as default",
       "fhePath": true,
@@ -147,15 +146,15 @@
     },
     {
       "id": "conn-lending-action-borrow",
-      "forgeElement": "Lending screen — borrow action (amount input, LTV slider, submit)",
+      "forgeElement": "Lending screen \u2014 borrow action (amount input, LTV slider, submit)",
       "forgeFile": "ui/screens/lending.jsx",
-      "forgeSection": "LendAction — Borrow panel",
+      "forgeSection": "LendAction \u2014 Borrow panel",
       "forgeType": "screen-section",
       "backendSource": "LendingPool.borrowWithLtvCheck() or LendingPool.borrowWithOracle()",
       "backendType": "contract-write",
       "backendRef": "lending-pool",
       "effort": "4d",
-      "loadingState": "input disabled; LTV gauge pulsing; 'Checking collateral…' overlay; tx pending",
+      "loadingState": "input disabled; LTV gauge pulsing; 'Checking collateral\u2026' overlay; tx pending",
       "errorState": "LTV exceeded warning (destructive color); insufficient collateral error; oracle stale warning",
       "emptyState": "borrow input shows '0.00' with disabled submit until amount entered; no existing borrow shown as default",
       "fhePath": true,
@@ -164,15 +163,15 @@
     },
     {
       "id": "conn-lending-action-repay",
-      "forgeElement": "Lending screen — repay action",
+      "forgeElement": "Lending screen \u2014 repay action",
       "forgeFile": "ui/screens/lending.jsx",
-      "forgeSection": "LendAction — Repay panel (implied)",
+      "forgeSection": "LendAction \u2014 Repay panel (implied)",
       "forgeType": "screen-section",
       "backendSource": "LendingPool.repayDebt()",
       "backendType": "contract-write",
       "backendRef": "lending-pool",
       "effort": "2d",
-      "loadingState": "tx pending overlay; 'Repaying…' with tx hash",
+      "loadingState": "tx pending overlay; 'Repaying\u2026' with tx hash",
       "errorState": "insufficient balance error; permit expired warning; tx revert toast",
       "emptyState": "amount input '0.00'; zero debt shown as confirmation state",
       "fhePath": true,
@@ -181,15 +180,15 @@
     },
     {
       "id": "conn-lending-action-withdraw",
-      "forgeElement": "Lending screen — withdraw/unshield action",
+      "forgeElement": "Lending screen \u2014 withdraw/unshield action",
       "forgeFile": "ui/screens/lending.jsx",
-      "forgeSection": "LendAction — Withdraw panel (implied)",
+      "forgeSection": "LendAction \u2014 Withdraw panel (implied)",
       "forgeType": "screen-section",
       "backendSource": "LendingPool.partialUnshield() or LendingPool.unshieldWithProof()",
       "backendType": "contract-write",
       "backendRef": "lending-pool",
       "effort": "3d",
-      "loadingState": "'Verifying encrypted balance…' with FHE proof generation indicator; tx pending",
+      "loadingState": "'Verifying encrypted balance\u2026' with FHE proof generation indicator; tx pending",
       "errorState": "insufficient supply balance error; proof generation failure; permit required",
       "emptyState": "input shows '0.00'; zero supply shown when no balance",
       "fhePath": true,
@@ -198,9 +197,9 @@
     },
     {
       "id": "conn-market-strategies",
-      "forgeElement": "Market (Strategies) screen — community strategy listings",
+      "forgeElement": "Market (Strategies) screen \u2014 community strategy listings",
       "forgeFile": "ui/screens/market.jsx",
-      "forgeSection": "Market() — Community templates list",
+      "forgeSection": "Market() \u2014 Community templates list",
       "forgeType": "screen-section",
       "backendSource": "GET /strategies?tags=&sortBy=&order=&limit=",
       "backendType": "api",
@@ -215,9 +214,9 @@
     },
     {
       "id": "conn-governance-proposals",
-      "forgeElement": "Governance screen — proposal listings",
+      "forgeElement": "Governance screen \u2014 proposal listings",
       "forgeFile": "ui/screens/governance.jsx",
-      "forgeSection": "Governance() — Proposals list (4 groups)",
+      "forgeSection": "Governance() \u2014 Proposals list (4 groups)",
       "forgeType": "screen-section",
       "backendSource": "GET /governance/proposals?status=",
       "backendType": "api",
@@ -232,15 +231,15 @@
     },
     {
       "id": "conn-governance-vote",
-      "forgeElement": "Governance screen — cast vote (for/against/abstain)",
+      "forgeElement": "Governance screen \u2014 cast vote (for/against/abstain)",
       "forgeFile": "ui/screens/governance.jsx",
-      "forgeSection": "ProposalDetail — Cast Vote panel",
+      "forgeSection": "ProposalDetail \u2014 Cast Vote panel",
       "forgeType": "screen-section",
       "backendSource": "POST /governance/vote",
       "backendType": "api",
       "backendRef": "cast-governance-vote",
       "effort": "2d",
-      "loadingState": "vote button disabled with spinner; 'Submitting vote…' label; tx pending if on-chain",
+      "loadingState": "vote button disabled with spinner; 'Submitting vote\u2026' label; tx pending if on-chain",
       "errorState": "vote expired warning; duplicate vote error; JWT expired re-auth flow; tx revert",
       "emptyState": "vote panel shows disabled state when wallet not connected or proposal not active",
       "fhePath": false,
@@ -249,7 +248,7 @@
     },
     {
       "id": "conn-governance-proposal-detail",
-      "forgeElement": "Governance screen — proposal detail with tally bar, quorum meter",
+      "forgeElement": "Governance screen \u2014 proposal detail with tally bar, quorum meter",
       "forgeFile": "ui/screens/governance.jsx",
       "forgeSection": "ProposalDetail",
       "forgeType": "screen-section",
@@ -266,7 +265,7 @@
     },
     {
       "id": "conn-builder-simulate",
-      "forgeElement": "Builder workspace — simulation engine (walk order step-through)",
+      "forgeElement": "Builder workspace \u2014 simulation engine (walk order step-through)",
       "forgeFile": "ui/screens/builder-workspace.jsx",
       "forgeSection": "Simulation Engine",
       "forgeType": "screen-section",
@@ -274,52 +273,55 @@
       "backendType": "api",
       "backendRef": "simulate-defi-strategy",
       "effort": "4d",
-      "loadingState": "pulsing node border on active step; status bar 'Simulating step X/Y…'; estimated gas display",
+      "loadingState": "pulsing node border on active step; status bar 'Simulating step X/Y\u2026'; estimated gas display",
       "errorState": "simulation error per step (red border); inline error on failing node; 'Simulation failed' banner",
       "emptyState": "simulate button disabled when canvas is empty; 'Add nodes to simulate' tooltip",
       "fhePath": false,
       "publicPath": true,
-      "notes": "Simulation uses NestJS backend which coordinates SwapSimulator, SupplySimulator, BorrowSimulator services. Returns simulated steps, estimated gas, expected output. Currently the forge canvas is a custom SVG (not ReactFlow) — the adapter must handle this."
+      "notes": "Simulation uses NestJS backend which coordinates SwapSimulator, SupplySimulator, BorrowSimulator services. Returns simulated steps, estimated gas, expected output. Currently the forge canvas is a custom SVG (not ReactFlow) \u2014 the adapter must handle this."
     },
     {
       "id": "conn-builder-ai-strategy",
-      "forgeElement": "Builder workspace — AI strategy builder from natural language",
+      "forgeElement": "Builder workspace \u2014 AI strategy builder from natural language",
       "forgeFile": "ui/screens/builder-workspace.jsx",
-      "forgeSection": "BuilderWorkspace() — AI integration (implied)",
+      "forgeSection": "BuilderWorkspace() \u2014 AI integration (implied)",
       "forgeType": "screen-section",
       "backendSource": "POST /ai-strategy-builder/build",
       "backendType": "api",
       "backendRef": "build-ai-strategy",
       "effort": "3d",
-      "loadingState": "'Analyzing intent…' with Gemini AI processing indicator; streaming step generation",
-      "errorState": "rate limit error (429 — 5 req/60s); invalid intent message; AI failure fallback",
-      "emptyState": "text input placeholder 'Describe your strategy…' with example prompts",
+      "loadingState": "'Analyzing intent\u2026' with Gemini AI processing indicator; streaming step generation",
+      "errorState": "rate limit error (429 \u2014 5 req/60s); invalid intent message; AI failure fallback",
+      "emptyState": "text input placeholder 'Describe your strategy\u2026' with example prompts",
       "fhePath": false,
       "publicPath": true,
-      "notes": "Gemini AI parses natural language → returns strategy steps. Requires JWT auth. Rate limited to 5 requests per 60s."
+      "notes": "Gemini AI parses natural language \u2192 returns strategy steps. Requires JWT auth. Rate limited to 5 requests per 60s."
     },
     {
       "id": "conn-builder-deploy",
-      "forgeElement": "Builder workspace — deploy flow (progress modal, toast)",
+      "forgeElement": "Builder workspace \u2014 deploy flow (progress modal, toast)",
       "forgeFile": "ui/screens/builder-workspace.jsx",
       "forgeSection": "Deploy Flow",
       "forgeType": "screen-section",
       "backendSource": "FheForgeComposer.openPosition() or POST /defi-strategies (save then deploy)",
       "backendType": "contract-write+api",
-      "backendRef": "composer",
+      "backendRef": [
+        "composer",
+        "create-defi-strategy"
+      ],
       "effort": "5d",
-      "loadingState": "DeployProgressModal step-through: 'Signing…' → 'Confirming…' → 'Executed!'; tx hash display",
+      "loadingState": "DeployProgressModal step-through: 'Signing\u2026' \u2192 'Confirming\u2026' \u2192 'Executed!'; tx hash display",
       "errorState": "reverted tx toast with error reason; gas estimation failure; permit expired mid-flow",
       "emptyState": "deploy button disabled when canvas has no valid workflow; 'Build a workflow first' tooltip",
       "fhePath": true,
       "publicPath": false,
-      "notes": "Deploy requires FHE encrypted parameters (InEuint128 amounts for supply/borrow steps). Uses Composer.openPosition() which chains vault→pool→swap in one atomic tx. User must have CoFHE permit before deploying."
+      "notes": "Deploy requires FHE encrypted parameters (InEuint128 amounts for supply/borrow steps). Uses Composer.openPosition() which chains vault\u2192pool\u2192swap in one atomic tx. User must have CoFHE permit before deploying."
     },
     {
       "id": "conn-builder-estimate-defi",
-      "forgeElement": "Builder workspace — per-link DeFi operation estimation",
+      "forgeElement": "Builder workspace \u2014 per-link DeFi operation estimation",
       "forgeFile": "ui/screens/builder-workspace.jsx",
-      "forgeSection": "Inline Node Config — gas estimates",
+      "forgeSection": "Inline Node Config \u2014 gas estimates",
       "forgeType": "screen-section",
       "backendSource": "POST /defi-modules/pairs/estimate",
       "backendType": "api",
@@ -334,24 +336,24 @@
     },
     {
       "id": "conn-wallet-chip",
-      "forgeElement": "TopBar — WalletChip (address display, chain ID)",
+      "forgeElement": "TopBar \u2014 WalletChip (address display, chain ID)",
       "forgeFile": "ui/components.jsx",
       "forgeSection": "WalletChip",
       "forgeType": "shared-component",
-      "backendSource": "useAccount() — @wagmi/core",
+      "backendSource": "useAccount() \u2014 @wagmi/core",
       "backendType": "hook",
       "backendRef": null,
       "effort": "0.5d",
-      "loadingState": "skeleton chip with pulsing address placeholder 'Connecting…'",
+      "loadingState": "skeleton chip with pulsing address placeholder 'Connecting\u2026'",
       "errorState": "chain mismatch warning icon; wrong network label (non-Arb Sepolia)",
       "emptyState": "'Connect wallet' button shown when no account connected",
       "fhePath": false,
       "publicPath": true,
-      "notes": "Direct wagmi integration: useAccount() provides address (string), chainId (number). WalletChip truncates address to 0x9f3a…b4a39 format."
+      "notes": "Direct wagmi integration: useAccount() provides address (string), chainId (number). WalletChip truncates address to 0x9f3a\u2026b4a39 format."
     },
     {
       "id": "conn-permit-chip",
-      "forgeElement": "TopBar — PermitChip (FHE permit status countdown)",
+      "forgeElement": "TopBar \u2014 PermitChip (FHE permit status countdown)",
       "forgeFile": "ui/components.jsx",
       "forgeSection": "PermitChip",
       "forgeType": "shared-component",
@@ -359,16 +361,16 @@
       "backendType": "hook",
       "backendRef": null,
       "effort": "1d",
-      "loadingState": "skeleton chip with pulsing; 'Checking permit…' label",
-      "errorState": "permit expired warning (yellow → red as time runs out); grant failed error",
-      "emptyState": "locked state shows 'permit · locked' with click-to-grant CTA",
+      "loadingState": "skeleton chip with pulsing; 'Checking permit\u2026' label",
+      "errorState": "permit expired warning (yellow \u2192 red as time runs out); grant failed error",
+      "emptyState": "locked state shows 'permit \u00b7 locked' with click-to-grant CTA",
       "fhePath": true,
       "publicPath": false,
-      "notes": "CoFHE SDK hook integration. PermitChip shows live countdown (MM:SS). When secondsLeft ≤ 0, auto-locks and shows locked state. Permit renewal triggers grantPermit() flow."
+      "notes": "CoFHE SDK hook integration. PermitChip shows live countdown (MM:SS). When secondsLeft \u2264 0, auto-locks and shows locked state. Permit renewal triggers grantPermit() flow."
     },
     {
       "id": "conn-cipher-display",
-      "forgeElement": "Cipher — encrypted value display component",
+      "forgeElement": "Cipher \u2014 encrypted value display component",
       "forgeFile": "ui/components.jsx",
       "forgeSection": "Cipher",
       "forgeType": "shared-component",
@@ -377,32 +379,32 @@
       "backendRef": null,
       "effort": "2d",
       "loadingState": "locked state with blurred ciphertext + 'encrypted' lock-mark; pulsing during decrypt",
-      "errorState": "decrypt failure shows '🔒' fallback with 'Decrypt failed' tooltip",
-      "emptyState": "empty value shows '—' (em dash) in locked state",
+      "errorState": "decrypt failure shows '\ud83d\udd12' fallback with 'Decrypt failed' tooltip",
+      "emptyState": "empty value shows '\u2014' (em dash) in locked state",
       "fhePath": true,
       "publicPath": false,
       "notes": "Central to FHE UX. Cipher component shows blurred text when locked (locked=true), plaintext when unlocked (locked=false). Uses staggeredReveal with 50ms per-element delay. Multiple sizes: sm/md/lg/xl/xxl."
     },
     {
       "id": "conn-ltv-gauge",
-      "forgeElement": "LtvGauge — loan-to-value horizontal meter",
+      "forgeElement": "LtvGauge \u2014 loan-to-value horizontal meter",
       "forgeFile": "ui/components.jsx",
       "forgeSection": "LtvGauge",
       "forgeType": "shared-component",
-      "backendSource": "LendingPool.borrow balance + supply balance + PriceOracle prices → LTV ratio calculation",
+      "backendSource": "LendingPool.borrow balance + supply balance + PriceOracle prices \u2192 LTV ratio calculation",
       "backendType": "contract-read",
       "backendRef": "lending-pool",
       "effort": "2d",
-      "loadingState": "gauge bar pulsing with 'Calculating LTV…' label",
+      "loadingState": "gauge bar pulsing with 'Calculating LTV\u2026' label",
       "errorState": "oracle stale warning; 'LTV unavailable' with muted gauge",
       "emptyState": "gauge at 0% when no borrow position exists; no label shown",
       "fhePath": true,
       "publicPath": false,
-      "notes": "LTV = borrowValue / (supplyValue * collateralFactor). Requires encrypted balance reveal → then public price → ratio. Mixed FHE/public path. Color transitions ink→accent→danger as LTV approaches liquidation threshold."
+      "notes": "LTV = borrowValue / (supplyValue * collateralFactor). Requires encrypted balance reveal \u2192 then public price \u2192 ratio. Mixed FHE/public path. Color transitions ink\u2192accent\u2192danger as LTV approaches liquidation threshold."
     },
     {
       "id": "conn-sparkline",
-      "forgeElement": "Spark — inline sparkline chart",
+      "forgeElement": "Spark \u2014 inline sparkline chart",
       "forgeFile": "ui/components.jsx",
       "forgeSection": "Spark",
       "forgeType": "shared-component",
@@ -419,32 +421,35 @@
     },
     {
       "id": "conn-auth-nonce",
-      "forgeElement": "ConnectModal Step 1 — sign message (EIP-191 nonce)",
+      "forgeElement": "ConnectModal Step 1 \u2014 sign message (EIP-191 nonce)",
       "forgeFile": "ui/screens/connect-modal.jsx",
       "forgeSection": "StepSign",
       "forgeType": "screen-section",
       "backendSource": "GET /auth/nonce/:walletAddress + POST /auth/wallet-login",
       "backendType": "api",
-      "backendRef": "get-auth-nonce",
+      "backendRef": [
+        "get-auth-nonce",
+        "post-wallet-login"
+      ],
       "effort": "2d",
-      "loadingState": "'Generating nonce…' spinner on sign button; 'Verifying signature…' overlay",
+      "loadingState": "'Generating nonce\u2026' spinner on sign button; 'Verifying signature\u2026' overlay",
       "errorState": "nonce expired; invalid signature error; JWT mint failure; 'Authentication failed' toast",
       "emptyState": "sign button shows 'Sign message' with message preview; disabled until wallet picked",
       "fhePath": false,
       "publicPath": true,
-      "notes": "JWT-based auth: fetch nonce → wallet signs EIP-191 message → POST to wallet-login → receive JWT → store for subsequent API calls. JWT expires 15min (HS256). Chain ID stored in auth_nonces table."
+      "notes": "JWT-based auth: fetch nonce \u2192 wallet signs EIP-191 message \u2192 POST to wallet-login \u2192 receive JWT \u2192 store for subsequent API calls. JWT expires 15min (HS256). Chain ID stored in auth_nonces table."
     },
     {
       "id": "conn-ai-risk-analysis",
-      "forgeElement": "Builder workspace — risk analysis via Gemini AI",
+      "forgeElement": "Builder workspace \u2014 risk analysis via Gemini AI",
       "forgeFile": "ui/screens/builder-workspace.jsx",
-      "forgeSection": "BuilderWorkspace() — risk analysis (implied)",
+      "forgeSection": "BuilderWorkspace() \u2014 risk analysis (implied)",
       "forgeType": "screen-section",
       "backendSource": "POST /ai-strategy-builder/advanced/analyze-risk",
       "backendType": "api",
       "backendRef": "analyze-strategy-risk",
       "effort": "2d",
-      "loadingState": "'Analyzing risk…' with Gemini AI processing spinner",
+      "loadingState": "'Analyzing risk\u2026' with Gemini AI processing spinner",
       "errorState": "rate limit warning; AI analysis failure fallback with generic risk disclaimer",
       "emptyState": "risk panel disabled until strategy has at least 2 nodes with configured amounts",
       "fhePath": false,
@@ -453,15 +458,15 @@
     },
     {
       "id": "conn-ai-optimize",
-      "forgeElement": "Builder workspace — strategy optimization via Gemini AI",
+      "forgeElement": "Builder workspace \u2014 strategy optimization via Gemini AI",
       "forgeFile": "ui/screens/builder-workspace.jsx",
-      "forgeSection": "BuilderWorkspace() — optimization (implied)",
+      "forgeSection": "BuilderWorkspace() \u2014 optimization (implied)",
       "forgeType": "screen-section",
       "backendSource": "POST /ai-strategy-builder/advanced/optimize",
       "backendType": "api",
       "backendRef": "optimize-strategy",
       "effort": "2d",
-      "loadingState": "'Optimizing…' with Gemini AI processing indicator",
+      "loadingState": "'Optimizing\u2026' with Gemini AI processing indicator",
       "errorState": "rate limit; optimization failure with original strategy preserved",
       "emptyState": "disabled until strategy has valid workflow with at least 3 nodes",
       "fhePath": false,
@@ -470,17 +475,20 @@
     },
     {
       "id": "conn-builder-save-draft",
-      "forgeElement": "Builder workspace — save draft as DeFi strategy",
+      "forgeElement": "Builder workspace \u2014 save draft as DeFi strategy",
       "forgeFile": "ui/screens/builder-workspace.jsx",
-      "forgeSection": "Toolbar & Status Bar — save",
+      "forgeSection": "Toolbar & Status Bar \u2014 save",
       "forgeType": "screen-section",
       "backendSource": "POST /defi-strategies (create) + PUT /defi-strategies/:id (update)",
       "backendType": "api",
-      "backendRef": "create-defi-strategy",
+      "backendRef": [
+        "create-defi-strategy",
+        "update-defi-strategy"
+      ],
       "effort": "2d",
-      "loadingState": "'Saving…' spinner on save button; status bar 'Saved' timestamp updates",
+      "loadingState": "'Saving\u2026' spinner on save button; status bar 'Saved' timestamp updates",
       "errorState": "save conflict error; network failure with local-draft persistence fallback",
-      "emptyState": "create new draft — button says 'Save as new strategy' before first save",
+      "emptyState": "create new draft \u2014 button says 'Save as new strategy' before first save",
       "fhePath": false,
       "publicPath": true,
       "notes": "Drafts persisted in localStorage by default. Backend save syncs to NestJS for persistent storage and sharing. JWT required."
@@ -489,39 +497,39 @@
       "id": "conn-user-profile",
       "forgeElement": "User profile data (wallet-based user lookup)",
       "forgeFile": "ui/app.jsx",
-      "forgeSection": "App() — user context (implied)",
+      "forgeSection": "App() \u2014 user context (implied)",
       "forgeType": "state-field",
       "backendSource": "GET /users/me?address={walletAddress}",
       "backendType": "api",
       "backendRef": "get-current-user",
       "effort": "1d",
-      "loadingState": "skeleton avatar/name; 'Loading profile…'",
-      "errorState": "user not found (404)→show create prompt; network error→muted fallback with address-only display",
-      "emptyState": "new user prompt — 'Welcome! Create your profile' with inline form",
+      "loadingState": "skeleton avatar/name; 'Loading profile\u2026'",
+      "errorState": "user not found (404)\u2192show create prompt; network error\u2192muted fallback with address-only display",
+      "emptyState": "new user prompt \u2014 'Welcome! Create your profile' with inline form",
       "fhePath": false,
       "publicPath": true,
       "notes": "User profile is created on first auth. Username, wallet address, metadata. JWT required for mutations."
     },
     {
       "id": "conn-composer-open-position",
-      "forgeElement": "Builder workspace deploy — Composer.openPosition()",
+      "forgeElement": "Builder workspace deploy \u2014 Composer.openPosition()",
       "forgeFile": "ui/screens/builder-workspace.jsx",
-      "forgeSection": "Deploy Flow → DeployProgressModal",
+      "forgeSection": "Deploy Flow \u2192 DeployProgressModal",
       "forgeType": "screen-section",
       "backendSource": "FheForgeComposer.openPosition()",
       "backendType": "contract-write",
       "backendRef": "composer",
       "effort": "5d",
-      "loadingState": "multi-step tx signing: vault→pool→swap sequential confirmations; gas estimation pending",
+      "loadingState": "multi-step tx signing: vault\u2192pool\u2192swap sequential confirmations; gas estimation pending",
       "errorState": "step failure reversion; gas too low; Composer not approved (ERC20 approval needed)",
       "emptyState": "deploy button disabled when no workflow nodes configured",
       "fhePath": true,
       "publicPath": false,
-      "notes": "Composer.openPosition() chains vault collateral deposit → lending pool supply/borrow → swap router token conversion in one atomic tx. Pre-approve Composer via ERC20 transferFrom. Requires 3 encrypted InEuint128 params."
+      "notes": "Composer.openPosition() chains vault collateral deposit \u2192 lending pool supply/borrow \u2192 swap router token conversion in one atomic tx. Pre-approve Composer via ERC20 transferFrom. Requires 3 encrypted InEuint128 params."
     },
     {
       "id": "conn-builder-defi-modules",
-      "forgeElement": "Builder workspace — DeFi module lookup (node types: Supply, Borrow, Swap, Repeat, Settle)",
+      "forgeElement": "Builder workspace \u2014 DeFi module lookup (node types: Supply, Borrow, Swap, Repeat, Settle)",
       "forgeFile": "ui/screens/builder-workspace.jsx",
       "forgeSection": "NODE_TYPES / DEFAULT_CONFIG / TEMPLATES",
       "forgeType": "screen-section",
@@ -530,17 +538,16 @@
       "backendRef": "get-defi-modules",
       "effort": "2d",
       "loadingState": "skeleton palette items; pulsing node type cards while modules load",
-      "errorState": "module fetch failure → fallback to hardcoded 5 node types with static configs",
+      "errorState": "module fetch failure \u2192 fallback to hardcoded 5 node types with static configs",
       "emptyState": "palette shows disabled items with 'No modules available' if empty",
       "fhePath": false,
       "publicPath": true,
       "notes": "Defi modules define available on-chain operations. Each module has associated actions (SWAP, SUPPLY, BORROW). Used to populate the builder node palette."
     }
   ],
-
   "walletContextMapping": {
     "description": "Per-field mapping of forge wallet context (ctx) to wagmi/@cofhe SDK hooks",
-    "contextSource": "ui/app.jsx — useStateA({ connected: false, address: '', permitUnlocked: false, permitSeconds: 0, revealing: false })",
+    "contextSource": "ui/app.jsx \u2014 useStateA({ connected: t.startConnected, address: \"0x9f3a2c4b1e0d8f7a6c5b4a39\", permitUnlocked: t.startConnected && t.startUnlocked, permitSeconds: t.startConnected && t.startUnlocked ? 14 * 60 : 0, revealing: false })",
     "fields": [
       {
         "id": "wallet-ctx-connected",
@@ -550,11 +557,11 @@
         "backendSource": "useAccount().isConnected (wagmi)",
         "backendType": "hook",
         "effort": "0.5h",
-        "loadingState": "useAccount().isConnecting (boolean) — true while reconnecting",
-        "errorState": "connection error from wagmi — useAccount().connector?.getProvider() or connect error",
-        "emptyState": "false (disconnected) — default state before wallet connect",
+        "loadingState": "useAccount().isConnecting (boolean) \u2014 true while reconnecting",
+        "errorState": "connection error from wagmi \u2014 useAccount().connector?.getProvider() or connect error",
+        "emptyState": "false (disconnected) \u2014 default state before wallet connect",
         "fhePath": false,
-        "notes": "Direct 1:1 mapping. Adapter: useForgeAdapter() → ctx.connected = isConnected. wagmi reconnects automatically via injected connector."
+        "notes": "Direct 1:1 mapping. Adapter: useForgeAdapter() \u2192 ctx.connected = isConnected. wagmi reconnects automatically via injected connector."
       },
       {
         "id": "wallet-ctx-address",
@@ -566,7 +573,7 @@
         "effort": "0.5h",
         "loadingState": "undefined while connecting; set after connection established",
         "errorState": "null on disconnect or chain switch with account change",
-        "emptyState": "'' (empty string) — initial state before wallet connect",
+        "emptyState": "'' (empty string) \u2014 initial state before wallet connect",
         "fhePath": false,
         "notes": "Direct 1:1 mapping. Adapter: ctx.address = address || ''. Address is checksummed by wagmi."
       },
@@ -580,7 +587,7 @@
         "effort": "1h",
         "loadingState": "false while checking permit state; usePermitStatus() could be 'loading'",
         "errorState": "false if permit expired or grant failed; check permit error from cofhe",
-        "emptyState": "false — initial state before permit is granted",
+        "emptyState": "false \u2014 initial state before permit is granted",
         "fhePath": true,
         "notes": "CoFHE SDK integration. unlocked indicates if decrypt handles are active. Adapter: ctx.permitUnlocked = unlocked."
       },
@@ -594,7 +601,7 @@
         "effort": "1h",
         "loadingState": "0 while loading; updated after permit state resolves",
         "errorState": "0 when permit expired or never granted",
-        "emptyState": "0 — initial/expired state",
+        "emptyState": "0 \u2014 initial/expired state",
         "fhePath": true,
         "notes": "Countdown from permit expiry (15 min = 900s). Decremented locally via useInterval. Adapter: ctx.permitSeconds = secondsLeft."
       },
@@ -607,8 +614,8 @@
         "backendType": "utility",
         "effort": "1h",
         "loadingState": "true during reveal animation sequence",
-        "errorState": "false if reveal fails — individual Cipher components show locked fallback",
-        "emptyState": "false — initial state before any reveal triggered",
+        "errorState": "false if reveal fails \u2014 individual Cipher components show locked fallback",
+        "emptyState": "false \u2014 initial state before any reveal triggered",
         "fhePath": true,
         "notes": "State-driven reveal flag. StaggeredReveal applies 50ms per-element delay sorted by DOM top position. Used for progressive disclosure animation."
       },
@@ -621,10 +628,10 @@
         "backendType": "hook",
         "effort": "0.5h",
         "loadingState": "undefined while connecting",
-        "errorState": "chainId !== 421614 (Arb Sepolia) → network switch prompt",
-        "emptyState": "undefined — no chain before wallet connect",
+        "errorState": "chainId !== 421614 (Arb Sepolia) \u2192 network switch prompt",
+        "emptyState": "undefined \u2014 no chain before wallet connect",
         "fhePath": false,
-        "notes": "Arbitrum Sepolia chain ID is 421614. Network chip in TopBar shows 'Arb·Sepolia'. Chain mismatch triggers switch network flow."
+        "notes": "PLANNED \u2014 No direct chainId field currently exists in the ctx state object in ui/app.jsx. The actual ctx state has: connected, address, permitUnlocked, permitSeconds, revealing only. chainId is inferred from wagmi useAccount() but not surfaced in ctx. Network chip in TopBar shows \"Arb\u00b7Sepolia\". Chain mismatch triggers switch network flow."
       },
       {
         "id": "wallet-ctx-permit-balance",
@@ -636,13 +643,12 @@
         "effort": "1h",
         "loadingState": "empty handles array while loading",
         "errorState": "permit expired => no handles accessible",
-        "emptyState": "empty array — no handles before permit",
+        "emptyState": "empty array \u2014 no handles before permit",
         "fhePath": true,
         "notes": "FHE handles represent encrypted values user has granted access to. Not directly exposed in current ctx but used internally."
       }
     ]
   },
-
   "connectModalSteps": {
     "description": "Mapping of the 4-step connect modal flow to backend/wagmi/cofhe sources",
     "modalFile": "ui/screens/connect-modal.jsx",
@@ -657,20 +663,20 @@
         "effort": "2h",
         "loadingState": "wallet options grid loading with skeleton cards; disabled while initialization pending",
         "errorState": "connector unavailable (not injected); 'No wallet detected' prompt with install link",
-        "emptyState": "no connectors available → 'install a wallet' empty state with download links",
+        "emptyState": "no connectors available \u2192 'install a wallet' empty state with download links",
         "fhePath": false,
-        "notes": "4 wallet options displayed in 2×2 grid: MetaMask, Rabby, WalletConnect, Ledger. Continue button advances to Step 1 after selection."
+        "notes": "4 wallet options displayed in 2\u00d72 grid: MetaMask, Rabby, WalletConnect, Ledger. Continue button advances to Step 1 after selection."
       },
       {
         "id": "conn-modal-step1",
         "name": "Sign message",
         "forgeComponent": "StepSign",
         "stepNumber": 1,
-        "backendSource": "GET /auth/nonce/:walletAddress → wallet.signMessage() → POST /auth/wallet-login",
+        "backendSource": "GET /auth/nonce/:walletAddress \u2192 wallet.signMessage() \u2192 POST /auth/wallet-login",
         "backendType": "api+wallet",
         "effort": "4h",
-        "loadingState": "'Signing…' spinner after user clicks Sign; nonce generation pending",
-        "errorState": "user rejected signature in wallet; nonce expired; JWT mint failure → retry option",
+        "loadingState": "'Signing\u2026' spinner after user clicks Sign; nonce generation pending",
+        "errorState": "user rejected signature in wallet; nonce expired; JWT mint failure \u2192 retry option",
         "emptyState": "sign message preview with address, nonce, chain shown before user action",
         "fhePath": false,
         "notes": "Two-step API interaction: fetch nonce from backend, wallet signs EIP-191 message, backend verifies and returns JWT. Sets ctx.connected = true after success."
@@ -680,11 +686,11 @@
         "name": "Grant CoFHE permit",
         "forgeComponent": "StepPermit",
         "stepNumber": 2,
-        "backendSource": "@cofhe/sdk grantPermit() — 15-minute FHE decrypt permission",
+        "backendSource": "@cofhe/sdk grantPermit() \u2014 15-minute FHE decrypt permission",
         "backendType": "hook",
         "effort": "4h",
-        "loadingState": "'Granting permit…' with spinner; cofhe SDK wallet interaction pending",
-        "errorState": "user rejected permit grant; permit timeout; grant failed → back to step 1 or retry",
+        "loadingState": "'Granting permit\u2026' with spinner; cofhe SDK wallet interaction pending",
+        "errorState": "user rejected permit grant; permit timeout; grant failed \u2192 back to step 1 or retry",
         "emptyState": "permit info screen with scope explanation (your handles), expiry (15 min), cost (0 gas)",
         "fhePath": true,
         "notes": "CoFHE SDK permit grants access to decrypt FHE handles. 15-minute expiry. Sets ctx.permitUnlocked = true and ctx.permitSeconds = 900 after success."
@@ -694,7 +700,7 @@
         "name": "Ready / Connected",
         "forgeComponent": "StepReady",
         "stepNumber": 3,
-        "backendSource": "Local state only — 'permit live' confirmation",
+        "backendSource": "Local state only \u2014 'permit live' confirmation",
         "backendType": "state",
         "effort": "0.5h",
         "loadingState": "not applicable (terminal step)",
@@ -704,11 +710,10 @@
         "notes": "Confirmation step with 'permit live' tag, success message ('You can read your numbers.'), animated pulse line. Auto-dismisses modal after 1.6s timeout."
       }
     ],
-    "flowSummary": "Step 0 (wagmi connect) → Step 1 (wallet sign + JWT auth) → Step 2 (cofhe permit) → Step 3 (ready). Steps persist in sessionStorage for mid-flow refresh resilience. Step progression auto-detects from ctx state on modal open."
+    "flowSummary": "Step 0 (wagmi connect) \u2192 Step 1 (wallet sign + JWT auth) \u2192 Step 2 (cofhe permit) \u2192 Step 3 (ready). Steps persist in sessionStorage for mid-flow refresh resilience. Step progression auto-detects from ctx state on modal open."
   },
-
   "gaps": {
-    "description": "Forge features with no direct backend equivalent — needs new endpoints, contracts, or will remain as mock-only",
+    "description": "Forge features with no direct backend equivalent \u2014 needs new endpoints, contracts, or will remain as mock-only",
     "items": [
       {
         "id": "gap-builder-canvas-rendering",
@@ -721,7 +726,7 @@
         "id": "gap-builder-keyboard-shortcuts",
         "forgeElement": "50+ keyboard shortcuts (canvas, editing, workflow)",
         "forgeFile": "ui/screens/builder-workspace.jsx",
-        "description": "Forge implements 50+ keyboard shortcuts natively (Tab cycle, 1-5 quick add, arrow nudge, ⌘Z/⌘C/⌘V, H hand tool, V select, S simulate, F fullscreen, ? cheatsheet, etc.). Pure frontend feature.",
+        "description": "Forge implements 50+ keyboard shortcuts natively (Tab cycle, 1-5 quick add, arrow nudge, \u2318Z/\u2318C/\u2318V, H hand tool, V select, S simulate, F fullscreen, ? cheatsheet, etc.). Pure frontend feature.",
         "recommendation": "Keep as frontend-only. No backend equivalent."
       },
       {
@@ -742,7 +747,7 @@
         "id": "gap-builder-auto-organize",
         "forgeElement": "Auto-Organize Layout (Sugiyama layered algorithm)",
         "forgeFile": "ui/screens/builder-workspace.jsx",
-        "description": "Forge implements width-aware layered layout with median heuristic. Pure graph visualization algorithm — no backend needed.",
+        "description": "Forge implements width-aware layered layout with median heuristic. Pure graph visualization algorithm \u2014 no backend needed.",
         "recommendation": "Keep as frontend-only. No backend equivalent."
       },
       {
@@ -763,7 +768,7 @@
         "id": "gap-tweaks-panel",
         "forgeElement": "Tweaks Panel (entire dev panel: theme toggles, wallet state simulation, route nav)",
         "forgeFile": "ui/tweaks-panel.jsx",
-        "description": "Developer debugging panel for prototype mode. Not a production feature — mock-only with host protocol communication pattern.",
+        "description": "Developer debugging panel for prototype mode. Not a production feature \u2014 mock-only with host protocol communication pattern.",
         "recommendation": "mock-only. Strip in production build or gate behind __DEV__ flag."
       },
       {
@@ -792,157 +797,290 @@
         "forgeElement": "Real-time notifications / activity feed updates",
         "forgeFile": "ui/screens/dashboard.jsx",
         "description": "Dashboard activity currently relies on polling via GET /activities. No WebSocket or SSE endpoint exists for real-time push updates.",
-        "recommendation": "Possible enhancement: WebSocket gateway for real-time activity push. Not blocking — polling fallback works."
+        "recommendation": "Possible enhancement: WebSocket gateway for real-time activity push. Not blocking \u2014 polling fallback works."
       }
     ]
   },
-
   "dependencyGraph": {
-    "description": "Forge feature → required backend service/contract dependency chains",
+    "description": "Forge feature \u2192 required backend service/contract dependency chains",
     "edges": [
       {
         "from": "Landing page",
-        "to": ["ThemeProvider (client-only)", "usePortfolio() mock (client-only)"],
+        "to": [
+          "ThemeProvider (client-only)",
+          "usePortfolio() mock (client-only)"
+        ],
         "type": "ui"
       },
       {
         "from": "Landing Ticker",
-        "to": ["GET /stats", "Provider.getBlockNumber()", "Provider.getGasPrice()"],
+        "to": [
+          "GET /stats",
+          "Provider.getBlockNumber()",
+          "Provider.getGasPrice()"
+        ],
         "type": "data"
       },
       {
         "from": "Dashboard Positions",
-        "to": ["useAccount()", "cofhe grantPermit()", "LendingPool.getSupplyBalance()", "LendingPool.getBorrowBalance()", "StrategyVault.getUserPositions()", "PriceOracle.convertToUsd()"],
+        "to": [
+          "useAccount()",
+          "cofhe grantPermit()",
+          "LendingPool.getSupplyBalance()",
+          "LendingPool.getBorrowBalance()",
+          "StrategyVault.getUserPositions()",
+          "PriceOracle.convertToUsd()"
+        ],
         "type": "data"
       },
       {
         "from": "Dashboard Strategies",
-        "to": ["useAccount()", "GET /defi-strategies?owner=", "StrategyRegistry.getEncryptedTvl()"],
+        "to": [
+          "useAccount()",
+          "GET /defi-strategies?owner=",
+          "StrategyRegistry.getEncryptedTvl()"
+        ],
         "type": "data"
       },
       {
         "from": "Dashboard Activity",
-        "to": ["useAccount()", "GET /activities?userAddress="],
+        "to": [
+          "useAccount()",
+          "GET /activities?userAddress="
+        ],
         "type": "data"
       },
       {
         "from": "Dashboard Overview",
-        "to": ["useAccount()", "cofhe grantPermit()", "LendingPool (balances)", "PriceOracle (prices)", "StrategyVault (positions)"],
+        "to": [
+          "useAccount()",
+          "cofhe grantPermit()",
+          "LendingPool (balances)",
+          "PriceOracle (prices)",
+          "StrategyVault (positions)"
+        ],
         "type": "data"
       },
       {
         "from": "Lending Market List",
-        "to": ["GET /markets", "PriceOracle (prices)"],
+        "to": [
+          "GET /markets",
+          "PriceOracle (prices)"
+        ],
         "type": "data"
       },
       {
         "from": "Lending Supply Action",
-        "to": ["cofhe encrypt()", "cofhe grantPermit()", "LendingPool.shield()/shieldEth()", "Provider.estimateGas()"],
+        "to": [
+          "cofhe encrypt()",
+          "cofhe grantPermit()",
+          "LendingPool.shield()/shieldEth()",
+          "Provider.estimateGas()"
+        ],
         "type": "tx"
       },
       {
         "from": "Lending Borrow Action",
-        "to": ["cofhe encrypt()", "cofhe grantPermit()", "LendingPool.borrowWithLtvCheck() or borrowWithOracle()", "PriceOracle (LTV calculation)", "Provider.estimateGas()"],
+        "to": [
+          "cofhe encrypt()",
+          "cofhe grantPermit()",
+          "LendingPool.borrowWithLtvCheck() or borrowWithOracle()",
+          "PriceOracle (LTV calculation)",
+          "Provider.estimateGas()"
+        ],
         "type": "tx"
       },
       {
         "from": "Lending Repay Action",
-        "to": ["cofhe encrypt()", "cofhe grantPermit()", "LendingPool.repayDebt()", "Provider.estimateGas()"],
+        "to": [
+          "cofhe encrypt()",
+          "cofhe grantPermit()",
+          "LendingPool.repayDebt()",
+          "Provider.estimateGas()"
+        ],
         "type": "tx"
       },
       {
         "from": "Lending Withdraw Action",
-        "to": ["cofhe encrypt()", "cofhe grantPermit()", "cofhe verifyDecryptResult() (for proof)", "LendingPool.partialUnshield() or unshieldWithProof()", "Provider.estimateGas()"],
+        "to": [
+          "cofhe encrypt()",
+          "cofhe grantPermit()",
+          "cofhe verifyDecryptResult() (for proof)",
+          "LendingPool.partialUnshield() or unshieldWithProof()",
+          "Provider.estimateGas()"
+        ],
         "type": "tx"
       },
       {
         "from": "Builder Workspace (Canvas)",
-        "to": ["Client-side only (custom SVG rendering, no backend dependency)"],
+        "to": [
+          "Client-side only (custom SVG rendering, no backend dependency)"
+        ],
         "type": "ui"
       },
       {
         "from": "Builder Simulation",
-        "to": ["POST /defi-strategies/simulate", "SwapSimulator", "SupplySimulator", "BorrowSimulator"],
+        "to": [
+          "POST /defi-strategies/simulate",
+          "SwapSimulator",
+          "SupplySimulator",
+          "BorrowSimulator"
+        ],
         "type": "data"
       },
       {
         "from": "Builder AI Strategy",
-        "to": ["POST /ai-strategy-builder/build", "Gemini AI", "Strategy Validation"],
+        "to": [
+          "POST /ai-strategy-builder/build",
+          "Gemini AI",
+          "Strategy Validation"
+        ],
         "type": "data"
       },
       {
         "from": "Builder Deploy",
-        "to": ["cofhe encrypt()", "cofhe grantPermit()", "FheForgeComposer.openPosition()", "LendingPool (sub-calls)", "StrategyVault (sub-calls)", "SwapRouter (sub-calls)", "Provider.estimateGas()", "Provider.getGasPrice()"],
+        "to": [
+          "cofhe encrypt()",
+          "cofhe grantPermit()",
+          "FheForgeComposer.openPosition()",
+          "LendingPool (sub-calls)",
+          "StrategyVault (sub-calls)",
+          "SwapRouter (sub-calls)",
+          "Provider.estimateGas()",
+          "Provider.getGasPrice()"
+        ],
         "type": "tx"
       },
       {
         "from": "Builder AI Risk Analysis",
-        "to": ["POST /ai-strategy-builder/advanced/analyze-risk", "Gemini AI"],
+        "to": [
+          "POST /ai-strategy-builder/advanced/analyze-risk",
+          "Gemini AI"
+        ],
         "type": "data"
       },
       {
         "from": "Builder AI Optimization",
-        "to": ["POST /ai-strategy-builder/advanced/optimize", "Gemini AI"],
+        "to": [
+          "POST /ai-strategy-builder/advanced/optimize",
+          "Gemini AI"
+        ],
         "type": "data"
       },
       {
         "from": "Governance Proposals",
-        "to": ["GET /governance/proposals", "GovernorBravo (on-chain state)"],
+        "to": [
+          "GET /governance/proposals",
+          "GovernorBravo (on-chain state)"
+        ],
         "type": "data"
       },
       {
         "from": "Governance Vote",
-        "to": ["POST /governance/vote", "JWT auth", "GovernorBravo (on-chain)"],
+        "to": [
+          "POST /governance/vote",
+          "JWT auth",
+          "GovernorBravo (on-chain)"
+        ],
         "type": "tx"
       },
       {
         "from": "Connect Modal Step 0 (Wallet)",
-        "to": ["wagmi useConnect()", "MetaMask/Rabby/WC/Ledger connectors"],
+        "to": [
+          "wagmi useConnect()",
+          "MetaMask/Rabby/WC/Ledger connectors"
+        ],
         "type": "wallet"
       },
       {
         "from": "Connect Modal Step 1 (Sign)",
-        "to": ["GET /auth/nonce/:wallet", "wallet.signMessage()", "POST /auth/wallet-login", "Supabase auth_nonces table"],
+        "to": [
+          "GET /auth/nonce/:wallet",
+          "wallet.signMessage()",
+          "POST /auth/wallet-login",
+          "Supabase auth_nonces table"
+        ],
         "type": "auth"
       },
       {
         "from": "Connect Modal Step 2 (Permit)",
-        "to": ["cofhe grantPermit()", "FHE.allowTransient()"],
+        "to": [
+          "cofhe grantPermit()",
+          "FHE.allowTransient()"
+        ],
         "type": "auth"
       },
       {
         "from": "Connect Modal Step 3 (Ready)",
-        "to": ["Client-side state only"],
+        "to": [
+          "Client-side state only"
+        ],
         "type": "ui"
       },
       {
         "from": "WalletChip",
-        "to": ["wagmi useAccount()"],
+        "to": [
+          "wagmi useAccount()"
+        ],
         "type": "wallet"
       },
       {
         "from": "PermitChip",
-        "to": ["cofhe usePermitCountdown()"],
+        "to": [
+          "cofhe usePermitCountdown()"
+        ],
         "type": "wallet"
       },
       {
         "from": "Cipher Component",
-        "to": ["cofhe decryptHandle()", "staggeredReveal utility"],
+        "to": [
+          "cofhe decryptHandle()",
+          "staggeredReveal utility"
+        ],
         "type": "data"
       },
       {
         "from": "LtvGauge",
-        "to": ["LendingPool encrypted balances (FHE)", "PriceOracle prices (public)", "LTV calculation"],
+        "to": [
+          "LendingPool encrypted balances (FHE)",
+          "PriceOracle prices (public)",
+          "LTV calculation"
+        ],
         "type": "data"
       },
       {
         "from": "User Profile",
-        "to": ["GET /users/me?address=", "JWT auth", "POST /users (create if new)"],
+        "to": [
+          "GET /users/me?address=",
+          "JWT auth",
+          "POST /users (create if new)"
+        ],
+        "type": "data"
+      },
+      {
+        "from": "Builder Estimate DeFi",
+        "to": [
+          "POST /defi-modules/pairs/estimate"
+        ],
+        "type": "data"
+      },
+      {
+        "from": "Builder DeFi Modules",
+        "to": [
+          "GET /defi-modules"
+        ],
+        "type": "data"
+      },
+      {
+        "from": "Builder Save Draft",
+        "to": [
+          "POST /defi-strategies",
+          "PUT /defi-strategies/:id"
+        ],
         "type": "data"
       }
     ]
   },
-
   "loadingErrorEmptyMatrix": {
     "description": "Standardized loading/error/empty state patterns across connection types",
     "patterns": {
@@ -957,36 +1095,36 @@
         "empty": "detail pane placeholder with 'Select an item' prompt; detail-level empty state for new/unconfigured items"
       },
       "api-post-mutation": {
-        "loading": "submit button → disabled spinner; overlay with tx status; 'Processing…' label",
+        "loading": "submit button \u2192 disabled spinner; overlay with tx status; 'Processing\u2026' label",
         "error": "inline toast notification with error reason + retry; field-level validation errors",
         "empty": "form with default/placeholder values; submit button disabled until valid input"
       },
       "contract-read-fhe": {
-        "loading": "Cipher component in locked state; pulsing skeleton for non-cipher values; 'Decrypting…' for reveal",
+        "loading": "Cipher component in locked state; pulsing skeleton for non-cipher values; 'Decrypting\u2026' for reveal",
         "error": "locked state fallback with 'Decrypt failed' tooltip; inline warning for permit expired",
-        "empty": "Cipher shows '—' for zero/empty values; locked state for unpermitted access"
+        "empty": "Cipher shows '\u2014' for zero/empty values; locked state for unpermitted access"
       },
       "contract-read-public": {
         "loading": "pulsing skeleton for numeric values; gauge bar in indeterminate state",
         "error": "muted value with warning icon; stale data indicator with fallback",
-        "empty": "'—' (em dash) for zero values; gauge at 0% with no label"
+        "empty": "'\u2014' (em dash) for zero values; gauge at 0% with no label"
       },
       "contract-write-fhe": {
-        "loading": "tx pending overlay with step indicators; 'Encrypting amount…' phase before tx; gas estimation spinner",
+        "loading": "tx pending overlay with step indicators; 'Encrypting amount\u2026' phase before tx; gas estimation spinner",
         "error": "tx reverted toast with reason; permit expired inline warning; insufficient balance error",
         "empty": "action inputs at default state (0.00); submit button disabled"
       },
       "wallet-connect": {
-        "loading": "wallet selection cards with disabled state; 'Connecting…' on selected wallet",
+        "loading": "wallet selection cards with disabled state; 'Connecting\u2026' on selected wallet",
         "error": "user rejected connection toast; no wallet detected prompt with install link",
         "empty": "wallet options grid shown; connect button CTA"
       }
     },
     "crossCuttingConcerns": {
       "fheReveal": {
-        "loading": "staggeredReveal with 50ms per-element delay; Cipher components transition locked→unlocked one by one",
+        "loading": "staggeredReveal with 50ms per-element delay; Cipher components transition locked\u2192unlocked one by one",
         "error": "individual Cipher falls back to locked state; 'Some values could not be decrypted' summary",
-        "empty": "all Cipher values show '—' after reveal (all empty portfolios)"
+        "empty": "all Cipher values show '\u2014' after reveal (all empty portfolios)"
       },
       "permitExpiry": {
         "loading": "countdown timer running; PermitChip in live state",
@@ -994,14 +1132,14 @@
         "empty": "locked state with 'Grant permit' CTA before any FHE operations"
       },
       "networkMismatch": {
-        "loading": "checking chain ID… spinner in network chip",
+        "loading": "checking chain ID\u2026 spinner in network chip",
         "error": "red network chip with 'Wrong network' label; switch network prompt modal",
         "empty": "network chip shows chain ID after connection; hidden when disconnected"
       },
       "jwtExpiry": {
         "loading": "silent refresh attempt using stored refresh mechanism",
         "error": "re-auth prompt: 'Session expired. Please sign again.' in a toast/modal",
-        "empty": "no JWT → protected API calls return 401 → fallback to unauthenticated state"
+        "empty": "no JWT \u2192 protected API calls return 401 \u2192 fallback to unauthenticated state"
       }
     }
   }

@@ -1,0 +1,257 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Forge Manifest Schema",
+  "description": "JSON Schema for forge-integration/forge-manifest.json — validates forge file entries, mock data arrays, builder features, and tweaks panel definitions",
+  "type": "object",
+  "required": ["version", "generated", "mission", "description", "files", "mockDataArrays", "builderFeatures", "tweaksPanel"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "generated": {
+      "type": "string",
+      "description": "Generation date in YYYY-MM-DD format",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "mission": {
+      "type": "string",
+      "description": "Mission context for the manifest"
+    },
+    "description": {
+      "type": "string",
+      "description": "Overall description of the manifest contents"
+    },
+    "files": {
+      "type": "array",
+      "description": "List of all 13 forge prototype files with sections, mock data, and integration readiness",
+      "items": {
+        "$ref": "#/definitions/ForgeFile"
+      },
+      "minItems": 13,
+      "uniqueItems": true
+    },
+    "mockDataArrays": {
+      "type": "array",
+      "description": "Top-level mock data definitions cross-referenced from file sections",
+      "items": {
+        "$ref": "#/definitions/MockDataArray"
+      },
+      "uniqueItems": true
+    },
+    "builderFeatures": {
+      "$ref": "#/definitions/BuilderFeatures"
+    },
+    "tweaksPanel": {
+      "$ref": "#/definitions/TweaksPanel"
+    }
+  },
+  "definitions": {
+    "ForgeFile": {
+      "type": "object",
+      "required": ["id", "name", "path", "type", "description", "sections", "subComponents", "integrationReadiness"],
+      "properties": {
+        "id": { "type": "string", "description": "Unique file identifier" },
+        "name": { "type": "string", "description": "Human-readable file name" },
+        "path": { "type": "string", "description": "Relative path from repo root" },
+        "type": {
+          "type": "string",
+          "enum": ["html-shell", "styles", "root-app", "shared-components", "screen", "utility", "documentation"],
+          "description": "File type classification"
+        },
+        "description": { "type": "string", "description": "File overview description" },
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/FileSection" },
+          "description": "Logical sections within the file"
+        },
+        "subComponents": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Sub-component names extracted from this file"
+        },
+        "integrationReadiness": {
+          "type": "string",
+          "enum": ["ready-to-wire", "needs-api", "needs-contract", "needs-redesign", "mock-only"],
+          "description": "How ready this file is for bridge layer integration"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FileSection": {
+      "type": "object",
+      "required": ["name", "description", "mockData", "integrationReadiness"],
+      "properties": {
+        "name": { "type": "string", "description": "Section name" },
+        "description": { "type": "string", "description": "Section description" },
+        "stateVariables": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "State variable names used in this section"
+        },
+        "props": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "React props accepted by this component"
+        },
+        "mockData": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/MockDataArray" },
+          "description": "Mock data arrays defined in this section"
+        },
+        "integrationReadiness": {
+          "type": "string",
+          "enum": ["ready-to-wire", "needs-api", "needs-contract", "needs-redesign", "mock-only"],
+          "description": "Integration readiness for this section"
+        },
+        "backendDependencies": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Backend dependencies this section requires"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MockDataArray": {
+      "type": "object",
+      "required": ["fields"],
+      "anyOf": [
+        { "required": ["name"] },
+        { "required": ["array"] }
+      ],
+      "properties": {
+        "array": { "type": "string", "description": "Name of the mock data array in source (used in section-level mockData)" },
+        "name": { "type": "string", "description": "Name of the mock data array (used in top-level mockDataArrays)" },
+        "file": { "type": "string", "description": "Source file containing this mock data" },
+        "screen": { "type": "string", "description": "Screen/component where this data is used" },
+        "fields": {
+          "oneOf": [
+            {
+              "type": "object",
+              "description": "Field definitions as dictionary with MockField values: {fieldName: {type, description, ...}}",
+              "additionalProperties": { "$ref": "#/definitions/MockField" }
+            },
+            {
+              "type": "object",
+              "description": "Field definitions as dictionary with string values: {fieldName: 'type — description'}",
+              "additionalProperties": { "type": "string" }
+            },
+            {
+              "type": "array",
+              "description": "Field definitions as array of {name, type, description} objects",
+              "items": {
+                "type": "object",
+                "required": ["name", "type", "description"],
+                "properties": {
+                  "name": { "type": "string", "description": "Field name" },
+                  "type": { "type": "string", "description": "Field type" },
+                  "description": { "type": "string", "description": "Field description" }
+                },
+                "additionalProperties": false
+              }
+            }
+          ]
+        },
+        "values": {
+          "oneOf": [
+            {
+              "type": "array",
+              "description": "Sample values as an array of items",
+              "items": {}
+            },
+            {
+              "type": "object",
+              "description": "Sample values as a flat object (e.g., TWEAK_DEFAULTS defaults)"
+            }
+          ]
+        },
+        "realSource": { "type": "string", "description": "Production data source that replaces this mock data" }
+      },
+      "additionalProperties": false
+    },
+    "MockField": {
+      "type": "object",
+      "required": ["type", "description"],
+      "properties": {
+        "type": { "type": "string", "description": "Field type string (string, number, boolean, etc.)" },
+        "description": { "type": "string", "description": "Field description" },
+        "realSource": { "type": "string", "description": "Production data source for this field" }
+      },
+      "additionalProperties": false
+    },
+    "BuilderFeatures": {
+      "type": "object",
+      "required": ["count", "summary", "features"],
+      "properties": {
+        "count": { "type": "integer", "description": "Total number of builder features" },
+        "summary": { "type": "string", "description": "Summary of builder feature inventory" },
+        "features": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/BuilderFeature" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "BuilderFeature": {
+      "type": "object",
+      "required": ["name", "exists", "implementation", "integrationReadiness", "description"],
+      "properties": {
+        "name": { "type": "string", "description": "Feature name" },
+        "exists": { "type": "boolean", "description": "Whether the feature exists in source" },
+        "implementation": { "type": "string", "description": "Implementation approach" },
+        "integrationReadiness": {
+          "type": "string",
+          "enum": ["ready-to-wire", "needs-api", "needs-contract", "needs-redesign", "mock-only"],
+          "description": "Integration readiness for this feature"
+        },
+        "description": { "type": "string", "description": "Feature description" }
+      },
+      "additionalProperties": false
+    },
+    "TweaksPanel": {
+      "type": "object",
+      "required": ["description", "controls"],
+      "properties": {
+        "description": { "type": "string", "description": "Overall description of the tweaks panel" },
+        "controls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type", "description"],
+            "properties": {
+              "name": { "type": "string", "description": "Control name" },
+              "type": { "type": "string", "enum": ["hook", "shell", "layout", "control"], "description": "Control type" },
+              "description": { "type": "string", "description": "Control description" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "integrationReadiness": {
+          "type": "string",
+          "enum": ["mock-only"],
+          "description": "Tweaks panel is always mock-only"
+        },
+        "appUsage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["section", "controls"],
+            "properties": {
+              "section": { "type": "string", "description": "App section name" },
+              "controls": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "Controls used in this section"
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

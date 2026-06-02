@@ -1,0 +1,198 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Backend Manifest Schema",
+  "description": "JSON Schema for forge-integration backend-manifest.json — validates smart contracts and NestJS API endpoint definitions",
+  "type": "object",
+  "required": ["version", "generated", "description", "smartContracts", "apiEndpoints"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "generated": {
+      "type": "string",
+      "description": "Generation date in YYYY-MM-DD format",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "description": {
+      "type": "string",
+      "description": "Overall description of the manifest"
+    },
+    "smartContracts": {
+      "type": "array",
+      "description": "List of smart contracts with their functions, events, and FHE markers",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "address", "abiPath", "sourceFile", "description", "readFunctions", "writeFunctions", "events", "fheMarkers", "errorCodes"],
+        "properties": {
+          "id": { "type": "string", "description": "Unique identifier for the contract" },
+          "name": { "type": "string", "description": "Solidity contract name" },
+          "address": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$", "description": "Deployed contract address" },
+          "abiPath": { "type": "string", "description": "Path to compiled ABI JSON file" },
+          "sourceFile": { "type": "string", "description": "Path to Solidity source file" },
+          "description": { "type": "string", "description": "Contract description" },
+          "inherits": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Inherited base contracts"
+          },
+          "readFunctions": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/FunctionDefinition" },
+            "description": "View/pure read functions"
+          },
+          "writeFunctions": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/FunctionDefinition" },
+            "description": "State-mutating write functions"
+          },
+          "events": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/EventDefinition" },
+            "description": "Contract events"
+          },
+          "fheMarkers": { "$ref": "#/definitions/FheMarkers" },
+          "errorCodes": {
+            "type": "array",
+            "items": { "$ref": "#/definitions/ErrorCode" },
+            "description": "Custom error definitions"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "apiEndpoints": {
+      "type": "array",
+      "description": "List of NestJS API endpoints",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "method", "path", "auth", "sourceFile", "description"],
+        "properties": {
+          "id": { "type": "string", "description": "Unique identifier for the endpoint" },
+          "name": { "type": "string", "description": "Human-readable endpoint name" },
+          "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"], "description": "HTTP method" },
+          "path": { "type": "string", "description": "URL path template" },
+          "requestShape": { "type": "object", "description": "Request parameter shape" },
+          "responseShape": {
+            "oneOf": [
+              { "type": "object", "description": "Response shape with type/fields" },
+              { "type": "string", "description": "Response type string" }
+            ]
+          },
+          "auth": { "type": "string", "enum": ["public", "jwt"], "description": "Authentication required" },
+          "errorCodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["code", "description"],
+              "properties": {
+                "code": { "type": "integer", "description": "HTTP status code" },
+                "description": { "type": "string", "description": "Error description" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "sourceFile": { "type": "string", "description": "Path to NestJS controller file" },
+          "description": { "type": "string", "description": "Endpoint description" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "definitions": {
+    "FunctionDefinition": {
+      "type": "object",
+      "required": ["name", "signature", "params", "fheEncrypted", "stateMutability", "auth"],
+      "properties": {
+        "name": { "type": "string", "description": "Function name" },
+        "signature": { "type": "string", "description": "Full function signature with params" },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string", "description": "Solidity parameter type" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "returns": { "type": "string", "description": "Return type(s)" },
+        "fheEncrypted": { "type": "boolean", "description": "Whether function uses FHE encrypted params" },
+        "stateMutability": {
+          "type": "string",
+          "enum": ["view", "pure", "nonpayable", "payable"],
+          "description": "Solidity state mutability"
+        },
+        "auth": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required authorization"
+        },
+        "description": { "type": "string", "description": "Function description" }
+      },
+      "additionalProperties": false
+    },
+    "EventDefinition": {
+      "type": "object",
+      "required": ["name", "signature", "params"],
+      "properties": {
+        "name": { "type": "string", "description": "Event name" },
+        "signature": { "type": "string", "description": "Event signature with indexed params" },
+        "params": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string", "description": "Solidity event parameter type" },
+              "indexed": { "type": "boolean", "description": "Whether parameter is indexed" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fheFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "FHE-encrypted field names"
+        }
+      },
+      "additionalProperties": false
+    },
+    "FheMarkers": {
+      "type": "object",
+      "properties": {
+        "encryptedTypes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "FHE encrypted types used (euint128, InEuint128, ebool)"
+        },
+        "fheOperations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "FHE operations used (FHE.asEuint128, FHE.eq, etc.)"
+        },
+        "aclPatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "FHE ACL patterns used (FHE.allowThis, FHE.allow, etc.)"
+        },
+        "note": { "type": "string", "description": "Additional FHE notes" }
+      },
+      "additionalProperties": false
+    },
+    "ErrorCode": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": { "type": "string", "description": "Error name" },
+        "description": { "type": "string", "description": "Error description" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

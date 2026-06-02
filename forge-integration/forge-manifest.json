@@ -1,0 +1,2698 @@
+{
+  "version": "1.0",
+  "generated": "2026-06-02",
+  "mission": "Phase 2: Integration Layer Design \u2014 Backend\u2194Forge Mapping",
+  "description": "Full inventory of all 13 forge prototype files at file/screen/sub-component level. Each entry includes sections, mock data arrays with field-by-field mapping, integration readiness labels, builder workspace features (~50 items), and all tweaks panel features.",
+  "files": [
+    {
+      "id": "fheforge-html",
+      "name": "FheForge.html",
+      "path": "ui/FheForge.html",
+      "type": "html-shell",
+      "description": "HTML entry point with boot splash, CDN dependencies (React 18.3.1, ReactDOM, Babel standalone), theme persistence script, and script loading order for all forge files. Routes CSS + JS via script tags with Babel transpilation.",
+      "sections": [
+        {
+          "name": "Head / Metadata",
+          "description": "HTML meta tags, title 'FheForge \u2014 encrypted DeFi on Arbitrum Sepolia', viewport config, Google Fonts preconnect (Instrument Serif, Newsreader, Public Sans, JetBrains Mono)",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Theme Persistence Script",
+          "description": "Synchronous script that reads localStorage 'fheforge:theme' or prefers-color-scheme to set data-theme attribute on <html> before paint, preventing flash",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Boot Splash",
+          "description": "Full-viewport boot splash with 'FheForge' wordmark, animated dot, 'booting \u00b7 cofhe-sdk \u00b7 421614' label, auto-removed via MutationObserver when root children mount",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "CDN Dependencies",
+          "description": "React 18.3.1 (development), ReactDOM 18.3.1 (development), Babel standalone 7.29.0 \u2014 all loaded via unpkg with SRI integrity hashes",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "unpkg-cdn"
+          ]
+        },
+        {
+          "name": "Script Loading Order",
+          "description": "Loads tweaks-panel.jsx \u2192 components.jsx \u2192 screens (landing, dashboard, lending, builder-workspace, market, governance, connect-modal) \u2192 app.jsx. Order matters: builder-workspace before market.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        }
+      ],
+      "subComponents": [],
+      "integrationReadiness": "ready-to-wire"
+    },
+    {
+      "id": "theme-css",
+      "name": "theme.css",
+      "path": "ui/theme.css",
+      "type": "styles",
+      "description": "Complete design token system and CSS framework for FheForge. Two themes (light/warm-paper, dark/terminal). Covers typography, layout, components, animations, responsive breakpoints, reduced motion.",
+      "sections": [
+        {
+          "name": "Design Tokens \u2014 Light Theme",
+          "description": "CSS custom properties for light theme: surfaces (paper, paper-2, paper-3), ink colors, signal colors (accent, positive, danger), cipher haze, grain RGBA. Uses OKLCH color space.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Design Tokens \u2014 Dark Theme",
+          "description": "CSS custom properties for dark theme: near-mirror of light with darker surfaces, lighter ink, adjusted signal colors. Uses OKLCH color space.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Typography System",
+          "description": "Four font families (serif: Newsreader, display: Instrument Serif, sans: Public Sans, mono: JetBrains Mono). Scale with rem values, display/sectionhead/eyebrow/micro classes.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Motion Budget",
+          "description": "CSS custom properties for animation: --ease (cubic-bezier), --ease-out, --t-feedback (120ms for hover/micro), --t-state (200ms for state changes), --t-enter (400ms for mount)",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Layout Components",
+          "description": "Section, shell (max-width 1480px), topbar (sticky, backdrop-filter), master-detail frame (320px list + detail), chips, buttons (default, ghost, accent, sm, lg), cards/blocks, KV rows, cipher display, LTV meter/gauge, canvas, modal, tabstrip, permit stage",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Builder Canvas CSS",
+          "description": "Canvas grid background, three SVG edge layers (edges/edges-active/ports), zoom controls, node styling (selected/active/past/cycle/dragging), port circles with hover/active/pending states, drop-active highlight, draw-on animation, edge styles (idle, active, selected, error, warn)",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Animations & Keyframes",
+          "description": "nodeIn, fadeIn, edgeDraw, edgeIdleFlow, edgeErrorFlow, cyclePulse, portPulse, pulseDot, orbitDrift, orbitCounter, modalIn, suggestPulse, issuePinPulse, readyPulse, issueToastIn, toastIn, tickerLoop",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Responsive Breakpoints",
+          "description": "980px (grid collapse), 720px (mobile nav, topbar nav hide), 480px (smaller wordmark). Adaptive resize hardening for builder canvas (1279px). Reduced motion media query.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Fullscreen Builder Styles",
+          "description": "Position fixed, z-index 70, hides topbar, forces md-frame to full height with closed list, hides list and rail toggle",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        }
+      ],
+      "subComponents": [],
+      "integrationReadiness": "ready-to-wire"
+    },
+    {
+      "id": "app-jsx",
+      "name": "app.jsx",
+      "path": "ui/app.jsx",
+      "type": "root-app",
+      "description": "React root application component with routing between 5 screens (home/portfolio/lend/strategies/governance), wallet context state, permit countdown timer, theme persistence, and tweaks panel integration. Renders TopBar, active Screen, ConnectModal, MobileNav, TweaksPanel.",
+      "sections": [
+        {
+          "name": "App() \u2014 Main Component",
+          "description": "Root component managing theme state (light/dark/system default), route state, wallet context (connected, address, permitUnlocked, permitSeconds, revealing), connect modal visibility. Renders TopBar, screen, ConnectModal, MobileNav, TweaksPanel.",
+          "stateVariables": [
+            "theme (light|dark)",
+            "route (home|portfolio|lend|strategies|governance)",
+            "ctx (connected, address, permitUnlocked, permitSeconds, revealing)",
+            "showConnect (boolean)"
+          ],
+          "mockData": [
+            {
+              "array": "TWEAK_DEFAULTS",
+              "fields": {
+                "startConnected": "boolean \u2014 simulates wallet connection state",
+                "startUnlocked": "boolean \u2014 simulates permit grant state",
+                "showGrain": "boolean \u2014 toggles paper grain texture"
+              },
+              "values": {
+                "startConnected": false,
+                "startUnlocked": false,
+                "showGrain": true
+              }
+            }
+          ],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "wagmi-useAccount",
+            "wagmi-useConnect",
+            "wagmi-useDisconnect",
+            "cofhe-usePermit",
+            "cofhe-usePermitCountdown"
+          ]
+        },
+        {
+          "name": "Theme Toggle Logic",
+          "description": "Reads initial theme from localStorage or system preference, persists changes, updates data-theme on <html>",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": []
+        },
+        {
+          "name": "Permit Countdown Timer",
+          "description": "useEffect-based countdown that decrements permitSeconds every second, auto-locks when expired",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "cofhe-permit-countdown"
+          ]
+        },
+        {
+          "name": "grantPermit() \u2014 Staggered Reveal",
+          "description": "Connects wallet if not connected, applies staggered cipher reveal delays (50ms per element sorted by top position), sets permitUnlocked=true with 15-minute countdown",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "cofhe-grant-permit"
+          ]
+        },
+        {
+          "name": "Route System",
+          "description": "Simple if/else route switch rendering Landing, Dashboard, Lending, Market, Governance components based on route state",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": []
+        },
+        {
+          "name": "Global Error Capture",
+          "description": "window error event listener that renders error details to root if app fails to mount",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Webfont FOUT Fix",
+          "description": "Relayout on document.fonts.ready to prevent FOIT/FOUT flash",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        }
+      ],
+      "subComponents": [
+        "TopBar",
+        "ConnectModal",
+        "MobileNav",
+        "TweaksPanel",
+        "Landing",
+        "Dashboard",
+        "Lending",
+        "Market",
+        "Governance"
+      ],
+      "integrationReadiness": "ready-to-wire"
+    },
+    {
+      "id": "components-jsx",
+      "name": "components.jsx",
+      "path": "ui/components.jsx",
+      "type": "shared-components",
+      "description": "15 shared UI components used across all screens. Exported to window for cross-file Babel usage. Covers cipher display, permit chip, wallet chip, theme toggle, asset glyph, LTV gauge, sparkline, tag, stat, master-detail layout, modal, topbar, mobile nav.",
+      "sections": [
+        {
+          "name": "Cipher",
+          "description": "Core encrypted-value display component. Shows blurred ciphertext when locked, plaintext when unlocked. Supports sizes: sm/md/lg/xl/xxl. Inline mode. Dim mode. Container-query based auto-shrink for large values. Shows 'encrypted' lock-mark when locked.",
+          "props": [
+            "value (string)",
+            "unit (string?)",
+            "locked (boolean, default true)",
+            "size (sm|md|lg|xl|xxl, default md)",
+            "inline (boolean, default false)",
+            "dim (boolean, default false)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "cofhe-decrypt-handle"
+          ]
+        },
+        {
+          "name": "PermitChip",
+          "description": "Top-bar indicator showing FHE permit status. Live state shows countdown (MM:SS), warn state shows 'permit \u00b7 locked'. Clickable to renew/grant.",
+          "props": [
+            "unlocked (boolean)",
+            "secondsLeft (number)",
+            "onClick (function)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "cofhe-permit-countdown"
+          ]
+        },
+        {
+          "name": "WalletChip",
+          "description": "Clickable wallet address display with truncated address (0x9f3a\u2026b4a39), chain ID (421614). Opens connect modal on click.",
+          "props": [
+            "address (string)",
+            "chain (string)",
+            "onClick (function)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "wagmi-useAccount"
+          ]
+        },
+        {
+          "name": "ThemeToggle",
+          "description": "Dark/light theme toggle button with sun/moon SVG icons. Updates data-theme attribute on <html>.",
+          "props": [
+            "theme (light|dark)",
+            "setTheme (function)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "AssetGlyph",
+          "description": "Circular asset icon with first letter of symbol. Pre-defined color swatches for USDC, ETH, WBTC, ARB, GHO, DAI, WETH.",
+          "props": [
+            "sym (string, asset symbol)",
+            "size (number, default 22)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "asset-registry"
+          ]
+        },
+        {
+          "name": "LtvGauge",
+          "description": "Loan-to-value horizontal meter with fill bar, liquidation tick, optional labels. Color transitions from ink \u2192 accent \u2192 danger as LTV approaches liquidation.",
+          "props": [
+            "ltv (number)",
+            "max (number, default 100)",
+            "liqAt (number, default 80)",
+            "height (number, default 8)",
+            "labels (boolean, default true)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "portfolio-positions-collateralization"
+          ]
+        },
+        {
+          "name": "Spark",
+          "description": "Inline sparkline SVG chart. Renders smooth path from array of data points.",
+          "props": [
+            "points (number[])",
+            "w (number, default 96)",
+            "h (number, default 28)",
+            "color (CSS color, default var(--ink))"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "stats-historical"
+          ]
+        },
+        {
+          "name": "Tag",
+          "description": "Status tag/badge with configurable tone: default, accent, positive, danger, ink. Used for status labels throughout the UI.",
+          "props": [
+            "children (ReactNode)",
+            "tone (default|accent|positive|danger|ink)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Stat",
+          "description": "Composable stat display with kicker label, cipher value, optional sub text.",
+          "props": [
+            "kicker (string)",
+            "value (string)",
+            "sub (string?)",
+            "locked (boolean)",
+            "size (lg|xxl?)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "portfolio-stats"
+          ]
+        },
+        {
+          "name": "MasterDetail",
+          "description": "Core layout primitive for all product screens. Split-panel with collapsible list rail (320px) and detail body. Supports keyboard shortcuts (\u2318B toggle, J/K vim list navigation, Enter click), localStorage collapse persistence, full-bleed detail, detail fullscreen.",
+          "props": [
+            "listHeader (ReactNode)",
+            "listBody (ReactNode)",
+            "detailHeader (ReactNode)",
+            "detailBody (ReactNode)",
+            "detailFullBleed (boolean?)",
+            "collapseKey (string?)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "MDItem",
+          "description": "List item for md-list-body with optional index, title, subtitle, right content, selected state.",
+          "props": [
+            "idx (ReactNode?)",
+            "title (string)",
+            "sub (string?)",
+            "right (ReactNode?)",
+            "selected (boolean)",
+            "onClick (function)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "MDGroup",
+          "description": "List group header section label.",
+          "props": [
+            "children (ReactNode)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Modal",
+          "description": "Modal overlay with backdrop blur, Escape-to-close, click-outside-to-close, scroll lock.",
+          "props": [
+            "open (boolean)",
+            "onClose (function)",
+            "children (ReactNode)",
+            "width (number, default 720)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "TopBar",
+          "description": "Sticky top navigation bar with wordmark, 5 nav buttons (Home/Portfolio/Lend/Strategies/Governance), theme toggle, network chip (Arb\u00b7Sepolia), wallet chip or connect button, permit chip. Responsive: nav hidden at 720px.",
+          "props": [
+            "route (string)",
+            "setRoute (function)",
+            "ctx (wallet context)",
+            "onPermitClick (function)",
+            "onWalletClick (function)",
+            "theme (string)",
+            "setTheme (function)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "wagmi-useAccount",
+            "wagmi-useNetwork",
+            "cofhe-permit"
+          ]
+        },
+        {
+          "name": "MobileNav",
+          "description": "Fixed bottom navigation bar shown only at \u2264720px width. 4 buttons (Folio, Lend, Build, Gov).",
+          "props": [
+            "route (string)",
+            "setRoute (function)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        }
+      ],
+      "subComponents": [],
+      "integrationReadiness": "ready-to-wire"
+    },
+    {
+      "id": "screens-landing",
+      "name": "screens/landing.jsx",
+      "path": "ui/screens/landing.jsx",
+      "type": "screen",
+      "description": "Landing/home page \u2014 full-viewport hero with auto-playing permit demo. No editorial scroll sections. Connect button opens modal; CTAs route into the app. BackgroundOrbits atmospheric SVG, Ticker with scrolling protocol stats.",
+      "sections": [
+        {
+          "name": "Landing() \u2014 Main Screen",
+          "description": "Full-viewport hero grid (left: headline + CTAs, right: DemoCard). Animated reveal on mount (opacity/transform transition). Cursor-tracking accent glow on hero. Auto-play cipher cycle (6.5s interval) when wallet not connected.",
+          "stateVariables": [
+            "demoLocked",
+            "revealed"
+          ],
+          "props": [
+            "setRoute",
+            "ctx",
+            "grantPermit",
+            "openConnect"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": []
+        },
+        {
+          "name": "Hero Section",
+          "description": "Left side: protocol description ('An encrypted DeFi protocol \u00b7 Arbitrum Sepolia'), headline ('Borrow, swap, compound \u2013 without revealing a number.'), body copy, Connect wallet CTA, secondary Explore strategies CTA, trust indicators (no read access, no transaction without signature)",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "DemoCard",
+          "description": "Interactive permit demo card showing mock portfolio on the landing page. Auto-plays cipher locked/unlocked cycle (6.5s) when wallet not connected. Shows net value USDC, 24h change, 3 position rows (Supplied 42,084.13 USDC, Borrowed 18,910.00 ETH, In strategies 7,418.94 USDC). Permit lock/live indicator. Grant permit button.",
+          "mockData": [
+            {
+              "array": "rows",
+              "screen": "Landing",
+              "fields": [
+                {
+                  "name": "k",
+                  "type": "string",
+                  "description": "Label: 'Supplied', 'Borrowed', 'In strategies'"
+                },
+                {
+                  "name": "v",
+                  "type": "string",
+                  "description": "Value: '42,084.13', '18,910.00', '7,418.94'"
+                },
+                {
+                  "name": "u",
+                  "type": "string",
+                  "description": "Unit: 'USDC', 'ETH', 'USDC'"
+                }
+              ],
+              "realSource": "usePortfolio() hook \u2014 on-chain position reads",
+              "values": [
+                [
+                  "Supplied",
+                  "42,084.13",
+                  "USDC"
+                ],
+                [
+                  "Borrowed",
+                  "18,910.00",
+                  "ETH"
+                ],
+                [
+                  "In strategies",
+                  "7,418.94",
+                  "USDC"
+                ]
+              ]
+            }
+          ],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "lending-pool-supply-balance",
+            "lending-pool-borrow-balance",
+            "strategy-vault-positions"
+          ]
+        },
+        {
+          "name": "Ticker",
+          "description": "Slow horizontal scrolling ticker (60s loop, seamless via duplicate) showing protocol operational state: block height, gas price, pool TVLs (USDC/ETH/WBTC), encrypted ops count, permit decrypts, active strategies, composer deployments.",
+          "mockData": [
+            {
+              "array": "items",
+              "screen": "Landing",
+              "fields": [
+                {
+                  "name": "value",
+                  "type": "string",
+                  "description": "Protocol stat string like 'block #182,944,108', 'gas \u00b7 0.014 gwei', 'USDC pool tvl \u00b7 $8.42M', etc."
+                }
+              ],
+              "values": [
+                "block #182,944,108",
+                "gas \u00b7 0.014 gwei",
+                "USDC pool tvl \u00b7 $8.42M",
+                "ETH pool tvl \u00b7 $4.18M",
+                "WBTC pool tvl \u00b7 $1.80M",
+                "encrypted ops \u00b7 1.42M",
+                "permit decrypts \u00b7 42k / day",
+                "active strategies \u00b7 412",
+                "deployed via composer \u00b7 1,284"
+              ],
+              "realSource": "GET /stats/overview \u2014 NestJS stats endpoint"
+            }
+          ],
+          "integrationReadiness": "needs-api",
+          "backendDependencies": [
+            "stats-overview"
+          ]
+        }
+      ],
+      "subComponents": [
+        "DemoCard",
+        "Ticker",
+        "BackgroundOrbits"
+      ],
+      "integrationReadiness": "ready-to-wire"
+    },
+    {
+      "id": "screens-dashboard",
+      "name": "screens/dashboard.jsx",
+      "path": "ui/screens/dashboard.jsx",
+      "type": "screen",
+      "description": "Portfolio dashboard with master-detail layout. Left rail: Positions (5), Strategies (3), Recent Activity (6) grouped by type. Right pane: Overview (default) with four stat tiles, LTV gauge card, or detail view for selected item (PositionDetail, StrategyDetail, ActivityDetail). Empty state shown when wallet not connected.",
+      "sections": [
+        {
+          "name": "Dashboard() \u2014 Main Screen",
+          "description": "MasterDetail with portfolio collapse key. List shows Positions, Strategies, Activity groups. Detail shows Overview or DetailFor. Redirects to DashboardEmpty if wallet not connected.",
+          "stateVariables": [
+            "selectedId"
+          ],
+          "props": [
+            "setRoute",
+            "ctx",
+            "grantPermit",
+            "openConnect"
+          ],
+          "mockData": [
+            {
+              "array": "D_POSITIONS",
+              "screen": "Dashboard",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "description": "Unique position ID (p1-p5)"
+                },
+                {
+                  "name": "venue",
+                  "type": "string",
+                  "description": "Pool name: 'Lending Pool', 'Vault \u00b7 S/01' etc."
+                },
+                {
+                  "name": "asset",
+                  "type": "string",
+                  "description": "Asset symbol: USDC, ETH, WETH, WBTC"
+                },
+                {
+                  "name": "side",
+                  "type": "string",
+                  "description": "Position side: supply, borrow, vault"
+                },
+                {
+                  "name": "amount",
+                  "type": "string",
+                  "description": "Human-readable amount with comma formatting"
+                },
+                {
+                  "name": "apy",
+                  "type": "string",
+                  "description": "APY percentage with sign: '+4.82%', '\u22123.14%'"
+                },
+                {
+                  "name": "liq",
+                  "type": "string|null",
+                  "description": "Liquidation threshold or null"
+                }
+              ],
+              "values": [
+                {
+                  "id": "p1",
+                  "venue": "Lending Pool",
+                  "asset": "USDC",
+                  "side": "supply",
+                  "amount": "42,084.13",
+                  "apy": "+4.82%",
+                  "liq": null
+                },
+                {
+                  "id": "p2",
+                  "venue": "Lending Pool",
+                  "asset": "ETH",
+                  "side": "borrow",
+                  "amount": "5.420",
+                  "apy": "\u22123.14%",
+                  "liq": "$1,820"
+                },
+                {
+                  "id": "p3",
+                  "venue": "Vault \u00b7 S/01",
+                  "asset": "USDC",
+                  "side": "vault",
+                  "amount": "12,840.00",
+                  "apy": "+11.4%",
+                  "liq": null
+                },
+                {
+                  "id": "p4",
+                  "venue": "Vault \u00b7 S/02",
+                  "asset": "WETH",
+                  "side": "vault",
+                  "amount": "3.205",
+                  "apy": "+8.7%",
+                  "liq": null
+                },
+                {
+                  "id": "p5",
+                  "venue": "Vault \u00b7 S/03",
+                  "asset": "WBTC",
+                  "side": "vault",
+                  "amount": "0.1402",
+                  "apy": "+14.2%",
+                  "liq": null
+                }
+              ],
+              "realSource": "usePortfolio() hook \u2014 LendingPool.balanceOf() + StrategyVault.positionOf() on-chain reads"
+            },
+            {
+              "array": "D_STRATS",
+              "screen": "Dashboard",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "description": "Strategy ID (s1-s3)"
+                },
+                {
+                  "name": "name",
+                  "type": "string",
+                  "description": "Strategy name"
+                },
+                {
+                  "name": "apy",
+                  "type": "string",
+                  "description": "APY percentage"
+                },
+                {
+                  "name": "staked",
+                  "type": "string",
+                  "description": "Staked amount + asset"
+                },
+                {
+                  "name": "loops",
+                  "type": "number",
+                  "description": "Composer loop count"
+                },
+                {
+                  "name": "last",
+                  "type": "string",
+                  "description": "Time since last execution"
+                }
+              ],
+              "values": [
+                {
+                  "id": "s1",
+                  "name": "Lean USDC leverage",
+                  "apy": "+11.4%",
+                  "staked": "12,840 USDC",
+                  "loops": 4,
+                  "last": "2m ago"
+                },
+                {
+                  "id": "s2",
+                  "name": "ETH delta-neutral",
+                  "apy": "+8.7%",
+                  "staked": "8,200 USDC",
+                  "loops": 3,
+                  "last": "11m ago"
+                },
+                {
+                  "id": "s3",
+                  "name": "WBTC carry & swap",
+                  "apy": "+14.2%",
+                  "staked": "4,108 USDC",
+                  "loops": 5,
+                  "last": "1h ago"
+                }
+              ],
+              "realSource": "GET /defi-strategies \u2014 NestJS strategies endpoint"
+            },
+            {
+              "array": "D_ACTIVITY",
+              "screen": "Dashboard",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "description": "Activity entry ID (a1-a6)"
+                },
+                {
+                  "name": "block",
+                  "type": "number",
+                  "description": "Block number"
+                },
+                {
+                  "name": "age",
+                  "type": "string",
+                  "description": "Time since event"
+                },
+                {
+                  "name": "what",
+                  "type": "string",
+                  "description": "Activity description"
+                },
+                {
+                  "name": "kind",
+                  "type": "string",
+                  "description": "Activity type: shield, borrow, accrue, swap, permit"
+                },
+                {
+                  "name": "asset",
+                  "type": "string",
+                  "description": "Asset involved"
+                },
+                {
+                  "name": "delta",
+                  "type": "string",
+                  "description": "Amount change with sign"
+                }
+              ],
+              "values": [
+                {
+                  "id": "a1",
+                  "block": 182944108,
+                  "age": "14s",
+                  "what": "S/01 \u00b7 loop iter 3",
+                  "kind": "shield",
+                  "asset": "USDC",
+                  "delta": "+5,200.00"
+                },
+                {
+                  "id": "a2",
+                  "block": 182944094,
+                  "age": "47s",
+                  "what": "Composer open",
+                  "kind": "borrow",
+                  "asset": "ETH",
+                  "delta": "\u22121.480"
+                },
+                {
+                  "id": "a3",
+                  "block": 182944081,
+                  "age": "1m",
+                  "what": "Pool \u00b7 interest",
+                  "kind": "accrue",
+                  "asset": "USDC",
+                  "delta": "+12.04"
+                },
+                {
+                  "id": "a4",
+                  "block": 182943988,
+                  "age": "4m",
+                  "what": "Swap intent filled",
+                  "kind": "swap",
+                  "asset": "ETH\u2192USDC",
+                  "delta": "\u22484,820"
+                },
+                {
+                  "id": "a5",
+                  "block": 182943890,
+                  "age": "11m",
+                  "what": "S/02 \u00b7 re-supply",
+                  "kind": "shield",
+                  "asset": "WETH",
+                  "delta": "+0.840"
+                },
+                {
+                  "id": "a6",
+                  "block": 182943742,
+                  "age": "26m",
+                  "what": "Permit \u00b7 renewed",
+                  "kind": "permit",
+                  "asset": "\u2013",
+                  "delta": "\u2013"
+                }
+              ],
+              "realSource": "GET /activity \u2014 NestJS activity endpoint (indexed on-chain events)"
+            }
+          ],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "lending-pool",
+            "strategy-vault",
+            "activity-endpoint",
+            "portfolio-stats"
+          ]
+        },
+        {
+          "name": "Overview",
+          "description": "Default detail pane with four stat tiles (Net value, LTV, Permit status, Gas/ETH), LTV gauge card with weighted LTV, liq price, oracle info, buffer %, action buttons (Add collateral, Repay debt).",
+          "mockData": [],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "portfolio-stats",
+            "ltv-calculation"
+          ]
+        },
+        {
+          "name": "PositionDetail / StrategyDetail / ActivityDetail",
+          "description": "Detail views for selected list items showing key-value metadata tiles, action buttons (Add to position, Withdraw, Close, Open in builder, Pause). Includes execution history bar for strategies.",
+          "mockData": [],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "defi-strategies",
+            "lending-pool",
+            "strategy-vault"
+          ]
+        },
+        {
+          "name": "DashboardEmpty",
+          "description": "Empty state shown when no wallet connected. Two-column layout with call to connect and blurred preview of a sample portfolio.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        }
+      ],
+      "subComponents": [
+        "MasterDetail",
+        "MDItem",
+        "MDGroup",
+        "Overview",
+        "PositionDetail",
+        "StrategyDetail",
+        "ActivityDetail",
+        "DashboardEmpty",
+        "Tile",
+        "Cipher",
+        "PermitChip",
+        "LtvGauge",
+        "Tag"
+      ],
+      "integrationReadiness": "needs-contract"
+    },
+    {
+      "id": "screens-lending",
+      "name": "screens/lending.jsx",
+      "path": "ui/screens/lending.jsx",
+      "type": "screen",
+      "description": "Lending screen with master-detail layout. Left rail: user's position summary + 5 markets (USDC, ETH, WBTC, ARB, DAI). Right pane: action panel for selected market (Supply/Borrow toggle, amount input, LTV slider, summary card, market info).",
+      "sections": [
+        {
+          "name": "Lending() \u2014 Main Screen",
+          "description": "MasterDetail with lending collapse key. List shows user position (net supplied, net borrowed, LTV gauge) + 5 markets with AssetGlyph, utilization, TVL, supply/borrow APY. Detail shows LendAction panel for selected asset.",
+          "stateVariables": [
+            "assetId",
+            "side (supply|borrow)",
+            "amount",
+            "ltv"
+          ],
+          "props": [
+            "setRoute",
+            "ctx",
+            "grantPermit",
+            "openConnect"
+          ],
+          "mockData": [
+            {
+              "array": "L_MARKETS",
+              "screen": "Lending",
+              "fields": [
+                {
+                  "name": "asset",
+                  "type": "string",
+                  "description": "Asset symbol: USDC, ETH, WBTC, ARB, DAI"
+                },
+                {
+                  "name": "supplyApy",
+                  "type": "number",
+                  "description": "Supply APY percentage"
+                },
+                {
+                  "name": "borrowApy",
+                  "type": "number",
+                  "description": "Borrow APY percentage"
+                },
+                {
+                  "name": "util",
+                  "type": "number",
+                  "description": "Utilization rate percentage"
+                },
+                {
+                  "name": "tvl",
+                  "type": "string",
+                  "description": "Total value locked (human-readable)"
+                },
+                {
+                  "name": "liq",
+                  "type": "number",
+                  "description": "Liquidation threshold percentage"
+                },
+                {
+                  "name": "oracle",
+                  "type": "string",
+                  "description": "Oracle source"
+                },
+                {
+                  "name": "price",
+                  "type": "string",
+                  "description": "Current price"
+                }
+              ],
+              "values": [
+                {
+                  "asset": "USDC",
+                  "supplyApy": 4.82,
+                  "borrowApy": 6.21,
+                  "util": 64,
+                  "tvl": "8.42M",
+                  "liq": 80,
+                  "oracle": "Pyth",
+                  "price": "$1.000"
+                },
+                {
+                  "asset": "ETH",
+                  "supplyApy": 2.14,
+                  "borrowApy": 3.78,
+                  "util": 41,
+                  "tvl": "4.18M",
+                  "liq": 75,
+                  "oracle": "Pyth",
+                  "price": "$2,544.10"
+                },
+                {
+                  "asset": "WBTC",
+                  "supplyApy": 1.66,
+                  "borrowApy": 3.1,
+                  "util": 22,
+                  "tvl": "1.80M",
+                  "liq": 70,
+                  "oracle": "Pyth",
+                  "price": "$94,210"
+                },
+                {
+                  "asset": "ARB",
+                  "supplyApy": 5.42,
+                  "borrowApy": 8.2,
+                  "util": 68,
+                  "tvl": "924k",
+                  "liq": 65,
+                  "oracle": "Pyth \u00b7 fb",
+                  "price": "$0.74"
+                },
+                {
+                  "asset": "DAI",
+                  "supplyApy": 3.91,
+                  "borrowApy": 5.04,
+                  "util": 51,
+                  "tvl": "612k",
+                  "liq": 78,
+                  "oracle": "Pyth",
+                  "price": "$1.000"
+                }
+              ],
+              "realSource": "GET /markets \u2014 NestJS markets endpoint + LendingPool.getMarketData()"
+            }
+          ],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "lending-pool",
+            "markets-endpoint",
+            "price-oracle"
+          ]
+        },
+        {
+          "name": "LendAction",
+          "description": "Two-column action panel. Left: amount input with quick-select buttons (25%/50%/75%/Max), permit-required banner, LTV slider (borrow only) with gauge and liquidation warning, action button (Connect/Grant/Encrypt & submit). Right: summary card (APY, health after, liq price, gas) + market info card (utilization, TVL, liq threshold, oracle freshness).",
+          "mockData": [],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "lending-pool-supply",
+            "lending-pool-borrow",
+            "price-oracle",
+            "permit-grant"
+          ]
+        }
+      ],
+      "subComponents": [
+        "MasterDetail",
+        "MDItem",
+        "MDGroup",
+        "LendAction",
+        "LtvGauge",
+        "Cipher",
+        "AssetGlyph",
+        "PermitChip"
+      ],
+      "integrationReadiness": "needs-contract"
+    },
+    {
+      "id": "screens-market",
+      "name": "screens/market.jsx",
+      "path": "ui/screens/market.jsx",
+      "type": "screen",
+      "description": "Strategies marketplace with master-detail layout. Left rail: user's drafts (persisted in localStorage) + community templates (6 strategies). Right pane: BuilderWorkspace full-bleed canvas for selected draft, or EmptyDetail with create prompts. Supports create blank, create from template, fork community, search, risk filter, delete drafts.",
+      "sections": [
+        {
+          "name": "Market() \u2014 Main Screen",
+          "description": "MasterDetail with strategies collapse key. Manages drafts state (localStorage persisted), community strategy listing, template system. List header has +New/+Template buttons and search input. List body shows Your drafts group + Community group with risk filter. Detail body is BuilderWorkspace (full-bleed).",
+          "stateVariables": [
+            "drafts",
+            "selectedId",
+            "filter (all|low|med|high)",
+            "confirmDelete",
+            "query"
+          ],
+          "props": [
+            "setRoute",
+            "ctx",
+            "grantPermit",
+            "openConnect"
+          ],
+          "mockData": [
+            {
+              "array": "COMMUNITY",
+              "screen": "Market",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "description": "Community strategy ID"
+                },
+                {
+                  "name": "name",
+                  "type": "string",
+                  "description": "Strategy display name"
+                },
+                {
+                  "name": "author",
+                  "type": "string",
+                  "description": "Creator handle"
+                },
+                {
+                  "name": "risk",
+                  "type": "string",
+                  "description": "Risk level: low, med, high"
+                },
+                {
+                  "name": "apy",
+                  "type": "number",
+                  "description": "APY percentage"
+                },
+                {
+                  "name": "tvl",
+                  "type": "string",
+                  "description": "TVL in USD"
+                },
+                {
+                  "name": "asset",
+                  "type": "string",
+                  "description": "Primary asset"
+                },
+                {
+                  "name": "deployers",
+                  "type": "number",
+                  "description": "Number of deployers"
+                },
+                {
+                  "name": "template",
+                  "type": "string",
+                  "description": "Builder template reference"
+                }
+              ],
+              "values": [
+                {
+                  "id": "c-lev",
+                  "name": "Lean USDC leverage",
+                  "author": "@symulacr",
+                  "risk": "low",
+                  "apy": 11.4,
+                  "tvl": "1,284,210",
+                  "asset": "USDC",
+                  "deployers": 412,
+                  "template": "leverage"
+                },
+                {
+                  "id": "c-dn",
+                  "name": "ETH delta-neutral",
+                  "author": "@haven",
+                  "risk": "med",
+                  "apy": 8.7,
+                  "tvl": "612,950",
+                  "asset": "ETH",
+                  "deployers": 188,
+                  "template": "deltaNeutral"
+                },
+                {
+                  "id": "c-wbtc",
+                  "name": "WBTC carry & swap",
+                  "author": "@symulacr",
+                  "risk": "high",
+                  "apy": 14.2,
+                  "tvl": "402,180",
+                  "asset": "WBTC",
+                  "deployers": 71,
+                  "template": "leverage"
+                },
+                {
+                  "id": "c-arb",
+                  "name": "ARB incentive sweep",
+                  "author": "@plux",
+                  "risk": "med",
+                  "apy": 22.8,
+                  "tvl": "298,400",
+                  "asset": "ARB",
+                  "deployers": 240,
+                  "template": "rebalance"
+                },
+                {
+                  "id": "c-skim",
+                  "name": "Stable fee skim",
+                  "author": "@quietco",
+                  "risk": "low",
+                  "apy": 5.6,
+                  "tvl": "1,840,210",
+                  "asset": "USDC",
+                  "deployers": 612,
+                  "template": "rebalance"
+                },
+                {
+                  "id": "c-lst",
+                  "name": "ETH liquid-staking",
+                  "author": "@haven",
+                  "risk": "med",
+                  "apy": 9.4,
+                  "tvl": "894,100",
+                  "asset": "ETH",
+                  "deployers": 192,
+                  "template": "leverage"
+                }
+              ],
+              "realSource": "GET /strategies \u2014 NestJS strategies marketplace endpoint"
+            }
+          ],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "strategies-endpoint",
+            "defi-strategies-endpoint",
+            "ai-strategy-builder"
+          ]
+        },
+        {
+          "name": "Draft Management",
+          "description": "Create, fork, search, filter, delete drafts. localStorage persistence. Templates: blank, leverage (5 nodes), deltaNeutral (4 nodes), rebalance (3 nodes). Fork creates a copy from template linked to community author.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "defi-strategies-endpoint"
+          ]
+        },
+        {
+          "name": "EmptyDetail",
+          "description": "Empty state shown when no draft selected. Prompts user to pick a draft, fork a template, or start blank with two CTAs.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        }
+      ],
+      "subComponents": [
+        "MasterDetail",
+        "MDItem",
+        "MDGroup",
+        "BuilderWorkspace",
+        "EmptyDetail"
+      ],
+      "integrationReadiness": "ready-to-wire"
+    },
+    {
+      "id": "screens-builder-workspace",
+      "name": "screens/builder-workspace.jsx",
+      "path": "ui/screens/builder-workspace.jsx",
+      "type": "screen",
+      "description": "Full strategy builder workspace with custom SVG canvas (not ReactFlow). 2106 lines. Features: node palette, drag-and-drop canvas, edge creation, pan/zoom, keyboard shortcuts (50+), simulation, issue detection, auto-organize layout, inline node config, undo/redo, copy/paste, multi-select, fullscreen, deploy progress, keyboard cheatsheet. This is the most complex forge file.",
+      "sections": [
+        {
+          "name": "NODE_TYPES / DEFAULT_CONFIG / TEMPLATES",
+          "description": "5 node types: Supply, Borrow, Swap, Repeat, Settle. Each has label, kicker, swatch color, description. Default configs per type. 4 templates: blank, leverage (5 nodes, 4 edges), deltaNeutral (4 nodes, 3 edges), rebalance (3 nodes, 2 edges).",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "defi-modules",
+            "defi-pairs"
+          ]
+        },
+        {
+          "name": "BuilderWorkspace() \u2014 Main Component",
+          "description": "Core builder component with full state management: nodes, edges, selection, simulation, deploy, camera, pan/zoom, drag, multi-select, clipboard, undo/redo, idle pulse, issue detection, inline editor, cheatsheet, deploy toast.",
+          "stateVariables": [
+            "nodes (array)",
+            "edges (array)",
+            "name (string)",
+            "selected (string|null)",
+            "running (boolean)",
+            "runStep (number)",
+            "pending (object|null)",
+            "deploying (boolean)",
+            "deployResult (object|null)",
+            "inspectorTab (config|issues|code)",
+            "multiSelected (Set)",
+            "clipboardRef",
+            "draggingId",
+            "dropActive",
+            "recentEdges",
+            "savedAt",
+            "scale (number, default 1)",
+            "pan ({x, y})",
+            "fullscreen (boolean)",
+            "showInspector (boolean)",
+            "showCheat (boolean)",
+            "handTool (boolean)",
+            "spaceHeld (boolean)",
+            "cameraLock (boolean)",
+            "inlineConfigFor (string|null)",
+            "selectedEdge (number|null)"
+          ],
+          "props": [
+            "workflow",
+            "setWorkflow",
+            "locked",
+            "grantPermit",
+            "ctx",
+            "openConnect"
+          ],
+          "mockData": [],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "defi-strategies",
+            "ai-strategy-builder",
+            "composer-execute"
+          ]
+        },
+        {
+          "name": "Canvas Engine",
+          "description": "Custom SVG canvas (not ReactFlow). Features: dotted grid background, three SVG edge layers (halo, stroke/hit, ports), configurable zoom layer (transform: translate + scale), node drag-and-drop with clientToWorld coordinate mapping, edge creation via port clicks, draw-on animation for new edges, marker arrowheads with severity colors.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Pan & Zoom System",
+          "description": "Mouse wheel zoom (ctrl/cmd zooms around cursor, no-modifier pans), middle-mouse pan, shift+drag pan, space+drag pan (Figma-style), hand tool (H key) toggle, zoom controls overlay (+/\u2212/reset%/fit/follow), canvas-zoom-layer transform with transition. Scale range: 0.4\u20132.2.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Keyboard Shortcuts (50+)",
+          "description": "Full keyboard shortcut layer: 1-5 quick node add, Tab/\u21e7Tab cycle selection, Arrow keys nudge (\u21e7\u00d78), Delete/Backspace delete, \u2318Z/\u2318\u21e7Z undo/redo, \u2318C/\u2318V copy/paste, \u2318D duplicate, \u2318A select all, S simulate, O organize, F fullscreen, I inspector toggle, H hand tool, V select tool, R reset, ? cheatsheet, \u2318B list toggle, \u23180 reset zoom, Shift+1 fit all, Shift+2 fit selection, Esc cancel, \u2318+/\u2318- zoom, Enter inline config. J/K vim navigation (in MasterDetail).",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Node Palette",
+          "description": "Left sidebar with 5 draggable node types. Each shows swatch color, label, tooltip with description. Drag-and-drop onto canvas triggers copy event. Supports canvas drop detection with highlight state. Items: Supply, Borrow, Swap, Repeat, Settle.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Edge System",
+          "description": "Connection port system (input left, output right). Click output port starts pending edge, click input port completes connection. Cubic bezier path routing with backward-edge support. Edge selection (click on hit area), edge inspector popover (from/to types, gas estimate, delete). Edge severity classes: idle (dashed), active, selected, error (dashed/danger), warning (dashed/accent). Marker arrowheads per severity.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Simulation Engine",
+          "description": "Topological walk simulation (walkOrder). Sequential step highlighting through runOrder with timeout-based progression (280ms + 520ms per step). Camera auto-follow with cameraLock toggle. Pre-sim view save/restore. Node state classes: active (pulsing), past (green checkmark). Edge active state with animated dot.",
+          "mockData": [],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "composer-simulate"
+          ]
+        },
+        {
+          "name": "Issue Detection Engine",
+          "description": "4 detection rules: cycle outside Repeat (DFS, error), dead-end nodes (warn), missing Settle node (warn), incoherent borrow\u2192settle (warn), consecutive swap merge tip (gas savings). Edge severity mapping. Suggestion pills on orphan nodes for next-step recommendation. Auto-fix: merge-swaps action. Issue pins floating near problem nodes. IssuesPanel with severity and apply button.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Auto-Organize Layout",
+          "description": "Width-aware layered layout algorithm: computes ranks via longest path, Sugiyama median heuristic for edge-crossing reduction, bucket-based column/row spacing, center-aligned per rank. Supports canvas width/height parameters.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Undo / Redo System",
+          "description": "History stack (max 50) with debounced snapshot push. Past/future arrays. Keyboard shortcuts \u2318Z/\u2318\u21e7Z and toolbar buttons. Snapshots capture full nodes+edges state.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Multi-Select & Clipboard",
+          "description": "\u2318+click for additive selection. \u2318A select all. \u2318D duplicate with offset. \u2318C/\u2318V copy/paste with clipboard ref. Multi-selection drag moves all selected nodes together.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Inline Node Config",
+          "description": "Click-to-edit overlay near node. Shows node config form with asset selectors, amount inputs, LTV slider, slippage, loop depth depending on type. Supports per-link allocation percentages when multiple outbound edges. Backdrop blur overlay. Positioned with screen-coordinate projection and right-overflow flips.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Toolbar & Status Bar",
+          "description": "Top toolbar: draft name (editable), saved indicator (auto-save to localStorage), undo/redo, overflow menu (fullscreen, keyboard shortcuts), organize, delete, simulate, deploy buttons. Status bar: step/link count, estimated gas, permit/pending status indicator.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": []
+        },
+        {
+          "name": "Deploy Flow",
+          "description": "Deploy button triggers simulated deployment. DeployProgressModal shows progressive step-through with status (signing\u2192confirmed\u2192reverted). DeployToast shows success (tx hash, block) or error (message, retry). Auto-dismiss success after 6s.",
+          "mockData": [],
+          "integrationReadiness": "needs-contract",
+          "backendDependencies": [
+            "composer-execute",
+            "defi-strategies-execute"
+          ]
+        },
+        {
+          "name": "Template System",
+          "description": "4 built-in templates: Blank (1 settle node), Leverage (5 nodes: supply\u2192borrow\u2192swap\u2192repeat\u2192settle), Delta-Neutral (4 nodes: supply\u2192borrow\u2192swap\u2192settle), Auto-Rebalance (3 nodes: supply\u2192repeat\u2192settle). Each has nodes with positions, configs, and edge connections. Fork community creates from template linked to author.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": []
+        },
+        {
+          "name": "BuilderNode Component",
+          "description": "Renderer for individual canvas nodes. Displays header (swatch, label, status), body (asset/amount/LTV/swap config depending on type), input port (left, circle), output port (right, circle with active/pending states). CSS classes for selected, active, past, cycle, dragging states. Box-shadow style with brand aesthetic.",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        },
+        {
+          "name": "Additional Builder Components",
+          "description": "KeyboardCheatsheet overlay (28 shortcuts in 3 groups: Canvas, Editing, Workflow), IssuePin floating annotations, EdgePopover inline inspector, SuggestionPill for orphan nodes, DeployProgressModal, DeployToast, AutoFixModal, ToolbarOverflow menu, NodeConfig form, IssuesPanel, PlainSummary code view, SavedIndicator, CanvasEmpty empty state, NodePalette, Inspector (config/issues/code tabs).",
+          "mockData": [],
+          "integrationReadiness": "needs-redesign",
+          "backendDependencies": []
+        }
+      ],
+      "subComponents": [
+        "BuilderNode",
+        "NodePalette",
+        "NodeConfig",
+        "CanvasEmpty",
+        "SavedIndicator",
+        "IssuePin",
+        "IssueToast",
+        "IssuesPanel",
+        "EdgePopover",
+        "SuggestionPill",
+        "KeyboardCheatsheet",
+        "ToolbarOverflow",
+        "DeployToast",
+        "DeployProgressModal",
+        "AutoFixModal",
+        "Inspector",
+        "PlainSummary",
+        "EmptyState",
+        "Field",
+        "TextInput",
+        "Select",
+        "Slider"
+      ],
+      "integrationReadiness": "needs-redesign"
+    },
+    {
+      "id": "screens-governance",
+      "name": "screens/governance.jsx",
+      "path": "ui/screens/governance.jsx",
+      "type": "screen",
+      "description": "Governance screen with master-detail layout. Left rail: proposals grouped by status (Active, Queued, Executed, Defeated). Right pane: selected proposal detail with tally bar, quorum meter, metadata, and voting panel. 5 proposals total.",
+      "sections": [
+        {
+          "name": "Governance() \u2014 Main Screen",
+          "description": "MasterDetail with governance collapse key. 4 groups (Active 2, Queued 1, Executed 1, Defeated 1). Each list item shows status tag, title, time left, vote tally mini-bar. Detail shows ProposalDetail for selected.",
+          "stateVariables": [
+            "selectedId"
+          ],
+          "props": [
+            "setRoute",
+            "ctx",
+            "grantPermit",
+            "openConnect"
+          ],
+          "mockData": [
+            {
+              "array": "PROPOSALS",
+              "screen": "Governance",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "description": "Proposal ID (P-04 through P-08)"
+                },
+                {
+                  "name": "title",
+                  "type": "string",
+                  "description": "Proposal title"
+                },
+                {
+                  "name": "status",
+                  "type": "string",
+                  "description": "Status: active, queued, executed, defeated"
+                },
+                {
+                  "name": "body",
+                  "type": "string",
+                  "description": "Proposal description text"
+                },
+                {
+                  "name": "forVotes",
+                  "type": "number",
+                  "description": "Votes in favor"
+                },
+                {
+                  "name": "againstVotes",
+                  "type": "number",
+                  "description": "Votes against"
+                },
+                {
+                  "name": "abstain",
+                  "type": "number",
+                  "description": "Abstain votes"
+                },
+                {
+                  "name": "quorum",
+                  "type": "number",
+                  "description": "Required quorum for passage"
+                },
+                {
+                  "name": "timeLeft",
+                  "type": "string",
+                  "description": "Time remaining or time since execution"
+                },
+                {
+                  "name": "proposer",
+                  "type": "string",
+                  "description": "Proposer wallet address"
+                }
+              ],
+              "values": [
+                {
+                  "id": "P-08",
+                  "title": "WBTC liquidation 75% \u2192 70%",
+                  "status": "active",
+                  "body": "Tightens WBTC liquidation threshold by 500 bps after two near-liquidation events. Affects 18 open positions, recipients pre-notified.",
+                  "forVotes": 412840,
+                  "againstVotes": 88200,
+                  "abstain": 12400,
+                  "quorum": 460000,
+                  "timeLeft": "1d 14h",
+                  "proposer": "0x9f3a\u2026b4a39"
+                },
+                {
+                  "id": "P-07",
+                  "title": "Add ARB as collateral (65% LTV)",
+                  "status": "active",
+                  "body": "Whitelist ARB with 65% initial LTV, 70% liquidation, Pyth oracle.",
+                  "forVotes": 188400,
+                  "againstVotes": 142900,
+                  "abstain": 9120,
+                  "quorum": 460000,
+                  "timeLeft": "3d 02h",
+                  "proposer": "0xd1c2\u20267e84"
+                },
+                {
+                  "id": "P-06",
+                  "title": "Raise Composer loop cap to 8",
+                  "status": "queued",
+                  "body": "Allow strategies up to 8 loop iterations (current cap: 6). Gas analysis attached.",
+                  "forVotes": 512300,
+                  "againstVotes": 38000,
+                  "abstain": 4200,
+                  "quorum": 460000,
+                  "timeLeft": "executes in 1d 03h",
+                  "proposer": "0x4a92\u20260f10"
+                },
+                {
+                  "id": "P-05",
+                  "title": "Treasury: 24,000 FFT executor grant",
+                  "status": "executed",
+                  "body": "Pay swap-intent solver #03 24,000 FFT over 6 months.",
+                  "forVotes": 622400,
+                  "againstVotes": 19200,
+                  "abstain": 2200,
+                  "quorum": 460000,
+                  "timeLeft": "executed \u00b7 6d ago",
+                  "proposer": "0x9f3a\u2026b4a39"
+                },
+                {
+                  "id": "P-04",
+                  "title": "Pause GHO market",
+                  "status": "defeated",
+                  "body": "Defeated 142k for / 304k against. Community rejected pause.",
+                  "forVotes": 142000,
+                  "againstVotes": 304800,
+                  "abstain": 18900,
+                  "quorum": 460000,
+                  "timeLeft": "ended 11d ago",
+                  "proposer": "0x8c11\u20262d44"
+                }
+              ],
+              "realSource": "GET /governance/proposals \u2014 NestJS governance endpoint + on-chain GovernorBravo state"
+            }
+          ],
+          "integrationReadiness": "needs-api",
+          "backendDependencies": [
+            "governance-proposals",
+            "governance-vote"
+          ]
+        },
+        {
+          "name": "ProposalDetail",
+          "description": "Full proposal view: title, body, tally bar (for/against/abstain with percentages), quorum meter (%), metadata (proposer, timing, execution delay). Cast vote panel for active proposals: 3-button selector (for/against/abstain), voting weight display, submit button. Disabled state when wallet not connected.",
+          "stateVariables": [
+            "vote (for|against|abstain|null)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "needs-api",
+          "backendDependencies": [
+            "governance-vote",
+            "governance-proposal-detail"
+          ]
+        }
+      ],
+      "subComponents": [
+        "MasterDetail",
+        "MDItem",
+        "MDGroup",
+        "ProposalDetail",
+        "Tag"
+      ],
+      "integrationReadiness": "needs-api"
+    },
+    {
+      "id": "screens-connect-modal",
+      "name": "screens/connect-modal.jsx",
+      "path": "ui/screens/connect-modal.jsx",
+      "type": "screen",
+      "description": "4-step wallet connect flow displayed as a modal overlay. Steps: Step 0 (Pick wallet: MetaMask/Rabby/WalletConnect/Ledger), Step 1 (Sign message to prove ownership), Step 2 (Grant 15-min CoFHE permit), Step 3 (Ready state with auto-dismiss). SessionStorage persistence for mid-flow refresh resilience.",
+      "sections": [
+        {
+          "name": "ConnectModal() \u2014 Main Component",
+          "description": "Modal-based connect flow. 4 stepper steps with dot indicators. Session state persists to sessionStorage for refresh resilience. Auto-dismisses 1.6s after step 4. Context sync on open. Step progression: wallet pick \u2192 sign \u2192 permit \u2192 ready.",
+          "stateVariables": [
+            "step (0-3)",
+            "wallet (metamask|rabby|wc|ledger)",
+            "pulse"
+          ],
+          "props": [
+            "open",
+            "onClose",
+            "ctx",
+            "setCtx",
+            "grantPermit"
+          ],
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "wagmi-useConnect",
+            "wagmi-useAccount",
+            "cofhe-grant-permit"
+          ]
+        },
+        {
+          "name": "StepWallet",
+          "description": "Wallet selection grid (2\u00d72: MetaMask, Rabby, WalletConnect, Ledger). Shows name, subtitle, selection indicator. Continue button advances to sign step.",
+          "mockData": [
+            {
+              "array": "wallet options",
+              "screen": "Connect Modal",
+              "fields": {
+                "k": {
+                  "type": "string",
+                  "description": "Wallet key: metamask, rabby, wc, ledger"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "Display name"
+                },
+                "sub": {
+                  "type": "string",
+                  "description": "Subtitle description"
+                }
+              },
+              "values": [
+                {
+                  "k": "metamask",
+                  "name": "MetaMask",
+                  "sub": "Browser extension"
+                },
+                {
+                  "k": "rabby",
+                  "name": "Rabby",
+                  "sub": "Recommended for DeFi"
+                },
+                {
+                  "k": "wc",
+                  "name": "WalletConnect",
+                  "sub": "Mobile pairing"
+                },
+                {
+                  "k": "ledger",
+                  "name": "Ledger",
+                  "sub": "Hardware"
+                }
+              ],
+              "realSource": "wagmi connectors"
+            }
+          ],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "wagmi-useConnect"
+          ]
+        },
+        {
+          "name": "StepSign",
+          "description": "Sign message prompt showing EIP-191 sign message preview (address, nonce, chain). Back/Sign buttons. Simulates wallet signature, then sets connected state.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "auth-wallet-login"
+          ]
+        },
+        {
+          "name": "StepPermit",
+          "description": "Permit grant explanation with scope (your handles), expiry (15 minutes), cost (0 gas). Grant permit button triggers CoFHE permit. Back button to return to sign step.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": [
+            "cofhe-grant-permit"
+          ]
+        },
+        {
+          "name": "StepReady",
+          "description": "Ready confirmation with 'permit live' tag, success message ('You can read your numbers.'), animated pulse line, auto-dismisses after 1.6s.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire",
+          "backendDependencies": []
+        }
+      ],
+      "subComponents": [
+        "StepWallet",
+        "StepSign",
+        "StepPermit",
+        "StepReady"
+      ],
+      "integrationReadiness": "ready-to-wire"
+    },
+    {
+      "id": "tweaks-panel",
+      "name": "tweaks-panel.jsx",
+      "path": "ui/tweaks-panel.jsx",
+      "type": "utility",
+      "description": "Development tweaks panel with floating shell, drag-to-move, protocol-based host communication (postMessage for __activate/deactivate/edit_mode), and 9 reusable form controls (useTweaks, TweaksPanel, TweakSection, TweakRow, TweakSlider, TweakToggle, TweakRadio, TweakSelect, TweakText, TweakNumber, TweakColor, TweakButton). Used in app.jsx for theme switching, wallet state simulation, and route navigation.",
+      "sections": [
+        {
+          "name": "TweaksPanel Shell",
+          "description": "Floating panel positioned bottom-right, draggable, with backdrop-filter blur. Registers host protocol listener before announcing availability (postMessage __edit_mode_available). Close button posts __edit_mode_dismissed. ResizeObserver for viewport clamping. CSS-in-JS via __TWEAKS_STYLE string.",
+          "props": [
+            "title (string, default 'Tweaks')",
+            "children (ReactNode)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "useTweaks Hook",
+          "description": "Single source of truth for tweak values. setTweak persists via host protocol (postMessage __edit_mode_set_keys). Supports setTweak('key', value) or setTweak({key: value, ...}). Dispatches custom 'tweakchange' event for same-window listeners.",
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "TweakSection / TweakRow",
+          "description": "Layout helpers: section divider with label, row with optional value display (can be inline).",
+          "props": [
+            "label (string)",
+            "value?",
+            "children?",
+            "inline (boolean)?"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "TweakSlider",
+          "description": "Range slider with label and current value display.",
+          "props": [
+            "label",
+            "value",
+            "min (default 0)",
+            "max (default 100)",
+            "step (default 1)",
+            "unit",
+            "onChange"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "TweakToggle",
+          "description": "iOS-style toggle switch with data-on attribute transition.",
+          "props": [
+            "label",
+            "value (boolean)",
+            "onChange"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "TweakRadio",
+          "description": "Segmented control for 2-3 short options. Auto-falls back to TweakSelect when options are too long (>16/10 chars per option). Pointer-drag for fast switching on segment track. Custom thumb with animated transitions.",
+          "props": [
+            "label",
+            "value",
+            "options (array of values or {value, label})",
+            "onChange"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "TweakSelect",
+          "description": "Native select dropdown.",
+          "props": [
+            "label",
+            "value",
+            "options (array)",
+            "onChange"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "TweakText / TweakNumber",
+          "description": "Text input and number input with scrub-to-change label (pointer drag horizontal to adjust value). Clamp support.",
+          "props": [
+            "label",
+            "value",
+            "placeholder?/min?/max?/step?",
+            "unit?",
+            "onChange"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "TweakColor",
+          "description": "Curated color/palette picker. Each option is a hex string or array of 1-5 hex strings (palette card). Renders hero color (~2/3) with stacked rest on right. SVG checkmark with contrast-aware fill. Falls back to native color input when no options provided.",
+          "props": [
+            "label",
+            "value",
+            "options? (array of hex strings or arrays)",
+            "onChange"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "TweakButton",
+          "description": "Action button with primary/secondary styles.",
+          "props": [
+            "label",
+            "onClick",
+            "secondary (boolean)"
+          ],
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        },
+        {
+          "name": "App.jsx Usage of TweaksPanel",
+          "description": "Used in App() for: Theme section (light/dark radio, paper grain toggle), Prototype state section (wallet connected toggle, permit granted toggle), Jump to section (route navigation buttons: Home, Folio, Lend, Build, Gov, Connect).",
+          "mockData": [],
+          "integrationReadiness": "mock-only"
+        }
+      ],
+      "subComponents": [
+        "TweaksPanel",
+        "TweakSection",
+        "TweakRow",
+        "TweakSlider",
+        "TweakToggle",
+        "TweakRadio",
+        "TweakSelect",
+        "TweakText",
+        "TweakNumber",
+        "TweakColor",
+        "TweakButton"
+      ],
+      "integrationReadiness": "mock-only"
+    },
+    {
+      "id": "uploads-mockup-handoff",
+      "name": "uploads/MOCKUP_HANDOFF.md",
+      "path": "ui/uploads/MOCKUP_HANDOFF.md",
+      "type": "documentation",
+      "description": "Design handoff document for the new frontend mockup. Contains business logic overview of all smart contracts (LendingPool, StrategyVault, FheForgeComposer, SwapRouter, PriceOracle, FheForgeBase, Governance), backend API (Auth, Strategy, DeFi Modules, Event Indexer), database schema (16 tables), and key UX concepts. Reference for bridge layer designers.",
+      "sections": [
+        {
+          "name": "Project Identity",
+          "description": "FheForge overview: FHE DeFi protocol on Arbitrum Sepolia, CoFHE SDK, encrypted on-chain amounts, permit-gated reveals. 12 live contracts, Akindo Wave Hacks submission.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Smart Contract Architecture",
+          "description": "Business logic for each contract: LendingPool (shield/supply, borrowWithLtvCheck, borrowWithOracle, repayDebt, liquidateWithProof, partialUnshield, requestBalanceReveal), StrategyVault (openPosition, addCollateral, closePosition), FheForgeComposer (multi-step orchestration), SwapRouter (intent-based swaps, Uniswap V3), PriceOracle (Pyth + fallback), FheForgeBase (FHE ACL security model), Governance (FFT token, Timelock, Governor).",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Backend API Reference",
+          "description": "Auth flow (nonce, wallet-login, JWT 15min), Strategy flow (build, save, simulate, execute), DeFi modules (list, actions, pairs/estimate), Event indexer (15s polling).",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Database Schema Reference",
+          "description": "16 tables: users, strategies, defi_strategies, defi_strategy_versions, defi_strategy_executions, defi_modules, defi_module_actions, defi_pairs, activities, etc.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        },
+        {
+          "name": "Key UX Concepts",
+          "description": "7 design concepts: encrypted vs decrypted state, permit lifecycle, pending/encrypting states, gas awareness, CoFHE Wasm requirement (SharedArrayBuffer), chain-specific (Arb Sepolia only), wallet connection mandatory.",
+          "mockData": [],
+          "integrationReadiness": "ready-to-wire"
+        }
+      ],
+      "subComponents": [],
+      "integrationReadiness": "ready-to-wire"
+    }
+  ],
+  "mockDataArrays": [
+    {
+      "name": "TWEAK_DEFAULTS",
+      "file": "app.jsx",
+      "screen": "Root App",
+      "fields": {
+        "startConnected": {
+          "type": "boolean",
+          "description": "Simulates wallet connection state",
+          "realSource": "useAccount().isConnected"
+        },
+        "startUnlocked": {
+          "type": "boolean",
+          "description": "Simulates permit grant state",
+          "realSource": "usePermitCountdown().unlocked"
+        },
+        "showGrain": {
+          "type": "boolean",
+          "description": "Toggles paper grain texture",
+          "realSource": "client-side preference only"
+        }
+      },
+      "realSource": "wagmi useAccount hook + @cofhe/sdk usePermitCountdown hook"
+    },
+    {
+      "name": "items (Ticker)",
+      "file": "screens/landing.jsx",
+      "screen": "Landing",
+      "fields": {
+        "value": {
+          "type": "string",
+          "description": "Protocol stat string"
+        }
+      },
+      "realSource": "GET /stats/overview \u2014 NestJS stats endpoint"
+    },
+    {
+      "name": "rows (DemoCard)",
+      "file": "screens/landing.jsx",
+      "screen": "Landing",
+      "fields": {
+        "k": {
+          "type": "string",
+          "description": "Label: Supplied, Borrowed, In strategies"
+        },
+        "v": {
+          "type": "string",
+          "description": "Human-readable amount"
+        },
+        "u": {
+          "type": "string",
+          "description": "Asset unit"
+        }
+      },
+      "realSource": "usePortfolio() \u2014 LendingPool.balanceOf() + StrategyVault.positionOf()"
+    },
+    {
+      "name": "D_POSITIONS",
+      "file": "screens/dashboard.jsx",
+      "screen": "Dashboard",
+      "fields": {
+        "id": {
+          "type": "string",
+          "description": "Unique position ID"
+        },
+        "venue": {
+          "type": "string",
+          "description": "Pool/vault name"
+        },
+        "asset": {
+          "type": "string",
+          "description": "Asset symbol"
+        },
+        "side": {
+          "type": "string",
+          "description": "supply, borrow, or vault"
+        },
+        "amount": {
+          "type": "string",
+          "description": "Human-readable amount"
+        },
+        "apy": {
+          "type": "string",
+          "description": "APY with sign"
+        },
+        "liq": {
+          "type": "string|null",
+          "description": "Liquidation threshold"
+        }
+      },
+      "realSource": "usePortfolio() \u2014 LendingPool.balanceOf() + StrategyVault.positionOf() + PriceOracle"
+    },
+    {
+      "name": "D_STRATS",
+      "file": "screens/dashboard.jsx",
+      "screen": "Dashboard",
+      "fields": {
+        "id": {
+          "type": "string",
+          "description": "Strategy ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Strategy name"
+        },
+        "apy": {
+          "type": "string",
+          "description": "APY percentage"
+        },
+        "staked": {
+          "type": "string",
+          "description": "Staked amount + asset"
+        },
+        "loops": {
+          "type": "number",
+          "description": "Loop count"
+        },
+        "last": {
+          "type": "string",
+          "description": "Last execution time"
+        }
+      },
+      "realSource": "GET /defi-strategies \u2014 NestJS endpoint"
+    },
+    {
+      "name": "D_ACTIVITY",
+      "file": "screens/dashboard.jsx",
+      "screen": "Dashboard",
+      "fields": {
+        "id": {
+          "type": "string",
+          "description": "Activity ID"
+        },
+        "block": {
+          "type": "number",
+          "description": "Block number"
+        },
+        "age": {
+          "type": "string",
+          "description": "Time since event"
+        },
+        "what": {
+          "type": "string",
+          "description": "Activity description"
+        },
+        "kind": {
+          "type": "string",
+          "description": "Type: shield, borrow, accrue, swap, permit"
+        },
+        "asset": {
+          "type": "string",
+          "description": "Asset involved"
+        },
+        "delta": {
+          "type": "string",
+          "description": "Amount change"
+        }
+      },
+      "realSource": "GET /activity \u2014 NestJS endpoint (indexed on-chain events)"
+    },
+    {
+      "name": "L_MARKETS",
+      "file": "screens/lending.jsx",
+      "screen": "Lending",
+      "fields": {
+        "asset": {
+          "type": "string",
+          "description": "Asset symbol"
+        },
+        "supplyApy": {
+          "type": "number",
+          "description": "Supply APY"
+        },
+        "borrowApy": {
+          "type": "number",
+          "description": "Borrow APY"
+        },
+        "util": {
+          "type": "number",
+          "description": "Utilization rate %"
+        },
+        "tvl": {
+          "type": "string",
+          "description": "TVL human-readable"
+        },
+        "liq": {
+          "type": "number",
+          "description": "Liquidation threshold %"
+        },
+        "oracle": {
+          "type": "string",
+          "description": "Oracle source"
+        },
+        "price": {
+          "type": "string",
+          "description": "Current price"
+        }
+      },
+      "realSource": "GET /markets \u2014 NestJS markets endpoint + LendingPool.getMarketData()"
+    },
+    {
+      "name": "COMMUNITY",
+      "file": "screens/market.jsx",
+      "screen": "Market (Strategies)",
+      "fields": {
+        "id": {
+          "type": "string",
+          "description": "Strategy ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Strategy name"
+        },
+        "author": {
+          "type": "string",
+          "description": "Creator handle"
+        },
+        "risk": {
+          "type": "string",
+          "description": "Risk level: low, med, high"
+        },
+        "apy": {
+          "type": "number",
+          "description": "APY percentage"
+        },
+        "tvl": {
+          "type": "string",
+          "description": "TVL in USD"
+        },
+        "asset": {
+          "type": "string",
+          "description": "Primary asset"
+        },
+        "deployers": {
+          "type": "number",
+          "description": "Deployer count"
+        },
+        "template": {
+          "type": "string",
+          "description": "Builder template ref"
+        }
+      },
+      "realSource": "GET /strategies \u2014 NestJS strategies marketplace endpoint"
+    },
+    {
+      "name": "PROPOSALS",
+      "file": "screens/governance.jsx",
+      "screen": "Governance",
+      "fields": {
+        "id": {
+          "type": "string",
+          "description": "Proposal ID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Proposal title"
+        },
+        "status": {
+          "type": "string",
+          "description": "active, queued, executed, defeated"
+        },
+        "body": {
+          "type": "string",
+          "description": "Description"
+        },
+        "forVotes": {
+          "type": "number",
+          "description": "For votes"
+        },
+        "againstVotes": {
+          "type": "number",
+          "description": "Against votes"
+        },
+        "abstain": {
+          "type": "number",
+          "description": "Abstain votes"
+        },
+        "quorum": {
+          "type": "number",
+          "description": "Required quorum"
+        },
+        "timeLeft": {
+          "type": "string",
+          "description": "Time remaining/elapsed"
+        },
+        "proposer": {
+          "type": "string",
+          "description": "Proposer address"
+        }
+      },
+      "realSource": "GET /governance/proposals \u2014 NestJS endpoint + GovernorBravo on-chain"
+    },
+    {
+      "name": "wallet options",
+      "file": "screens/connect-modal.jsx",
+      "screen": "Connect Modal",
+      "fields": {
+        "k": {
+          "type": "string",
+          "description": "Wallet key: metamask, rabby, wc, ledger"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name"
+        },
+        "sub": {
+          "type": "string",
+          "description": "Subtitle description"
+        }
+      },
+      "realSource": "wagmi connectors",
+      "values": [
+        {
+          "k": "metamask",
+          "name": "MetaMask",
+          "sub": "Browser extension"
+        },
+        {
+          "k": "rabby",
+          "name": "Rabby",
+          "sub": "Recommended for DeFi"
+        },
+        {
+          "k": "wc",
+          "name": "WalletConnect",
+          "sub": "Mobile pairing"
+        },
+        {
+          "k": "ledger",
+          "name": "Ledger",
+          "sub": "Hardware"
+        }
+      ]
+    }
+  ],
+  "builderFeatures": {
+    "count": 55,
+    "summary": "Full builder workspace feature inventory covering canvas engine, nodes, edges, zoom, simulation, keyboard shortcuts, issue detection, layout, multi-select, clipboard, undo/redo, deploy flow, and all supporting components",
+    "features": [
+      {
+        "name": "Custom SVG Canvas",
+        "exists": true,
+        "implementation": "custom-svg-with-3-edge-layers",
+        "integrationReadiness": "needs-redesign",
+        "description": "Dot-grid background, SVG edge layers (halo, stroke, hit), zoom layer with transform"
+      },
+      {
+        "name": "Node Palette",
+        "exists": true,
+        "implementation": "draggable-sidebar-items",
+        "integrationReadiness": "needs-redesign",
+        "description": "5 node types (Supply, Borrow, Swap, Repeat, Settle) draggable onto canvas"
+      },
+      {
+        "name": "Drag-and-Drop Nodes",
+        "exists": true,
+        "implementation": "native-DnD-API",
+        "integrationReadiness": "needs-redesign",
+        "description": "Drag from palette, drop on canvas, clientToWorld coordinate mapping"
+      },
+      {
+        "name": "Node Selection",
+        "exists": true,
+        "implementation": "click-to-select",
+        "integrationReadiness": "needs-redesign",
+        "description": "Single click selection, selected state highlighted"
+      },
+      {
+        "name": "Multi-Select",
+        "exists": true,
+        "implementation": "\u2318+click-additive",
+        "integrationReadiness": "needs-redesign",
+        "description": "\u2318+click to add/remove from multi-selection set"
+      },
+      {
+        "name": "Node Positioning",
+        "exists": true,
+        "implementation": "absolute-pixel-placement",
+        "integrationReadiness": "needs-redesign",
+        "description": "Each node has x,y coordinates on canvas"
+      },
+      {
+        "name": "Node Drag",
+        "exists": true,
+        "implementation": "pointer-move-with-world-coords",
+        "integrationReadiness": "needs-redesign",
+        "description": "Drag nodes around canvas, multi-selection drag moves all"
+      },
+      {
+        "name": "Node States",
+        "exists": true,
+        "implementation": "CSS-class-switching",
+        "integrationReadiness": "needs-redesign",
+        "description": "selected, active (sim pulsing), past (green check), cycle (error pulse), dragging"
+      },
+      {
+        "name": "Input/Output Ports",
+        "exists": true,
+        "implementation": "inline-span-circles",
+        "integrationReadiness": "needs-redesign",
+        "description": "Left circle (input), right circle (output), hover scale, active/pending animations"
+      },
+      {
+        "name": "Edge Creation",
+        "exists": true,
+        "implementation": "port-click-pairing",
+        "integrationReadiness": "needs-redesign",
+        "description": "Click output \u2192 pending state \u2192 click input to create edge"
+      },
+      {
+        "name": "Edge Rendering",
+        "exists": true,
+        "implementation": "SVG-bezier-curves",
+        "integrationReadiness": "needs-redesign",
+        "description": "Cubic bezier paths with backward-edge support, marker arrowheads"
+      },
+      {
+        "name": "Edge Styles",
+        "exists": true,
+        "implementation": "CSS-edge-classes",
+        "integrationReadiness": "needs-redesign",
+        "description": "idle (dashed flow animation), active, selected, sev-error, sev-warn, draw-on"
+      },
+      {
+        "name": "Edge Selection",
+        "exists": true,
+        "implementation": "transparent-hit-area-click",
+        "integrationReadiness": "needs-redesign",
+        "description": "Click transparent hit area (stroke-width 16) to select edge, popover inspector"
+      },
+      {
+        "name": "Edge Delete",
+        "exists": true,
+        "implementation": "delete-button-or-keyboard",
+        "integrationReadiness": "needs-redesign",
+        "description": "Delete via keyboard \u232b or popover button"
+      },
+      {
+        "name": "Edge Drawing Animation",
+        "exists": true,
+        "implementation": "stroke-dashoffset-animation",
+        "integrationReadiness": "needs-redesign",
+        "description": "New edges animate in with draw-on effect (450ms ease-out)"
+      },
+      {
+        "name": "Edge Flow Animation",
+        "exists": true,
+        "implementation": "stroke-dasharray-idle-flow",
+        "integrationReadiness": "needs-redesign",
+        "description": "Idle edges have slow dashed flow animation (12s linear)"
+      },
+      {
+        "name": "Edge Halo Layer",
+        "exists": true,
+        "implementation": "background-matched-thick-stroke",
+        "integrationReadiness": "needs-redesign",
+        "description": "Thick stroke (5-6px) matching canvas background behind edge for clean crossings"
+      },
+      {
+        "name": "Pending Edge State",
+        "exists": true,
+        "implementation": "pending-variable-plus-port-animation",
+        "integrationReadiness": "needs-redesign",
+        "description": "Output port shows pending animation, status bar shows guidance text"
+      },
+      {
+        "name": "Canvas Pan",
+        "exists": true,
+        "implementation": "4-methods",
+        "integrationReadiness": "needs-redesign",
+        "description": "Middle-mouse, shift+drag, space+click-drag (Figma-style), hand tool toggle"
+      },
+      {
+        "name": "Canvas Zoom",
+        "exists": true,
+        "implementation": "mouse-wheel-scaling",
+        "integrationReadiness": "needs-redesign",
+        "description": "Ctrl/Wheel zoom around cursor, zoom controls (+/\u2212/reset%/fit), scale range 0.4-2.2"
+      },
+      {
+        "name": "Zoom-to-Fit",
+        "exists": true,
+        "implementation": "bounding-box-calculation",
+        "integrationReadiness": "needs-redesign",
+        "description": "Shift+1 fits all nodes, Shift+2 fits selection to viewport"
+      },
+      {
+        "name": "Camera Follow (Simulation)",
+        "exists": true,
+        "implementation": "auto-pan-to-active-node",
+        "integrationReadiness": "needs-redesign",
+        "description": "Camera auto-follows simulation steps, toggleable lock"
+      },
+      {
+        "name": "Keyboard Shortcuts (50+)",
+        "exists": true,
+        "implementation": "useEffect-keydown-listener",
+        "integrationReadiness": "needs-redesign",
+        "description": "50+ keyboard shortcuts covering canvas, editing, workflow operations"
+      },
+      {
+        "name": "Quick Node Add (1-5)",
+        "exists": true,
+        "implementation": "number-key-creation",
+        "integrationReadiness": "needs-redesign",
+        "description": "Keys 1-5 drop Supply/Borrow/Swap/Repeat/Settle nodes at canvas center"
+      },
+      {
+        "name": "Tab Cycle Selection",
+        "exists": true,
+        "implementation": "topological-order-cycle",
+        "integrationReadiness": "needs-redesign",
+        "description": "Tab/\u21e7Tab cycles through nodes in walk order"
+      },
+      {
+        "name": "Arrow Key Nudge",
+        "exists": true,
+        "implementation": "pixel-increments",
+        "integrationReadiness": "needs-redesign",
+        "description": "Arrow keys nudge selected node 1px (8px with shift)"
+      },
+      {
+        "name": "Copy/Paste Nodes",
+        "exists": true,
+        "implementation": "clipboard-ref",
+        "integrationReadiness": "needs-redesign",
+        "description": "\u2318C/\u2318V copies/pastes selected nodes with offset positioning"
+      },
+      {
+        "name": "Duplicate Nodes",
+        "exists": true,
+        "implementation": "\u2318D-duplication",
+        "integrationReadiness": "needs-redesign",
+        "description": "\u2318D duplicates selection with 24px offset"
+      },
+      {
+        "name": "Select All",
+        "exists": true,
+        "implementation": "\u2318A-select-all",
+        "integrationReadiness": "needs-redesign",
+        "description": "\u2318A selects all nodes on canvas"
+      },
+      {
+        "name": "Delete Nodes/Edges",
+        "exists": true,
+        "implementation": "\u232b-or-Delete-key",
+        "integrationReadiness": "needs-redesign",
+        "description": "Delete/Backspace deletes selected node, edge, or multi-selection"
+      },
+      {
+        "name": "Undo/Redo",
+        "exists": true,
+        "implementation": "history-stack-50-max",
+        "integrationReadiness": "needs-redesign",
+        "description": "History stack (max 50), debounced snapshot, \u2318Z/\u2318\u21e7Z, toolbar buttons"
+      },
+      {
+        "name": "Simulation Engine",
+        "exists": true,
+        "implementation": "timeout-based-step-sequencing",
+        "integrationReadiness": "needs-contract",
+        "description": "Topological walk, sequential step highlighting, camera follow, pre-sim view save/restore"
+      },
+      {
+        "name": "Walk Order (Topological Sort)",
+        "exists": true,
+        "implementation": "walkOrder-function",
+        "integrationReadiness": "needs-contract",
+        "description": "Compute execution order from directed edges"
+      },
+      {
+        "name": "Idle Pulse Animation",
+        "exists": true,
+        "implementation": "interval-based-cycle",
+        "integrationReadiness": "needs-redesign",
+        "description": "Soft node cycling when idle (1.4s interval)"
+      },
+      {
+        "name": "Issue Detection Engine",
+        "exists": true,
+        "implementation": "4-detection-rules",
+        "integrationReadiness": "needs-redesign",
+        "description": "Cycle (DFS), dead-ends, missing settle, consecutive swaps. Severity: error/warn/tip"
+      },
+      {
+        "name": "Floating Issue Pins",
+        "exists": true,
+        "implementation": "absolute-positioned-annotations",
+        "integrationReadiness": "needs-redesign",
+        "description": "Annotations near problematic nodes with hover tooltip, apply action"
+      },
+      {
+        "name": "Suggestion Pills",
+        "exists": true,
+        "implementation": "next-step-recommendation",
+        "integrationReadiness": "needs-redesign",
+        "description": "Ghosted '+ [type]' button near orphan nodes, click to add connected node"
+      },
+      {
+        "name": "Auto-Fix Actions",
+        "exists": true,
+        "implementation": "merge-swaps-action",
+        "integrationReadiness": "needs-redesign",
+        "description": "Auto-fix for mergeable consecutive swaps with before/after explanation"
+      },
+      {
+        "name": "Auto-Organize Layout",
+        "exists": true,
+        "implementation": "Sugiyama-layered-algorithm",
+        "integrationReadiness": "needs-redesign",
+        "description": "Width-aware layered layout, rank computation, median heuristic for edge crossings"
+      },
+      {
+        "name": "Inline Node Configuration",
+        "exists": true,
+        "implementation": "overlay-popover",
+        "integrationReadiness": "needs-redesign",
+        "description": "Click-to-edit overlay near node, asset selectors, amount/LTV/slippage inputs"
+      },
+      {
+        "name": "Per-Link Allocation",
+        "exists": true,
+        "implementation": "percentage-input-per-edge",
+        "integrationReadiness": "needs-redesign",
+        "description": "Allocation % per outbound edge when multiple downstream nodes"
+      },
+      {
+        "name": "Fullscreen Mode",
+        "exists": true,
+        "implementation": "fixed-position-overlay",
+        "integrationReadiness": "needs-redesign",
+        "description": "F key toggles fullscreen canvas, hides topbar and list rail"
+      },
+      {
+        "name": "Template System",
+        "exists": true,
+        "implementation": "4-built-in-templates",
+        "integrationReadiness": "ready-to-wire",
+        "description": "Blank, Leverage (5 nodes), Delta-Neutral (4 nodes), Rebalance (3 nodes)"
+      },
+      {
+        "name": "Draft Management",
+        "exists": true,
+        "implementation": "localStorage-persistence",
+        "integrationReadiness": "ready-to-wire",
+        "description": "Create, fork, name, delete drafts, auto-save to localStorage"
+      },
+      {
+        "name": "Saved Indicator",
+        "exists": true,
+        "implementation": "time-ago-display",
+        "integrationReadiness": "ready-to-wire",
+        "description": "Shows 'Saved' / 'Saved Xs ago' with green/muted dot indicator"
+      },
+      {
+        "name": "Deploy Button & Flow",
+        "exists": true,
+        "implementation": "simulated-deployment",
+        "integrationReadiness": "needs-contract",
+        "description": "Deploy button triggers progress modal, then success/error toast"
+      },
+      {
+        "name": "DeployProgressModal",
+        "exists": true,
+        "implementation": "step-through-animation",
+        "integrationReadiness": "needs-contract",
+        "description": "Step-by-step composer call walkthrough with gas estimates"
+      },
+      {
+        "name": "DeployToast",
+        "exists": true,
+        "implementation": "animated-toast-notification",
+        "integrationReadiness": "needs-contract",
+        "description": "Success (tx hash, block) or error (message, retry) toast, auto-dismiss"
+      },
+      {
+        "name": "Keyboard Cheatsheet",
+        "exists": true,
+        "implementation": "overlay-with-28-shortcuts",
+        "integrationReadiness": "needs-redesign",
+        "description": "? key shows cheatsheet overlay with 28 shortcuts in 3 groups"
+      },
+      {
+        "name": "Status Bar",
+        "exists": true,
+        "implementation": "sub-strip-below-toolbar",
+        "integrationReadiness": "ready-to-wire",
+        "description": "Shows steps count, links count, estimated gas, permit/pending status"
+      },
+      {
+        "name": "Toolbar",
+        "exists": true,
+        "implementation": "top-bar-with-actions",
+        "integrationReadiness": "ready-to-wire",
+        "description": "Editable name, undo/redo, overflow menu, organize, delete, simulate, deploy"
+      },
+      {
+        "name": "Canvas Empty State",
+        "exists": true,
+        "implementation": "centered-placeholder",
+        "integrationReadiness": "needs-redesign",
+        "description": "'Empty canvas. Drag a node from the left to start.' guidance"
+      },
+      {
+        "name": "Node Drag Over Highlight",
+        "exists": true,
+        "implementation": "drop-active-CSS-class",
+        "integrationReadiness": "needs-redesign",
+        "description": "Canvas background and border change when dragging palette item over it"
+      },
+      {
+        "name": "Toolbar Overflow Menu",
+        "exists": true,
+        "implementation": "dropdown-with-click-outside",
+        "integrationReadiness": "ready-to-wire",
+        "description": "\u22ef button with fullscreen toggle and keyboard shortcuts"
+      },
+      {
+        "name": "Edge Inspector Popover",
+        "exists": true,
+        "implementation": "inline-popover-near-edge",
+        "integrationReadiness": "needs-redesign",
+        "description": "Shows from/to types, data flow label, gas estimate, delete button"
+      }
+    ]
+  },
+  "tweaksPanel": {
+    "description": "Developer tweaks panel used in prototype mode for theme switching, wallet state simulation, and route navigation. Based on host protocol messaging pattern for edit-mode enablement.",
+    "controls": [
+      {
+        "name": "useTweaks Hook",
+        "type": "hook",
+        "description": "State management hook for tweak values with host protocol persistence"
+      },
+      {
+        "name": "TweaksPanel",
+        "type": "shell",
+        "description": "Floating draggable panel with backdrop-filter blur, message protocol"
+      },
+      {
+        "name": "TweakSection",
+        "type": "layout",
+        "description": "Section divider with label"
+      },
+      {
+        "name": "TweakRow",
+        "type": "layout",
+        "description": "Label + value display row, supports inline mode"
+      },
+      {
+        "name": "TweakSlider",
+        "type": "control",
+        "description": "Range slider with value display"
+      },
+      {
+        "name": "TweakToggle",
+        "type": "control",
+        "description": "iOS-style toggle switch"
+      },
+      {
+        "name": "TweakRadio",
+        "type": "control",
+        "description": "Segmented control (2-3 options) with auto-fallback to select"
+      },
+      {
+        "name": "TweakSelect",
+        "type": "control",
+        "description": "Native select dropdown"
+      },
+      {
+        "name": "TweakText",
+        "type": "control",
+        "description": "Text input control"
+      },
+      {
+        "name": "TweakNumber",
+        "type": "control",
+        "description": "Number input with scrub-to-change label"
+      },
+      {
+        "name": "TweakColor",
+        "type": "control",
+        "description": "Curated color/palette picker with swatch cards"
+      },
+      {
+        "name": "TweakButton",
+        "type": "control",
+        "description": "Action button with primary/secondary styles"
+      }
+    ],
+    "integrationReadiness": "mock-only",
+    "appUsage": [
+      {
+        "section": "Theme",
+        "controls": [
+          "TweakRadio (light/dark)",
+          "TweakToggle (paper grain)"
+        ]
+      },
+      {
+        "section": "Prototype state",
+        "controls": [
+          "TweakToggle (wallet connected)",
+          "TweakToggle (permit granted)"
+        ]
+      },
+      {
+        "section": "Jump to",
+        "controls": [
+          "6 route navigation buttons: Home, Folio, Lend, Build, Gov, Connect"
+        ]
+      }
+    ]
+  }
+}
