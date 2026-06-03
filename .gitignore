@@ -16,7 +16,7 @@ dist/
 build/
 out/
 public/
-packages/forge-bridge/dist/
+!packages/forge-bridge/dist/
 *.tsbuildinfo
 *.wasm
 

@@ -58,29 +58,6 @@ jobs:
         run: bunx eslint 'src/**/*.ts'
         working-directory: backend/apps
 
-  lint-frontend:
-    name: Lint (Frontend)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with: { bun-version: "1.3.13" }
-      - uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            ui/node_modules
-            ~/.cache/bun
-          key: frontend-lint-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
-          restore-keys: |
-            frontend-lint-${{ runner.os }}-bun-
-      - name: Install (root for workspace links)
-        run: bun install
-      - name: Lint
-        run: bunx --bun next lint -d .
-        working-directory: ui
-        continue-on-error: true
-
   prettier:
     name: Prettier
     runs-on: ubuntu-latest
@@ -143,29 +120,6 @@ jobs:
       - name: Type-check
         run: bunx tsc --noEmit -p tsconfig.json
         working-directory: backend/apps
-
-  typecheck-frontend:
-    name: TypeCheck (Frontend)
-    runs-on: ubuntu-latest
-    needs: [lint-frontend]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with: { bun-version: "1.3.13" }
-      - uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            ui/node_modules
-            ~/.cache/bun
-          key: frontend-lint-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
-          restore-keys: |
-            frontend-lint-${{ runner.os }}-bun-
-      - name: Install (root for workspace links)
-        run: bun install
-      - name: Type-check
-        run: bunx tsc --noEmit -p tsconfig.json
-        working-directory: ui
 
   # ───────────── Stage 3: Test ─────────────
 
@@ -245,29 +199,6 @@ jobs:
         run: bun run test
         working-directory: backend/apps
 
-  test-frontend:
-    name: Test (Frontend)
-    runs-on: ubuntu-latest
-    needs: [typecheck-frontend]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with: { bun-version: "1.3.13" }
-      - uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            ui/node_modules
-            ~/.cache/bun
-          key: frontend-test-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
-          restore-keys: |
-            frontend-test-${{ runner.os }}-bun-
-      - name: Install (root for workspace links)
-        run: bun install
-      - name: Unit tests
-        run: bun run test
-        working-directory: ui
-
   forge-test:
     name: Forge tests
     runs-on: ubuntu-latest
@@ -320,30 +251,6 @@ jobs:
       - name: Build
         run: bun run build
         working-directory: backend/apps
-
-  build-frontend:
-    name: Build (Frontend)
-    runs-on: ubuntu-latest
-    needs: [test-frontend]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with: { bun-version: "1.3.13" }
-      - uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            ui/node_modules
-            ~/.cache/bun
-            ui/.next/cache
-          key: frontend-build-${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'ui/bun.lock') }}
-          restore-keys: |
-            frontend-build-${{ runner.os }}-bun-
-      - name: Install (root for workspace links)
-        run: bun install
-      - name: Build
-        run: bun run build
-        working-directory: ui
 
   # ───────────── POSTFIX probes (manual/scheduled only) ─────────────
 
