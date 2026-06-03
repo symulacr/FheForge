@@ -29,15 +29,22 @@
   function transformMarkets(apiMarkets) {
     if (!Array.isArray(apiMarkets)) return [];
     return apiMarkets.map(function (m) {
+      var utilization = m.util ?? m.utilization;
+      var liq = m.liq ?? m.liquidationThreshold;
       return {
         asset: m.asset || m.symbol || 'UNKNOWN',
-        supplyApy: formatApy(m.supplyRate || m.supplyApy),
-        borrowApy: formatApy(m.borrowRate || m.borrowApy),
-        util: m.utilization != null ? Math.round(m.utilization) : 0,
-        tvl: m.totalSupplyUsd || m.tvl || '0',
-        liq: m.liquidity || m.totalBorrowUsd || '0',
-        oracle: m.oraclePrice || m.price || '0',
-        price: m.price || m.oraclePrice || '0',
+        supplyApy: formatApy(m.supplyAPY != null ? m.supplyAPY : (m.supplyRate != null ? m.supplyRate : m.supplyApy)),
+        borrowApy: formatApy(m.borrowAPY != null ? m.borrowAPY : (m.borrowRate != null ? m.borrowRate : m.borrowApy)),
+        util: formatPercentValue(utilization),
+        tvl: formatUsdDisplay(m.tvl != null ? m.tvl : (m.totalSupplyUsd != null ? m.totalSupplyUsd : m.totalSupply)),
+        liq: formatPercentValue(liq),
+        oracle: m.oracle || m.oracleSource || (m.oraclePrice != null ? 'on-chain' : 'unavailable'),
+        price: m.price || formatUsdDisplay(m.oraclePrice),
+        healthAfterSupply: m.healthAfterSupply,
+        healthAfterBorrow: m.healthAfterBorrow,
+        liqPrice: m.liqPrice || m.liquidationPrice,
+        estimatedGas: m.estimatedGas,
+        updatedAt: m.updatedAt || m.oracleUpdatedAt,
       };
     });
   }
@@ -102,16 +109,17 @@
      ────────────────────────────────────────────── */
   function formatTicker(stats) {
     var s = stats || {};
+    var poolTvls = s.poolTvls || {};
     return [
-      '⧫ ' + (s.blockNumber || '—'),
-      'GAS: ' + (s.gasPrice ? s.gasPrice + ' gwei' : '—'),
-      'POOL: ' + (s.poolTvl || '—'),
-      'VAULT: ' + (s.vaultTvl || '—'),
-      'COMP: ' + (s.composerTvl || '—'),
-      'ENCRYPTED: ' + (s.encryptedOps || '—'),
-      'PERMITS: ' + (s.dailyPermits || '—'),
-      'STRATS: ' + (s.activeStrategies || '—'),
-      'DEPLOYS: ' + (s.composerDeploys || '—'),
+      'TVL: ' + formatUsdDisplay(s.tvlUsd),
+      'MARKETS: ' + (s.activeMarkets != null ? s.activeMarkets : '—'),
+      'STRATS: ' + (s.activeStrategies != null ? s.activeStrategies : '—'),
+      'DEPLOYS: ' + (s.totalDeployments != null ? s.totalDeployments : '—'),
+      'ENCRYPTED: ' + (s.encryptedOps != null ? s.encryptedOps : '—'),
+      'PERMITS: ' + (s.permitDecryptsDay != null ? s.permitDecryptsDay : '—'),
+      'USDC TVL: ' + formatUsdDisplay(poolTvls.USDC),
+      'ETH TVL: ' + formatUsdDisplay(poolTvls.ETH),
+      'STATUS: ' + (s.status || 'unavailable'),
     ];
   }
 
@@ -233,6 +241,20 @@
     var num = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(num)) return '—';
     return num.toFixed(2) + '%';
+  }
+
+  function formatPercentValue(val) {
+    if (val == null) return 0;
+    var num = typeof val === 'string' ? parseFloat(val) : val;
+    if (isNaN(num)) return 0;
+    return Math.round(num > 0 && num <= 1 ? num * 100 : num);
+  }
+
+  function formatUsdDisplay(val) {
+    if (val == null) return 'unavailable';
+    var num = typeof val === 'string' ? parseFloat(String(val).replace(/[$,]/g, '')) : val;
+    if (isNaN(num)) return String(val);
+    return '$' + num.toLocaleString('en-US', { maximumFractionDigits: 2 });
   }
 
   function parseUsd(val) {

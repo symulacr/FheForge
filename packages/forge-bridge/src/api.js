@@ -396,6 +396,23 @@ export function createApiAdapter(config, walletAdapter) {
 	// -----------------------------------------------------------------------
 
 	return {
+		/** System — public backend readiness and health probes */
+		system: {
+			/**
+			 * Get backend readiness.
+			 * GET /ready  (uncached)
+			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
+			 */
+			getReady: () => get("/ready"),
+
+			/**
+			 * Get backend readiness. Alias for getReady().
+			 * GET /ready  (uncached)
+			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
+			 */
+			getReadiness: () => get("/ready"),
+		},
+
 		/** Markets — public lending market data */
 		markets: {
 			/**
@@ -412,6 +429,13 @@ export function createApiAdapter(config, walletAdapter) {
 			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
 			 */
 			getPrices: () => cachedGet("markets-prices", "/markets/prices"),
+
+			/**
+			 * Get markets service/indexer status.
+			 * GET /markets/status  (uncached)
+			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
+			 */
+			getStatus: () => get("/markets/status"),
 		},
 
 		/** Stats — protocol-wide statistics */
@@ -604,9 +628,13 @@ export function createApiAdapter(config, walletAdapter) {
 
 /**
  * @typedef {Object} ApiAdapter
+ * @property {object} system
+ * @property {() => Promise<ApiResult>} system.getReady
+ * @property {() => Promise<ApiResult>} system.getReadiness
  * @property {object} markets
  * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} markets.getMarkets
  * @property {() => Promise<ApiResult>} markets.getPrices
+ * @property {() => Promise<ApiResult>} markets.getStatus
  * @property {object} stats
  * @property {() => Promise<ApiResult>} stats.getStats
  * @property {object} strategies

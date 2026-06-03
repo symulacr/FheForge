@@ -29,6 +29,10 @@ import {
 	useBridgeData,
 } from '../src/bridge-context.js';
 
+// Save original DataFetcherV2 so tests in other files (data-fetcher-v2.test.js)
+// are not affected when this file replaces window.DataFetcherV2 with mocks.
+const _originalDataFetcherV2 = typeof window !== 'undefined' ? window.DataFetcherV2 : null;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
@@ -43,6 +47,10 @@ function resetGlobalState() {
 	bridgeBus.reset();
 	window.__MOCK__ = {};
 	window.__forgeProvider__pollingStarted = false;
+	// Restore original DataFetcherV2 so tests in other files are not affected
+	if (_originalDataFetcherV2) {
+		window.DataFetcherV2 = _originalDataFetcherV2;
+	}
 }
 
 /**
@@ -557,77 +565,84 @@ describe('No key={dataVersion} pattern (VAL-REARCH-PROVIDER-011)', () => {
 	});
 });
 
-// ─── VAL-REARCH-PROVIDER-014: ForgeProvider writes to window.__MOCK__ ───────
+// ─── VAL-REARCH-PROVIDER-014: ForgeProvider does NOT write to window.__MOCK__ ──
+//
+// __MOCK__ writes were moved to data-fetcher-v2.js (_writeMockData for demo mode,
+// _fetchAndTransform for live API).  The ForgeProvider only updates React state
+// on BridgeBus data events — it should NOT also write to __MOCK__, which would
+// create redundant double-assignments when startDemoMode() calls both
+// _writeMockData() and this._bus.set().
 
-describe('ForgeProvider writes to window.__MOCK__ (VAL-REARCH-PROVIDER-014)', () => {
-	it('writes ticker data to window.__MOCK__.TICKER_ITEMS', () => {
+describe('ForgeProvider does not write __MOCK__ (VAL-REARCH-PROVIDER-014)', () => {
+	it('does not write ticker data to window.__MOCK__.TICKER_ITEMS', () => {
 		resetGlobalState();
 		mountProvider();
 
 		const ticker = ['⧫ 182,944,108', 'GAS: —'];
 		bridgeBus.set('data:ticker', ticker);
 
-		expect(window.__MOCK__.TICKER_ITEMS).toEqual(ticker);
+		// __MOCK__ writes now happen in data-fetcher-v2.js, not in ForgeProvider
+		expect(window.__MOCK__.TICKER_ITEMS).toBeUndefined();
 	});
 
-	it('writes markets data to window.__MOCK__.L_MARKETS', () => {
+	it('does not write markets data to window.__MOCK__.L_MARKETS', () => {
 		resetGlobalState();
 		mountProvider();
 
 		const markets = [{ asset: 'ETH', supplyApy: '3.45%' }];
 		bridgeBus.set('data:markets', markets);
 
-		expect(window.__MOCK__.L_MARKETS).toEqual(markets);
+		expect(window.__MOCK__.L_MARKETS).toBeUndefined();
 	});
 
-	it('writes activities data to window.__MOCK__.D_ACTIVITY', () => {
+	it('does not write activities data to window.__MOCK__.D_ACTIVITY', () => {
 		resetGlobalState();
 		mountProvider();
 
 		const activities = [{ id: 'act-1', what: 'Supplied 10 ETH' }];
 		bridgeBus.set('data:activities', activities);
 
-		expect(window.__MOCK__.D_ACTIVITY).toEqual(activities);
+		expect(window.__MOCK__.D_ACTIVITY).toBeUndefined();
 	});
 
-	it('writes positions data to window.__MOCK__.D_POSITIONS', () => {
+	it('does not write positions data to window.__MOCK__.D_POSITIONS', () => {
 		resetGlobalState();
 		mountProvider();
 
 		const positions = [{ id: 'pos-1', side: 'supply', asset: 'ETH' }];
 		bridgeBus.set('data:positions', positions);
 
-		expect(window.__MOCK__.D_POSITIONS).toEqual(positions);
+		expect(window.__MOCK__.D_POSITIONS).toBeUndefined();
 	});
 
-	it('writes strategies data to window.__MOCK__.D_STRATS', () => {
+	it('does not write strategies data to window.__MOCK__.D_STRATS', () => {
 		resetGlobalState();
 		mountProvider();
 
 		const strats = [{ id: 'strat-1', name: 'Yield Optimizer' }];
 		bridgeBus.set('data:strategies', strats);
 
-		expect(window.__MOCK__.D_STRATS).toEqual(strats);
+		expect(window.__MOCK__.D_STRATS).toBeUndefined();
 	});
 
-	it('writes proposals data to window.__MOCK__.PROPOSALS', () => {
+	it('does not write proposals data to window.__MOCK__.PROPOSALS', () => {
 		resetGlobalState();
 		mountProvider();
 
 		const proposals = [{ id: 'prop-1', title: 'Increase ETH CF' }];
 		bridgeBus.set('data:proposals', proposals);
 
-		expect(window.__MOCK__.PROPOSALS).toEqual(proposals);
+		expect(window.__MOCK__.PROPOSALS).toBeUndefined();
 	});
 
-	it('writes nodeTypes data to window.__MOCK__.NODE_TYPES', () => {
+	it('does not write nodeTypes data to window.__MOCK__.NODE_TYPES', () => {
 		resetGlobalState();
 		mountProvider();
 
 		const nodeTypes = { supply: { label: 'Supply' } };
 		bridgeBus.set('data:nodeTypes', nodeTypes);
 
-		expect(window.__MOCK__.NODE_TYPES).toEqual(nodeTypes);
+		expect(window.__MOCK__.NODE_TYPES).toBeUndefined();
 	});
 
 	it('does not write walletBalance to __MOCK__ (no backward compat key)', () => {
@@ -702,15 +717,21 @@ describe('Public data polling on mount (VAL-REARCH-PROVIDER-015)', () => {
 // ─── Component rendering ─────────────────────────────────────────────────────
 
 describe('ForgeProvider — component rendering', () => {
-	it('renders children wrapped in BridgeContext.Provider', () => {
+	it('renders children wrapped in ForgeErrorBoundary > BridgeContext.Provider', () => {
 		resetGlobalState();
 
 		const children = 'test-content';
 		const result = ForgeProvider({ children: children });
 
-		expect(result).toHaveProperty('comp', BridgeContext.Provider);
-		// React.createElement wraps children in an array when > 1 arg after props
-		expect(result.children).toContain(children);
+		// Outer wrapper is ForgeErrorBoundary (class component)
+		expect(result).toHaveProperty('comp');
+		expect(result.comp.name).toBe('ForgeErrorBoundary');
+		// First child of ForgeErrorBoundary is BridgeContext.Provider
+		expect(Array.isArray(result.children)).toBe(true);
+		const providerEl = result.children[0];
+		expect(providerEl).toHaveProperty('comp', BridgeContext.Provider);
+		// Children are inside BridgeContext.Provider
+		expect(providerEl.children).toContain(children);
 	});
 
 	it('provider value contains correct initial state', () => {

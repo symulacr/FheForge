@@ -13,6 +13,8 @@ export const DEFAULT_CONFIG = (() => {
 		chainId: 421614,
 		/** Public Arbitrum Sepolia RPC URL */
 		rpcUrl: "https://sepolia-arbitrum-rpc.publicnode.com",
+		/** WalletConnect Cloud project ID. Set via window.__FHEFORGE_CONFIG__.walletConnectProjectId to enable WalletConnect as a wallet fallback for users without an injected provider. */
+		walletConnectProjectId: undefined,
 	};
 	// Runtime override: window.__FHEFORGE_CONFIG__ takes priority
 	if (typeof window !== "undefined" && window.__FHEFORGE_CONFIG__) {

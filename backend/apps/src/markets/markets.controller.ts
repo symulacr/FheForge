@@ -23,6 +23,17 @@ export class MarketsController {
   }
 
   @Public()
+  @Get('status')
+  @ApiOperation({ summary: 'Get markets data dependency status' })
+  @ApiResponse({
+    status: 200,
+    description: 'Markets dependency status',
+  })
+  async getStatus() {
+    return this.marketsService.getStatus();
+  }
+
+  @Public()
   @Get('prices')
   @ApiOperation({ summary: 'Get oracle prices for all assets' })
   @ApiResponse({

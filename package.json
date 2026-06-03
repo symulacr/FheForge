@@ -24,7 +24,8 @@
 		"format:check": "npx prettier --check '**/*.{ts,tsx,js,md,json,yml,yaml}' --ignore-path .gitignore",
 		"format:write": "npx prettier --write '**/*.{ts,tsx,js,md,json,yml,yaml}' --ignore-path .gitignore",
 		"deploy:contracts": "cd contracts && npx hardhat run scripts/deploy.ts --network arb-sepolia",
-		"sync:abis": "cd contracts && npx hardhat run scripts/sync-abis.ts"
+		"sync:abis": "cd contracts && npx hardhat run scripts/sync-abis.ts",
+		"vercel-build": "rm -rf public && mkdir -p public/ui/screens public/packages/forge-bridge/dist public/packages/forge-bridge/scripts public/packages/forge-bridge-integration/src && cp ui/FheForge.html ui/app.jsx ui/components.jsx ui/tweaks-panel.jsx ui/theme.css public/ui/ && cp ui/screens/landing.jsx ui/screens/dashboard.jsx ui/screens/lending.jsx ui/screens/builder-workspace.jsx ui/screens/market.jsx ui/screens/governance.jsx ui/screens/connect-modal.jsx public/ui/screens/ && cp packages/forge-bridge/dist/index.js public/packages/forge-bridge/dist/ && cp packages/forge-bridge/scripts/bridge-init.js public/packages/forge-bridge/scripts/ && cp packages/forge-bridge-integration/src/bridge-bus.js packages/forge-bridge-integration/src/bridge-context.js packages/forge-bridge-integration/src/connect-interceptor.js packages/forge-bridge-integration/src/data-fetcher-v2.js packages/forge-bridge-integration/src/babel-transform-plugin.js packages/forge-bridge-integration/src/transformers.js packages/forge-bridge-integration/src/get-bridge.js public/packages/forge-bridge-integration/src/"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.16",

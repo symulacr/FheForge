@@ -270,8 +270,9 @@ function organizeLayout(nodes, edges, canvasWidth = 800, canvasHeight = 500) {
 }
 
 /* ─── BuilderWorkspace · canvas + inspector ─── */
-function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, openConnect }) {
+function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, openConnect, nodeTypes }) {
   const { nodes, edges, name } = workflow;
+  const activeNodeTypes = nodeTypes && Object.keys(nodeTypes).length ? nodeTypes : null;
   const setNodes = (fn) => setWorkflow(wf => ({ ...wf, nodes: typeof fn === "function" ? fn(wf.nodes) : fn }));
   const setEdges = (fn) => setWorkflow(wf => ({ ...wf, edges: typeof fn === "function" ? fn(wf.edges) : fn }));
   const setName  = (n) => setWorkflow(wf => ({ ...wf, name: n }));
@@ -466,15 +467,16 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
       if (e.key === "i" && !meta) { e.preventDefault(); setShowInspector(s => !s); return; }
 
       // Quick-add node by number key (1..5)
-      const types = ["supply", "borrow", "swap", "repeat", "settle"];
+      const types = activeNodeTypes ? Object.keys(activeNodeTypes).slice(0, 5) : [];
       if (!meta && /^[1-5]$/.test(e.key)) {
         e.preventDefault();
         const type = types[parseInt(e.key) - 1];
+        if (!type) return;
         const w = canvasRef.current ? canvasRef.current.getBoundingClientRect() : { width: 800, height: 500 };
         const id = "n" + Date.now().toString(36);
         const x = (w.width / 2 - pan.x) / scale - NODE_W / 2;
         const y = (w.height / 2 - pan.y) / scale - NODE_H / 2;
-        setNodes(ns => [...ns, { id, type, x, y, config: { ...DEFAULT_CONFIG[type] } }]);
+        setNodes(ns => [...ns, { id, type, x, y, config: { ...(activeNodeTypes?.[type]?.defaultConfig || activeNodeTypes?.[type]?.config || {}) } }]);
         setSelected(id);
         return;
       }
@@ -785,12 +787,12 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
     dragDepth.current = 0;
     setDropActive(false);
     const type = e.dataTransfer.getData("text/plain");
-    if (!NODE_TYPES[type]) return;
+    if (!activeNodeTypes?.[type]) return;
     const w = clientToWorld(e.clientX, e.clientY);
     const x = Math.max(8, w.x - NODE_W / 2);
     const y = Math.max(8, w.y - NODE_H / 2);
     const id = "n" + Date.now().toString(36);
-    setNodes(ns => [...ns, { id, type, x, y, config: { ...DEFAULT_CONFIG[type] } }]);
+    setNodes(ns => [...ns, { id, type, x, y, config: { ...(activeNodeTypes?.[type]?.defaultConfig || activeNodeTypes?.[type]?.config || {}) } }]);
     setSelected(id);
   };
 
@@ -929,7 +931,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
 
       {/* Body: palette | canvas (full width, no inspector) */}
       <div className="builder-body" style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "180px minmax(0, 1fr)", gap: 1, background: "var(--hairline)" }}>
-        <NodePalette className="palette" />
+        <NodePalette className="palette" nodeTypes={activeNodeTypes} />
 
         <div
           ref={canvasRef}
@@ -1098,7 +1100,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
           })()}
 
           {nodes.map((n) => {
-            const t = NODE_TYPES[n.type];
+            const t = activeNodeTypes?.[n.type] || NODE_TYPES[n.type] || { label: n.type, kicker: "—", swatch: "var(--muted)", desc: "Module unavailable" };
             const idx = runOrder.indexOf(n.id);
             const isActive = running && activeIdx === idx;
             const isPast   = running && activeIdx > idx;
@@ -1127,7 +1129,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     label={suggestion.label}
                     onAccept={() => {
                       const newId = "n" + Date.now().toString(36);
-                      const newNode = { id: newId, type: suggestion.type, x: n.x + NODE_W + 60, y: n.y, config: { ...DEFAULT_CONFIG[suggestion.type] } };
+                      const newNode = { id: newId, type: suggestion.type, x: n.x + NODE_W + 60, y: n.y, config: { ...(activeNodeTypes?.[suggestion.type]?.defaultConfig || activeNodeTypes?.[suggestion.type]?.config || {}) } };
                       setNodes(ns => [...ns, newNode]);
                       setEdges(es => [...es, { from: n.id, to: newId }]);
                       markRecentEdge(n.id + "→" + newId);
@@ -1190,10 +1192,10 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
               }}
             >
               <div className="spread" style={{ marginBottom: 12 }}>
-                <Tag tone="accent">edit · {NODE_TYPES[node.type].label}</Tag>
+                <Tag tone="accent">edit · {(activeNodeTypes?.[node.type] || NODE_TYPES[node.type] || { label: node.type }).label}</Tag>
                 <button onClick={() => setInlineConfigFor(null)} style={{ border: 0, background: "transparent", color: "var(--muted)", cursor: "pointer", fontSize: 12, fontFamily: "var(--mono)" }}>esc</button>
               </div>
-              <NodeConfig node={node} setNodes={setNodes} locked={locked} />
+              <NodeConfig node={node} setNodes={setNodes} locked={locked} nodeTypes={activeNodeTypes} />
               {(() => {
                 const outs = edges.map((e, i) => ({ e, i })).filter(({e}) => e.from === node.id);
                 if (outs.length < 2) return null;
@@ -1205,7 +1207,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                       const pct = e.pct ?? Math.floor(100 / outs.length);
                       return (
                         <div key={i} className="spread" style={{ gap: 6, marginBottom: 4 }}>
-                          <span style={{ fontSize: 11, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>→ {target ? NODE_TYPES[target.type].label : "?"}</span>
+                          <span style={{ fontSize: 11, color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>→ {target ? (activeNodeTypes?.[target.type] || NODE_TYPES[target.type] || { label: target.type }).label : "?"}</span>
                           <input
                             type="number" min={0} max={100} value={pct}
                             onChange={(ev) => {
@@ -1295,12 +1297,18 @@ function CanvasEmpty() {
 }
 
 /* ─── Node palette (left) ─── */
-function NodePalette({ className }) {
+function NodePalette({ className, nodeTypes }) {
+  const entries = nodeTypes ? Object.entries(nodeTypes) : [];
   return (
     <aside className={className} style={{ background: "var(--paper)", padding: "14px 12px", overflowY: "auto" }}>
       <div className="eyebrow" style={{ marginBottom: 10 }}>nodes</div>
+      {!entries.length && (
+        <div className="mono" style={{ fontSize: 12, color: "var(--muted)", padding: "8px 0", lineHeight: 1.5 }}>
+          No modules available.
+        </div>
+      )}
       <div className="stack-2">
-        {Object.entries(NODE_TYPES).map(([k, t]) => (
+        {entries.map(([k, t]) => (
           <div
             key={k}
             className="row palette-item"
@@ -1424,8 +1432,8 @@ function Inspector({ node, setNodes, tab, setTab, issues, applyAction, nodes, ed
   );
 }
 
-function NodeConfig({ node, setNodes, locked }) {
-  const t = NODE_TYPES[node.type];
+function NodeConfig({ node, setNodes, locked, nodeTypes }) {
+  const t = nodeTypes?.[node.type] || NODE_TYPES[node.type] || { label: node.type, swatch: "var(--muted)", desc: "Module unavailable" };
   const update = (key, val) => setNodes(ns => ns.map(n => n.id === node.id ? { ...n, config: { ...n.config, [key]: val } } : n));
 
   return (

@@ -254,8 +254,6 @@ import {
   handleDisconnect,
   checkAndSwitchNetwork,
   getState,
-  _resetForTest,
-  _setBridgeBus,
 } from '../src/connect-interceptor.js';
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
@@ -282,26 +280,41 @@ beforeEach(function () {
   var ss = getSS(); if (ss) try { ss.clear(); } catch (e) {}
   var ls = getLS(); if (ls) try { ls.clear(); } catch (e) {}
 
+  // Ensure window exists in non-browser environments (Bun)
+  if (typeof window === 'undefined') {
+    globalThis.window = globalThis;
+  }
+
   globalThis.window.bridge = null;
   globalThis.window.__bridgeBus = null;
   globalThis.window.ConnectModal = null;
 
-  if (globalThis.__REACT_MOCK__) {
-    globalThis.__REACT_MOCK__.reset();
-  }
+  // Provide a React mock with createElement for wrapConnectModal
+  // The mock returns { comp: type, props: props } so tests can inspect
+  // which component was created and with which props.
+  globalThis.React = {
+    createElement: function (type, props) {
+      return { comp: type, props: props };
+    },
+  };
+  globalThis.__REACT_MOCK__ = globalThis.React;
 
   bridge = createMockBridge();
   bus = createMockBus();
   MockConnectModal = createMockConnectModal();
 
-  _resetForTest();
-  _setBridgeBus(bus);
+  window.__ConnectInterceptor._resetForTest();
+  window.__ConnectInterceptor._setBridgeBus(bus);
 });
 
 afterEach(function () {
   delete globalThis.window.bridge;
   delete globalThis.window.__bridgeBus;
   delete globalThis.window.ConnectModal;
+  // If we made window === globalThis, remove the alias to restore original state
+  if (globalThis.window === globalThis) {
+    delete globalThis.window;
+  }
   var ss = getSS(); if (ss) try { ss.clear(); } catch (e) {}
   var ls = getLS(); if (ls) try { ls.clear(); } catch (e) {}
 });
@@ -481,7 +494,13 @@ describe('VAL-REARCH-CONNECT-002: Wallet connect calls bridge.wallet.connect(con
 
     expect(bridge._connectorIdUsed).toBe('metaMask');
     bridge._resolveConnect('0xmetamask_addr');
+    await waitTicks();
+
+    processStep1To2('0xmetamask_addr');
     bridge._resolveLogin('jwt');
+    await waitTicks();
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -498,11 +517,14 @@ describe('VAL-REARCH-CONNECT-003: JWT login: nonce → signMessage → POST', ()
     bridge._resolveConnect('0xlogin_test');
     await waitTicks();
 
-    // Interceptor should now be trying to log in
+    // Step 1→2: explicitly call processStep1To2 (no auto-chaining)
+    processStep1To2('0xlogin_test');
     bridge._resolveLogin('test-jwt-token');
     await waitTicks();
 
     expect(bridge._jwt).toBe('test-jwt-token');
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -515,11 +537,14 @@ describe('VAL-REARCH-CONNECT-003: JWT login: nonce → signMessage → POST', ()
     bridge._resolveConnect('0xjwt_storage');
     await waitTicks();
 
+    processStep1To2('0xjwt_storage');
     bridge._resolveLogin('persisted-jwt');
     await waitTicks();
 
     var ls = getLS();
     if (ls) expect(ls.getItem('auth_token')).toBe('persisted-jwt');
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -543,7 +568,12 @@ describe('VAL-REARCH-CONNECT-004: Permit grant calls bridge.fhe.permitGrant()', 
     await waitTicks();
     bridge._resolveConnect('0xpermit_test');
     await waitTicks();
+
+    processStep1To2('0xpermit_test');
     bridge._resolveLogin('jwt');
+    await waitTicks();
+
+    processStep2To3();
     await waitTicks();
 
     expect(permitGrantCalled).toBe(true);
@@ -558,7 +588,12 @@ describe('VAL-REARCH-CONNECT-004: Permit grant calls bridge.fhe.permitGrant()', 
     processStep0To1();
     bridge._resolveConnect('0xpermit_bus');
     await waitTicks();
+
+    processStep1To2('0xpermit_bus');
     bridge._resolveLogin('jwt');
+    await waitTicks();
+
+    processStep2To3();
     await waitTicks();
 
     bus._setCalls = [];
@@ -589,8 +624,11 @@ describe('VAL-REARCH-CONNECT-005: ctx.connected/address updated after connect', 
     expect(walletCall.data.address).toBe('0xctx_test_addr');
     expect(walletCall.data.chainId).toBe(421614);
 
+    processStep1To2('0xctx_test_addr');
     bridge._resolveLogin('jwt');
     await waitTicks();
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -606,7 +644,12 @@ describe('VAL-REARCH-CONNECT-006: ctx.permitUnlocked updated after permit', () =
     processStep0To1();
     bridge._resolveConnect('0xpermit_ctx');
     await waitTicks();
+
+    processStep1To2('0xpermit_ctx');
     bridge._resolveLogin('jwt');
+    await waitTicks();
+
+    processStep2To3();
     await waitTicks();
 
     bus._setCalls = [];
@@ -636,8 +679,11 @@ describe('VAL-REARCH-CONNECT-007: Network mismatch detection', () => {
     expect(bridge._switchNetworkCalled).toBe(true);
     expect(bridge._switchChainId).toBe(421614);
 
+    processStep1To2('0xnetwork_test');
     bridge._resolveLogin('jwt');
     await waitTicks();
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -653,8 +699,11 @@ describe('VAL-REARCH-CONNECT-007: Network mismatch detection', () => {
 
     expect(bridge._switchNetworkCalled).toBe(false);
 
+    processStep1To2('0xcorrect_network');
     bridge._resolveLogin('jwt');
     await waitTicks();
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -679,8 +728,11 @@ describe('VAL-REARCH-CONNECT-007: Network mismatch detection', () => {
     expect(errorCall).toBeDefined();
     expect(errorCall.data.step).toBe('network');
 
+    processStep1To2('0xnetwork_fail');
     bridge._resolveLogin('jwt');
     await waitTicks();
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -715,6 +767,10 @@ describe('VAL-REARCH-CONNECT-008: Failure recovery with retry at each step', () 
     bridge._resolveConnect('0xlogin_fail');
     await waitTicks();
 
+    // Step 1→2 per-step dispatch
+    var loginPromise = processStep1To2('0xlogin_fail');
+    loginPromise.catch(function () { /* expected rejection */ });
+
     bus._setCalls = [];
     bridge._rejectLogin(new Error('Invalid signature'));
     await waitTicks();
@@ -734,8 +790,15 @@ describe('VAL-REARCH-CONNECT-008: Failure recovery with retry at each step', () 
     flowPromise.catch(function () { /* expected rejection */ });
     bridge._resolveConnect('0xpermit_fail');
     await waitTicks();
+
+    var loginPromise = processStep1To2('0xpermit_fail');
+    loginPromise.catch(function () { /* expected rejection */ });
     bridge._resolveLogin('jwt');
     await waitTicks();
+
+    // Step 2→3 per-step dispatch
+    var permitPromise = processStep2To3();
+    permitPromise.catch(function () { /* expected rejection */ });
 
     bus._setCalls = [];
     bridge._rejectPermit(new Error('SDK error'));
@@ -762,10 +825,12 @@ describe('VAL-REARCH-CONNECT-009: sessionStorage persistence', () => {
     await waitTicks();
     if (ss) expect(ss.getItem('fheforge:connect:step')).toBe('1');
 
+    processStep1To2('0xpersist');
     bridge._resolveLogin('jwt');
     await waitTicks();
     if (ss) expect(ss.getItem('fheforge:connect:step')).toBe('2');
 
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
     if (ss) expect(ss.getItem('fheforge:connect:step')).toBe('3');
@@ -781,8 +846,12 @@ describe('VAL-REARCH-CONNECT-009: sessionStorage persistence', () => {
     await waitTicks();
 
     if (ss) expect(ss.getItem('fheforge:connect:connector')).toBe('rabby');
+
+    processStep1To2('0xconnector_test');
     bridge._resolveLogin('jwt');
     await waitTicks();
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -841,18 +910,9 @@ describe('VAL-REARCH-CROSS-010: End-to-end connect flow completes', () => {
     globalThis.window.ConnectModal = MockConnectModal;
     init();
 
-    const WrappedModal = globalThis.window.ConnectModal;
-    var rendered = WrappedModal({
-      step: 0,
-      ctx: { connected: false, address: null, permitUnlocked: false },
-      onNext: function () {},
-      grantPermit: function () {},
-      open: true,
-    });
-
-    rendered.props.onNext();
+    // Step 0→1: wallet connect via processStep0To1
+    processStep0To1();
     await waitTicks();
-
     expect(bridge._connectorIdUsed).toBeDefined();
 
     bridge._resolveConnect('0xe2e_test');
@@ -862,9 +922,13 @@ describe('VAL-REARCH-CROSS-010: End-to-end connect flow completes', () => {
     expect(walletCall).toBeDefined();
     expect(walletCall.data.address).toBe('0xe2e_test');
 
+    // Step 1→2: JWT login via processStep1To2
+    processStep1To2('0xe2e_test');
     bridge._resolveLogin('e2e-jwt');
     await waitTicks();
 
+    // Step 2→3: permit grant via processStep2To3
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
 
@@ -882,7 +946,7 @@ describe('VAL-REARCH-CROSS-017: Rapid connect/disconnect cycles', () => {
     globalThis.window.__bridgeBus = bus;
 
     for (var cycle = 0; cycle < 3; cycle++) {
-      _resetForTest();
+      window.__ConnectInterceptor._resetForTest();
       bus._setCalls = [];
       bridge._address = null;
       bridge._isConnected = false;
@@ -902,14 +966,23 @@ describe('VAL-REARCH-CROSS-017: Rapid connect/disconnect cycles', () => {
       bridge._pendingPermitResult = null;
       bridge._pendingPermitReject = null;
 
+      // Step 0→1: wallet connect
       var fp = processStep0To1();
       fp.catch(function () {});
       bridge._resolveConnect('0xcycle_' + cycle);
       // Wait for connect to propagate before trying login
       await new Promise(function (r) { setTimeout(r, 15); });
+
+      // Step 1→2: JWT login (per-step dispatch)
+      var lp = processStep1To2('0xcycle_' + cycle);
+      lp.catch(function () {});
       bridge._resolveLogin('cycle-jwt-' + cycle);
       // Wait for login to propagate before trying permit
       await new Promise(function (r) { setTimeout(r, 15); });
+
+      // Step 2→3: permit grant (per-step dispatch)
+      var pp = processStep2To3();
+      pp.catch(function () {});
       bridge._resolvePermit(900);
       // Wait for permit to propagate
       await new Promise(function (r) { setTimeout(r, 15); });
@@ -927,7 +1000,7 @@ describe('VAL-REARCH-CROSS-017: Rapid connect/disconnect cycles', () => {
     globalThis.window.bridge = bridge;
     globalThis.window.__bridgeBus = bus;
 
-    _resetForTest();
+    window.__ConnectInterceptor._resetForTest();
 
     processStep0To1();
     processStep0To1(); // Should be no-op
@@ -935,8 +1008,11 @@ describe('VAL-REARCH-CROSS-017: Rapid connect/disconnect cycles', () => {
     bridge._resolveConnect('0xdup_test');
     await waitTicks();
 
+    processStep1To2('0xdup_test');
     bridge._resolveLogin('jwt');
     await waitTicks();
+
+    processStep2To3();
     bridge._resolvePermit(900);
     await waitTicks();
   });
@@ -967,6 +1043,10 @@ describe('Error events emitted to BridgeBus', () => {
     fp.catch(function () { /* expected rejection */ });
     bridge._resolveConnect('0xerr_jwt');
     await waitTicks();
+
+    // Step 1→2 per-step dispatch
+    var lp = processStep1To2('0xerr_jwt');
+    lp.catch(function () { /* expected rejection */ });
 
     bus._setCalls = [];
     bridge._rejectLogin(new Error('Signature mismatch'));

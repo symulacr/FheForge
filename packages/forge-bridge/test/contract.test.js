@@ -395,14 +395,39 @@ describe("Contract Adapter — read methods", () => {
 		expect(readContractCalls[0].functionName).toBe("getIntentMeta");
 	});
 
-	test("getStrategyInfo calls readContract", async () => {
-		mockState.readContractResult = { name: "Test Strategy", owner: ADDRESS };
+	test("getStrategyInfo reads actual StrategyRegistry methods", async () => {
+		mockState.readContractResult = "strategy_data";
 		const adapter = createContractAdapter(
 			{ apiBaseUrl: "http://localhost", chainId: 421614, rpcUrl: "http://localhost:8545" },
 		);
 		const result = await adapter.read.getStrategyInfo(1n);
-		expect(result).toEqual({ name: "Test Strategy", owner: ADDRESS });
-		expect(readContractCalls[0].functionName).toBe("getStrategyInfo");
+		expect(result).toEqual({ meta: "strategy_data", params: "strategy_data", encryptedTvl: "strategy_data" });
+		expect(readContractCalls.map((call) => call.functionName)).toEqual([
+			"getStrategyMeta",
+			"getStrategyParams",
+			"getEncryptedTvl",
+		]);
+	});
+
+	test("TokenRegistry and ERC20 helpers call real read functions", async () => {
+		mockState.readContractResult = 18;
+		const adapter = createContractAdapter(
+			{ apiBaseUrl: "http://localhost", chainId: 421614, rpcUrl: "http://localhost:8545" },
+		);
+		await adapter.read.getTokenInfo(ADDRESS);
+		await adapter.read.getTokenAt(0);
+		await adapter.read.isRegisteredToken(ADDRESS);
+		await adapter.read.erc20BalanceOf(ADDRESS, ADDRESS);
+		await adapter.read.erc20Allowance(ADDRESS, ADDRESS, ADDRESS);
+		await adapter.read.erc20Decimals(ADDRESS);
+		expect(readContractCalls.map((call) => call.functionName)).toEqual([
+			"tokens",
+			"tokenList",
+			"isSupported",
+			"balanceOf",
+			"allowance",
+			"decimals",
+		]);
 	});
 
 	test("read methods throw when viem fails", async () => {

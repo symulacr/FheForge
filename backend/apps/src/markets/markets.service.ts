@@ -1,84 +1,428 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Contract, formatUnits, JsonRpcProvider } from 'ethers';
 import { MarketResponseDto } from './dtos/market-response.dto';
 import { PriceResponseDto } from './dtos/price-response.dto';
 
-const MOCK_MARKETS: MarketResponseDto[] = [
-  {
-    asset: 'USDC',
-    assetAddress: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
-    supplyAPY: 4.82,
-    borrowAPY: 6.21,
-    utilization: 0.64,
-    tvl: 8_420_000,
-    liquidationThreshold: 0.8,
-    oraclePrice: 1.0,
-    totalSupplied: 8_500_000,
-    totalBorrowed: 5_440_000,
-  },
-  {
-    asset: 'ETH',
-    assetAddress: '0x82aF49447D8a07e3BD95BD0d56f35241523fBab1',
-    supplyAPY: 2.14,
-    borrowAPY: 3.78,
-    utilization: 0.41,
-    tvl: 4_180_000,
-    liquidationThreshold: 0.75,
-    oraclePrice: 2_544.1,
-    totalSupplied: 4_200_000,
-    totalBorrowed: 1_720_000,
-  },
-  {
-    asset: 'WBTC',
-    assetAddress: '0x2f2a2543B76A4166549F7aab2e75Bef0aefC5B0f',
-    supplyAPY: 1.85,
-    borrowAPY: 3.12,
-    utilization: 0.35,
-    tvl: 1_800_000,
-    liquidationThreshold: 0.7,
-    oraclePrice: 65_432.0,
-    totalSupplied: 1_850_000,
-    totalBorrowed: 647_500,
-  },
-  {
-    asset: 'ARB',
-    assetAddress: '0x912CE59144191C1204E64559FE8253a0e49E6548',
-    supplyAPY: 3.45,
-    borrowAPY: 5.1,
-    utilization: 0.58,
-    tvl: 2_100_000,
-    liquidationThreshold: 0.65,
-    oraclePrice: 0.85,
-    totalSupplied: 2_150_000,
-    totalBorrowed: 1_247_000,
-  },
-  {
-    asset: 'DAI',
-    assetAddress: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
-    supplyAPY: 4.1,
-    borrowAPY: 5.95,
-    utilization: 0.62,
-    tvl: 1_200_000,
-    liquidationThreshold: 0.8,
-    oraclePrice: 1.0,
-    totalSupplied: 1_220_000,
-    totalBorrowed: 756_400,
-  },
+const TOKEN_REGISTRY_ABI = [
+  'function getLendableTokens() view returns (address[])',
+  'function tokens(address) view returns (address token,uint16 ltvBps,uint16 liquidationBonusBps,uint8 decimals,bool isLendable,bool isBorrowable,bool isCollateral,bool enabled,bytes32 pythPriceId,uint256 borrowCap,uint256 supplyCap)',
 ];
 
-const MOCK_PRICES: PriceResponseDto[] = MOCK_MARKETS.map((m) => ({
-  asset: m.asset,
-  price: m.oraclePrice,
-  oracle: 'Pyth',
-  updatedAt: new Date().toISOString(),
-}));
+const PRICE_ORACLE_ABI = [
+  'function getPriceUsd(address token) view returns (uint256 priceWad,uint64 updatedAt)',
+  'function liquidationThresholdBps(address token) view returns (uint16)',
+];
+
+const LENDING_POOL_ABI = [
+  'function liquidReserve(address token) view returns (uint256)',
+  'function totalPlainBorrow(address token) view returns (uint256)',
+];
+
+const ERC20_ABI = [
+  'function symbol() view returns (string)',
+  'function decimals() view returns (uint8)',
+];
+
+const WAD_DECIMALS = 18;
+
+type TokenInfo = {
+  token: string;
+  decimals: number;
+  enabled: boolean;
+  isLendable: boolean;
+};
+
+type MarketContracts = {
+  tokenRegistry: Contract | null;
+  priceOracle: Contract | null;
+  lendingPool: Contract | null;
+};
+
+type MarketsStatus = {
+  status: 'live' | 'empty' | 'degraded' | 'unavailable';
+  cofheRpc: { configured: boolean; status: 'configured' | 'missing_config' };
+  tokenRegistry: {
+    configured: boolean;
+    reachable: boolean | null;
+    status: 'live' | 'empty' | 'unreachable' | 'missing_config';
+  };
+  priceOracle: { configured: boolean; status: 'configured' | 'missing_config' };
+  pool: { configured: boolean; status: 'configured' | 'missing_config' };
+  tokenCount: number | null;
+  missingDependencies: string[];
+};
+
+type TokenRegistryRead = {
+  tokens: TokenInfo[];
+  reachable: boolean;
+};
 
 @Injectable()
 export class MarketsService {
+  private readonly logger = new Logger(MarketsService.name);
+  private provider: JsonRpcProvider | null = null;
+  private contracts: MarketContracts | null = null;
+  private marketsCache: {
+    data: MarketResponseDto[];
+    expiresAt: number;
+  } | null = null;
+  private pricesCache: { data: PriceResponseDto[]; expiresAt: number } | null =
+    null;
+  private statusCache: { data: MarketsStatus; expiresAt: number } | null = null;
+  private readonly cacheTtlMs = 60_000;
+
+  constructor(@Optional() private readonly configService?: ConfigService) {}
+
   async getAllMarkets(): Promise<MarketResponseDto[]> {
-    return await Promise.resolve(MOCK_MARKETS);
+    if (this.marketsCache && Date.now() < this.marketsCache.expiresAt) {
+      return this.marketsCache.data;
+    }
+
+    const contracts = this.getContracts();
+    if (!contracts.tokenRegistry) {
+      return [];
+    }
+
+    const registryRead = await this.readLendableTokens(contracts.tokenRegistry);
+    if (!registryRead.reachable) return [];
+
+    const markets = await Promise.all(
+      registryRead.tokens.map((token) => this.buildMarket(token, contracts)),
+    );
+
+    this.marketsCache = {
+      data: markets,
+      expiresAt: Date.now() + this.cacheTtlMs,
+    };
+    return markets;
   }
 
   async getPrices(): Promise<PriceResponseDto[]> {
-    return await Promise.resolve(MOCK_PRICES);
+    if (this.pricesCache && Date.now() < this.pricesCache.expiresAt) {
+      return this.pricesCache.data;
+    }
+
+    const contracts = this.getContracts();
+    if (!contracts.tokenRegistry) {
+      return [];
+    }
+
+    const registryRead = await this.readLendableTokens(contracts.tokenRegistry);
+    if (!registryRead.reachable) return [];
+
+    const prices = await Promise.all(
+      registryRead.tokens.map((token) =>
+        this.buildPrice(token, contracts.priceOracle),
+      ),
+    );
+
+    this.pricesCache = {
+      data: prices,
+      expiresAt: Date.now() + this.cacheTtlMs,
+    };
+    return prices;
+  }
+
+  async getStatus(): Promise<MarketsStatus> {
+    if (this.statusCache && Date.now() < this.statusCache.expiresAt) {
+      return this.statusCache.data;
+    }
+
+    const contracts = this.getContracts();
+    const cofheRpcConfigured = Boolean(
+      this.configService?.get<string>('COFHE_RPC'),
+    );
+    const tokenRegistryConfigured = Boolean(
+      this.configService?.get<string>('TOKEN_REGISTRY_ADDRESS'),
+    );
+    const priceOracleConfigured = Boolean(
+      this.configService?.get<string>('PRICE_ORACLE_ADDRESS'),
+    );
+    const poolConfigured = Boolean(this.configService?.get<string>('POOL_ADDRESS'));
+
+    const registryRead = contracts.tokenRegistry
+      ? await this.readLendableTokens(contracts.tokenRegistry)
+      : null;
+    const tokenCount = registryRead?.reachable ? registryRead.tokens.length : null;
+    const missingDependencies: string[] = [];
+    if (!cofheRpcConfigured) missingDependencies.push('COFHE_RPC');
+    if (!tokenRegistryConfigured || registryRead?.reachable === false) {
+      missingDependencies.push('TOKEN_REGISTRY_ADDRESS');
+    }
+    if (!priceOracleConfigured) missingDependencies.push('PRICE_ORACLE_ADDRESS');
+    if (!poolConfigured) missingDependencies.push('POOL_ADDRESS');
+
+    const tokenRegistryStatus = !tokenRegistryConfigured
+      ? 'missing_config'
+      : registryRead?.reachable === false
+        ? 'unreachable'
+        : tokenCount === 0
+          ? 'empty'
+          : 'live';
+    const status = !cofheRpcConfigured || tokenRegistryStatus === 'unreachable'
+      ? 'unavailable'
+      : missingDependencies.length > 0
+        ? 'degraded'
+        : tokenCount === 0
+          ? 'empty'
+          : 'live';
+
+    const data: MarketsStatus = {
+      status,
+      cofheRpc: {
+        configured: cofheRpcConfigured,
+        status: cofheRpcConfigured ? 'configured' : 'missing_config',
+      },
+      tokenRegistry: {
+        configured: tokenRegistryConfigured,
+        reachable: registryRead?.reachable ?? null,
+        status: tokenRegistryStatus,
+      },
+      priceOracle: {
+        configured: priceOracleConfigured,
+        status: priceOracleConfigured ? 'configured' : 'missing_config',
+      },
+      pool: {
+        configured: poolConfigured,
+        status: poolConfigured ? 'configured' : 'missing_config',
+      },
+      tokenCount,
+      missingDependencies,
+    };
+
+    this.statusCache = { data, expiresAt: Date.now() + this.cacheTtlMs };
+    return data;
+  }
+
+  private getContracts(): MarketContracts {
+    if (this.contracts) return this.contracts;
+
+    const rpcUrl = this.configService?.get<string>('COFHE_RPC');
+    if (!rpcUrl) {
+      this.contracts = {
+        tokenRegistry: null,
+        priceOracle: null,
+        lendingPool: null,
+      };
+      return this.contracts;
+    }
+
+    this.provider = new JsonRpcProvider(rpcUrl);
+    const tokenRegistryAddress = this.configService?.get<string>(
+      'TOKEN_REGISTRY_ADDRESS',
+    );
+    const priceOracleAddress = this.configService?.get<string>(
+      'PRICE_ORACLE_ADDRESS',
+    );
+    const poolAddress = this.configService?.get<string>('POOL_ADDRESS');
+
+    this.contracts = {
+      tokenRegistry: tokenRegistryAddress
+        ? new Contract(tokenRegistryAddress, TOKEN_REGISTRY_ABI, this.provider)
+        : null,
+      priceOracle: priceOracleAddress
+        ? new Contract(priceOracleAddress, PRICE_ORACLE_ABI, this.provider)
+        : null,
+      lendingPool: poolAddress
+        ? new Contract(poolAddress, LENDING_POOL_ABI, this.provider)
+        : null,
+    };
+
+    if (!this.contracts.tokenRegistry) {
+      this.logger.warn(
+        'TOKEN_REGISTRY_ADDRESS not set — market list unavailable',
+      );
+    }
+    if (!this.contracts.priceOracle) {
+      this.logger.warn(
+        'PRICE_ORACLE_ADDRESS not set — market prices unavailable',
+      );
+    }
+    if (!this.contracts.lendingPool) {
+      this.logger.warn(
+        'POOL_ADDRESS not set — market reserve data unavailable',
+      );
+    }
+
+    return this.contracts;
+  }
+
+  private async readLendableTokens(
+    tokenRegistry: Contract,
+  ): Promise<TokenRegistryRead> {
+    try {
+      const tokenAddresses =
+        (await tokenRegistry.getLendableTokens()) as string[];
+      const tokenInfos = await Promise.all(
+        tokenAddresses.map(async (tokenAddress) => {
+          const info = (await tokenRegistry.tokens(tokenAddress)) as {
+            decimals: bigint | number;
+            enabled: boolean;
+            isLendable: boolean;
+          };
+          return {
+            token: tokenAddress,
+            decimals: Number(info.decimals),
+            enabled: Boolean(info.enabled),
+            isLendable: Boolean(info.isLendable),
+          };
+        }),
+      );
+      return {
+        tokens: tokenInfos.filter((token) => token.enabled && token.isLendable),
+        reachable: true,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Unable to read token registry markets: ${(error as Error).message}`,
+      );
+      return { tokens: [], reachable: false };
+    }
+  }
+
+  private async buildMarket(
+    tokenInfo: TokenInfo,
+    contracts: MarketContracts,
+  ): Promise<MarketResponseDto> {
+    const [asset, reserve, borrowed, price, liquidationThreshold] =
+      await Promise.all([
+        this.getTokenSymbol(tokenInfo.token),
+        this.getPoolValue(contracts.lendingPool, 'liquidReserve', tokenInfo),
+        this.getPoolValue(contracts.lendingPool, 'totalPlainBorrow', tokenInfo),
+        this.getOraclePrice(tokenInfo.token, contracts.priceOracle),
+        this.getLiquidationThreshold(tokenInfo.token, contracts.priceOracle),
+      ]);
+
+    const totalSuppliedNative =
+      reserve === null || borrowed === null ? null : reserve + borrowed;
+    const totalSupplied =
+      totalSuppliedNative === null || price.price === null
+        ? null
+        : totalSuppliedNative * price.price;
+    const totalBorrowed =
+      borrowed === null || price.price === null ? null : borrowed * price.price;
+    const tvl =
+      reserve === null || price.price === null ? null : reserve * price.price;
+    const utilization =
+      totalSuppliedNative === null ||
+      borrowed === null ||
+      totalSuppliedNative === 0
+        ? null
+        : borrowed / totalSuppliedNative;
+
+    const missingFields = [
+      'supplyAPY',
+      'borrowAPY',
+      totalSupplied === null ? 'totalSupplied' : null,
+      totalBorrowed === null ? 'totalBorrowed' : null,
+      tvl === null ? 'tvl' : null,
+      utilization === null ? 'utilization' : null,
+      price.price === null ? 'oraclePrice' : null,
+      liquidationThreshold === null ? 'liquidationThreshold' : null,
+    ].filter((field): field is string => field !== null);
+
+    return {
+      asset,
+      assetAddress: tokenInfo.token,
+      supplyAPY: null,
+      borrowAPY: null,
+      utilization,
+      tvl,
+      liquidationThreshold,
+      oraclePrice: price.price,
+      totalSupplied,
+      totalBorrowed,
+      status: missingFields.length === 0 ? 'live' : 'partial',
+      missingFields,
+    };
+  }
+
+  private async buildPrice(
+    tokenInfo: TokenInfo,
+    priceOracle: Contract | null,
+  ): Promise<PriceResponseDto> {
+    const [asset, price] = await Promise.all([
+      this.getTokenSymbol(tokenInfo.token),
+      this.getOraclePrice(tokenInfo.token, priceOracle),
+    ]);
+
+    return {
+      asset,
+      price: price.price,
+      oracle: 'FheForge PriceOracle',
+      updatedAt: price.updatedAt,
+      status: price.price === null ? 'unavailable' : 'live',
+    };
+  }
+
+  private async getTokenSymbol(tokenAddress: string): Promise<string> {
+    if (!this.provider) return tokenAddress;
+    try {
+      const token = new Contract(tokenAddress, ERC20_ABI, this.provider);
+      return String(await token.symbol());
+    } catch {
+      return tokenAddress;
+    }
+  }
+
+  private async getPoolValue(
+    lendingPool: Contract | null,
+    method: 'liquidReserve' | 'totalPlainBorrow',
+    tokenInfo: TokenInfo,
+  ): Promise<number | null> {
+    if (!lendingPool) return null;
+    try {
+      const value = (await lendingPool[method](tokenInfo.token)) as bigint;
+      return Number(formatUnits(value, tokenInfo.decimals));
+    } catch (error) {
+      this.logger.warn(
+        `Unable to read ${method} for ${tokenInfo.token}: ${(error as Error).message}`,
+      );
+      return null;
+    }
+  }
+
+  private async getOraclePrice(
+    tokenAddress: string,
+    priceOracle: Contract | null,
+  ): Promise<{ price: number | null; updatedAt: string | null }> {
+    if (!priceOracle) return { price: null, updatedAt: null };
+    try {
+      const [priceWad, updatedAt] = (await priceOracle.getPriceUsd(
+        tokenAddress,
+      )) as [bigint, bigint];
+      return {
+        price: Number(formatUnits(priceWad, WAD_DECIMALS)),
+        updatedAt:
+          Number(updatedAt) > 0
+            ? new Date(Number(updatedAt) * 1000).toISOString()
+            : null,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Unable to read oracle price for ${tokenAddress}: ${(error as Error).message}`,
+      );
+      return { price: null, updatedAt: null };
+    }
+  }
+
+  private async getLiquidationThreshold(
+    tokenAddress: string,
+    priceOracle: Contract | null,
+  ): Promise<number | null> {
+    if (!priceOracle) return null;
+    try {
+      const thresholdBps = (await priceOracle.liquidationThresholdBps(
+        tokenAddress,
+      )) as bigint;
+      const threshold = Number(thresholdBps) / 10_000;
+      return threshold > 0 ? threshold : null;
+    } catch (error) {
+      this.logger.warn(
+        `Unable to read liquidation threshold for ${tokenAddress}: ${(error as Error).message}`,
+      );
+      return null;
+    }
   }
 }

@@ -58,6 +58,10 @@ git clone https://github.com/symulacr/FheForge.git
 cd contracts && forge build
 cd ../ui && bun install && bun dev
 cd ../backend/apps && bun install && bun start:dev
+
+# Integration packages
+cd packages/forge-bridge && bun install && bun run build && bun test
+cd packages/forge-bridge-integration && bun install && bun test
 ```
 
 ---
@@ -108,9 +112,103 @@ packages/forge-bridge/
 | `@fheforge/bridge/adapters` | Wallet, API, contract, FHE adapters |
 | `@fheforge/bridge/react` | 16 React hooks + `BridgeProvider` |
 
+**Build:** The bridge bundle is built with `--external` flags for all heavyweight dependencies (viem, @wagmi/core, @wagmi/connectors, @cofhe/sdk, axios), reducing the output from 4.47 MB to ~175 KB (96% reduction). Dependencies are loaded at runtime via ESM importmap entries from esm.sh CDN.
+
 **Verified against:** NestJS API (production), Arbitrum Sepolia (chainId 421614), compiled ABIs (`contracts/out/*.json`).
 
 Run verification: `bun packages/forge-bridge/scripts/verify-bridge.js` (add `--dry-run` to skip network checks).
+
+---
+
+## Integration Layer (Phase 5-6)
+
+The integration layer at `packages/forge-bridge-integration/` connects the bridge adapters (`@fheforge/bridge`) to the forge UI without modifying any forge files. **13 `ui/` files remain immutable — zero forge UI files were modified.**
+
+### Architecture
+
+```
+BridgeBus (reactive store)
+    ↓ set() / on()
+DataFetcherV2 (public/auth polling)
+    ↓ writes to BridgeBus
+ForgeProvider (React Context)
+    ↓ context value
+App component tree (screens)
+    ↑ ConnectInterceptor (wallet connect step flow)
+    ↑ Babel v2 (Program.exit Provider injection)
+```
+
+**Data flow:** Public data (ticker, markets) fetches on page load without wallet. After wallet connect + JWT login + permit grant, authenticated data (positions, strategies, proposals) begins polling. All data flows through BridgeBus, which emits events to ForgeProvider (React Context), which triggers targeted re-renders — no component re-mounts.
+
+### Package
+
+```
+packages/forge-bridge-integration/
+├── src/
+│   ├── bridge-bus.js              — Singleton event emitter with reactive state store (5 domains: public, authed, wallet, permit, meta)
+│   ├── data-fetcher-v2.js         — Public/authenticated split polling (replaces Phase 5 DataFetcher)
+│   ├── bridge-context.js          — ForgeProvider React Context + hooks (useBridge, useWallet, usePermit, useBridgeData)
+│   ├── connect-interceptor.js     — Wallet connect step flow: wallet → JWT → permit (replaces Phase 5 BridgeConnectModal wrapper)
+│   ├── babel-transform-plugin.js  — Babel v2: 4 visitors (VarDecl, Identifier, JSXAttr, Program.exit) + Babel.transformScriptTags override
+│   ├── transformers.js            — 9 pure transformer functions (shared between Phase 5 and 6)
+│   └── integration-adapter.js     — Phase 5 adapter (preserved for reference; replaced by DataFetcherV2 + BridgeBus)
+└── test/                          — 8 test files covering all Phase 6 components
+```
+
+### Key Components
+
+**BridgeBus** — Singleton event emitter with reactive state across 5 domains: `public` (ticker, markets, activities), `authed` (positions, strategies, proposals, nodeTypes, walletBalance), `wallet` (connected, address, chainId), `permit` (unlocked, secondsLeft), `meta` (dataVersion, errors). Supports scoped subscriptions (`bridgeBus.on('data:ticker', cb)`), wildcard listeners (`error:*`), batch updates via `dispatchBatch()`, and stale-while-revalidate error handling.
+
+**DataFetcherV2** — Two-mode polling that replaces the Phase 5 DataFetcher lifecycle. Public mode (ticker 30s, markets 30s) starts on page load without wallet. Auth mode (activities 15s, positions 60s + on-nav, wallet balance 60s) activates after wallet connect + JWT + permit grant. Start/stop methods are idempotent. Errors preserve stale data via BridgeBus `error:*` domain.
+
+**ForgeProvider** — React Context provider that subscribes to BridgeBus events in `useEffect` and writes to React state via `useState`. Updates trigger targeted re-renders (not re-mounts), preserving component state (scroll, selections, form inputs). Backward-compatible writes to `window.__MOCK__` for the Babel plugin's mock interceptors. Exposes hooks: `useBridge()`, `useWallet()`, `usePermit()`, `useBridgeData()`.
+
+**ConnectInterceptor** — Injects wallet connect logic at the `app.jsx` level via callback injection. Three-step flow: wallet connect → JWT login → FHE permit grant. Uses BridgeBus `wallet:connected` event (not `setCtx` interception) to detect wallet completion. Network mismatch detection switches to Arbitrum Sepolia (chainId 421614). SessionStorage persistence for refresh resilience. Starts authenticated polling on permit grant.
+
+**Babel v2** — 4 Babel visitors: (1) `VariableDeclarator` — changes `const X = val` to `var X = window.__MOCK__?.X ?? val`; (2) `Identifier` — replaces `D_POSITIONS` references with `window.__MOCK__?.D_POSITIONS ?? D_POSITIONS`; (3) `JSXAttribute` — intercepts `<Cipher value="...">` string literals and replaces with `window.__MOCK__` lookups; (4) `Program.exit` — wraps `ReactDOM.createRoot(...).render(<App />)` with `React.createElement(ForgeProvider, null, <App />)`. Also replaces `Babel.transformScriptTags` entirely so `text/babel` scripts use the patched transform instead of Babel's internal closure.
+
+### Script Loading Order in FheForge.html
+
+```
+ 1. React + ReactDOM (CDN — unpkg.com)
+ 2. Babel standalone (CDN — unpkg.com)
+ 3. Babel.disableScriptTags() — suppress auto-processing
+ 4. Importmap (viem, wagmi, cofhe, axios via esm.sh)
+ 5. bridge-init.js (module) — creates window.bridge
+ 6. data-fetcher-v2.js — registers DataFetcherV2 on window
+ 7. bridge-context.js (module) — ForgeProvider, subscribes to BridgeBus
+ 8. connect-interceptor.js (module) — wallet connect flow
+ 9. babel-transform-plugin.js — patches Babel.transform, reprocesses text/babel scripts
+10. Screen scripts + app.jsx (text/babel — transformed by patched Babel)
+11. transformers.js — exposed as window.__transformers
+```
+
+Screen wrappers (`screen-override.js`) from Phase 5 are removed. ForgeProvider replaces the `key={dataVersion}` re-mount pattern.
+
+### Design Principles
+
+- **React Context over re-mount** — ForgeProvider uses BridgeBus subscriptions + `useState` for targeted re-renders instead of `key={dataVersion}` component re-mounting. DOM state (scroll, focus, selections) preserved across data updates.
+- **BridgeBus over raw polling** — Central reactive store decouples data producers (DataFetcherV2, ConnectInterceptor) from consumers (ForgeProvider, Babel plugin). Components subscribe to specific events rather than polling `window.__MOCK__`.
+- **Zero forge file modifications** — All 13 `ui/` files remain unchanged. Integration is entirely external through Babel transforms, React Context injection, and script-loading order.
+
+### Phase 5 → Phase 6 Migration
+
+| Concern | Phase 5 | Phase 6 |
+|---------|---------|---------|
+| Integration pattern | Screen wrappers + `key={dataVersion}` | BridgeBus + ForgeProvider (React Context) |
+| Data trigger | Re-mount via key change | Context re-render |
+| Public data | Never fetched without wallet | Fetched on page load |
+| Bridge bundle | 4.47 MB (all deps inlined) | ~175 KB (externals via CDN) |
+| Wallet connect | Component wrapper (BridgeConnectModal) | Callback injection at app.jsx |
+| Babel plugin | 3 visitors (VarDecl, Identifier, JSXAttr) | 4 visitors + Babel.transformScriptTags override |
+| Screen wrappers | 7 wrappers (Landing, Dashboard, etc.) | Removed — replaced by ForgeProvider |
+
+### Key Stats
+- 8 test files covering BridgeBus, DataFetcherV2, ForgeProvider, ConnectInterceptor, Babel v2, transformers
+- 385+ total tests across both packages (237 bridge + 148+ integration), all passing
+- 78+ validation assertions passed for Phase 6
+
+Additionally, `packages/forge-bridge/src/abis.js` provides browser-compatible inline ABI arrays for all 9 contracts (extracted from `contracts/out/*.json`).
 
 ---
 

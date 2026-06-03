@@ -6,8 +6,8 @@
  * events in useEffect and updates state via useState, triggering React
  * re-renders WITHOUT re-mounting (no dataVersion-as-key pattern).
  *
- * Backward compatibility: domain data is also written to window.__MOCK__
- * so the Babel plugin's mock interceptors still resolve.
+ * Backward compatibility: demo-mode data can still be written by DataFetcherV2,
+ * but ForgeProvider itself only consumes BridgeBus runtime events.
  *
  * Browser usage:
  *   ReactDOM.createRoot(document.getElementById('root'))
@@ -38,13 +38,101 @@ const DEFAULT_CONTEXT_VALUE = {
 		strategies: null,
 		proposals: null,
 		community: null,
+		templates: null,
 		nodeTypes: null,
 		walletBalance: null,
 		portfolioNetValue: null,
 		portfolioLTV: null,
+		readiness: null,
 	},
 	meta: { dataVersion: 0, errors: [] },
 };
+
+// ─── ForgeErrorBoundary — catches render errors ──────────────────────────────
+
+// Guard: ensure React is defined at module scope. In production bundlers React is
+// a global, but during Bun/Node module evaluation (strict ES module mode) the
+// free identifier `React` does not resolve to globalThis.React.  This fallback
+// lets the class definition and React.createElement calls survive without a
+// global React when the module is loaded outside a browser context.
+var React = globalThis.React || { Component: class Component {} };
+
+/**
+ * ForgeErrorBoundary — React error boundary that catches render errors
+ * in the component tree beneath ForgeProvider.
+ *
+ * Prevents a single render crash from breaking the entire UI. Logs the
+ * error and displays a fallback UI when a catastrophic render failure occurs.
+ *
+ * Error boundaries only catch errors during React rendering lifecycle
+ * (render, useEffect, event handlers). They do NOT catch async errors
+ * or errors thrown in setTimeouts/intervals.
+ *
+ * @extends {React.Component}
+ */
+class ForgeErrorBoundary extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = { hasError: false, error: null };
+	}
+
+	/**
+	 * Update state so the next render shows the fallback UI.
+	 * @param {Error} error - The error that was thrown
+	 * @returns {{ hasError: boolean, error: Error }}
+	 */
+	static getDerivedStateFromError(error) {
+		return { hasError: true, error };
+	}
+
+	/**
+	 * Log error details to the console for debugging.
+	 * @param {Error} error - The error that was thrown
+	 * @param {Object} errorInfo - React error info (component stack)
+	 */
+	componentDidCatch(error, errorInfo) {
+		console.error('[ForgeErrorBoundary] Caught render error:', error.message || error);
+		if (errorInfo && errorInfo.componentStack) {
+			console.warn('[ForgeErrorBoundary] Component stack:', errorInfo.componentStack);
+		}
+	}
+
+	render() {
+		if (this.state.hasError) {
+			// Fallback UI when error boundary catches a render error.
+			// Shows a minimal error message so the user knows something went wrong,
+			// while keeping the page functional (navigation, sidebar, etc.)
+			return React.createElement(
+				'div',
+				{
+					style: {
+						padding: '24px',
+						margin: '16px',
+						border: '1px solid var(--destructive, #ef4444)',
+						background: 'var(--card, #111111)',
+						color: 'var(--destructive, #ef4444)',
+						fontFamily: 'JetBrains Mono, monospace',
+						fontSize: '0.875rem',
+					},
+				},
+				React.createElement(
+					'div',
+					{ style: { fontWeight: 500, marginBottom: '8px' } },
+					'[forge] render error',
+				),
+				React.createElement(
+					'div',
+					{ style: { color: 'var(--muted, #888)', fontSize: '0.75rem' } },
+					this.state.error && this.state.error.message
+						? String(this.state.error.message)
+						: 'An unexpected error occurred in the UI.',
+				),
+			);
+		}
+
+		return this.props.children;
+	}
+}
 
 // ─── Context ────────────────────────────────────────────────────────────────
 
@@ -55,7 +143,7 @@ const DEFAULT_CONTEXT_VALUE = {
  *   { wallet: { connected, address, chainId },
  *     permit: { unlocked, secondsLeft },
  *     data:   { ticker, markets, activities, positions, strategies,
- *               proposals, community, nodeTypes, walletBalance,
+ *               proposals, community, templates, nodeTypes, walletBalance,
  *               portfolioNetValue, portfolioLTV },
  *     meta:   { dataVersion, errors } }
  *
@@ -63,34 +151,28 @@ const DEFAULT_CONTEXT_VALUE = {
  */
 const BridgeContext = React.createContext(DEFAULT_CONTEXT_VALUE);
 
-// ─── Mock Key Map ───────────────────────────────────────────────────────────
-// Maps BridgeBus data events to window.__MOCK__ keys for backward compatibility
-// with the Babel plugin's mock data interceptors.
-
-const EVENT_TO_MOCK_KEY = {
-	"data:ticker": "TICKER_ITEMS",
-	"data:markets": "L_MARKETS",
-	"data:activities": "D_ACTIVITY",
-	"data:positions": "D_POSITIONS",
-	"data:strategies": "D_STRATS",
-	"data:proposals": "PROPOSALS",
-	"data:nodeTypes": "NODE_TYPES",
-};
-
 // ─── Data event handler descriptors ─────────────────────────────────────────
-// Each entry maps a BridgeBus event to:
-//   - stateKey: the key in the `data` state object
-//   - mockKey: the window.__MOCK__ key (null = no backward compat write)
+// Each entry maps a BridgeBus data event to the corresponding key
+// in the `data` React state object.
+//
+// NOTE: window.__MOCK__ writes are NO LONGER performed here.
+// DataFetcherV2 writes __MOCK__ only for explicit demo mode. Live
+// polling writes to BridgeBus without mutating mock globals.
+// This avoids redundant double-assignments and keeps real data out
+// of the mock compatibility surface.
 
 const DATA_EVENT_MAP = [
-	{ event: "data:ticker", stateKey: "ticker", mockKey: "TICKER_ITEMS" },
-	{ event: "data:markets", stateKey: "markets", mockKey: "L_MARKETS" },
-	{ event: "data:activities", stateKey: "activities", mockKey: "D_ACTIVITY" },
-	{ event: "data:positions", stateKey: "positions", mockKey: "D_POSITIONS" },
-	{ event: "data:strategies", stateKey: "strategies", mockKey: "D_STRATS" },
-	{ event: "data:proposals", stateKey: "proposals", mockKey: "PROPOSALS" },
-	{ event: "data:nodeTypes", stateKey: "nodeTypes", mockKey: "NODE_TYPES" },
-	{ event: "data:walletBalance", stateKey: "walletBalance", mockKey: null },
+	{ event: "data:ticker", stateKey: "ticker" },
+	{ event: "data:markets", stateKey: "markets" },
+	{ event: "data:activities", stateKey: "activities" },
+	{ event: "data:positions", stateKey: "positions" },
+	{ event: "data:strategies", stateKey: "strategies" },
+	{ event: "data:proposals", stateKey: "proposals" },
+	{ event: "data:community", stateKey: "community" },
+	{ event: "data:templates", stateKey: "templates" },
+	{ event: "data:nodeTypes", stateKey: "nodeTypes" },
+	{ event: "data:walletBalance", stateKey: "walletBalance" },
+	{ event: "data:readiness", stateKey: "readiness" },
 ];
 
 // ─── ForgeProvider ──────────────────────────────────────────────────────────
@@ -101,7 +183,6 @@ const DATA_EVENT_MAP = [
  * Subscribes to BridgeBus events in useEffect and stores state via useState.
  * On every BridgeBus data/wallet/permit update:
  *   1. Updates local React state (triggers targeted re-render, not re-mount)
- *   2. Writes domain data to window.__MOCK__ (backward compat with Babel plugin)
  *
  * On mount:
  *   - Calls DataFetcherV2.startPublicPolling() to begin public data fetching
@@ -139,14 +220,24 @@ function ForgeProvider({ children }) {
 		strategies: null,
 		proposals: null,
 		community: null,
+		templates: null,
 		nodeTypes: null,
 		walletBalance: null,
 		portfolioNetValue: null,
 		portfolioLTV: null,
+		readiness: null,
 	});
 
 	// Track data version for meta updates without deep-cloning state
 	const [dataVersion, setDataVersion] = React.useState(0);
+
+	// ── Error state ───────────────────────────────────────────────────
+	// Collects errors from BridgeBus error:* events so they surface to UI
+	// through the BridgeContext. Each error is { source, message, timestamp }.
+	// Uses a ref to accumulate errors without triggering re-render on each
+	// push — the dataVersion increment handles re-render triggering.
+	const [errors, setErrors] = React.useState([]);
+	const errorsRef = React.useRef([]);
 
 	// ── Memoize context value ─────────────────────────────────────────
 	// Prevents unnecessary child re-renders when state hasn't changed
@@ -155,9 +246,9 @@ function ForgeProvider({ children }) {
 			wallet,
 			permit,
 			data,
-			meta: { dataVersion, errors: [] },
+			meta: { dataVersion, errors },
 		}),
-		[wallet, permit, data, dataVersion],
+		[wallet, permit, data, dataVersion, errors],
 	);
 
 	// ── BridgeBus subscription (mount/unmount effect) ─────────────────
@@ -201,44 +292,64 @@ function ForgeProvider({ children }) {
 		);
 
 		// --- Data event subscriptions ---
-		// For each data source: update React state + write to __MOCK__
-		DATA_EVENT_MAP.forEach(({ event, stateKey, mockKey }) => {
+		// Update React state on each BridgeBus data event.
+		//
+		// NOTE: window.__MOCK__ is NOT written here. DataFetcherV2 writes
+		// __MOCK__ only for explicit demo mode; live data stays on BridgeBus.
+		DATA_EVENT_MAP.forEach(({ event, stateKey }) => {
 			unsubFns.push(
 				bridgeBus.on(event, (payload) => {
-					// 1. Update React state (triggers targeted re-render)
-					setData((prev) => ({ ...prev, [stateKey]: payload }));
+					setData((prev) => {
+						const next = { ...prev, [stateKey]: payload };
+						if (stateKey === "walletBalance" && payload) {
+							next.portfolioNetValue = payload.netValue != null ? payload.netValue : prev.portfolioNetValue;
+							next.portfolioLTV = payload.portfolioLTV != null ? payload.portfolioLTV : prev.portfolioLTV;
+						}
+						return next;
+					});
 					setDataVersion((prev) => prev + 1);
-
-					// 2. Write to window.__MOCK__ for backward compatibility
-					if (mockKey && typeof window !== "undefined" && window.__MOCK__) {
-						window.__MOCK__[mockKey] = payload;
-					}
 				}),
 			);
 		});
 
 		// --- Error event subscription (wildcard) ---
+		// Collects error events and stores them in React state so they
+		// surface through BridgeContext (VAL-POSTFIX-ERROR-001).
+		// Uses errorsRef to accumulate errors across effect cycles without
+		// losing prior errors on cleanup. Errors are capped at 50 to prevent
+		// unbounded memory growth in long-running sessions.
 		unsubFns.push(
-			bridgeBus.on("error:*", () => {
+			bridgeBus.on("error:*", (errorData) => {
+				errorsRef.current.push(errorData);
+				// Cap error history at 50 entries
+				if (errorsRef.current.length > 50) {
+					errorsRef.current = errorsRef.current.slice(-50);
+				}
+				setErrors([].concat(errorsRef.current));
 				setDataVersion((prev) => prev + 1);
 			}),
 		);
 
-		// ── Start public polling on mount ─────────────────────────
+		unsubFns.push(
+			bridgeBus.on("transaction:confirmed", () => {
+				if (typeof window !== "undefined" && window.__dataFetcherV2 && typeof window.__dataFetcherV2.refreshAfterTransaction === "function") {
+					window.__dataFetcherV2.refreshAfterTransaction();
+				}
+			}),
+		);
+
+		// ── Start polling on mount ─────────────────────────────
 		if (typeof window !== "undefined" && window.DataFetcherV2) {
 			if (!window.__forgeProvider__pollingStarted) {
 				window.__forgeProvider__pollingStarted = true;
 				try {
-					const fetcher = new window.DataFetcherV2({
+					const fetcher = window.__dataFetcherV2 || new window.DataFetcherV2({
 						bus: bridgeBus,
 					});
+					window.__dataFetcherV2 = fetcher;
+					// Start real public polling for ticker and markets.
+					// Demo/mock population is intentionally not auto-started here.
 					fetcher.startPublicPolling();
-					// Also populate all __MOCK__ keys with demo data so the
-					// app shows populated values on every screen without
-					// requiring wallet connection or real backend API calls.
-					if (typeof fetcher.startDemoMode === "function") {
-						fetcher.startDemoMode();
-					}
 				} catch (err) {
 					console.warn("[ForgeProvider] Failed to start polling:", err);
 				}
@@ -253,11 +364,18 @@ function ForgeProvider({ children }) {
 		};
 	}, []); // Empty deps = subscribe on mount, cleanup on unmount only
 
-	// ── Render: wrap children in BridgeContext.Provider ───────────────
+	// ── Render: wrap children in ForgeErrorBoundary + BridgeContext.Provider ───
+	// The error boundary catches render errors in the component tree so one
+	// screen's failure doesn't break the entire app. BridgeContext.Provider
+	// delivers bridge state updates via React context (no re-mount).
 	return React.createElement(
-		BridgeContext.Provider,
-		{ value: contextValue },
-		children,
+		ForgeErrorBoundary,
+		null,
+		React.createElement(
+			BridgeContext.Provider,
+			{ value: contextValue },
+			children,
+		),
 	);
 }
 
@@ -303,10 +421,12 @@ function usePermit() {
  *   strategies: *,
  *   proposals: *,
  *   community: *,
+ *   templates: *,
  *   nodeTypes: *,
  *   walletBalance: *,
  *   portfolioNetValue: *,
- *   portfolioLTV: *
+ *   portfolioLTV: *,
+ *   readiness: *
  * }}
  */
 function useBridgeData() {
@@ -319,6 +439,11 @@ function useBridgeData() {
 // (React.createElement(ForgeProvider, ...)), so it must be available on window.
 if (typeof window !== 'undefined') {
 	window.ForgeProvider = ForgeProvider;
+	window.BridgeContext = BridgeContext;
+	window.useBridge = useBridge;
+	window.useWallet = useWallet;
+	window.usePermit = usePermit;
+	window.useBridgeData = useBridgeData;
 }
 
 // ─── Exports ─────────────────────────────────────────────────────────────────

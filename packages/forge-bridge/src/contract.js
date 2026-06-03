@@ -192,6 +192,10 @@ async function estimateSendAndWait(
 			account,
 			chain: arbitrumSepolia,
 		});
+		const bridgeBus = typeof window !== "undefined" ? /** @type {any} */ (window).__bridgeBus : null;
+		if (bridgeBus) {
+			bridgeBus.set("transaction:submitted", { hash, functionName });
+		}
 	} catch (error) {
 		throw mapContractError(error, "", functionName);
 	}
@@ -203,9 +207,15 @@ async function estimateSendAndWait(
 		return { hash, status: "pending", receipt: undefined };
 	}
 
+	const status = receipt.status === "success" ? "confirmed" : "reverted";
+	const bridgeBus = typeof window !== "undefined" ? /** @type {any} */ (window).__bridgeBus : null;
+	if (bridgeBus) {
+		bridgeBus.set(status === "confirmed" ? "transaction:confirmed" : "transaction:failed", { hash, functionName, status });
+	}
+
 	return {
 		hash,
-		status: receipt.status === "success" ? "confirmed" : "reverted",
+		status,
 		blockNumber: Number(receipt.blockNumber),
 		receipt,
 	};
@@ -216,6 +226,55 @@ async function estimateSendAndWait(
 // ---------------------------------------------------------------------------
 
 const DEFAULT_RPC_URL = "https://sepolia-arbitrum-rpc.publicnode.com";
+
+/** Minimal ERC20 ABI for token reads used by DataFetcher. */
+const ERC20_READ_ABI = [
+	{
+		type: "function",
+		name: "balanceOf",
+		inputs: [{ name: "account", type: "address" }],
+		outputs: [{ name: "", type: "uint256" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		name: "allowance",
+		inputs: [
+			{ name: "owner", type: "address" },
+			{ name: "spender", type: "address" },
+		],
+		outputs: [{ name: "", type: "uint256" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		name: "decimals",
+		inputs: [],
+		outputs: [{ name: "", type: "uint8" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		name: "symbol",
+		inputs: [],
+		outputs: [{ name: "", type: "string" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		name: "name",
+		inputs: [],
+		outputs: [{ name: "", type: "string" }],
+		stateMutability: "view",
+	},
+	{
+		type: "function",
+		name: "totalSupply",
+		inputs: [],
+		outputs: [{ name: "", type: "uint256" }],
+		stateMutability: "view",
+	},
+];
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -244,6 +303,7 @@ const DEFAULT_RPC_URL = "https://sepolia-arbitrum-rpc.publicnode.com";
  * @property {ContractSimulateMethods} simulate - Simulation via API adapter
  * @property {() => { publicClient: import('viem').PublicClient, walletClient: import('viem').WalletClient | null }} getClient
  * @property {(wc: import('viem').WalletClient) => void} setWalletClient
+ * @property {(provider: any) => void} setWalletProvider
  */
 
 /**
@@ -268,6 +328,9 @@ export function createContractAdapter(config, options = {}) {
 
 	/** @type {import('viem').WalletClient | null} */
 	let _walletClient = null;
+
+	/** @type {any | null} */
+	let _walletProvider = null;
 
 	// ── Read methods ──────────────────────────────────────────────────────
 
@@ -455,46 +518,191 @@ export function createContractAdapter(config, options = {}) {
 		// ── StrategyRegistry ──
 
 		/**
+		 * Backwards-compatible strategy info helper. Uses actual StrategyRegistry ABI methods.
 		 * @param {bigint} strategyId
 		 * @returns {Promise<any>}
 		 */
-		getStrategyInfo: (strategyId) =>
-			publicClient
-				.readContract({
-					address: CONTRACT_ADDRESSES.StrategyRegistry,
-					abi: CONTRACT_ABIS.StrategyRegistry,
-					functionName: "getStrategyInfo",
-					args: [strategyId],
-				})
-				.catch(() =>
-					publicClient.readContract({
-						address: CONTRACT_ADDRESSES.StrategyRegistry,
-						abi: CONTRACT_ABIS.StrategyRegistry,
-						functionName: "strategies",
-						args: [strategyId],
-					}),
-				),
+		getStrategyInfo: async (strategyId) => {
+			const [meta, params, encryptedTvl] = await Promise.all([
+				read.getStrategyMeta(strategyId),
+				read.getStrategyParams(strategyId),
+				read.getEncryptedTvl(strategyId),
+			]);
+			return { meta, params, encryptedTvl };
+		},
 
 		/**
 		 * @param {bigint} strategyId
 		 * @returns {Promise<any>}
 		 */
-		getStrategyUsers: (strategyId) =>
-			publicClient
-				.readContract({
-					address: CONTRACT_ADDRESSES.StrategyRegistry,
-					abi: CONTRACT_ABIS.StrategyRegistry,
-					functionName: "getStrategyUsers",
-					args: [strategyId],
-				})
-				.catch(() =>
-					publicClient.readContract({
-						address: CONTRACT_ADDRESSES.StrategyRegistry,
-						abi: CONTRACT_ABIS.StrategyRegistry,
-						functionName: "getVaultPositions",
-						args: [strategyId],
-					}),
-				),
+		getStrategyMeta: (strategyId) =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.StrategyRegistry,
+				abi: CONTRACT_ABIS.StrategyRegistry,
+				functionName: "getStrategyMeta",
+				args: [strategyId],
+			}),
+
+		/**
+		 * @param {bigint} strategyId
+		 * @returns {Promise<any>}
+		 */
+		getStrategyParams: (strategyId) =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.StrategyRegistry,
+				abi: CONTRACT_ABIS.StrategyRegistry,
+				functionName: "getStrategyParams",
+				args: [strategyId],
+			}),
+
+		/**
+		 * @param {bigint} strategyId
+		 * @returns {Promise<any>}
+		 */
+		getEncryptedTvl: (strategyId) =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.StrategyRegistry,
+				abi: CONTRACT_ABIS.StrategyRegistry,
+				functionName: "getEncryptedTvl",
+				args: [strategyId],
+			}),
+
+		/**
+		 * @returns {Promise<any>}
+		 */
+		strategyCount: () =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.StrategyRegistry,
+				abi: CONTRACT_ABIS.StrategyRegistry,
+				functionName: "strategyCount",
+				args: [],
+			}),
+
+		/**
+		 * @returns {Promise<any>}
+		 */
+		strategyVaultAddress: () =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.StrategyRegistry,
+				abi: CONTRACT_ABIS.StrategyRegistry,
+				functionName: "vaultAddress",
+				args: [],
+			}),
+
+		// ── TokenRegistry ──
+
+		/**
+		 * @param {`0x${string}`} token
+		 * @returns {Promise<any>}
+		 */
+		getTokenInfo: (token) =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.TokenRegistry,
+				abi: CONTRACT_ABIS.TokenRegistry,
+				functionName: "tokens",
+				args: [token],
+			}),
+
+		/**
+		 * @param {number | bigint} index
+		 * @returns {Promise<any>}
+		 */
+		getTokenAt: (index) =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.TokenRegistry,
+				abi: CONTRACT_ABIS.TokenRegistry,
+				functionName: "tokenList",
+				args: [BigInt(index)],
+			}),
+
+		/**
+		 * @param {`0x${string}`} token
+		 * @returns {Promise<any>}
+		 */
+		isRegisteredToken: (token) =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.TokenRegistry,
+				abi: CONTRACT_ABIS.TokenRegistry,
+				functionName: "isSupported",
+				args: [token],
+			}),
+
+		// ── ERC20 ──
+
+		/**
+		 * @param {`0x${string}`} token
+		 * @param {`0x${string}`} account
+		 * @returns {Promise<any>}
+		 */
+		erc20BalanceOf: (token, account) =>
+			publicClient.readContract({
+				address: token,
+				abi: ERC20_READ_ABI,
+				functionName: "balanceOf",
+				args: [account],
+			}),
+
+		/**
+		 * @param {`0x${string}`} token
+		 * @param {`0x${string}`} owner
+		 * @param {`0x${string}`} spender
+		 * @returns {Promise<any>}
+		 */
+		erc20Allowance: (token, owner, spender) =>
+			publicClient.readContract({
+				address: token,
+				abi: ERC20_READ_ABI,
+				functionName: "allowance",
+				args: [owner, spender],
+			}),
+
+		/**
+		 * @param {`0x${string}`} token
+		 * @returns {Promise<any>}
+		 */
+		erc20Decimals: (token) =>
+			publicClient.readContract({
+				address: token,
+				abi: ERC20_READ_ABI,
+				functionName: "decimals",
+				args: [],
+			}),
+
+		/**
+		 * @param {`0x${string}`} token
+		 * @returns {Promise<any>}
+		 */
+		erc20Symbol: (token) =>
+			publicClient.readContract({
+				address: token,
+				abi: ERC20_READ_ABI,
+				functionName: "symbol",
+				args: [],
+			}),
+
+		/**
+		 * @param {`0x${string}`} token
+		 * @returns {Promise<any>}
+		 */
+		erc20Name: (token) =>
+			publicClient.readContract({
+				address: token,
+				abi: ERC20_READ_ABI,
+				functionName: "name",
+				args: [],
+			}),
+
+		/**
+		 * @param {`0x${string}`} token
+		 * @returns {Promise<any>}
+		 */
+		erc20TotalSupply: (token) =>
+			publicClient.readContract({
+				address: token,
+				abi: ERC20_READ_ABI,
+				functionName: "totalSupply",
+				args: [],
+			}),
 
 		// ── Generic ──
 
@@ -715,13 +923,21 @@ export function createContractAdapter(config, options = {}) {
 	 */
 	function getWc() {
 		if (_walletClient) return _walletClient;
-		if (typeof window !== "undefined" && /** @type {any} */ (window).ethereum) {
+
+		const provider =
+			_walletProvider ||
+			(typeof window !== "undefined" && /** @type {any} */ (window).ethereum
+				? /** @type {any} */ (window).ethereum
+				: null);
+
+		if (provider) {
 			_walletClient = createWalletClient({
 				chain: arbitrumSepolia,
-				transport: custom(/** @type {any} */ (window).ethereum),
+				transport: custom(provider),
 			});
 			return _walletClient;
 		}
+
 		throw new ContractError(
 			"WALLET_UNAVAILABLE",
 			"No wallet client available. Connect a wallet (MetaMask/Rabby) or provide a wallet client.",
@@ -739,6 +955,12 @@ export function createContractAdapter(config, options = {}) {
 		/** @param {import('viem').WalletClient} wc */
 		setWalletClient(wc) {
 			_walletClient = wc;
+		},
+
+		/** @param {any} provider */
+		setWalletProvider(provider) {
+			_walletProvider = provider;
+			_walletClient = null;
 		},
 	};
 }

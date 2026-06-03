@@ -33,7 +33,7 @@
   }
 
   /* ──────────────────────────────────────────────
-     MOCK_CONSTANTS — 11 module-scoped constants
+     MOCK_CONSTANTS — 13 module/function-scoped constants
      ────────────────────────────────────────────── */
 
   var MOCK_CONSTANTS = new Set([
@@ -48,7 +48,22 @@
     'DEFAULT_CONFIG',
     'TICKER_ITEMS',
     'DEMO_ROWS',
+    // Function-scoped variable names in landing.jsx mapped to __MOCK__ keys
+    'items',  // Ticker() → maps to TICKER_ITEMS
+    'rows',   // DemoCard() → maps to DEMO_ROWS
   ]);
+
+  /* ──────────────────────────────────────────────
+     VARIABLE_TO_MOCK_KEY — Maps function-scoped
+     variable names to their __MOCK__ key.
+     Used when the variable name differs from
+     the mock key (e.g. 'items' → 'TICKER_ITEMS').
+     ────────────────────────────────────────────── */
+
+  var VARIABLE_TO_MOCK_KEY = {
+    'items': 'TICKER_ITEMS',
+    'rows': 'DEMO_ROWS',
+  };
 
   /* ──────────────────────────────────────────────
      VALUE_TO_MOCK_KEY — Cipher value → mock key
@@ -56,53 +71,40 @@
 
   var VALUE_TO_MOCK_KEY = {
     '68,412.07': 'PORTFOLIO_NET_VALUE',
-    '12,456.78': 'DEMO_SUPPLIED_VALUE',
-    '4,320.50': 'DEMO_BORROWED_VALUE',
-    '228,100': 'DEMO_STRATS_VALUE',
-    'USER_NET_SUPPLIED': 'USER_NET_SUPPLIED',
-    'USER_NET_BORROWED': 'USER_NET_BORROWED',
-    'WALLET_BALANCE': 'WALLET_BALANCE',
-    'PORTFOLIO_CHANGE_24H': 'PORTFOLIO_CHANGE_24H',
-    'POSITION_INTEREST': 'POSITION_INTEREST',
-    'HEALTH_AFTER_SUPPLY': 'HEALTH_AFTER_SUPPLY',
-    'HEALTH_AFTER_BORROW': 'HEALTH_AFTER_BORROW',
-    'GAS_ETH': 'GAS_ETH',
-    'EMPTY_PORTFOLIO': 'EMPTY_PORTFOLIO',
-    'PORTFOLIO_LTV': 'PORTFOLIO_LTV',
   };
 
   /* ──────────────────────────────────────────────
-     Helper: build window.__MOCK__?.KEY reference
+     Helper: build window.__MOCK__.KEY reference
      ────────────────────────────────────────────── */
 
   function buildMockRef(t, key) {
-    // window?.__MOCK__?.key
-    return t.optionalMemberExpression(
-      t.optionalMemberExpression(
+    // window.__MOCK__.key
+    return t.memberExpression(
+      t.memberExpression(
         t.identifier('window'),
         t.identifier('__MOCK__'),
-        false,
-        true
+        false
       ),
       t.identifier(key),
-      false,
-      true
+      false
     );
   }
 
   /* ──────────────────────────────────────────────
-     Plugin: mockDataPlugin — 3 visitors
+     Plugin: mockDataPlugin — 4 visitors
      ────────────────────────────────────────────── */
 
   var mockDataPlugin = function (api) {
     var t = api.types;
+    var renderCallPaths = [];
 
     return {
       name: 'mock-data',
       visitor: {
         /* ------------------------------------------------------
            1. VariableDeclarator
-              const X = val  →  var X = window.__MOCK__?.X ?? val
+              const X = val  →  var X = window.__MOCK__.Y != null ? window.__MOCK__.Y : val
+              where Y = VARIABLE_TO_MOCK_KEY[X] || X
            ------------------------------------------------------ */
         VariableDeclarator: function (path) {
           var varName = path.node.id && path.node.id.name;
@@ -114,44 +116,22 @@
           // Change declaration kind to "var" (hoisted, re-assignable)
           parentDecl.node.kind = 'var';
 
-          // Wrap init: window.__MOCK__?.X ?? originalValue
-          path.node.init = t.logicalExpression(
-            '??',
-            buildMockRef(t, varName),
+          // Resolve mock key: use mapping when varName differs from __MOCK__ key
+          var mockKey = VARIABLE_TO_MOCK_KEY[varName] || varName;
+
+          // Wrap init: window.__MOCK__.Y != null ? window.__MOCK__.Y : originalValue
+          var mockRef = buildMockRef(t, mockKey);
+          path.node.init = t.conditionalExpression(
+            t.binaryExpression('!=', mockRef, t.nullLiteral()),
+            mockRef,
             path.node.init
           );
         },
 
         /* ------------------------------------------------------
-           2. Identifier
-              <MDList items={D_POSITIONS}>
-              → <MDList items={window.__MOCK__?.D_POSITIONS ?? D_POSITIONS}>
-           ------------------------------------------------------ */
-        Identifier: function (path) {
-          if (!MOCK_CONSTANTS.has(path.node.name)) return;
-          if (!path.isReferencedIdentifier()) return;
-
-          // Prevent infinite recursion: skip identifiers already inside
-          // a LogicalExpression('??') which is part of a previous replacement
-          if (
-            path.parentPath &&
-            path.parentPath.isLogicalExpression &&
-            path.parentPath.isLogicalExpression({ operator: '??' })
-          ) return;
-
-          path.replaceWith(
-            t.logicalExpression(
-              '??',
-              buildMockRef(t, path.node.name),
-              t.identifier(path.node.name)
-            )
-          );
-        },
-
-        /* ------------------------------------------------------
-           3. JSXAttribute
+           2. JSXAttribute
               <Cipher value="68,412.07" locked={locked} />
-              → <Cipher value={window.__MOCK__?.PORTFOLIO_NET_VALUE ?? "68,412.07"} locked={locked} />
+              → <Cipher value={window.__MOCK__.PORTFOLIO_NET_VALUE != null ? window.__MOCK__.PORTFOLIO_NET_VALUE : "68,412.07"} locked={locked} />
            ------------------------------------------------------ */
         JSXAttribute: function (path) {
           var attrName = path.node.name && path.node.name.name;
@@ -170,13 +150,39 @@
           if (!mockKey) return;
 
           // Replace string literal with JSX expression container
+          var mockRef = buildMockRef(t, mockKey);
           path.node.value = t.jsxExpressionContainer(
-            t.logicalExpression(
-              '??',
-              buildMockRef(t, mockKey),
+            t.conditionalExpression(
+              t.binaryExpression('!=', mockRef, t.nullLiteral()),
+              mockRef,
               t.stringLiteral(attrValue.value)
             )
           );
+        },
+
+        /* ------------------------------------------------------
+           3. CallExpression — collect render call paths
+              ReactDOM.createRoot(...).render(<App />) — collected
+              for processing in Program.exit.
+           ------------------------------------------------------ */
+        CallExpression: function (path) {
+          var callee = path.node.callee;
+
+          // Must be xxx.render(...)
+          if (!t.isMemberExpression(callee)) return;
+          if (!t.isIdentifier(callee.property) || callee.property.name !== 'render') return;
+
+          // The object must be ReactDOM.createRoot(...)
+          var object = callee.object;
+          if (!t.isCallExpression(object)) return;
+
+          var objectCallee = object.callee;
+          if (!t.isMemberExpression(objectCallee)) return;
+          if (!t.isIdentifier(objectCallee.object) || objectCallee.object.name !== 'ReactDOM') return;
+          if (!t.isIdentifier(objectCallee.property) || objectCallee.property.name !== 'createRoot') return;
+
+          // Found ReactDOM.createRoot(...).render(...)
+          renderCallPaths.push(path);
         },
 
         /* ------------------------------------------------------
@@ -185,41 +191,22 @@
               → ReactDOM.createRoot(...).render(
                   React.createElement(ForgeProvider, null, <App />)
                 )
-              Injects ForgeProvider wrapper around the root App component.
-              Runs after all other transforms complete.
+              Processes accumulated CallExpression paths.
            ------------------------------------------------------ */
         Program: {
           exit: function (path) {
-            path.traverse({
-              CallExpression: function (nodePath) {
-                var callee = nodePath.node.callee;
+            for (var i = 0; i < renderCallPaths.length; i++) {
+              var nodePath = renderCallPaths[i];
+              var renderArg = nodePath.node.arguments[0];
+              if (!renderArg) continue;
 
-                // Must be xxx.render(...)
-                if (!t.isMemberExpression(callee)) return;
-                if (!t.isIdentifier(callee.property) || callee.property.name !== 'render') return;
-
-                // The object must be ReactDOM.createRoot(...)
-                var object = callee.object;
-                if (!t.isCallExpression(object)) return;
-
-                var objectCallee = object.callee;
-                if (!t.isMemberExpression(objectCallee)) return;
-                if (!t.isIdentifier(objectCallee.object) || objectCallee.object.name !== 'ReactDOM') return;
-                if (!t.isIdentifier(objectCallee.property) || objectCallee.property.name !== 'createRoot') return;
-
-                // Found ReactDOM.createRoot(...).render(...)
-                // Get the first render argument (the App component element)
-                var renderArg = nodePath.node.arguments[0];
-                if (!renderArg) return;
-
-                // Wrap with ForgeProvider:
-                //   React.createElement(ForgeProvider, null, renderArg)
-                nodePath.node.arguments[0] = t.callExpression(
-                  t.memberExpression(t.identifier('React'), t.identifier('createElement')),
-                  [t.identifier('ForgeProvider'), t.nullLiteral(), renderArg]
-                );
-              },
-            });
+              // Wrap with ForgeProvider:
+              //   React.createElement(ForgeProvider, null, renderArg)
+              nodePath.node.arguments[0] = t.callExpression(
+                t.memberExpression(t.identifier('React'), t.identifier('createElement')),
+                [t.identifier('ForgeProvider'), t.nullLiteral(), renderArg]
+              );
+            }
           },
         },
       },
@@ -270,7 +257,7 @@
     function buildOptions(scriptEl, filename) {
       return {
         filename: filename,
-        presets: ['react', 'env'],
+        presets: ['react', ['env', { targets: { esmodules: true } }]],
         sourceMaps: 'inline',
         sourceFileName: filename,
       };
@@ -300,10 +287,16 @@
 
       if (jsxScripts.length === 0) return;
 
-      console.warn(
-        'You are using the in-browser Babel transformer. ' +
-        'Be sure to precompile your scripts for production - https://babeljs.io/docs/setup/',
-      );
+      // Suppress the standard Babel in-browser transformer warning.
+      // This is a dev-only setup where in-browser transformation is intentional.
+      // The production build will precompile all scripts.
+      // To re-enable: set window.__BABEL_WARN__ = true before this script loads.
+      if (window.__BABEL_WARN__) {
+        console.warn(
+          'You are using the in-browser Babel transformer. ' +
+          'Be sure to precompile your scripts for production - https://babeljs.io/docs/setup/',
+        );
+      }
 
       // ── Load scripts sequentially ──────────────────────
       var contents = [];
@@ -316,27 +309,33 @@
           return;
         }
 
-        var script = jsxScripts[idx];
-        var src = script.getAttribute('src');
+        try {
+          var script = jsxScripts[idx];
+          var src = script.getAttribute('src');
 
-        if (src) {
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', src, true);
-          if ('overrideMimeType' in xhr) xhr.overrideMimeType('text/plain');
-          xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-              if (xhr.status === 0 || xhr.status === 200) {
-                contents[idx] = xhr.responseText;
-              } else {
-                console.error('[BabelPlugin] Could not load script:', src);
-                contents[idx] = null;
+          if (src) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', src, true);
+            if ('overrideMimeType' in xhr) xhr.overrideMimeType('text/plain');
+            xhr.onreadystatechange = function () {
+              if (xhr.readyState === 4) {
+                if (xhr.status === 0 || xhr.status === 200) {
+                  contents[idx] = xhr.responseText;
+                } else {
+                  console.error('[BabelPlugin] Could not load script:', src);
+                  contents[idx] = null;
+                }
+                loadNext(idx + 1);
               }
-              loadNext(idx + 1);
-            }
-          };
-          xhr.send(null);
-        } else {
-          contents[idx] = script.innerHTML;
+            };
+            xhr.send(null);
+          } else {
+            contents[idx] = script.innerHTML;
+            loadNext(idx + 1);
+          }
+        } catch (err) {
+          console.error('[BabelTransform] Failed to process script:', script.getAttribute('src') || 'inline', err);
+          contents[idx] = null;
           loadNext(idx + 1);
         }
       }
@@ -355,7 +354,7 @@
             out.text = result.code;
             headEl.appendChild(out);
           } catch (err) {
-            console.error('[BabelPlugin] Transform error for', filename, err);
+            console.error('[BabelTransform] Failed to process script:', filename, err);
           }
         }
       }
@@ -369,9 +368,17 @@
     // Babel.disableScriptTags() was called right after Babel loaded, so the
     // auto-processing on DOMContentLoaded was suppressed.  Now that our
     // patched transformScriptTags is in place, trigger the processing of
-    // all text/babel scripts manually.
-    if (typeof runScriptsWithPatchedTransform === 'function') {
-      runScriptsWithPatchedTransform();
+    // all text/babel scripts after DOM is fully parsed (so text/babel
+    // <script> elements exist in the DOM).
+    function processScripts() {
+      if (typeof runScriptsWithPatchedTransform === 'function') {
+        runScriptsWithPatchedTransform();
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', processScripts);
+    } else {
+      processScripts();
     }
   })();
 })();

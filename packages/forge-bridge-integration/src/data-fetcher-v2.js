@@ -6,7 +6,7 @@
      - Public mode:  ticker (30s), markets (30s) — starts on page load
      - Auth mode:    activities (15s), positions (60s + on-nav),
                      strategies (on-nav), proposals (on-nav),
-                     nodeTypes (on-nav), walletBalance (60s)
+                     community/templates/nodeTypes (on-nav), walletBalance (60s)
 
    All fetched data is written to BridgeBus via set().
    Errors preserve stale data and record in meta.errors.
@@ -40,23 +40,6 @@
     activities: 15000,
     positions: 60000,
     walletBalance: 60000,
-  };
-
-  /**
-   * Maps BridgeBus data event names to their window.__MOCK__ key
-   * for backward compatibility with the Babel plugin.
-   *
-   * Used by _fetchAndTransform to write fetched data to __MOCK__
-   * alongside BridgeBus — keeps __MOCK__ in sync for live API calls.
-   */
-  var EVENT_TO_MOCK_KEY = {
-    'data:ticker': 'TICKER_ITEMS',
-    'data:markets': 'L_MARKETS',
-    'data:activities': 'D_ACTIVITY',
-    'data:positions': 'D_POSITIONS',
-    'data:strategies': 'D_STRATS',
-    'data:proposals': 'PROPOSALS',
-    'data:nodeTypes': 'NODE_TYPES',
   };
 
   var DataFetcherV2 = /** @class */ (function () {
@@ -97,6 +80,7 @@
       this._publicStarted = false;
       this._authStarted = false;
       this._demoStarted = false;
+      this._isFetchingReadiness = false;
 
       // beforeunload leak guard — stops all intervals on page unload
       // to prevent ghost polling processes when user refreshes or navigates away
@@ -127,9 +111,17 @@
       // async responses from overriding the demo data.
       if (this._demoStarted) return;
 
-      // Fetch immediately on start, then poll at interval
+      // Fetch backend readiness once on start, then fetch immediately on start and poll at interval.
+      this._fetchReadiness();
       this._startInterval('public', 'ticker', this._fetchTicker.bind(this), this._pollIntervals.ticker);
       this._startInterval('public', 'markets', this._fetchMarkets.bind(this), this._pollIntervals.markets);
+
+      // Public builder/strategy metadata. These are one-shot fetches; if the
+      // bridge/backend does not expose them, BridgeContext keeps null and the
+      // UI renders unavailable states instead of synthetic fallbacks.
+      this._fetchCommunity();
+      this._fetchTemplates();
+      this._fetchNodeTypes();
     };
 
     /**
@@ -138,7 +130,9 @@
      *   - positions  (60s interval + on-nav fetch)
      *   - strategies (on-nav only — no interval)
      *   - proposals  (on-nav only — no interval)
-     *   - nodeTypes  (on-nav only — no interval)
+     *   - community  (on-nav only — no interval)
+     *   - templates   (on-nav only — no interval)
+     *   - nodeTypes   (on-nav only — no interval)
      *   - walletBalance (60s interval)
      *
      * Idempotent — safe to call multiple times.
@@ -159,6 +153,8 @@
       // Navigation handlers call the dedicated fetch methods when screens change
       this._fetchStrategies();
       this._fetchProposals();
+      this._fetchCommunity();
+      this._fetchTemplates();
       this._fetchNodeTypes();
 
       // Notify BridgeBus that authenticated mode is active
@@ -287,6 +283,8 @@
         if (data.positions) this._bus.set('data:positions', data.positions);
         if (data.strategies) this._bus.set('data:strategies', data.strategies);
         if (data.proposals) this._bus.set('data:proposals', data.proposals);
+        if (data.community) this._bus.set('data:community', data.community);
+        if (data.templates) this._bus.set('data:templates', data.templates);
         if (data.nodeTypes) this._bus.set('data:nodeTypes', data.nodeTypes);
         if (data.walletBalance) this._bus.set('data:walletBalance', data.walletBalance);
       }
@@ -304,11 +302,19 @@
     DataFetcherV2.prototype._generateDemoData = function () {
       return {
         // ── Ticker ──────────────────────────────────
+        // Matches the 9-item format from landing.jsx Ticker component.
+        // Shorter lists cause visible repetition with the seamless-loop
+        // [...items, ...items] marquee technique.
         ticker: [
-          '\u29E7 182,944,108',
-          'GAS: 0.014 gwei',
-          'TVL: $8.42M',
+          'block #182,944,108',
+          'gas \u00B7 0.014 gwei',
+          'USDC pool tvl \u00B7 $8.42M',
+          'ETH pool tvl \u00B7 $4.18M',
+          'WBTC pool tvl \u00B7 $1.80M',
           'encrypted ops \u00B7 1.42M',
+          'permit decrypts \u00B7 42k / day',
+          'active strategies \u00B7 412',
+          'deployed via composer \u00B7 1,284',
         ],
 
         // ── Markets (lending.jsx) ────────────────────
@@ -316,8 +322,8 @@
           { asset: "USDC", supplyApy: 4.82, borrowApy: 6.21, util: 64, tvl: "8.42M", totalSupply: "8.42M", totalBorrow: "5.39M", liq: 80, oracle: "Pyth", price: "$1.000", icon: "USDC" },
           { asset: "ETH",  supplyApy: 2.14, borrowApy: 3.78, util: 41, tvl: "4.18M", totalSupply: "4.18M", totalBorrow: "1.71M", liq: 75, oracle: "Pyth", price: "$2,544.10", icon: "ETH" },
           { asset: "WBTC", supplyApy: 1.66, borrowApy: 3.10, util: 22, tvl: "1.80M", totalSupply: "1.80M", totalBorrow: "0.40M", liq: 70, oracle: "Pyth", price: "$94,210", icon: "WBTC" },
-          { asset: "ARB",  supplyApy: 5.42, borrowApy: 8.20, util: 68, tvl: "0.92M", totalSupply: "0.92M", totalBorrow: "0.63M", liq: 65, oracle: "Pyth \u00B7 fb", price: "$0.74", icon: "ARB" },
-          { asset: "DAI",  supplyApy: 3.91, borrowApy: 5.04, util: 51, tvl: "0.61M", totalSupply: "0.61M", totalBorrow: "0.31M", liq: 78, oracle: "Pyth", price: "$1.000", icon: "DAI" },
+          { asset: "ARB",  supplyApy: 5.42, borrowApy: 8.20, util: 68, tvl: "924k", totalSupply: "0.92M", totalBorrow: "0.63M", liq: 65, oracle: "Pyth \u00B7 fb", price: "$0.74", icon: "ARB" },
+          { asset: "DAI",  supplyApy: 3.91, borrowApy: 5.04, util: 51, tvl: "612k", totalSupply: "0.61M", totalBorrow: "0.31M", liq: 78, oracle: "Pyth", price: "$1.000", icon: "DAI" },
         ],
 
         // ── Activities (dashboard.jsx) ───────────────
@@ -327,7 +333,7 @@
           { id: "a3", block: 182944081, age: "1m",   what: "Pool \u00B7 interest",     kind: "accrue",  asset: "USDC",     delta: "+12.04" },
           { id: "a4", block: 182943988, age: "4m",   what: "Swap intent filled",  kind: "swap",    asset: "ETH\u2192USDC", delta: "\u22484,820" },
           { id: "a5", block: 182943890, age: "11m",  what: "S/02 \u00B7 re-supply",    kind: "shield",  asset: "WETH",     delta: "+0.840" },
-          { id: "a6", block: 182943742, age: "26m",  what: "Permit \u00B7 renewed",    kind: "permit",  asset: "All",     delta: "renewed" },
+          { id: "a6", block: 182943742, age: "26m",  what: "Permit \u00B7 renewed",    kind: "permit",  asset: "\u2013",     delta: "\u2013" },
         ],
 
         // ── Positions (dashboard.jsx) ────────────────
@@ -353,37 +359,97 @@
             status: "active",
             body: "Tightens WBTC liquidation threshold by 500 bps after two near-liquidation events. Affects 18 open positions, recipients pre-notified.",
             forVotes: 412840, againstVotes: 88200, abstain: 12400, quorum: 460000,
-            proposer: "@symulacr", created: "2026-05-28",
+            proposer: "0x9f3a\u2026b4a39", timeLeft: "1d 14h", created: "2026-05-28",
           },
           {
-            id: "P-07", title: "ARB collateral factor 65% \u2192 70%",
+            id: "P-07", title: "Add ARB as collateral (65% LTV)",
             status: "active",
-            body: "Increase ARB collateral factor to match on-chain volatility metrics. Risk team recommends +500 bps.",
-            forVotes: 328100, againstVotes: 45200, abstain: 8200, quorum: 460000,
-            proposer: "@haven", created: "2026-05-25",
+            body: "Whitelist ARB with 65% initial LTV, 70% liquidation, Pyth oracle.",
+            forVotes: 188400, againstVotes: 142900, abstain: 9120, quorum: 460000,
+            proposer: "0xd1c2\u20267e84", timeLeft: "3d 02h", created: "2026-05-25",
           },
           {
-            id: "P-06", title: "Stable rate optimiser V2",
+            id: "P-06", title: "Raise Composer loop cap to 8",
             status: "queued",
-            body: "Deploy new interest rate curve for USDC and DAI. Smoother ramp between 60\u201380% utilisation.",
-            forVotes: 584200, againstVotes: 12100, abstain: 4600, quorum: 460000,
-            proposer: "@plux", created: "2026-05-20",
+            body: "Allow strategies up to 8 loop iterations (current cap: 6). Gas analysis attached.",
+            forVotes: 512300, againstVotes: 38000, abstain: 4200, quorum: 460000,
+            proposer: "0x4a92\u20260f10", timeLeft: "executes in 1d 03h", created: "2026-05-20",
           },
           {
-            id: "P-05", title: "Composer whitelist \u2014 StrategyVault",
+            id: "P-05", title: "Treasury: 24,000 FFT executor grant",
             status: "executed",
-            body: "Grant StrategyVault contract access to Composer for automated loop execution. Audited by Zellic.",
-            forVotes: 612400, againstVotes: 8400, abstain: 3200, quorum: 460000,
-            proposer: "@quietco", created: "2026-05-15",
+            body: "Pay swap-intent solver #03 24,000 FFT over 6 months.",
+            forVotes: 622400, againstVotes: 19200, abstain: 2200, quorum: 460000,
+            proposer: "0x9f3a\u2026b4a39", timeLeft: "executed \u00B7 6d ago", created: "2026-05-15",
           },
           {
-            id: "P-04", title: "Fee switch 5/15/30",
+            id: "P-04", title: "Pause GHO market",
             status: "defeated",
-            body: "Introduce protocol fee: 5% supply interest, 15% borrow interest, 30% liquidation bonus.",
-            forVotes: 184200, againstVotes: 412800, abstain: 24000, quorum: 460000,
-            proposer: "@symulacr", created: "2026-05-10",
+            body: "Defeated 142k for / 304k against. Community rejected pause.",
+            forVotes: 142000, againstVotes: 304800, abstain: 18900, quorum: 460000,
+            proposer: "0x8c11\u20262d44", timeLeft: "ended 11d ago", created: "2026-05-10",
           },
         ],
+
+        // ── Community Strategies (market.jsx) ─────────
+        community: [
+          { id: "c-lev",  name: "Lean USDC leverage",  author: "@symulacr", risk: "low",  apy: 11.4, tvl: "1,284,210", asset: "USDC", deployers: 412, template: "leverage" },
+          { id: "c-dn",   name: "ETH delta-neutral",   author: "@haven",    risk: "med",  apy: 8.7,  tvl: "612,950",   asset: "ETH",  deployers: 188, template: "deltaNeutral" },
+          { id: "c-wbtc", name: "WBTC carry & swap",   author: "@symulacr", risk: "high", apy: 14.2, tvl: "402,180",   asset: "WBTC", deployers: 71,  template: "leverage" },
+          { id: "c-arb",  name: "ARB incentive sweep", author: "@plux",     risk: "med",  apy: 22.8, tvl: "298,400",   asset: "ARB",  deployers: 240, template: "rebalance" },
+          { id: "c-skim", name: "Stable fee skim",     author: "@quietco",  risk: "low",  apy: 5.6,  tvl: "1,840,210", asset: "USDC", deployers: 612, template: "rebalance" },
+        ],
+
+        // ── Templates (builder-workspace.jsx) ─────────
+        templates: {
+          blank: {
+            label: "Blank",
+            nodes: [{ id: "n1", type: "settle", x: 40, y: 40, config: {} }],
+            edges: [],
+          },
+          leverage: {
+            label: "Leverage loop",
+            nodes: [
+              { id: "n1", type: "supply", x: 16,  y: 32,  config: { asset: "USDC", amount: "20,000" } },
+              { id: "n2", type: "borrow", x: 192, y: 32,  config: { asset: "ETH",  ltv: 65, amount: "8,400" } },
+              { id: "n3", type: "swap",   x: 368, y: 32,  config: { from: "ETH", to: "USDC", slip: 0.5, amount: "≈20,400" } },
+              { id: "n4", type: "repeat", x: 192, y: 148, config: { loops: 4 } },
+              { id: "n5", type: "settle", x: 368, y: 148, config: {} },
+            ],
+            edges: [
+              { from: "n1", to: "n2" },
+              { from: "n2", to: "n3" },
+              { from: "n3", to: "n4" },
+              { from: "n4", to: "n5" },
+            ],
+          },
+          deltaNeutral: {
+            label: "Delta-neutral",
+            nodes: [
+              { id: "n1", type: "supply", x: 16,  y: 32,  config: { asset: "ETH", amount: "10" } },
+              { id: "n2", type: "borrow", x: 192, y: 32,  config: { asset: "USDC", ltv: 50, amount: "12,500" } },
+              { id: "n3", type: "swap",   x: 368, y: 32,  config: { from: "USDC", to: "ETH", slip: 0.3, amount: "≈4.9" } },
+              { id: "n5", type: "settle", x: 368, y: 148, config: {} },
+            ],
+            edges: [
+              { from: "n1", to: "n2" },
+              { from: "n2", to: "n3" },
+              { from: "n3", to: "n5" },
+            ],
+          },
+          rebalance: {
+            label: "Auto-rebalance",
+            nodes: [
+              { id: "n1", type: "supply", x: 16,  y: 32, config: { asset: "USDC", amount: "5,000" } },
+              { id: "n4", type: "repeat", x: 192, y: 32, config: { loops: 2 } },
+              { id: "n5", type: "settle", x: 368, y: 32, config: {} },
+            ],
+            edges: [
+              { from: "n1", to: "n4" },
+              { from: "n4", to: "n5" },
+            ],
+          },
+        },
 
         // ── Node Types (builder-workspace.jsx) ───────
         nodeTypes: {
@@ -425,64 +491,9 @@
       window.__MOCK__.PROPOSALS = data.proposals;
       window.__MOCK__.NODE_TYPES = data.nodeTypes;
 
-      // Community strategies (market.jsx) — not in BridgeBus events
-      window.__MOCK__.COMMUNITY = [
-        { id: "c-lev",  name: "Lean USDC leverage",  author: "@symulacr", risk: "low",  apy: 11.4, tvl: "1,284,210", asset: "USDC", deployers: 412, template: "leverage" },
-        { id: "c-dn",   name: "ETH delta-neutral",   author: "@haven",    risk: "med",  apy: 8.7,  tvl: "612,950",   asset: "ETH",  deployers: 188, template: "deltaNeutral" },
-        { id: "c-wbtc", name: "WBTC carry & swap",   author: "@symulacr", risk: "high", apy: 14.2, tvl: "402,180",   asset: "WBTC", deployers: 71,  template: "leverage" },
-        { id: "c-arb",  name: "ARB incentive sweep", author: "@plux",     risk: "med",  apy: 22.8, tvl: "298,400",   asset: "ARB",  deployers: 240, template: "rebalance" },
-        { id: "c-skim", name: "Stable fee skim",     author: "@quietco",  risk: "low",  apy: 5.6,  tvl: "1,840,210", asset: "USDC", deployers: 612, template: "rebalance" },
-      ];
-
-      // Builder workspace static data
-      window.__MOCK__.TEMPLATES = {
-        blank: {
-          label: "Blank",
-          nodes: [{ id: "n1", type: "settle", x: 40, y: 40, config: {} }],
-          edges: [],
-        },
-        leverage: {
-          label: "Leverage loop",
-          nodes: [
-            { id: "n1", type: "supply", x: 16,  y: 32,  config: { asset: "USDC", amount: "20,000" } },
-            { id: "n2", type: "borrow", x: 192, y: 32,  config: { asset: "ETH",  ltv: 65, amount: "8,400" } },
-            { id: "n3", type: "swap",   x: 368, y: 32,  config: { from: "ETH", to: "USDC", slip: 0.5 } },
-            { id: "n4", type: "repeat", x: 544, y: 32,  config: { loops: 3 } },
-          ],
-          edges: [
-            { from: "n1", to: "n2" },
-            { from: "n2", to: "n3" },
-            { from: "n3", to: "n4" },
-            { from: "n4", to: "n1" },
-          ],
-        },
-        deltaNeutral: {
-          label: "Delta neutral",
-          nodes: [
-            { id: "n1", type: "supply", x: 16,  y: 32,  config: { asset: "ETH", amount: "10,000" } },
-            { id: "n2", type: "borrow", x: 192, y: 32,  config: { asset: "USDC", ltv: 50, amount: "5,000" } },
-            { id: "n3", type: "swap",   x: 368, y: 32,  config: { from: "USDC", to: "ETH", slip: 0.3 } },
-            { id: "n4", type: "settle", x: 544, y: 32,  config: {} },
-          ],
-          edges: [
-            { from: "n1", to: "n2" },
-            { from: "n2", to: "n3" },
-            { from: "n3", to: "n4" },
-          ],
-        },
-        rebalance: {
-          label: "Rebalance",
-          nodes: [
-            { id: "n1", type: "supply", x: 16,  y: 32,  config: { asset: "USDC", amount: "15,000" } },
-            { id: "n2", type: "borrow", x: 192, y: 32,  config: { asset: "ETH",  ltv: 40, amount: "3,600" } },
-            { id: "n3", type: "settle", x: 368, y: 32,  config: {} },
-          ],
-          edges: [
-            { from: "n1", to: "n2" },
-            { from: "n2", to: "n3" },
-          ],
-        },
-      };
+      // Community strategies and builder static data
+      window.__MOCK__.COMMUNITY = data.community;
+      window.__MOCK__.TEMPLATES = data.templates;
       window.__MOCK__.DEFAULT_CONFIG = {
         supply: { asset: "USDC", amount: "10,000" },
         borrow: { asset: "ETH",  ltv: 50, amount: "4,000" },
@@ -530,6 +541,16 @@
      * @param {string}          spec.name       - Human-readable source name (for error logging)
      * @returns {Promise<*>} Resolves with the transformed data for chaining
      */
+    DataFetcherV2.prototype._unwrapApiResult = function (result, source) {
+      if (result && typeof result === 'object' && result.status === 'success' && Object.prototype.hasOwnProperty.call(result, 'data')) {
+        return result.data;
+      }
+      if (result && typeof result === 'object' && result.status === 'error') {
+        throw result.error || new Error(source + ' request failed');
+      }
+      return result;
+    };
+
     DataFetcherV2.prototype._fetchAndTransform = function (spec) {
       var self = this;
 
@@ -541,21 +562,13 @@
 
       return spec.fetch()
         .then(function (raw) {
-          var transformed = spec.transform ? spec.transform(raw) : raw;
+          var payload = self._unwrapApiResult(raw, spec.name);
+          var transformed = spec.transform ? spec.transform(payload) : payload;
           if (self._bus) {
             self._bus.set(spec.event, transformed);
           }
-          // Write to window.__MOCK__ for backward compatibility with the
-          // Babel plugin's mock interceptor (e.g. var X = __MOCK__.X ?? default).
-          // This mirrors what _writeMockData does for demo mode, but for
-          // live API data.  The ForgeProvider no longer writes __MOCK__ on
-          // data events to avoid redundant double-assignments.
-          if (typeof window !== 'undefined' && window.__MOCK__) {
-            var mockKey = EVENT_TO_MOCK_KEY[spec.event];
-            if (mockKey) {
-              window.__MOCK__[mockKey] = transformed;
-            }
-          }
+          // Live fetches write only to BridgeBus. __MOCK__ remains a demo-mode
+          // compatibility surface and must not be mutated by real data polling.
           return transformed;
         })
         .catch(function (err) {
@@ -580,6 +593,10 @@
           message: message,
           timestamp: new Date().toISOString(),
         });
+      }
+
+      if (this._publicStarted && source !== 'readiness') {
+        this._fetchReadiness();
       }
     };
 
@@ -611,7 +628,100 @@
       });
     };
 
+    /**
+     * Resolve optional contract read helpers from both supported bridge shapes:
+     *   - b.contract.read.getUserPositions(...)
+     *   - b.contract.strategyVault.getUserPositions(...)
+     *
+     * @param {Object} bridge
+     * @param {string} helper
+     * @returns {Function|null}
+     */
+    DataFetcherV2.prototype._getContractReadHelper = function (bridge, helper) {
+      if (!bridge || !bridge.contract) return null;
+      if (bridge.contract.read && typeof bridge.contract.read[helper] === 'function') {
+        return bridge.contract.read[helper].bind(bridge.contract.read);
+      }
+      if (helper === 'getUserPositions' && typeof bridge.contract.read === 'function') {
+        return function (addr) {
+          return bridge.contract.read('LendingPool', 'getUserAccounts', [addr]);
+        };
+      }
+      if (bridge.contract.strategyVault && typeof bridge.contract.strategyVault[helper] === 'function') {
+        return bridge.contract.strategyVault[helper].bind(bridge.contract.strategyVault);
+      }
+      if (bridge.contract.lendingPool && typeof bridge.contract.lendingPool[helper] === 'function') {
+        return bridge.contract.lendingPool[helper].bind(bridge.contract.lendingPool);
+      }
+      return null;
+    };
+
+    /**
+     * Return an empty real-data position payload with explicit status.
+     * @param {string} status
+     * @param {string} reason
+     * @param {Array} markets
+     * @returns {{ supplies: Array, borrows: Array, vaultPositions: Array, markets: Array, status: string, reason: string }}
+     */
+    DataFetcherV2.prototype._emptyPositionsPayload = function (status, reason, markets) {
+      return {
+        supplies: [],
+        borrows: [],
+        vaultPositions: [],
+        markets: Array.isArray(markets) ? markets : [],
+        status: status,
+        reason: reason,
+      };
+    };
+
     /* ── Individual Fetch Functions ─────────────────── */
+
+    DataFetcherV2.prototype._normalizeReadinessResult = function (result, source) {
+      if (result && typeof result === 'object' && result.status === 'success' && Object.prototype.hasOwnProperty.call(result, 'data')) {
+        return { status: 'success', data: result.data, error: null };
+      }
+      if (result && typeof result === 'object' && result.status === 'error') {
+        return {
+          status: 'error',
+          data: null,
+          error: result.error && result.error.message ? result.error.message : String(result.error || source + ' request failed'),
+        };
+      }
+      return { status: 'success', data: result, error: null };
+    };
+
+    DataFetcherV2.prototype._fetchReadiness = function () {
+      var self = this;
+
+      if (this._isFetchingReadiness) {
+        return Promise.resolve();
+      }
+
+      this._isFetchingReadiness = true;
+      return this._fetchAndTransform({
+        fetch: function () {
+          return self._getBridge().then(function (b) {
+            var systemReady = b.api && b.api.system && (b.api.system.getReady || b.api.system.getReadiness);
+            var marketsStatus = b.api && b.api.markets && b.api.markets.getStatus;
+            return Promise.all([
+              systemReady ? systemReady.call(b.api.system) : Promise.resolve({ status: 'unavailable', data: null, error: null }),
+              marketsStatus ? marketsStatus.call(b.api.markets) : Promise.resolve({ status: 'unavailable', data: null, error: null }),
+            ]).then(function (results) {
+              return {
+                ready: self._normalizeReadinessResult(results[0], 'backend readiness'),
+                markets: self._normalizeReadinessResult(results[1], 'markets status'),
+                checkedAt: new Date().toISOString(),
+              };
+            });
+          });
+        },
+        transform: null,
+        event: 'data:readiness',
+        name: 'readiness',
+      }).finally(function () {
+        self._isFetchingReadiness = false;
+      });
+    };
 
     DataFetcherV2.prototype._fetchTicker = function () {
       var self = this;
@@ -654,22 +764,77 @@
       return this._fetchAndTransform({
         fetch: function () {
           return self._getBridge().then(function (b) {
-            var addr = b.wallet.getAccount();
-            if (!addr) throw new Error('No wallet connected');
+            var addr = b.wallet && typeof b.wallet.getAccount === 'function' ? b.wallet.getAccount() : null;
+            if (!addr) {
+              return self._emptyPositionsPayload('locked', 'No wallet connected', []);
+            }
+
+            var getUserPositions = self._getContractReadHelper(b, 'getUserPositions');
+            if (!getUserPositions) {
+              return (b.api && b.api.markets && typeof b.api.markets.getMarkets === 'function'
+                ? b.api.markets.getMarkets().catch(function () { return []; })
+                : Promise.resolve([])
+              ).then(function (markets) {
+                return self._emptyPositionsPayload(
+                  'unavailable',
+                  'No position read helper available on bridge contract adapter',
+                  markets,
+                );
+              });
+            }
+
             return Promise.all([
-              b.contract.read('LendingPool', 'getUserAccounts', [addr]),
-              b.api.markets.getMarkets(),
+              getUserPositions(addr).catch(function (err) {
+                return { __error: err };
+              }),
+              b.api && b.api.markets && typeof b.api.markets.getMarkets === 'function'
+                ? b.api.markets.getMarkets().catch(function () { return []; })
+                : Promise.resolve([]),
             ]).then(function (results) {
-              var accounts = results[0] || {};
+              var rawPositions = results[0];
+              var markets = results[1] || [];
+
+              if (rawPositions && rawPositions.__error) {
+                return self._emptyPositionsPayload(
+                  'error',
+                  rawPositions.__error.message || String(rawPositions.__error),
+                  markets,
+                );
+              }
+
+              if (!rawPositions || (Array.isArray(rawPositions) && rawPositions.length === 0)) {
+                return self._emptyPositionsPayload('empty', 'No positions returned by contract', markets);
+              }
+
+              if (!Array.isArray(rawPositions) && (rawPositions.supplies || rawPositions.borrows)) {
+                return {
+                  supplies: rawPositions.supplies || [],
+                  borrows: rawPositions.borrows || [],
+                  vaultPositions: rawPositions.vaultPositions || [],
+                  markets: markets,
+                };
+              }
+
               return {
-                supplies: accounts.supplies || [],
-                borrows: accounts.borrows || [],
-                markets: results[1] || [],
+                supplies: [],
+                borrows: [],
+                vaultPositions: Array.isArray(rawPositions) ? rawPositions : [rawPositions],
+                markets: markets,
+                status: 'locked',
+                reason: 'Encrypted vault positions require a decrypt permit before amounts can be displayed',
               };
             });
           });
         },
         transform: function (raw) {
+          if (raw && (raw.status === 'locked' || raw.status === 'empty' || raw.status === 'unavailable' || raw.status === 'error')) {
+            return {
+              items: [],
+              status: raw.status,
+              reason: raw.reason,
+              vaultPositions: raw.vaultPositions || [],
+            };
+          }
           if (!self._xf) return raw;
           return self._xf.transformPositions(raw.supplies, raw.borrows, raw.markets);
         },
@@ -679,13 +844,20 @@
         // Compute portfolio metrics and write walletBalance as a separate side effect.
         // Intentionally outside the transform function to keep it pure.
         if (!self._xf || !self._bus || !positions) return;
-        var netValue = self._xf.calculateNetValue(positions);
-        var ltv = self._xf.calculateLTV(positions);
+        var positionItems = Array.isArray(positions) ? positions : positions.items;
+        var netValue = self._xf.calculateNetValue(positionItems);
+        var ltv = self._xf.calculateLTV(positionItems);
+        var previousWalletBalance = null;
+        if (self._bus && typeof self._bus.getState === 'function') {
+          previousWalletBalance = self._bus.getState().authed.walletBalance;
+        }
         self._bus.set('data:walletBalance', {
+          balance: previousWalletBalance && previousWalletBalance.balance != null ? previousWalletBalance.balance : null,
+          nativeBalanceWei: previousWalletBalance && previousWalletBalance.nativeBalanceWei,
+          asset: previousWalletBalance && previousWalletBalance.asset,
           netValue: netValue,
           portfolioLTV: ltv.ratio,
           ltvGaugeValue: ltv.gaugeValue,
-          balance: null,
         });
       });
     };
@@ -714,6 +886,43 @@
       });
     };
 
+    DataFetcherV2.prototype._fetchCommunity = function () {
+      var self = this;
+      return this._fetchAndTransform({
+        fetch: function () {
+          return self._getBridge().then(function (b) {
+            if (b.api && b.api.strategies && typeof b.api.strategies.listStrategies === 'function') {
+              return b.api.strategies.listStrategies({});
+            }
+            throw new Error('Community strategies endpoint not available');
+          });
+        },
+        transform: function (raw) { return raw; },
+        event: 'data:community',
+        name: 'community',
+      });
+    };
+
+    DataFetcherV2.prototype._fetchTemplates = function () {
+      var self = this;
+      return this._fetchAndTransform({
+        fetch: function () {
+          return self._getBridge().then(function (b) {
+            if (b.api && b.api.defiTemplates && typeof b.api.defiTemplates.getTemplates === 'function') {
+              return b.api.defiTemplates.getTemplates();
+            }
+            if (b.api && b.api.defiStrategies && typeof b.api.defiStrategies.getTemplates === 'function') {
+              return b.api.defiStrategies.getTemplates();
+            }
+            throw new Error('Strategy templates endpoint not available');
+          });
+        },
+        transform: function (raw) { return raw; },
+        event: 'data:templates',
+        name: 'templates',
+      });
+    };
+
     DataFetcherV2.prototype._fetchNodeTypes = function () {
       var self = this;
       return this._fetchAndTransform({
@@ -731,15 +940,41 @@
       return this._fetchAndTransform({
         fetch: function () {
           return self._getBridge().then(function (b) {
-            var addr = b.wallet.getAccount();
+            var addr = b.wallet && typeof b.wallet.getAccount === 'function' ? b.wallet.getAccount() : null;
             if (!addr) throw new Error('No wallet connected');
+            if (typeof b.wallet.getBalance !== 'function') {
+              throw new Error('Wallet balance helper not available');
+            }
             return b.wallet.getBalance(addr);
           });
         },
-        transform: function (raw) { return raw; },
+        transform: function (raw) {
+          var previousWalletBalance = null;
+          if (self._bus && typeof self._bus.getState === 'function') {
+            previousWalletBalance = self._bus.getState().authed.walletBalance;
+          }
+          return {
+            balance: typeof raw === 'bigint' ? (Number(raw) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 6 }) : String(raw),
+            nativeBalanceWei: String(raw),
+            asset: 'ETH',
+            netValue: previousWalletBalance && previousWalletBalance.netValue,
+            portfolioLTV: previousWalletBalance && previousWalletBalance.portfolioLTV,
+            ltvGaugeValue: previousWalletBalance && previousWalletBalance.ltvGaugeValue,
+          };
+        },
         event: 'data:walletBalance',
         name: 'walletBalance',
       });
+    };
+
+    DataFetcherV2.prototype.refreshAfterTransaction = function () {
+      this._fetchTicker();
+      this._fetchMarkets();
+      if (this._authStarted) {
+        this._fetchPositions();
+        this._fetchWalletBalance();
+        this._fetchActivities();
+      }
     };
 
     /* ── Interval Management ────────────────────────── */

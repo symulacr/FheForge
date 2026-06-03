@@ -3,15 +3,32 @@
 // Right: BuilderWorkspace for the selected strategy.
 
 const { useState: useStateM, useEffect: useEffectM } = React;
+const EMPTY_BRIDGE_CONTEXT_M = React.createContext({ data: {} });
 
-const COMMUNITY = [
-  { id: "c-lev",  name: "Lean USDC leverage",  author: "@symulacr", risk: "low",  apy: 11.4, tvl: "1,284,210", asset: "USDC", deployers: 412, template: "leverage" },
-  { id: "c-dn",   name: "ETH delta-neutral",   author: "@haven",    risk: "med",  apy: 8.7,  tvl: "612,950",   asset: "ETH",  deployers: 188, template: "deltaNeutral" },
-  { id: "c-wbtc", name: "WBTC carry & swap",   author: "@symulacr", risk: "high", apy: 14.2, tvl: "402,180",   asset: "WBTC", deployers: 71,  template: "leverage" },
-  { id: "c-arb",  name: "ARB incentive sweep", author: "@plux",     risk: "med",  apy: 22.8, tvl: "298,400",   asset: "ARB",  deployers: 240, template: "rebalance" },
-  { id: "c-skim", name: "Stable fee skim",     author: "@quietco",  risk: "low",  apy: 5.6,  tvl: "1,840,210", asset: "USDC", deployers: 612, template: "rebalance" },
-  { id: "c-lst",  name: "ETH liquid-staking",  author: "@haven",    risk: "med",  apy: 9.4,  tvl: "894,100",   asset: "ETH",  deployers: 192, template: "leverage" },
-];
+function useOptionalBridgeDataM() {
+  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
+  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_M).data || {};
+}
+
+function normalizeCommunityM(item) {
+  const apyRaw = item.apy ?? item.estimatedApy ?? item.supplyApy ?? 0;
+  const apyNum = typeof apyRaw === "string" ? parseFloat(apyRaw) : apyRaw;
+  return {
+    id: item.id || item.strategyId || item.name,
+    name: item.name || item.title || "Unnamed strategy",
+    author: item.author || item.creator || item.proposer || "—",
+    risk: (item.risk || item.riskLevel || "").toLowerCase(),
+    apy: Number.isFinite(apyNum) ? apyNum : null,
+    tvl: item.tvl || item.totalValueLocked || item.staked || "—",
+    asset: item.asset || item.symbol || "—",
+    deployers: item.deployers ?? item.deployerCount ?? item.users ?? 0,
+    template: item.template || item.templateId || null,
+  };
+}
+
+function getTemplateSetM(templates) {
+  return templates && !Array.isArray(templates) && typeof templates === "object" ? templates : null;
+}
 
 const M_KEY = "fheforge:strategies:v4";
 
@@ -23,17 +40,14 @@ function loadDrafts() {
       if (Array.isArray(parsed)) return parsed;
     }
   } catch {}
-  // First-run default: one draft from the leverage template
-  const t = TEMPLATES.leverage;
-  return [{
-    id: "d-default",
-    name: "Lean USDC leverage v3",
-    nodes: t.nodes.map(n => ({ ...n })),
-    edges: t.edges.map(e => ({ ...e })),
-  }];
+  return [];
 }
 
 function Market({ setRoute, ctx, grantPermit, openConnect }) {
+  const bridgeData = useOptionalBridgeDataM();
+  const templates = getTemplateSetM(bridgeData.templates);
+  const nodeTypes = bridgeData.nodeTypes && typeof bridgeData.nodeTypes === "object" ? bridgeData.nodeTypes : null;
+  const community = Array.isArray(bridgeData.community) ? bridgeData.community.map(normalizeCommunityM) : null;
   const [drafts, setDrafts] = useStateM(loadDrafts);
   const [selectedId, setSelectedId] = useStateM(drafts[0]?.id || null);
   const [filter, setFilter] = useStateM("all");
@@ -55,7 +69,10 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
   };
 
   const createDraft = (fromTemplate = "blank", name = null) => {
-    const t = TEMPLATES[fromTemplate] || TEMPLATES.blank;
+    const t = fromTemplate === "blank"
+      ? { nodes: [], edges: [] }
+      : templates?.[fromTemplate];
+    if (!t) return;
     const id = "d-" + Date.now().toString(36);
     const draft = {
       id,
@@ -73,7 +90,8 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
 
   const forkCommunity = (c) => {
     const id = "d-" + Date.now().toString(36);
-    const t = TEMPLATES[c.template] || TEMPLATES.leverage;
+    const t = c.template ? templates?.[c.template] : null;
+    if (!t) return;
     const idMap = {};
     t.nodes.forEach((n, i) => { idMap[n.id] = `n${i+1}-${id}`; });
     const draft = {
@@ -93,7 +111,7 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
     setConfirmDelete(null);
   };
 
-  const filteredCommunity = COMMUNITY.filter(c => filter === "all" || c.risk === filter)
+  const filteredCommunity = (community || []).filter(c => filter === "all" || c.risk === filter)
     .filter(c => !query || c.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
@@ -105,7 +123,7 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
             <span className="eyebrow">Strategies</span>
             <div className="row" style={{ gap: 6 }}>
               <button className="btn ghost sm" onClick={() => createDraft("blank")} title="Start from a blank canvas">+ New</button>
-              <button className="btn ghost sm" onClick={() => createDraft("leverage")} title="Start from a template">+ Template</button>
+              <button className="btn ghost sm" onClick={() => createDraft("leverage")} disabled={!templates?.leverage} title="Start from a template">+ Template</button>
             </div>
           </div>
           <input
@@ -178,7 +196,7 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
 
           <MDGroup>
             <div className="spread">
-              <span>Community · {filteredCommunity.length} of {COMMUNITY.length}</span>
+              <span>Community · {filteredCommunity.length} of {community ? community.length : 0}</span>
               <select value={filter} onChange={(e) => setFilter(e.target.value)}
                 style={{
                   fontFamily: "var(--mono)", fontSize: 10,
@@ -190,9 +208,14 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
               </select>
             </div>
           </MDGroup>
-          {filteredCommunity.length === 0 && (
+          {!community && (
             <div style={{ padding: "16px 20px", color: "var(--muted)", fontSize: 13 }}>
-              No matching strategies. Clear filter or search.
+              Community strategies unavailable.
+            </div>
+          )}
+          {community && filteredCommunity.length === 0 && (
+            <div style={{ padding: "16px 20px", color: "var(--muted)", fontSize: 13 }}>
+              {community.length === 0 ? "No strategies yet." : "No matching strategies. Clear filter or search."}
             </div>
           )}
           {filteredCommunity.map(c => (
@@ -204,15 +227,19 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
                   display: "inline-block" }} />
               }
               title={c.name}
-              sub={`apy ${c.apy.toFixed(1)}% · ${c.deployers} deployers`}
+              sub={`apy ${c.apy == null ? "—" : c.apy.toFixed(1) + "%"} · ${c.deployers} deployers`}
               right={
-                <span
-                  onClick={(e) => { e.stopPropagation(); forkCommunity(c); }}
-                  className="btn ghost sm" style={{ padding: "3px 8px", fontSize: 10 }}
-                  title="Fork as a new draft"
-                >Fork</span>
+                c.template && templates?.[c.template] ? (
+                  <span
+                    onClick={(e) => { e.stopPropagation(); forkCommunity(c); }}
+                    className="btn ghost sm" style={{ padding: "3px 8px", fontSize: 10 }}
+                    title="Fork as a new draft"
+                  >Fork</span>
+                ) : (
+                  <span className="mono" style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: 0.08 }}>unavailable</span>
+                )
               }
-              onClick={() => forkCommunity(c)}
+              onClick={() => c.template && templates?.[c.template] && forkCommunity(c)}
             />
           ))}
         </>
@@ -228,16 +255,17 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
             grantPermit={grantPermit}
             ctx={ctx}
             openConnect={openConnect}
+            nodeTypes={nodeTypes}
           />
         ) : (
-          <EmptyDetail createDraft={createDraft} />
+          <EmptyDetail createDraft={createDraft} templateAvailable={!!templates?.leverage} />
         )
       }
     />
   );
 }
 
-function EmptyDetail({ createDraft }) {
+function EmptyDetail({ createDraft, templateAvailable }) {
   return (
     <div style={{ display: "grid", placeItems: "center", height: "100%", minHeight: 400 }}>
       <div style={{ textAlign: "center", maxWidth: 420 }}>
@@ -247,7 +275,7 @@ function EmptyDetail({ createDraft }) {
         </p>
         <div className="row" style={{ gap: 8, justifyContent: "center" }}>
           <button className="btn" onClick={() => createDraft("blank")}>Start blank <span className="ar">→</span></button>
-          <button className="btn ghost" onClick={() => createDraft("leverage")}>Use a template</button>
+          <button className="btn ghost" onClick={() => createDraft("leverage")} disabled={!templateAvailable}>Use a template</button>
         </div>
       </div>
     </div>

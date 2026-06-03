@@ -10,6 +10,9 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 
+// Ensure window exists in Bun's test environment
+if (typeof window === 'undefined') { globalThis.window = globalThis; }
+
 // ─── React Mock Safeguard ─────────────────────────────────────────────
 // Other test files (e.g., connect-interceptor.test.js) may replace
 // globalThis.React with a partial mock that doesn't handle children args.

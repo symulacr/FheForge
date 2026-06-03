@@ -18,7 +18,15 @@ const MOCK_CONSTANTS = new Set([
   'PROPOSALS',
   'NODE_TYPES', 'TEMPLATES', 'DEFAULT_CONFIG',
   'TICKER_ITEMS', 'DEMO_ROWS',
+  // Function-scoped variable names mapped to __MOCK__ keys
+  'items',  // Ticker() → maps to TICKER_ITEMS
+  'rows',   // DemoCard() → maps to DEMO_ROWS
 ]);
+
+const VARIABLE_TO_MOCK_KEY = {
+  'items': 'TICKER_ITEMS',
+  'rows': 'DEMO_ROWS',
+};
 
 const VALUE_TO_MOCK_KEY = {
   '68,412.07': 'PORTFOLIO_NET_VALUE',
@@ -38,21 +46,20 @@ const VALUE_TO_MOCK_KEY = {
 };
 
 function buildMockRef(t, key) {
-  return t.optionalMemberExpression(
-    t.optionalMemberExpression(
+  return t.memberExpression(
+    t.memberExpression(
       t.identifier('window'),
       t.identifier('__MOCK__'),
-      false,
-      true
+      false
     ),
     t.identifier(key),
-    false,
-    true
+    false
   );
 }
 
 const mockDataPlugin = function (api) {
   const t = api.types;
+  const renderCallPaths = [];
 
   return {
     name: 'mock-data',
@@ -66,31 +73,15 @@ const mockDataPlugin = function (api) {
 
         parentDecl.node.kind = 'var';
 
-        path.node.init = t.logicalExpression(
-          '??',
-          buildMockRef(t, varName),
+        // Resolve mock key: use mapping when varName differs from __MOCK__ key
+        const resolvedMockKey = VARIABLE_TO_MOCK_KEY[varName] || varName;
+
+        // Wrap init: window.__MOCK__.Y != null ? window.__MOCK__.Y : originalValue
+        const mockRef = buildMockRef(t, resolvedMockKey);
+        path.node.init = t.conditionalExpression(
+          t.binaryExpression('!=', mockRef, t.nullLiteral()),
+          mockRef,
           path.node.init
-        );
-      },
-
-      Identifier(path) {
-        if (!MOCK_CONSTANTS.has(path.node.name)) return;
-        if (!path.isReferencedIdentifier()) return;
-
-        // Prevent infinite recursion: skip identifiers already inside
-        // a LogicalExpression('??') which is part of a previous replacement
-        if (
-          path.parentPath &&
-          path.parentPath.isLogicalExpression &&
-          path.parentPath.isLogicalExpression({ operator: '??' })
-        ) return;
-
-        path.replaceWith(
-          t.logicalExpression(
-            '??',
-            buildMockRef(t, path.node.name),
-            t.identifier(path.node.name)
-          )
         );
       },
 
@@ -109,47 +100,52 @@ const mockDataPlugin = function (api) {
         const mockKey = VALUE_TO_MOCK_KEY[attrValue.value];
         if (!mockKey) return;
 
+        const mockRef = buildMockRef(t, mockKey);
         path.node.value = t.jsxExpressionContainer(
-          t.logicalExpression(
-            '??',
-            buildMockRef(t, mockKey),
+          t.conditionalExpression(
+            t.binaryExpression('!=', mockRef, t.nullLiteral()),
+            mockRef,
             t.stringLiteral(attrValue.value)
           )
         );
       },
 
+      // Collect matching render call paths
+      CallExpression(path) {
+        const callee = path.node.callee;
+
+        // Must be xxx.render(...)
+        if (!t.isMemberExpression(callee)) return;
+        if (!t.isIdentifier(callee.property) || callee.property.name !== 'render') return;
+
+        // The object must be ReactDOM.createRoot(...)
+        const object = callee.object;
+        if (!t.isCallExpression(object)) return;
+
+        const objectCallee = object.callee;
+        if (!t.isMemberExpression(objectCallee)) return;
+        if (!t.isIdentifier(objectCallee.object) || objectCallee.object.name !== 'ReactDOM') return;
+        if (!t.isIdentifier(objectCallee.property) || objectCallee.property.name !== 'createRoot') return;
+
+        // Found ReactDOM.createRoot(...).render(...)
+        renderCallPaths.push(path);
+      },
+
       // v2: Program.exit — inject ForgeProvider wrapper around <App />
       Program: {
         exit(path) {
-          path.traverse({
-            CallExpression(nodePath) {
-              const callee = nodePath.node.callee;
+          for (let i = 0; i < renderCallPaths.length; i++) {
+            const nodePath = renderCallPaths[i];
+            const renderArg = nodePath.node.arguments[0];
+            if (!renderArg) continue;
 
-              // Must be xxx.render(...)
-              if (!t.isMemberExpression(callee)) return;
-              if (!t.isIdentifier(callee.property) || callee.property.name !== 'render') return;
-
-              // The object must be ReactDOM.createRoot(...)
-              const object = callee.object;
-              if (!t.isCallExpression(object)) return;
-
-              const objectCallee = object.callee;
-              if (!t.isMemberExpression(objectCallee)) return;
-              if (!t.isIdentifier(objectCallee.object) || objectCallee.object.name !== 'ReactDOM') return;
-              if (!t.isIdentifier(objectCallee.property) || objectCallee.property.name !== 'createRoot') return;
-
-              // Found ReactDOM.createRoot(...).render(...)
-              const renderArg = nodePath.node.arguments[0];
-              if (!renderArg) return;
-
-              // Wrap with ForgeProvider:
-              //   React.createElement(ForgeProvider, null, renderArg)
-              nodePath.node.arguments[0] = t.callExpression(
-                t.memberExpression(t.identifier('React'), t.identifier('createElement')),
-                [t.identifier('ForgeProvider'), t.nullLiteral(), renderArg]
-              );
-            },
-          });
+            // Wrap with ForgeProvider:
+            //   React.createElement(ForgeProvider, null, renderArg)
+            nodePath.node.arguments[0] = t.callExpression(
+              t.memberExpression(t.identifier('React'), t.identifier('createElement')),
+              [t.identifier('ForgeProvider'), t.nullLiteral(), renderArg]
+            );
+          }
         },
       },
     },
@@ -157,7 +153,7 @@ const mockDataPlugin = function (api) {
 };
 
 describe('mockDataPlugin - MOCK_CONSTANTS', () => {
-  it('contains all 11 documented constants', () => {
+  it('contains all 13 documented constants', () => {
     expect(MOCK_CONSTANTS.has('D_POSITIONS')).toBe(true);
     expect(MOCK_CONSTANTS.has('D_STRATS')).toBe(true);
     expect(MOCK_CONSTANTS.has('D_ACTIVITY')).toBe(true);
@@ -169,7 +165,10 @@ describe('mockDataPlugin - MOCK_CONSTANTS', () => {
     expect(MOCK_CONSTANTS.has('DEFAULT_CONFIG')).toBe(true);
     expect(MOCK_CONSTANTS.has('TICKER_ITEMS')).toBe(true);
     expect(MOCK_CONSTANTS.has('DEMO_ROWS')).toBe(true);
-    expect(MOCK_CONSTANTS.size).toBe(11);
+    // Function-scoped variable names mapped to __MOCK__ keys
+    expect(MOCK_CONSTANTS.has('items')).toBe(true);
+    expect(MOCK_CONSTANTS.has('rows')).toBe(true);
+    expect(MOCK_CONSTANTS.size).toBe(13);
   });
 });
 
@@ -207,7 +206,7 @@ describe('mockDataPlugin - VALUE_TO_MOCK_KEY', () => {
 });
 
 describe('mockDataPlugin - VariableDeclarator visitor', () => {
-  it('transforms const D_POSITIONS to var with __MOCK__?? fallback', () => {
+  it('transforms const D_POSITIONS to var with __MOCK__ ternary fallback', () => {
     const input = `const D_POSITIONS = [{id: "pos-1"}];`;
     const output = Babel.transform(input, {
       plugins: [mockDataPlugin],
@@ -215,8 +214,8 @@ describe('mockDataPlugin - VariableDeclarator visitor', () => {
     }).code;
 
     expect(output).toContain('var D_POSITIONS');
-    expect(output).toContain('window?.__MOCK__?.D_POSITIONS');
-    expect(output).toContain('??');
+    expect(output).toContain('window.__MOCK__.D_POSITIONS');
+    expect(output).toContain('!=');
     expect(output).not.toContain('const D_POSITIONS');
   });
 
@@ -231,7 +230,7 @@ describe('mockDataPlugin - VariableDeclarator visitor', () => {
     expect(output).not.toContain('__MOCK__');
   });
 
-  it('transforms all 11 mock constants', () => {
+  it('transforms all 13 mock constants', () => {
     for (const constName of MOCK_CONSTANTS) {
       const input = `const ${constName} = "test";`;
       const output = Babel.transform(input, {
@@ -239,34 +238,13 @@ describe('mockDataPlugin - VariableDeclarator visitor', () => {
         filename: 'test.js',
       }).code;
 
+      // Resolve mock key: function-scoped vars like 'items' map to
+      // 'TICKER_ITEMS' in window.__MOCK__
+      const mockKey = VARIABLE_TO_MOCK_KEY[constName] || constName;
+
       expect(output).toContain(`var ${constName}`);
-      expect(output).toContain(`window?.__MOCK__?.${constName}`);
+      expect(output).toContain(`window.__MOCK__.${mockKey}`);
     }
-  });
-});
-
-describe('mockDataPlugin - Identifier visitor', () => {
-  it('replaces referenced MOCK_CONSTANTS with __MOCK__ lookups', () => {
-    const input = `function Test() { return React.createElement('div', null, D_POSITIONS); }`;
-    const output = Babel.transform(input, {
-      plugins: [mockDataPlugin],
-      filename: 'test.js',
-    }).code;
-
-    expect(output).toContain('window?.__MOCK__?.D_POSITIONS');
-    expect(output).toContain('D_POSITIONS');
-  });
-
-  it('does not replace non-referenced identifiers', () => {
-    const input = `const D_POSITIONS = [];`;
-    const output = Babel.transform(input, {
-      plugins: [mockDataPlugin],
-      filename: 'test.js',
-    }).code;
-
-    // The VariableDeclarator visitor transforms the declaration
-    // The Identifier visitor only affects referenced identifiers, not declarations
-    expect(output).toContain('var D_POSITIONS');
   });
 });
 
@@ -279,7 +257,7 @@ describe('mockDataPlugin - JSXAttribute visitor', () => {
       filename: 'test.jsx',
     }).code;
 
-    expect(output).toContain('__MOCK__?.PORTFOLIO_NET_VALUE');
+    expect(output).toContain('__MOCK__.PORTFOLIO_NET_VALUE');
     // The value should be in an expression container, not a plain string
     expect(output).not.toContain('value="68,412.07"');
   });
@@ -316,7 +294,7 @@ describe('mockDataPlugin - JSXAttribute visitor', () => {
         filename: 'test.jsx',
       }).code;
 
-      expect(output).toContain(`__MOCK__?.${mockKey}`);
+      expect(output).toContain(`__MOCK__.${mockKey}`);
     }
   });
 });
@@ -393,7 +371,7 @@ describe('mockDataPlugin - v2 Program.exit (ForgeProvider injection)', () => {
 
     // v1: D_POSITIONS should be var with __MOCK__ lookup
     expect(output).toContain('var D_POSITIONS');
-    expect(output).toContain('window?.__MOCK__?.D_POSITIONS');
+    expect(output).toContain('window.__MOCK__.D_POSITIONS');
     // v2: Should contain ForgeProvider wrapping
     expect(output).toContain('ForgeProvider');
   });
@@ -413,7 +391,7 @@ describe('mockDataPlugin - v2 Program.exit (ForgeProvider injection)', () => {
     }).code;
 
     // v1: Cipher value should be transformed to __MOCK__.PORTFOLIO_NET_VALUE
-    expect(output).toContain('__MOCK__?.PORTFOLIO_NET_VALUE');
+    expect(output).toContain('__MOCK__.PORTFOLIO_NET_VALUE');
     // v2: Should contain ForgeProvider wrapping
     expect(output).toContain('ForgeProvider');
   });
@@ -455,7 +433,7 @@ describe('Babel.transform monkey-patch', () => {
     const output = Babel.transform(input, { filename: 'test.js' }).code;
 
     expect(output).toContain('var D_POSITIONS');
-    expect(output).toContain('window?.__MOCK__?.D_POSITIONS');
+    expect(output).toContain('window.__MOCK__.D_POSITIONS');
 
     // Restore
     Babel.transform = origTransform;

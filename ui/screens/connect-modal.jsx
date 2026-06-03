@@ -3,15 +3,33 @@
 // mid-flow doesn't kick to step 1.
 
 const { useState: useStateCM, useEffect: useEffectCM } = React;
+const EMPTY_BRIDGE_CONTEXT_CM = React.createContext({ meta: { errors: [] } });
+
+function getBridgeErrorCodeCM(error) {
+  return error && (error.code || error.errorCode || (error.error && error.error.code));
+}
+
+function getBridgeErrorMessageCM(error) {
+  if (!error) return "";
+  return String(error.message || (error.error && error.error.message) || error);
+}
 
 const CM_KEY = "fheforge:connect:step";
 
-function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
+function ConnectModal({ open, onClose, ctx, setCtx, grantPermit, onNext }) {
   // Step state lives independently of ctx so the user can walk the flow
   // visually before ctx flips. Initialized once, syncs forward on open.
   const [step, setStep] = useStateCM(0);
   const [wallet, setWallet] = useStateCM("metamask");
   const [pulse, setPulse] = useStateCM(false);
+  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
+  const bridge = React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_CM);
+  const latestError = ((bridge.meta && bridge.meta.errors) || []).slice().reverse().find((err) => err && (err.source === "connect" || err.step != null || getBridgeErrorCodeCM(err) === "PROVIDER_NOT_FOUND"));
+  const latestErrorCode = getBridgeErrorCodeCM(latestError);
+  const latestErrorMessage = getBridgeErrorMessageCM(latestError);
+  const errorMessage = latestError ? (latestErrorCode === "PROVIDER_NOT_FOUND"
+    ? "Wallet provider not found. Install or enable MetaMask/Rabby, then retry."
+    : latestErrorMessage) : null;
 
   // When modal opens, jump to the correct step based on ctx, AND restore
   // any in-flight step from sessionStorage.
@@ -44,6 +62,18 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
       return () => clearTimeout(id);
     }
   }, [step, open, onClose]);
+
+  // Listen for step:advanced from interceptor
+  useEffectCM(() => {
+    const bus = window.__bridgeBus;
+    if (!bus) return;
+    const unsub = bus.on('step:advanced', (data) => {
+      if (data.to !== undefined && typeof setStep === 'function') {
+        setStep(data.to);
+      }
+    });
+    return () => { if (typeof unsub === 'function') unsub(); };
+  }, []);
 
   const STEPS = [
     { k: "wallet", t: "Pick a wallet" },
@@ -82,21 +112,34 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
 
       {/* Body */}
       <div style={{ overflow: "auto" }}>
-        {step === 0 && <StepWallet wallet={wallet} setWallet={setWallet} onNext={() => setStep(1)} />}
+        {errorMessage && (
+          <div style={{ margin: "14px 16px 0", padding: "10px 12px", border: "1px solid var(--danger)", color: "var(--danger)", background: "var(--danger-soft)", fontFamily: "var(--mono)", fontSize: 11, lineHeight: 1.5 }}>
+            {errorMessage}
+          </div>
+        )}
+        {step === 0 && <StepWallet wallet={wallet} setWallet={setWallet} onNext={(selectedWallet) => {
+          if (onNext) onNext(selectedWallet, step);
+          else setStep(1);
+        }} />}
         {step === 1 && <StepSign
           onBack={() => setStep(0)}
           onNext={() => {
-            // Set connected first, then advance to next step deterministically
-            setCtx(c => ({ ...c, connected: true, address: "0x9f3a2c4b1e0d8f7a6c5b4a39" }));
-            // Use a microtask to avoid stale-ctx race on the next render's effect
-            queueMicrotask(() => setStep(2));
+            if (onNext) onNext(undefined, step);
+            else queueMicrotask(() => setStep(2));
           }}
         />}
         {step === 2 && <StepPermit
           onBack={() => setStep(1)}
-          onNext={() => {
-            grantPermit();
-            queueMicrotask(() => setStep(3));
+          onNext={async () => {
+            try {
+              if (onNext) onNext(undefined, step);
+              else {
+                await grantPermit();
+                queueMicrotask(() => setStep(3));
+              }
+            } catch (err) {
+              console.error('[ConnectModal] Permit grant failed:', err);
+            }
           }}
         />}
         {step === 3 && <StepReady pulse={pulse} />}
@@ -110,7 +153,6 @@ function StepWallet({ wallet, setWallet, onNext }) {
     { k: "metamask", name: "MetaMask", sub: "Browser extension" },
     { k: "rabby",    name: "Rabby",    sub: "Recommended for DeFi" },
     { k: "wc",       name: "WalletConnect", sub: "Mobile pairing" },
-    { k: "ledger",   name: "Ledger",   sub: "Hardware" },
   ];
   return (
     <div style={{ padding: 20 }}>
@@ -143,7 +185,7 @@ function StepWallet({ wallet, setWallet, onNext }) {
         ))}
       </div>
       <div className="row" style={{ gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
-        <button className="btn sm" onClick={onNext}>Continue <span className="ar">→</span></button>
+        <button className="btn sm" onClick={() => onNext(wallet)}>Continue <span className="ar">→</span></button>
       </div>
     </div>
   );
@@ -163,10 +205,9 @@ function StepSign({ onBack, onNext }) {
         border: "1px solid var(--hairline)",
         overflowX: "auto", marginBottom: 14, marginTop: 0,
       }}>
-{`fheforge.app wants to sign in:
-0x9f3a2c4b…b4a39
+{`fheforge.app requests a wallet signature.
 
-Nonce: 7a1d4c9e2b8f30a6
+The nonce and exact message come from the FheForge API.
 Chain: 421614 · Arbitrum Sepolia`}
       </pre>
       <div className="row" style={{ gap: 8, justifyContent: "space-between" }}>

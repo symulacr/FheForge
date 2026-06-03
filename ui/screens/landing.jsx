@@ -3,7 +3,43 @@
 // Connect button opens the Connect modal; CTAs route into the app.
 
 const { useState: useStateH, useEffect: useEffectH, useRef: useRefH } = React;
+const EMPTY_BRIDGE_CONTEXT_H = React.createContext({ data: {}, meta: { errors: [] } });
+
+function useOptionalBridgeH() {
+  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
+  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_H);
+}
+
+function classifyBridgeStatusH(message, fallback) {
+  const lower = String(message || "").toLowerCase();
+  if (lower.includes("registry")) return "registry unavailable";
+  if (lower.includes("rpc") || lower.includes("viem") || lower.includes("contract") || lower.includes("on-chain")) return "RPC unavailable";
+  if (lower.includes("backend") || lower.includes("api") || lower.includes("fetch") || lower.includes("network") || lower.includes("request")) return "backend unavailable";
+  return fallback || "bridge unavailable";
+}
+
+function bridgeStatusH(bridge, key, fallback) {
+  const meta = (bridge && bridge.meta) || {};
+  const data = (bridge && bridge.data) || {};
+  const readiness = meta.readiness || bridge.readiness || data.readiness || {};
+  const entry = readiness[key] || readiness[String(key).replace(/s$/, "")] || null;
+  if (entry) {
+    const status = String(entry.status || entry.state || "").toLowerCase();
+    if (status === "ready" || status === "ok" || status === "available") return null;
+    return classifyBridgeStatusH(entry.reason || entry.message || status, fallback);
+  }
+  const errors = Array.isArray(meta.errors) ? meta.errors : [];
+  const error = errors.slice().reverse().find((err) => {
+    const source = String(err && err.source || "").toLowerCase();
+    const message = String(err && (err.message || (err.error && err.error.message)) || "").toLowerCase();
+    return source.includes(key) || message.includes(key) || message.includes("registry") || message.includes("rpc");
+  });
+  return error ? classifyBridgeStatusH(String(error.message || (error.error && error.error.message) || error), fallback) : fallback;
+}
+
 function Landing({ setRoute, ctx, grantPermit, openConnect }) {
+  const bridge = useOptionalBridgeH();
+  const bridgeData = bridge.data || {};
   // Auto-play cipher cycle · only when wallet not connected (used as marketing demo)
   const [demoLocked, setDemoLocked] = useStateH(true);
   useEffectH(() => {
@@ -108,24 +144,57 @@ function Landing({ setRoute, ctx, grantPermit, openConnect }) {
             transform: revealed ? "translateY(0)" : "translateY(14px)",
             transition: "opacity 600ms var(--ease) 150ms, transform 600ms var(--ease) 150ms",
           }}>
-            <DemoCard locked={portfolioLocked} isReal={isReal} ctx={ctx} onToggle={() => isReal ? grantPermit() : setDemoLocked(l => !l)} />
+            <DemoCard locked={portfolioLocked} isReal={isReal} ctx={ctx} bridge={bridge} bridgeData={bridgeData} onToggle={() => isReal ? grantPermit() : setDemoLocked(l => !l)} />
           </div>
         </div>
       </section>
 
       {/* Bottom ticker · operational state of the protocol */}
-      <Ticker />
+      <Ticker items={bridgeData.ticker} />
     </main>
   );
 }
 
 /* ─── DemoCard · auto-playing permit cinematic ─── */
-function DemoCard({ locked, onToggle }) {
+function getBridgePositionItemsH(positions) {
+  if (Array.isArray(positions)) return positions;
+  if (positions && Array.isArray(positions.items)) return positions.items;
+  return [];
+}
+
+function sumPositionAmountsH(items, predicate) {
+  return items.reduce((sum, item) => {
+    if (!predicate(item)) return sum;
+    const raw = String(item.amount || item.amountUsd || item.value || "").replace(/[^\d.-]/g, "");
+    const n = Number(raw);
+    return Number.isFinite(n) ? sum + n : sum;
+  }, 0);
+}
+
+function formatValueH(value, fallback) {
+  if (value == null || value === "") return fallback;
+  if (typeof value === "number") return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return String(value);
+}
+
+function DemoCard({ locked, isReal, bridge, bridgeData, onToggle }) {
+  const items = getBridgePositionItemsH(bridgeData && bridgeData.positions);
+  const walletBalance = (bridgeData && bridgeData.walletBalance) || {};
+  const supplied = sumPositionAmountsH(items, (item) => item.side === "supply");
+  const borrowed = sumPositionAmountsH(items, (item) => item.side === "borrow");
+  const inStrategies = sumPositionAmountsH(items, (item) => item.side === "vault" || item.kind === "strategy");
+  const positionStatus = bridgeData && bridgeData.positions && bridgeData.positions.status;
+  const fallback = !isReal ? "wallet required" : positionStatus === "empty" ? "no position" : bridgeStatusH(bridge, "positions", positionStatus || "loading");
   const rows = [
-    ["Supplied",  "42,084.13", "USDC"],
-    ["Borrowed",  "18,910.00", "ETH"],
-    ["In strategies", "7,418.94", "USDC"],
+    ["Supplied", supplied > 0 ? formatValueH(supplied, fallback) : fallback, ""],
+    ["Borrowed", borrowed > 0 ? formatValueH(borrowed, fallback) : fallback, ""],
+    ["In strategies", inStrategies > 0 ? formatValueH(inStrategies, fallback) : fallback, ""],
   ];
+  const netValue = walletBalance.netValue || walletBalance.balance || fallback;
+  const changeLabel = walletBalance.change24h || (isReal ? bridgeStatusH(bridge, "walletBalance", "wallet status unavailable") : "wallet required");
+  const strategyLabel = Array.isArray(bridgeData && bridgeData.strategies)
+    ? `${bridgeData.strategies.length} strategies`
+    : (isReal ? bridgeStatusH(bridge, "strategies", "strategies unavailable") : "wallet required");
   return (
     <div className="permit-stage" data-permit={locked ? "locked" : "unlocked"}
          style={{
@@ -154,12 +223,12 @@ function DemoCard({ locked, onToggle }) {
       <div style={{ padding: 28 }}>
         <span className="eyebrow">net value · usd</span>
         <div style={{ marginTop: 6 }}>
-          <Cipher value="68,412.07" unit="USD" locked={locked} size="xxl" />
+          <Cipher value={netValue} unit="USD" locked={locked} size="xxl" />
         </div>
         <div className="row" style={{ gap: 18, marginTop: 14, color: "var(--muted)" }}>
-          <span className="mono" style={{ fontSize: 12 }}>+ 2.41% / 24h</span>
+          <span className="mono" style={{ fontSize: 12 }}>{changeLabel}</span>
           <span>·</span>
-          <span className="mono" style={{ fontSize: 12 }}>3 strategies</span>
+          <span className="mono" style={{ fontSize: 12 }}>{strategyLabel}</span>
         </div>
 
         <hr className="dashed" style={{ margin: "22px 0" }} />
@@ -195,20 +264,11 @@ function DemoCard({ locked, onToggle }) {
 }
 
 /* ─── Ticker · slow horizontal scroll of "live" state ─── */
-function Ticker() {
-  const items = [
-    "block #182,944,108",
-    "gas · 0.014 gwei",
-    "USDC pool tvl · $8.42M",
-    "ETH pool tvl · $4.18M",
-    "WBTC pool tvl · $1.80M",
-    "encrypted ops · 1.42M",
-    "permit decrypts · 42k / day",
-    "active strategies · 412",
-    "deployed via composer · 1,284",
-  ];
+function Ticker({ items }) {
+  const hasItems = Array.isArray(items) && items.length > 0;
+  const displayItems = hasItems ? items : ["loading bridge data"];
   // duplicate so the loop is seamless
-  const loop = [...items, ...items];
+  const loop = [...displayItems, ...displayItems];
   return (
     <div style={{
       borderTop: "1px solid var(--hairline)",

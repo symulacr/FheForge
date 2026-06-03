@@ -5,6 +5,12 @@
 
 const { useState: useStateA, useEffect: useEffectA, useCallback: useCallbackA } = React;
 
+// Safe component loader — guards against undefined window globals
+function safe(name, props = {}) {
+  const Component = window[name];
+  return Component ? React.createElement(Component, props) : null;
+}
+
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "startConnected": false,
   "startUnlocked": false,
@@ -40,11 +46,13 @@ function App() {
   const [route, setRoute] = useStateA("home");
 
   // Wallet / permit context
+  // In demo mode (window.__DEMO_MODE__), start as if connected so all
+  // screens render their full data views without requiring a real wallet.
   const [ctx, setCtx] = useStateA({
-    connected: t.startConnected,
+    connected: t.startConnected || window.__DEMO_MODE__,
     address: "0x9f3a2c4b1e0d8f7a6c5b4a39",
-    permitUnlocked: t.startConnected && t.startUnlocked,
-    permitSeconds: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
+    permitUnlocked: (t.startConnected && t.startUnlocked) || window.__DEMO_MODE__,
+    permitSeconds: (t.startConnected && t.startUnlocked) || window.__DEMO_MODE__ ? 14 * 60 : 0,
     revealing: false,
   });
 
@@ -57,10 +65,10 @@ function App() {
   useEffectA(() => {
     setCtx(c => ({
       ...c,
-      connected: t.startConnected,
-      address: t.startConnected ? c.address : null,
-      permitUnlocked: t.startConnected && t.startUnlocked,
-      permitSeconds: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
+      connected: t.startConnected || window.__DEMO_MODE__,
+      address: t.startConnected || window.__DEMO_MODE__ ? c.address : null,
+      permitUnlocked: (t.startConnected && t.startUnlocked) || window.__DEMO_MODE__,
+      permitSeconds: (t.startConnected && t.startUnlocked) || window.__DEMO_MODE__ ? 14 * 60 : 0,
     }));
   }, [t.startConnected, t.startUnlocked]);
 
@@ -97,12 +105,13 @@ function App() {
 
   // Routes
   let Screen = null;
-  if (route === "home")            Screen = <Landing setRoute={setRoute} ctx={ctx} grantPermit={grantPermit} openConnect={openConnect} />;
-  else if (route === "portfolio")  Screen = <Dashboard setRoute={setRoute} ctx={ctx} grantPermit={grantPermit} openConnect={openConnect} />;
-  else if (route === "lend")       Screen = <Lending setRoute={setRoute} ctx={ctx} grantPermit={grantPermit} openConnect={openConnect} />;
-  else if (route === "strategies") Screen = <Market setRoute={setRoute} ctx={ctx} grantPermit={grantPermit} openConnect={openConnect} />;
-  else if (route === "governance") Screen = <Governance setRoute={setRoute} ctx={ctx} grantPermit={grantPermit} openConnect={openConnect} />;
-  else                             Screen = <Landing setRoute={setRoute} ctx={ctx} grantPermit={grantPermit} openConnect={openConnect} />;
+  const baseProps = { setRoute, ctx, grantPermit, openConnect };
+  if (route === "home")            Screen = safe('Landing', baseProps);
+  else if (route === "portfolio")  Screen = safe('Dashboard', baseProps);
+  else if (route === "lend")       Screen = safe('Lending', baseProps);
+  else if (route === "strategies") Screen = safe('Market', baseProps);
+  else if (route === "governance") Screen = safe('Governance', baseProps);
+  else                             Screen = safe('Landing', baseProps);
 
   return (
     <>

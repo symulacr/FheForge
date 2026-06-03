@@ -22,6 +22,8 @@ const mockState = {
 	switchChainError: null,
 	watchAccountCb: null,
 	watchChainIdCb: null,
+	getBalanceResult: 123456789n,
+	getBalanceError: null,
 	connectors: [
 		{ id: "metaMask", name: "MetaMask", type: "injected" },
 		{ id: "rabby", name: "Rabby", type: "injected" },
@@ -86,6 +88,16 @@ mock.module("@wagmi/connectors", () => ({
 	walletConnect: mock(() => ({ id: "walletConnect", name: "WalletConnect", type: "walletConnect" })),
 }));
 
+mock.module("viem", () => ({
+	createPublicClient: mock(() => ({
+		getBalance: mock(() => {
+			if (mockState.getBalanceError) return Promise.reject(mockState.getBalanceError);
+			return Promise.resolve(mockState.getBalanceResult);
+		}),
+	})),
+	http: mock((url) => ({ url, transport: "http" })),
+}));
+
 mock.module("viem/chains", () => ({
 	arbitrumSepolia: { id: 421614, name: "Arbitrum Sepolia" },
 }));
@@ -111,6 +123,8 @@ describe("createWalletAdapter", () => {
 		mockState.switchChainError = null;
 		mockState.watchAccountCb = null;
 		mockState.watchChainIdCb = null;
+		mockState.getBalanceResult = 123456789n;
+		mockState.getBalanceError = null;
 
 		// Set up fake localStorage
 		globalThis.localStorage = {
@@ -135,7 +149,10 @@ describe("createWalletAdapter", () => {
 			},
 		};
 
-		globalThis.window = { localStorage: globalThis.localStorage };
+		globalThis.window = {
+			localStorage: globalThis.localStorage,
+			ethereum: { isMetaMask: true },
+		};
 
 		// Reset fetch mock
 		globalThis.fetch = mock(() =>
@@ -169,6 +186,9 @@ describe("createWalletAdapter", () => {
 	});
 
 	test("connect() with connectorId uses that connector", async () => {
+		globalThis.window.ethereum = {
+			providers: [{ isMetaMask: true }, { isRabby: true }],
+		};
 		const adapter = createWalletAdapter(testConfig);
 		const result = await adapter.connect("rabby");
 		expect(result.accounts).toBeDefined();
@@ -177,6 +197,37 @@ describe("createWalletAdapter", () => {
 	test("connect() throws WalletError when connectorId not found", async () => {
 		const adapter = createWalletAdapter(testConfig);
 		await expect(adapter.connect("nonexistent")).rejects.toThrow(WalletError);
+	});
+
+	test("connect() throws PROVIDER_NOT_FOUND before wagmi for missing MetaMask", async () => {
+		globalThis.window.ethereum = { isRabby: true };
+		const adapter = createWalletAdapter(testConfig);
+		try {
+			await adapter.connect("metaMask");
+			expect.unreachable("Should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(WalletError);
+			if (e instanceof WalletError) {
+				expect(e.code).toBe("PROVIDER_NOT_FOUND");
+				expect(e.message).toBe(
+					"MetaMask provider not found. Install MetaMask or enable it for this site.",
+				);
+			}
+		}
+	});
+
+	test("connect() throws PROVIDER_NOT_FOUND before wagmi for missing Rabby", async () => {
+		const adapter = createWalletAdapter(testConfig);
+		try {
+			await adapter.connect("rabby");
+			expect.unreachable("Should have thrown");
+		} catch (e) {
+			expect(e).toBeInstanceOf(WalletError);
+			if (e instanceof WalletError) {
+				expect(e.code).toBe("PROVIDER_NOT_FOUND");
+				expect(e.message).toBe("Rabby provider not found. Install Rabby or enable it for this site.");
+			}
+		}
 	});
 
 	test("connect() throws WalletError on connection failure", async () => {
@@ -221,6 +272,26 @@ describe("createWalletAdapter", () => {
 	test("getChainId() returns current chain ID", () => {
 		const adapter = createWalletAdapter(testConfig);
 		expect(adapter.getChainId()).toBe(421614);
+	});
+
+	// ---- getBalance ----
+
+	test("getBalance() returns real RPC balance for connected account", async () => {
+		const adapter = createWalletAdapter(testConfig);
+		const balance = await adapter.getBalance();
+		expect(balance).toBe(123456789n);
+	});
+
+	test("getBalance(address) returns real RPC balance for supplied address", async () => {
+		const adapter = createWalletAdapter(testConfig);
+		const balance = await adapter.getBalance("0xdef");
+		expect(balance).toBe(123456789n);
+	});
+
+	test("getBalance() throws WalletError when disconnected", async () => {
+		mockState.account = { address: null, status: "disconnected" };
+		const adapter = createWalletAdapter(testConfig);
+		await expect(adapter.getBalance()).rejects.toThrow(WalletError);
 	});
 
 	// ---- isConnected ----

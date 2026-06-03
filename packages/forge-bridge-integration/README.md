@@ -10,11 +10,13 @@ The following loading order is required for correct operation. All script tags l
 1. React + ReactDOM (CDN — unpkg.com)
 2. Babel standalone (CDN — unpkg.com)
 3. Importmap for ESM packages (viem, wagmi, cofhe, axios via esm.sh)
-4. BRIDGE: Babel.transform monkey-patch (babel-transform-plugin.js)
-5. BRIDGE: Screen wrappers (screen-override.js)
-6. Forge screen scripts (text/babel — intercepted by patched Babel)
-7. UI app.jsx + components.jsx (text/babel)
-8. BRIDGE: Integration adapter (integration-adapter.js)
+4. BRIDGE: Bridge init (bridge-init.js — ESM, loads @fheforge/bridge)
+5. BRIDGE: DataFetcherV2 (data-fetcher-v2.js — public/authenticated split polling)
+6. BRIDGE: ForgeProvider React Context (bridge-context.js — subscribes to BridgeBus)
+7. BRIDGE: ConnectInterceptor (connect-interceptor.js — wallet connect flow)
+8. BRIDGE: Babel.transform monkey-patch (babel-transform-plugin.js)
+9. Forge screen scripts + UI (text/babel — intercepted by patched Babel)
+10. BRIDGE: Transformers (transformers.js — shape mapping functions)
 ```
 
 ### Why This Order
@@ -22,17 +24,19 @@ The following loading order is required for correct operation. All script tags l
 - **React + ReactDOM must load first** — forge screens depend on these globals.
 - **Babel standalone must load before the monkey-patch** — the plugin patches `Babel.transform`.
 - **Importmap must load before any ESM script tags** — resolves bare module imports (viem, wagmi, cofhe, axios).
-- **Babel.transform monkey-patch loads before text/babel scripts** — ensures all forge screen transforms are intercepted.
-- **Screen wrappers load before forge screens** — wraps `window.Dashboard`, `window.Landing`, etc. before the forge scripts define them.
-- **Integration adapter loads last** — depends on bridge being initialized and screen wrappers being in place.
+- **Bridge init loads early** — creates `window.bridge` with production defaults used by downstream modules.
+- **DataFetcherV2, BridgeContext, ConnectInterceptor load before babel-transform-plugin.js** — these set up the BridgeBus event system and ForgeProvider React Context, establishing the data pipeline before any screen scripts run.
+- **Babel.transform monkey-patch loads before text/babel scripts** — ensures all forge screen transforms are intercepted with the ForgeProvider injection.
+- **Transformers load last** — pure shape mapping functions exposed as `window.__transformers`, available for debugging after screens render.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `src/babel-transform-plugin.js` | Babel.transform monkey-patch with 3 visitors (VariableDeclarator, Identifier, JSXAttribute). Injects `window.__MOCK__` lookups for mock data constants and Cipher value literals. |
-| `src/screen-override.js` | Screen wrapper components (Landing, Dashboard, Lending, Market, Governance, ConnectModal) with `key={dataVersion}` re-mount. |
-| `src/integration-adapter.js` | DataFetcher (per-screen polling), Transformer (shape mapping), StateManager (window.__MOCK__ updates + notify). |
+| `src/babel-transform-plugin.js` | Babel.transform monkey-patch with 3 visitors (VariableDeclarator, JSXAttribute, Program.exit). Injects ForgeProvider wrapper and `window.__MOCK__` lookups for mock data constants and Cipher value literals. |
+| `src/bridge-context.js` | ForgeProvider React Context — subscribes to BridgeBus events, exposes `window.ForgeProvider` with `useBridge()` hook. |
+| `src/connect-interceptor.js` | ConnectInterceptor — wallet connect flow via BridgeBus events. |
+| `src/data-fetcher-v2.js` | DataFetcherV2 — public/authenticated split polling, replaces Phase 5 integration-adapter.js. |
 | `src/transformers.js` | Pure functions: transformMarkets, transformPositions, transformActivities, formatTicker, transformStrategies, transformProposals, transformNodeTypes, calculateNetValue, calculateLTV. |
 
 ## API

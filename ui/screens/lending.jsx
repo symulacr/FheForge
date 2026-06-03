@@ -1,24 +1,129 @@
 // screens/lending.jsx · Lend (v4, master-detail)
-// Left: 5 markets + my position summary.
+// Left: bridge markets + my position summary.
 // Right: action panel for the selected market.
 
-const { useState: useStateL } = React;
+const { useState: useStateL, useEffect: useEffectL } = React;
+const EMPTY_BRIDGE_CONTEXT_L = React.createContext({ data: {}, meta: { errors: [] } });
 
-const L_MARKETS = [
-  { asset: "USDC", supplyApy: 4.82, borrowApy: 6.21, util: 64, tvl: "8.42M", liq: 80, oracle: "Pyth", price: "$1.000" },
-  { asset: "ETH",  supplyApy: 2.14, borrowApy: 3.78, util: 41, tvl: "4.18M", liq: 75, oracle: "Pyth", price: "$2,544.10" },
-  { asset: "WBTC", supplyApy: 1.66, borrowApy: 3.10, util: 22, tvl: "1.80M", liq: 70, oracle: "Pyth", price: "$94,210" },
-  { asset: "ARB",  supplyApy: 5.42, borrowApy: 8.20, util: 68, tvl: "924k",  liq: 65, oracle: "Pyth · fb", price: "$0.74" },
-  { asset: "DAI",  supplyApy: 3.91, borrowApy: 5.04, util: 51, tvl: "612k",  liq: 78, oracle: "Pyth", price: "$1.000" },
-];
+function useOptionalBridgeL() {
+  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
+  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_L);
+}
+
+function getBridgeStatusL(bridge, key, fallback) {
+  const meta = (bridge && bridge.meta) || {};
+  const data = (bridge && bridge.data) || {};
+  const readiness = meta.readiness || bridge.readiness || data.readiness || {};
+  const entry = readiness[key] || readiness[String(key).replace(/s$/, "")] || null;
+  if (entry) {
+    const status = String(entry.status || entry.state || "").toLowerCase();
+    const reason = String(entry.reason || entry.message || "");
+    if (status === "ready" || status === "ok" || status === "available") return null;
+    if (reason) return classifyBridgeStatusL(reason, fallback);
+    if (status) return classifyBridgeStatusL(status, fallback);
+  }
+  const errors = Array.isArray(meta.errors) ? meta.errors : [];
+  const error = errors.slice().reverse().find((err) => {
+    const source = String(err && err.source || "").toLowerCase();
+    const message = String(err && (err.message || (err.error && err.error.message)) || "").toLowerCase();
+    return source.includes(key) || message.includes(key) || message.includes("registry") || message.includes("rpc");
+  });
+  return error ? classifyBridgeStatusL(String(error.message || (error.error && error.error.message) || error), fallback) : fallback;
+}
+
+function classifyBridgeStatusL(message, fallback) {
+  const lower = String(message || "").toLowerCase();
+  if (lower.includes("registry")) return "registry unavailable";
+  if (lower.includes("rpc") || lower.includes("viem") || lower.includes("contract") || lower.includes("on-chain")) return "RPC unavailable";
+  if (lower.includes("backend") || lower.includes("api") || lower.includes("fetch") || lower.includes("network") || lower.includes("request")) return "backend unavailable";
+  return fallback || "bridge unavailable";
+}
+
+function getMarketAssetL(market) {
+  return market && (market.asset || market.symbol || market.token || market.name);
+}
+
+function normalizeMarketL(market) {
+  const asset = getMarketAssetL(market) || "–";
+  const utilization = market.util ?? market.utilization ?? 0;
+  const liq = market.liq ?? market.liquidationThreshold ?? 80;
+  return {
+    asset,
+    supplyApy: market.supplyApy ?? market.supplyAPY ?? market.depositApy ?? market.depositAPY ?? 0,
+    borrowApy: market.borrowApy ?? market.borrowAPY ?? 0,
+    util: utilization > 0 && utilization <= 1 ? Math.round(utilization * 100) : Math.round(utilization),
+    tvl: market.tvl ?? market.totalSupply ?? "unavailable",
+    liq: liq > 0 && liq <= 1 ? Math.round(liq * 100) : Math.round(liq),
+    oracle: market.oracle || market.oracleSource || (market.oraclePrice != null ? "on-chain" : "unavailable"),
+    price: market.price || market.oraclePrice || "unavailable",
+    healthAfterSupply: market.healthAfterSupply,
+    healthAfterBorrow: market.healthAfterBorrow,
+    liqPrice: market.liqPrice || market.liquidationPrice,
+    estimatedGas: market.estimatedGas,
+    updatedAt: market.updatedAt || market.oracleUpdatedAt,
+  };
+}
+
+function getBridgePositionItemsL(positions) {
+  if (Array.isArray(positions)) return positions;
+  if (positions && Array.isArray(positions.items)) return positions.items;
+  return [];
+}
+
+function parseNumberL(value) {
+  const n = Number(String(value ?? "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatAmountL(value, fallback) {
+  if (value == null || value === "") return fallback;
+  if (typeof value === "number") return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  return String(value);
+}
+
+function sumPositionsL(items, side) {
+  return items.reduce((sum, item) => {
+    if (item.side !== side) return sum;
+    const n = parseNumberL(item.amountUsd ?? item.amount ?? item.value);
+    return n == null ? sum : sum + n;
+  }, 0);
+}
+
+function getPositionSummaryL(bridgeData) {
+  const positions = bridgeData.positions;
+  const items = getBridgePositionItemsL(positions);
+  const status = positions && positions.status ? positions.status : (positions == null ? "loading" : "empty");
+  const supplied = sumPositionsL(items, "supply");
+  const borrowed = sumPositionsL(items, "borrow");
+  const ltvRaw = bridgeData.walletBalance && (bridgeData.walletBalance.portfolioLTV ?? bridgeData.walletBalance.ltvGaugeValue);
+  const ltv = parseNumberL(ltvRaw);
+  const fallback = status === "empty" ? "no position" : status;
+  return {
+    suppliedLabel: supplied > 0 ? formatAmountL(supplied, fallback) : fallback,
+    borrowedLabel: borrowed > 0 ? formatAmountL(borrowed, fallback) : fallback,
+    ltvLabel: ltv != null ? `${ltv}%` : fallback,
+    ltvGauge: ltv != null ? ltv : 0,
+    walletBalance: bridgeData.walletBalance || null,
+  };
+}
+
 
 function Lending({ setRoute, ctx, grantPermit, openConnect }) {
+  const bridge = useOptionalBridgeL();
+  const bridgeData = bridge.data || {};
+  const markets = Array.isArray(bridgeData.markets) ? bridgeData.markets.map(normalizeMarketL) : null;
+  const marketStatus = getBridgeStatusL(bridge, "markets", "loading bridge markets");
   const locked = !ctx.permitUnlocked;
   const [assetId, setAssetId] = useStateL("USDC");
   const [side, setSide] = useStateL("supply");
   const [amount, setAmount] = useStateL("10000");
   const [ltv, setLtv] = useStateL(45);
-  const market = L_MARKETS.find(m => m.asset === assetId);
+  const market = markets && markets.length ? (markets.find(m => m.asset === assetId) || markets[0]) : null;
+  const positionSummary = getPositionSummaryL(bridgeData);
+
+  useEffectL(() => {
+    if (market && market.asset !== assetId) setAssetId(market.asset);
+  }, [market && market.asset, assetId]);
 
   return (
     <MasterDetail
@@ -27,7 +132,7 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
         <>
           <span className="eyebrow">Lend</span>
           <div className="row" style={{ gap: 10 }}>
-            <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>5 markets · public totals only</span>
+            <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{markets ? `${markets.length} markets · public totals only` : `markets · ${marketStatus}`}</span>
           </div>
         </>
       }
@@ -35,16 +140,24 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
         <>
           <MDGroup>Your position</MDGroup>
           <div style={{ padding: "12px 20px", borderBottom: "1px dashed var(--hairline-2)" }}>
-            <div className="kv"><span className="k">net supplied</span><span className="v"><Cipher value="42,084" locked={locked} size="sm" inline /></span></div>
-            <div className="kv"><span className="k">net borrowed</span><span className="v"><Cipher value="5.42 ETH" locked={locked} size="sm" inline /></span></div>
-            <div className="kv"><span className="k">ltv · weighted</span><span className="v">44.8%</span></div>
+            <div className="kv"><span className="k">net supplied</span><span className="v"><Cipher value={positionSummary.suppliedLabel} locked={locked} size="sm" inline /></span></div>
+            <div className="kv"><span className="k">net borrowed</span><span className="v"><Cipher value={positionSummary.borrowedLabel} locked={locked} size="sm" inline /></span></div>
+            <div className="kv"><span className="k">ltv · weighted</span><span className="v">{positionSummary.ltvLabel}</span></div>
             <div style={{ marginTop: 10 }}>
-              <LtvGauge ltv={44.8} liqAt={80} labels={false} height={6} />
+              <LtvGauge ltv={positionSummary.ltvGauge} liqAt={80} labels={false} height={6} />
             </div>
           </div>
 
-          <MDGroup>Markets · 5</MDGroup>
-          {L_MARKETS.map((m, i) => (
+          <MDGroup>Markets · {markets ? markets.length : "loading"}</MDGroup>
+          {!markets ? (
+            <div className="mono" style={{ padding: "14px 20px", color: "var(--muted)", fontSize: 11 }}>
+              {marketStatus}
+            </div>
+          ) : markets.length === 0 ? (
+            <div className="mono" style={{ padding: "14px 20px", color: "var(--muted)", fontSize: 11 }}>
+              no markets available
+            </div>
+          ) : markets.map((m, i) => (
             <MDItem
               key={m.asset}
               idx={
@@ -67,39 +180,53 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
         </>
       }
       detailHeader={
-        <>
-          <div className="row" style={{ gap: 14 }}>
-            <AssetGlyph sym={market.asset} size={26} />
-            <div>
-              <h2 className="serif" style={{ fontSize: 20, fontWeight: 500, letterSpacing: -0.012, margin: 0 }}>
-                {market.asset}
-              </h2>
-              <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-                price {market.price} · oracle {market.oracle}
+        market ? (
+          <>
+            <div className="row" style={{ gap: 14 }}>
+              <AssetGlyph sym={market.asset} size={26} />
+              <div>
+                <h2 className="serif" style={{ fontSize: 20, fontWeight: 500, letterSpacing: -0.012, margin: 0 }}>
+                  {market.asset}
+                </h2>
+                <div className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+                  price {market.price} · oracle {market.oracle}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="tabstrip" style={{ border: 0 }}>
-            {["supply", "borrow"].map(s => (
-              <button key={s} className={"tab" + (side === s ? " active" : "")}
-                onClick={() => setSide(s)}>{s}</button>
-            ))}
-          </div>
-        </>
+            <div className="tabstrip" style={{ border: 0 }}>
+              {["supply", "borrow"].map(s => (
+                <button key={s} className={"tab" + (side === s ? " active" : "")}
+                  onClick={() => setSide(s)}>{s}</button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{marketStatus}</span>
+        )
       }
       detailBody={
-        <LendAction
-          market={market} side={side} amount={amount} setAmount={setAmount}
-          ltv={ltv} setLtv={setLtv}
-          locked={locked} grantPermit={grantPermit} ctx={ctx} openConnect={openConnect}
-        />
+        market ? (
+          <LendAction
+            market={market} side={side} amount={amount} setAmount={setAmount}
+            ltv={ltv} setLtv={setLtv}
+            locked={locked} grantPermit={grantPermit} ctx={ctx} openConnect={openConnect}
+            bridgeData={bridgeData} positionSummary={positionSummary}
+          />
+        ) : (
+          <div className="mono" style={{ padding: 20, color: "var(--muted)", fontSize: 12 }}>
+            {!markets ? marketStatus : "no markets available"}
+          </div>
+        )
       }
     />
   );
 }
 
-function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, grantPermit, ctx, openConnect }) {
+function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, grantPermit, ctx, openConnect, bridgeData, positionSummary }) {
   const apy = side === "supply" ? market.supplyApy : market.borrowApy;
+  const walletBalance = bridgeData && bridgeData.walletBalance;
+  const walletValue = !ctx.connected ? "wallet required" : walletBalance && walletBalance.balance != null ? walletBalance.balance : "unavailable";
+  const walletNumeric = parseNumberL(walletValue);
   return (
     <div className="fade-enter" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)", gap: 28, alignItems: "start" }}>
       {/* Action form */}
@@ -108,7 +235,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
           <div className="spread" style={{ marginBottom: 10 }}>
             <span className="eyebrow">Amount</span>
             <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-              wallet · <Cipher value="22,508.30" locked={locked} size="sm" inline /> {market.asset}
+              wallet · <Cipher value={walletValue} locked={locked} size="sm" inline /> {market.asset}
             </span>
           </div>
           <div style={{ display: "flex", gap: 8, border: "1px solid var(--ink)", padding: "14px 16px", background: "var(--paper)" }}>
@@ -122,9 +249,10 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
           <div className="row mono" style={{ gap: 8, fontSize: 11, color: "var(--muted)", marginTop: 8 }}>
             {["25%", "50%", "75%", "Max"].map(p => (
               <button key={p} onClick={() => {
-                const map = { "25%": "5627", "50%": "11254", "75%": "16881", "Max": "22508" };
-                setAmount(map[p]);
-              }} className="btn ghost sm" style={{ padding: "3px 8px", fontSize: 10 }}>{p}</button>
+                if (walletNumeric == null) return;
+                const pct = p === "Max" ? 1 : Number(p.replace("%", "")) / 100;
+                setAmount(String(Math.floor(walletNumeric * pct)));
+              }} disabled={walletNumeric == null} className="btn ghost sm" style={{ padding: "3px 8px", fontSize: 10 }}>{p}</button>
             ))}
             <hr className="dashed" style={{ flex: 1 }} />
             <span>encrypted before it leaves your browser</span>
@@ -182,9 +310,9 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
           <span className="eyebrow">summary</span>
           <div className="stack-2" style={{ marginTop: 12 }}>
             <div className="kv"><span className="k">{side} apy</span><span className="v" style={{ color: side === "supply" ? "var(--positive)" : "var(--danger)" }}>{side === "supply" ? "+" : "−"}{apy}%</span></div>
-            <div className="kv"><span className="k">health after</span><span className="v"><Cipher value={side === "supply" ? "2.84" : "1.62"} locked={locked} size="sm" inline /></span></div>
-            <div className="kv"><span className="k">liq price</span><span className="v">{market.asset === "ETH" ? "$1,820" : "–"}</span></div>
-            <div className="kv"><span className="k">est. gas</span><span className="v">≈ 312k</span></div>
+            <div className="kv"><span className="k">health after</span><span className="v"><Cipher value={side === "supply" ? (market.healthAfterSupply || "unavailable") : (market.healthAfterBorrow || "unavailable")} locked={locked} size="sm" inline /></span></div>
+            <div className="kv"><span className="k">liq price</span><span className="v">{market.liqPrice || "–"}</span></div>
+            <div className="kv"><span className="k">est. gas</span><span className="v">{market.estimatedGas || "unavailable"}</span></div>
           </div>
         </div>
 
@@ -199,7 +327,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
             </div>
             <div className="kv"><span className="k">public tvl</span><span className="v">{market.tvl}</span></div>
             <div className="kv"><span className="k">liq threshold</span><span className="v">{market.liq}%</span></div>
-            <div className="kv"><span className="k">last oracle</span><span className="v">14s ago</span></div>
+            <div className="kv"><span className="k">last oracle</span><span className="v">{market.updatedAt || "unavailable"}</span></div>
           </div>
         </div>
       </div>
