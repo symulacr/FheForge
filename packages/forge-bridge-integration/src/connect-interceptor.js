@@ -395,9 +395,8 @@ function processStep0To1(connectorId) {
     .catch((err) => {
       console.error('[ConnectInterceptor] Step 0→1 (wallet connect) failed:', err.message || err);
       emitError('wallet_connect', err);
-      connectFlowInProgress = false;
       currentProcessingStep = null;
-      throw err;
+      setTimeout(() => { connectFlowInProgress = false; }, 3000);
     });
 }
 
@@ -431,9 +430,8 @@ function processStep1To2(address) {
     .catch((err) => {
       console.error('[ConnectInterceptor] Step 1→2 (JWT login) failed:', err.message || err);
       emitError('jwt_login', err);
-      connectFlowInProgress = false;
       currentProcessingStep = null;
-      throw err;
+      setTimeout(() => { connectFlowInProgress = false; }, 3000);
     });
 }
 
@@ -464,9 +462,8 @@ function processStep2To3() {
     .catch((err) => {
       console.error('[ConnectInterceptor] Step 2→3 (permit grant) failed:', err.message || err);
       emitError('permit_grant', err);
-      connectFlowInProgress = false;
       currentProcessingStep = null;
-      throw err;
+      setTimeout(() => { connectFlowInProgress = false; }, 3000);
     });
 }
 

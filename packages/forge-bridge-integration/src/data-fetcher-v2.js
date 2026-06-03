@@ -116,12 +116,9 @@
       this._startInterval('public', 'ticker', this._fetchTicker.bind(this), this._pollIntervals.ticker);
       this._startInterval('public', 'markets', this._fetchMarkets.bind(this), this._pollIntervals.markets);
 
-      // Public builder/strategy metadata. These are one-shot fetches; if the
-      // bridge/backend does not expose them, BridgeContext keeps null and the
-      // UI renders unavailable states instead of synthetic fallbacks.
-      this._fetchCommunity();
-      this._fetchTemplates();
-      this._fetchNodeTypes();
+      // Community, templates, and nodeTypes are NOT fetched here —
+      // those endpoints (/strategies, /defi-strategies, /defi-modules)
+      // require JWT auth. They are fetched in startAuthenticatedPolling().
     };
 
     /**
@@ -914,7 +911,7 @@
             if (b.api && b.api.defiStrategies && typeof b.api.defiStrategies.getTemplates === 'function') {
               return b.api.defiStrategies.getTemplates();
             }
-            throw new Error('Strategy templates endpoint not available');
+            return null;
           });
         },
         transform: function (raw) { return raw; },
