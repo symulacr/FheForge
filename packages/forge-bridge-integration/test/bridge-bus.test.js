@@ -510,4 +510,40 @@ describe('edge cases', () => {
 		const freshBus = new BridgeBus();
 		expect(bus.getState()).toEqual(freshBus.getState());
 	});
+
+	it('error LRU eviction caps errors at 100 entries', () => {
+		// Push 150 errors — should be trimmed to the latest 100
+		for (let i = 0; i < 150; i++) {
+			bus.set('error:fetch', { message: `Error ${i}`, index: i });
+		}
+		const errors = bus.getState().meta.errors;
+		expect(errors.length).toBe(100);
+		// Oldest error should be Error 50 (first 50 evicted)
+		expect(errors[0].index).toBe(50);
+		// Newest error should be Error 149
+		expect(errors[99].index).toBe(149);
+	});
+
+	it('default _maxErrors is 100', () => {
+		expect(bus._maxErrors).toBe(100);
+	});
+
+	it('errors below cap are not evicted', () => {
+		for (let i = 0; i < 50; i++) {
+			bus.set('error:fetch', { message: `Error ${i}` });
+		}
+		expect(bus.getState().meta.errors.length).toBe(50);
+	});
+
+	it('dispatchBatch also caps errors', () => {
+		const updates = [];
+		for (let i = 0; i < 120; i++) {
+			updates.push({ event: 'error:fetch', data: { message: `Batch ${i}`, index: i } });
+		}
+		bus.dispatchBatch(updates);
+		const errors = bus.getState().meta.errors;
+		expect(errors.length).toBe(100);
+		expect(errors[0].index).toBe(20);
+		expect(errors[99].index).toBe(119);
+	});
 });

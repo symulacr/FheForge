@@ -113,6 +113,7 @@ export class BridgeBus {
 		this._listeners = new Map();
 		this._started = false;
 		this._authEnabled = false;
+		this._maxErrors = 100;
 	}
 
 	/**
@@ -168,9 +169,14 @@ export class BridgeBus {
 	set(event, data) {
 		// Error events: always handled regardless of EVENT_MAP entry.
 		// Preserve existing domain data, record in meta.errors.
+		// Push directly to avoid creating a new array on every error.
 		if (event.startsWith("error:")) {
 			this._state.meta.dataVersion++;
-			this._state.meta.errors = [...this._state.meta.errors, data];
+			this._state.meta.errors.push(data);
+			// LRU eviction: trim oldest errors when cap is exceeded
+			if (this._state.meta.errors.length > this._maxErrors) {
+				this._state.meta.errors = this._state.meta.errors.slice(-this._maxErrors);
+			}
 			this._emit(event, data);
 			return;
 		}
@@ -243,14 +249,15 @@ export class BridgeBus {
 		for (const { event, data } of updates) {
 			const mapping = EVENT_MAP[event];
 
+			// Error events are always processed regardless of EVENT_MAP
+			if (event.startsWith("error:")) {
+				this._state.meta.errors.push(data);
+				if (!eventsToEmit.includes(event)) eventsToEmit.push(event);
+				continue;
+			}
+
 			if (mapping) {
 				const { domain, key } = mapping;
-
-				if (event.startsWith("error:")) {
-					this._state.meta.errors = [...this._state.meta.errors, data];
-					if (!eventsToEmit.includes(event)) eventsToEmit.push(event);
-					continue;
-				}
 
 				if (key === null) {
 					this._state[domain] = { ...this._state[domain], ...data };
@@ -266,6 +273,11 @@ export class BridgeBus {
 		}
 
 		this._state.meta.dataVersion++;
+
+		// LRU eviction: trim oldest errors when cap is exceeded
+		if (this._state.meta.errors.length > this._maxErrors) {
+			this._state.meta.errors = this._state.meta.errors.slice(-this._maxErrors);
+		}
 
 		// Emit all events once, after all state changes are applied
 		for (const event of eventsToEmit) {

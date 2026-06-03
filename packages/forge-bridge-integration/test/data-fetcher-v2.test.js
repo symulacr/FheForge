@@ -1290,4 +1290,42 @@ describe('DataFetcherV2', function () {
       expect(window.__MOCK__.L_MARKETS).toBeDefined();
     });
   });
+
+  /* ──────────────────────────────────────────────
+     beforeunload leak guard
+     ────────────────────────────────────────────── */
+  describe('beforeunload leak guard', function () {
+    it('registers a beforeunload listener on construction', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      expect(fetcher._beforeUnloadHandler).toBeDefined();
+      expect(typeof fetcher._beforeUnloadHandler).toBe('function');
+    });
+
+    it('stopAll removes the beforeunload listener', function () {
+      fetcher = new window.DataFetcherV2({ bridge: bridge, bus: bus, transformers: xf });
+      fetcher.startPublicPolling();
+      fetcher.stopAll();
+      expect(fetcher._beforeUnloadHandler).toBeNull();
+    });
+
+    it('beforeunload handler calls stopAll', function () {
+      fetcher = new window.DataFetcherV2({
+        bridge: bridge,
+        bus: bus,
+        transformers: xf,
+        intervals: { ticker: 50, markets: 50, activities: 50 },
+      });
+      fetcher.startPublicPolling();
+      fetcher.startAuthenticatedPolling();
+      expect(fetcher._publicStarted).toBe(true);
+      expect(fetcher._authStarted).toBe(true);
+
+      // Simulate beforeunload
+      fetcher._beforeUnloadHandler();
+      expect(fetcher._publicStarted).toBe(false);
+      expect(fetcher._authStarted).toBe(false);
+      expect(fetcher._publicIntervalIds.length).toBe(0);
+      expect(fetcher._authIntervalIds.length).toBe(0);
+    });
+  });
 });

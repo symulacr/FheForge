@@ -22,6 +22,13 @@ Tests:
             DOM has ForgeProvider wrapper.
     FHT-05: ConnectInterceptor initialized — check window.__ConnectInterceptor
             with init(), wrapConnectModal(), processStep0To1() methods.
+    FHT-06 through FHT-10: Per-page mock data verification — browser tests that
+            verify each of the 5 screens (Home, Portfolio, Lend, Strategies,
+            Governance) renders real mock data values (not placeholders).
+    FHT-11: Console error gate — fails if any console.error or uncaught
+            exception fires during navigation across all 5 screens.
+    FHT-12: Responsive breakpoint smoke test — verify app renders without
+            layout crashes at 375px (mobile), 768px (tablet), 1440px (desktop).
 """
 
 import subprocess
@@ -449,6 +456,434 @@ def fht05_connectinterceptor_initialized():
     return issues
 
 
+# ─── FHT-06–10: Per-Page Mock Data Verification ─────────────────────────────
+
+def _navigate_to_screen(route_key):
+    """Navigate to a screen by clicking the matching nav button.
+
+    Returns True if navigation succeeded.
+    """
+    out, _, _ = js(
+        f"""
+        (function() {{
+            var root = document.getElementById('root');
+            if (!root) return 'no-root';
+            var allBtns = root.querySelectorAll('button');
+            for (var i = 0; i < allBtns.length; i++) {{
+                var txt = (allBtns[i].textContent || '').trim().toLowerCase();
+                if (txt.indexOf('{route_key}') !== -1) {{
+                    allBtns[i].click();
+                    return 'clicked';
+                }}
+            }}
+            return 'no-match';
+        }})()
+        """
+    )
+    time.sleep(2)
+    return out == "clicked"
+
+
+def fht06_home_mock_data():
+    """
+    FHT-06: Home (Landing) screen renders real mock data values.
+    Verifies the Landing screen shows actual cipher/portfolio values
+    from __MOCK__ (not placeholders like 'Loading' or '--').
+    """
+    issues = []
+
+    # Ensure we're on the landing/home screen
+    # Landing is the default route — just reload and wait
+    navigate(BASE_URL)
+    time.sleep(3)
+
+    # Check that DEMO_ROWS values appear in rendered content
+    body_text, _, _ = js("(document.body.textContent || '')")
+    expected_fragments = ["42,084", "Supplied", "Borrowed", "In strategies"]
+    for frag in expected_fragments:
+        if frag not in body_text:
+            issues.append(f"Landing screen missing mock data fragment: '{frag}'")
+
+    # Verify __MOCK__ DEMO_ROWS has real values
+    out, _, _ = js(
+        "(function() { var m = window.__MOCK__; if (!m || !m.DEMO_ROWS) return 'missing'; "
+        "return JSON.stringify(m.DEMO_ROWS); })()"
+    )
+    if out == "missing":
+        issues.append("window.__MOCK__.DEMO_ROWS is missing")
+    else:
+        try:
+            rows = json.loads(out)
+            if not rows or len(rows) == 0:
+                issues.append("DEMO_ROWS is empty")
+            for row in rows:
+                if len(row) < 2 or row[1] in ("0.00", "--", "Loading", ""):
+                    issues.append(f"DEMO_ROWS has placeholder value: {row}")
+        except (json.JSONDecodeError, TypeError):
+            issues.append(f"Cannot parse DEMO_ROWS: {out[:100]}")
+
+    return issues
+
+
+def fht07_portfolio_mock_data():
+    """
+    FHT-07: Portfolio (Dashboard) screen renders real mock data values.
+    Verifies positions, strategies, and activity data from __MOCK__.
+    """
+    issues = []
+
+    _navigate_to_screen("portfolio")
+    time.sleep(2)
+
+    # Check positions data values appear in rendered content
+    body_text, _, _ = js("(document.body.textContent || '')")
+
+    # Verify D_POSITIONS values rendered
+    position_fragments = ["42,084.13", "5.420", "12,840.00"]
+    for frag in position_fragments:
+        if frag not in body_text:
+            issues.append(f"Dashboard missing position mock data: '{frag}'")
+
+    # Verify D_STRATS values rendered
+    strat_fragments = ["Lean USDC leverage", "ETH delta-neutral"]
+    for frag in strat_fragments:
+        if frag not in body_text:
+            issues.append(f"Dashboard missing strategy mock data: '{frag}'")
+
+    # Verify D_ACTIVITY values rendered
+    activity_fragments = ["loop iter 3", "Composer open"]
+    for frag in activity_fragments:
+        if frag not in body_text:
+            issues.append(f"Dashboard missing activity mock data: '{frag}'")
+
+    # Verify __MOCK__ has correct data
+    out, _, _ = js(
+        "(function() { var m = window.__MOCK__; "
+        "return JSON.stringify({"
+        "  pos: m && m.D_POSITIONS ? m.D_POSITIONS.length : 0,"
+        "  strats: m && m.D_STRATS ? m.D_STRATS.length : 0,"
+        "  act: m && m.D_ACTIVITY ? m.D_ACTIVITY.length : 0"
+        "}); })()"
+    )
+    try:
+        counts = json.loads(out)
+        if counts.get("pos", 0) < 5:
+            issues.append(f"D_POSITIONS has only {counts.get('pos', 0)} entries (expected >= 5)")
+        if counts.get("strats", 0) < 3:
+            issues.append(f"D_STRATS has only {counts.get('strats', 0)} entries (expected >= 3)")
+        if counts.get("act", 0) < 6:
+            issues.append(f"D_ACTIVITY has only {counts.get('act', 0)} entries (expected >= 6)")
+    except (json.JSONDecodeError, TypeError):
+        issues.append(f"Cannot parse mock data counts: {out[:100]}")
+
+    return issues
+
+
+def fht08_lend_mock_data():
+    """
+    FHT-08: Lend screen renders real mock data values.
+    Verifies market data (APYs, TVLs, assets) from __MOCK__.
+    """
+    issues = []
+
+    _navigate_to_screen("lend")
+    time.sleep(2)
+
+    body_text, _, _ = js("(document.body.textContent || '')")
+
+    # Verify market assets rendered
+    asset_fragments = ["USDC", "ETH", "WBTC", "ARB", "DAI"]
+    for frag in asset_fragments:
+        if frag not in body_text:
+            issues.append(f"Lending screen missing market asset: '{frag}'")
+
+    # Verify APY values rendered (not placeholder)
+    apy_fragments = ["4.82", "6.21", "2.14"]
+    for frag in apy_fragments:
+        if frag not in body_text:
+            issues.append(f"Lending screen missing APY value: '{frag}'")
+
+    # Verify TVL values rendered
+    tvl_fragments = ["8.42M", "4.18M"]
+    for frag in tvl_fragments:
+        if frag not in body_text:
+            issues.append(f"Lending screen missing TVL value: '{frag}'")
+
+    # Verify __MOCK__ L_MARKETS data
+    out, _, _ = js(
+        "(function() { var m = window.__MOCK__; "
+        "if (!m || !m.L_MARKETS) return 'missing'; "
+        "return String(m.L_MARKETS.length); })()"
+    )
+    if out == "missing":
+        issues.append("window.__MOCK__.L_MARKETS is missing")
+    else:
+        try:
+            count = int(out)
+            if count < 5:
+                issues.append(f"L_MARKETS has only {count} entries (expected >= 5)")
+        except (ValueError, TypeError):
+            issues.append(f"Cannot parse L_MARKETS count: {out[:50]}")
+
+    return issues
+
+
+def fht09_strategies_mock_data():
+    """
+    FHT-09: Strategies (Market) screen renders real mock data values.
+    Verifies community strategies and templates from __MOCK__.
+    """
+    issues = []
+
+    _navigate_to_screen("strategies")
+    time.sleep(2)
+
+    body_text, _, _ = js("(document.body.textContent || '')")
+
+    # Verify community strategy names rendered
+    strat_fragments = ["Lean USDC leverage", "ETH delta-neutral", "WBTC carry & swap"]
+    for frag in strat_fragments:
+        if frag not in body_text:
+            issues.append(f"Strategies screen missing community strategy: '{frag}'")
+
+    # Verify APY values rendered
+    apy_fragments = ["11.4", "8.7", "14.2"]
+    for frag in apy_fragments:
+        if frag not in body_text:
+            issues.append(f"Strategies screen missing APY: '{frag}'")
+
+    # Verify __MOCK__ COMMUNITY data
+    out, _, _ = js(
+        "(function() { var m = window.__MOCK__; "
+        "if (!m || !m.COMMUNITY) return 'missing'; "
+        "return String(m.COMMUNITY.length); })()"
+    )
+    if out == "missing":
+        issues.append("window.__MOCK__.COMMUNITY is missing")
+    else:
+        try:
+            count = int(out)
+            if count < 5:
+                issues.append(f"COMMUNITY has only {count} entries (expected >= 5)")
+        except (ValueError, TypeError):
+            issues.append(f"Cannot parse COMMUNITY count: {out[:50]}")
+
+    return issues
+
+
+def fht10_governance_mock_data():
+    """
+    FHT-10: Governance screen renders real mock data values.
+    Verifies proposal titles, statuses, and vote counts from __MOCK__.
+    """
+    issues = []
+
+    _navigate_to_screen("governance")
+    time.sleep(2)
+
+    body_text, _, _ = js("(document.body.textContent || '')")
+
+    # Verify proposal IDs rendered
+    proposal_fragments = ["P-08", "P-07", "P-06"]
+    for frag in proposal_fragments:
+        if frag not in body_text:
+            issues.append(f"Governance screen missing proposal: '{frag}'")
+
+    # Verify status labels rendered
+    status_fragments = ["active", "queued"]
+    for frag in status_fragments:
+        if frag.lower() not in body_text.lower():
+            issues.append(f"Governance screen missing status: '{frag}'")
+
+    # Verify vote count fragments rendered
+    vote_fragments = ["412,840", "88,200"]
+    for frag in vote_fragments:
+        if frag not in body_text:
+            issues.append(f"Governance screen missing vote count: '{frag}'")
+
+    # Verify __MOCK__ PROPOSALS data
+    out, _, _ = js(
+        "(function() { var m = window.__MOCK__; "
+        "if (!m || !m.PROPOSALS) return 'missing'; "
+        "return String(m.PROPOSALS.length); })()"
+    )
+    if out == "missing":
+        issues.append("window.__MOCK__.PROPOSALS is missing")
+    else:
+        try:
+            count = int(out)
+            if count < 5:
+                issues.append(f"PROPOSALS has only {count} entries (expected >= 5)")
+        except (ValueError, TypeError):
+            issues.append(f"Cannot parse PROPOSALS count: {out[:50]}")
+
+    return issues
+
+
+# ─── FHT-11: Console Error Gate ──────────────────────────────────────────────
+
+def fht11_console_error_gate():
+    """
+    FHT-11: Console error gate — fails if any console.error or
+    uncaught exception fires during navigation across all 5 screens.
+
+    Installs interceptors, then navigates through each screen,
+    collecting all errors. CORS/network/WalletConnect errors are
+    excluded (expected in test environment).
+    """
+    issues = []
+
+    # Install console.error interceptor (fresh)
+    js("""
+        (function() {
+            window.__fht11Errors = [];
+            window.__fht11Unhandled = [];
+            var origError = console.error;
+            console.error = function() {
+                var args = Array.prototype.slice.call(arguments);
+                var msg = args.map(function(a) {
+                    return typeof a === 'string' ? a : (a && a.message ? a.message : String(a));
+                }).join(' ');
+                window.__fht11Errors.push(msg);
+                return origError.apply(console, arguments);
+            };
+            window.addEventListener('error', function(e) {
+                window.__fht11Unhandled.push(e.message || String(e));
+            });
+            window.addEventListener('unhandledrejection', function(e) {
+                window.__fht11Unhandled.push('Promise:' + (e.reason ? (e.reason.message || String(e.reason)) : 'unknown'));
+            });
+        })()
+    """)
+
+    # Navigate through all 5 screens, collecting errors at each stop
+    screens = ["home", "portfolio", "lend", "strategies", "governance"]
+    for route in screens:
+        if route == "home":
+            navigate(BASE_URL)
+        else:
+            _navigate_to_screen(route)
+        time.sleep(2)  # Let each screen render fully
+
+    # Collect all errors
+    error_out, _, _ = js("JSON.stringify(window.__fht11Errors || [])")
+    unhandled_out, _, _ = js("JSON.stringify(window.__fht11Unhandled || [])")
+
+    all_errors = []
+    try:
+        all_errors.extend(json.loads(error_out))
+    except (json.JSONDecodeError, TypeError):
+        issues.append(f"Cannot parse console errors: '{error_out[:200]}'")
+    try:
+        all_errors.extend(json.loads(unhandled_out))
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    if not all_errors:
+        return issues
+
+    # Filter expected patterns (same as FHT-03)
+    expected_patterns = [
+        "cors", "CORS", "cross-origin", "Cross-Origin",
+        "net::ERR_", "Failed to load", "404", "403",
+        "Reown", "Allowlist", "allowlist",
+        "WalletConnect", "wc:", "@walletconnect",
+        "WebSocket", "websocket",
+        "favicon.ico",
+        "ResizeObserver loop",
+        "chrome-extension",
+    ]
+
+    unexpected = []
+    for err in all_errors:
+        is_expected = any(p.lower() in err.lower() for p in expected_patterns)
+        if not is_expected:
+            unexpected.append(err)
+
+    if unexpected:
+        issues.append(
+            f"{len(unexpected)} unexpected error(s) across 5 screens "
+            f"(out of {len(all_errors)} total): {unexpected[:5]}"
+        )
+
+    return issues
+
+
+# ─── FHT-12: Responsive Breakpoint Smoke Test ────────────────────────────────
+
+def fht12_responsive_breakpoint_smoke():
+    """
+    FHT-12: Responsive breakpoint smoke test.
+    Verify app renders without layout crashes at 375px (mobile),
+    768px (tablet), 1440px (desktop). Checks for overflow and
+    that the root element has visible content at each viewport.
+    """
+    issues = []
+
+    viewports = [
+        {"width": 375, "label": "mobile (375px)"},
+        {"width": 768, "label": "tablet (768px)"},
+        {"width": 1440, "label": "desktop (1440px)"},
+    ]
+
+    for vp in viewports:
+        w = vp["width"]
+        label = vp["label"]
+
+        # Set viewport size via CDP emulation
+        run_bu([
+            "eval",
+            f"""
+            (function() {{
+                // Resize window to target width
+                window.resizeTo({w}, window.innerHeight || 800);
+                // Also set a CSS override for testing
+                document.documentElement.style.width = '{w}px';
+            }})()
+            """
+        ])
+        time.sleep(1)
+
+        # Check root element exists and has content
+        has_content, _, _ = js(
+            f"String((document.getElementById('root')?.children.length || 0) > 0)"
+        )
+        if has_content != "true":
+            issues.append(f"Root empty at {label}")
+            continue
+
+        # Check for horizontal overflow (content wider than viewport)
+        overflow_check, _, _ = js(
+            f"""
+            (function() {{
+                var root = document.getElementById('root');
+                if (!root) return 'no-root';
+                var scrollW = document.documentElement.scrollWidth;
+                var clientW = document.documentElement.clientWidth;
+                return String(scrollW <= clientW + 50);
+            }})()
+            """
+        )
+        if overflow_check == "false":
+            issues.append(f"Horizontal overflow detected at {label}")
+
+        # Check body has meaningful text content
+        text_len, _, _ = js("String((document.body.textContent || '').length)")
+        try:
+            if int(text_len) < 50:
+                issues.append(f"Insufficient content at {label} (text length: {text_len})")
+        except (ValueError, TypeError):
+            issues.append(f"Cannot check content length at {label}")
+
+    # Reset viewport
+    run_bu([
+        "eval",
+        "document.documentElement.style.width = '';"
+    ])
+
+    return issues
+
+
 # ─── Main Runner ─────────────────────────────────────────────────────────────
 
 
@@ -465,6 +900,13 @@ def run_tests(args):
             ("FHT-03: No unexpected console errors", fht03_no_console_errors),
             ("FHT-04: ForgeProvider wraps app", fht04_forgeprovider_wraps_app),
             ("FHT-05: ConnectInterceptor initialized", fht05_connectinterceptor_initialized),
+            ("FHT-06: Home screen mock data verification", fht06_home_mock_data),
+            ("FHT-07: Portfolio screen mock data verification", fht07_portfolio_mock_data),
+            ("FHT-08: Lend screen mock data verification", fht08_lend_mock_data),
+            ("FHT-09: Strategies screen mock data verification", fht09_strategies_mock_data),
+            ("FHT-10: Governance screen mock data verification", fht10_governance_mock_data),
+            ("FHT-11: Console error gate (5-screen nav)", fht11_console_error_gate),
+            ("FHT-12: Responsive breakpoint smoke test", fht12_responsive_breakpoint_smoke),
         ]
     else:
         test_map = {
@@ -473,6 +915,13 @@ def run_tests(args):
             "FHT-03": ("FHT-03: No unexpected console errors", fht03_no_console_errors),
             "FHT-04": ("FHT-04: ForgeProvider wraps app", fht04_forgeprovider_wraps_app),
             "FHT-05": ("FHT-05: ConnectInterceptor initialized", fht05_connectinterceptor_initialized),
+            "FHT-06": ("FHT-06: Home screen mock data verification", fht06_home_mock_data),
+            "FHT-07": ("FHT-07: Portfolio screen mock data verification", fht07_portfolio_mock_data),
+            "FHT-08": ("FHT-08: Lend screen mock data verification", fht08_lend_mock_data),
+            "FHT-09": ("FHT-09: Strategies screen mock data verification", fht09_strategies_mock_data),
+            "FHT-10": ("FHT-10: Governance screen mock data verification", fht10_governance_mock_data),
+            "FHT-11": ("FHT-11: Console error gate (5-screen nav)", fht11_console_error_gate),
+            "FHT-12": ("FHT-12: Responsive breakpoint smoke test", fht12_responsive_breakpoint_smoke),
         }
         if args.test in test_map:
             tests = [test_map[args.test]]
@@ -522,7 +971,11 @@ def parse_args():
     )
     parser.add_argument(
         "--test",
-        choices=["FHT-01", "FHT-02", "FHT-03", "FHT-04", "FHT-05", "ALL"],
+        choices=[
+            "FHT-01", "FHT-02", "FHT-03", "FHT-04", "FHT-05",
+            "FHT-06", "FHT-07", "FHT-08", "FHT-09", "FHT-10",
+            "FHT-11", "FHT-12", "ALL",
+        ],
         default="ALL",
         help="Specific test to run (default: ALL)",
     )

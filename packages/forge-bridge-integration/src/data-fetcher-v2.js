@@ -29,6 +29,36 @@
     return interval * (0.9 + Math.random() * 0.2);
   };
 
+  /**
+   * Default polling intervals — created once at module level
+   * instead of inside the constructor to avoid reallocation on
+   * every DataFetcherV2 instantiation.
+   */
+  var DEFAULT_INTERVALS = {
+    ticker: 30000,
+    markets: 30000,
+    activities: 15000,
+    positions: 60000,
+    walletBalance: 60000,
+  };
+
+  /**
+   * Maps BridgeBus data event names to their window.__MOCK__ key
+   * for backward compatibility with the Babel plugin.
+   *
+   * Used by _fetchAndTransform to write fetched data to __MOCK__
+   * alongside BridgeBus — keeps __MOCK__ in sync for live API calls.
+   */
+  var EVENT_TO_MOCK_KEY = {
+    'data:ticker': 'TICKER_ITEMS',
+    'data:markets': 'L_MARKETS',
+    'data:activities': 'D_ACTIVITY',
+    'data:positions': 'D_POSITIONS',
+    'data:strategies': 'D_STRATS',
+    'data:proposals': 'PROPOSALS',
+    'data:nodeTypes': 'NODE_TYPES',
+  };
+
   var DataFetcherV2 = /** @class */ (function () {
 
     /**
@@ -49,19 +79,13 @@
       this._bus = options.bus || (typeof window !== 'undefined' ? window.__bridgeBus : null);
       this._xf = options.transformers || (typeof window !== 'undefined' ? window.__transformers : null);
 
-      // Default intervals (ms)
-      var defaults = {
-        ticker: 30000,
-        markets: 30000,
-        activities: 15000,
-        positions: 60000,
-        walletBalance: 60000,
-      };
+      // Default intervals (ms) — uses module-level DEFAULT_INTERVALS
+      // to avoid recreating the defaults object on every instance.
       var custom = options.intervals || {};
       this._pollIntervals = {};
-      for (var k in defaults) {
-        if (defaults.hasOwnProperty(k)) {
-          this._pollIntervals[k] = custom[k] != null ? custom[k] : defaults[k];
+      for (var k in DEFAULT_INTERVALS) {
+        if (DEFAULT_INTERVALS.hasOwnProperty(k)) {
+          this._pollIntervals[k] = custom[k] != null ? custom[k] : DEFAULT_INTERVALS[k];
         }
       }
 
@@ -73,6 +97,15 @@
       this._publicStarted = false;
       this._authStarted = false;
       this._demoStarted = false;
+
+      // beforeunload leak guard — stops all intervals on page unload
+      // to prevent ghost polling processes when user refreshes or navigates away
+      this._beforeUnloadHandler = function () {
+        this.stopAll();
+      }.bind(this);
+      if (typeof window !== 'undefined') {
+        window.addEventListener('beforeunload', this._beforeUnloadHandler);
+      }
     }
 
     /* ── Public API ──────────────────────────────────────── */
@@ -195,10 +228,17 @@
     /**
      * Stop all polling (public + authenticated).
      * Preserves all existing data in BridgeBus.
+     * Also removes the beforeunload listener to prevent dangling references.
      */
     DataFetcherV2.prototype.stopAll = function () {
       this.stopPublicPolling();
       this.stopAuthenticatedPolling();
+
+      // Remove beforeunload listener to avoid keeping a reference to this instance
+      if (this._beforeUnloadHandler && typeof window !== 'undefined') {
+        window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+        this._beforeUnloadHandler = null;
+      }
     };
 
     /* ── Demo Mode ──────────────────────────────────────── */
@@ -273,11 +313,11 @@
 
         // ── Markets (lending.jsx) ────────────────────
         markets: [
-          { asset: "USDC", supplyApy: 4.82, borrowApy: 6.21, util: 64, tvl: "8.42M", liq: 80, oracle: "Pyth", price: "$1.000" },
-          { asset: "ETH",  supplyApy: 2.14, borrowApy: 3.78, util: 41, tvl: "4.18M", liq: 75, oracle: "Pyth", price: "$2,544.10" },
-          { asset: "WBTC", supplyApy: 1.66, borrowApy: 3.10, util: 22, tvl: "1.80M", liq: 70, oracle: "Pyth", price: "$94,210" },
-          { asset: "ARB",  supplyApy: 5.42, borrowApy: 8.20, util: 68, tvl: "924k",  liq: 65, oracle: "Pyth \u00B7 fb", price: "$0.74" },
-          { asset: "DAI",  supplyApy: 3.91, borrowApy: 5.04, util: 51, tvl: "612k",  liq: 78, oracle: "Pyth", price: "$1.000" },
+          { asset: "USDC", supplyApy: 4.82, borrowApy: 6.21, util: 64, tvl: "8.42M", totalSupply: "8.42M", totalBorrow: "5.39M", liq: 80, oracle: "Pyth", price: "$1.000", icon: "USDC" },
+          { asset: "ETH",  supplyApy: 2.14, borrowApy: 3.78, util: 41, tvl: "4.18M", totalSupply: "4.18M", totalBorrow: "1.71M", liq: 75, oracle: "Pyth", price: "$2,544.10", icon: "ETH" },
+          { asset: "WBTC", supplyApy: 1.66, borrowApy: 3.10, util: 22, tvl: "1.80M", totalSupply: "1.80M", totalBorrow: "0.40M", liq: 70, oracle: "Pyth", price: "$94,210", icon: "WBTC" },
+          { asset: "ARB",  supplyApy: 5.42, borrowApy: 8.20, util: 68, tvl: "0.92M", totalSupply: "0.92M", totalBorrow: "0.63M", liq: 65, oracle: "Pyth \u00B7 fb", price: "$0.74", icon: "ARB" },
+          { asset: "DAI",  supplyApy: 3.91, borrowApy: 5.04, util: 51, tvl: "0.61M", totalSupply: "0.61M", totalBorrow: "0.31M", liq: 78, oracle: "Pyth", price: "$1.000", icon: "DAI" },
         ],
 
         // ── Activities (dashboard.jsx) ───────────────
@@ -287,7 +327,7 @@
           { id: "a3", block: 182944081, age: "1m",   what: "Pool \u00B7 interest",     kind: "accrue",  asset: "USDC",     delta: "+12.04" },
           { id: "a4", block: 182943988, age: "4m",   what: "Swap intent filled",  kind: "swap",    asset: "ETH\u2192USDC", delta: "\u22484,820" },
           { id: "a5", block: 182943890, age: "11m",  what: "S/02 \u00B7 re-supply",    kind: "shield",  asset: "WETH",     delta: "+0.840" },
-          { id: "a6", block: 182943742, age: "26m",  what: "Permit \u00B7 renewed",    kind: "permit",  asset: "\u2013",        delta: "\u2013" },
+          { id: "a6", block: 182943742, age: "26m",  what: "Permit \u00B7 renewed",    kind: "permit",  asset: "All",     delta: "renewed" },
         ],
 
         // ── Positions (dashboard.jsx) ────────────────
@@ -324,21 +364,21 @@
           },
           {
             id: "P-06", title: "Stable rate optimiser V2",
-            status: "passed",
+            status: "queued",
             body: "Deploy new interest rate curve for USDC and DAI. Smoother ramp between 60\u201380% utilisation.",
             forVotes: 584200, againstVotes: 12100, abstain: 4600, quorum: 460000,
             proposer: "@plux", created: "2026-05-20",
           },
           {
             id: "P-05", title: "Composer whitelist \u2014 StrategyVault",
-            status: "passed",
+            status: "executed",
             body: "Grant StrategyVault contract access to Composer for automated loop execution. Audited by Zellic.",
             forVotes: 612400, againstVotes: 8400, abstain: 3200, quorum: 460000,
             proposer: "@quietco", created: "2026-05-15",
           },
           {
             id: "P-04", title: "Fee switch 5/15/30",
-            status: "rejected",
+            status: "defeated",
             body: "Introduce protocol fee: 5% supply interest, 15% borrow interest, 30% liquidation bonus.",
             forVotes: 184200, againstVotes: 412800, abstain: 24000, quorum: 460000,
             proposer: "@symulacr", created: "2026-05-10",
@@ -504,6 +544,17 @@
           var transformed = spec.transform ? spec.transform(raw) : raw;
           if (self._bus) {
             self._bus.set(spec.event, transformed);
+          }
+          // Write to window.__MOCK__ for backward compatibility with the
+          // Babel plugin's mock interceptor (e.g. var X = __MOCK__.X ?? default).
+          // This mirrors what _writeMockData does for demo mode, but for
+          // live API data.  The ForgeProvider no longer writes __MOCK__ on
+          // data events to avoid redundant double-assignments.
+          if (typeof window !== 'undefined' && window.__MOCK__) {
+            var mockKey = EVENT_TO_MOCK_KEY[spec.event];
+            if (mockKey) {
+              window.__MOCK__[mockKey] = transformed;
+            }
           }
           return transformed;
         })
@@ -697,18 +748,38 @@
      * Start polling: immediate first fetch, then setInterval at `ms`.
      * Stores the interval ID for later cleanup.
      *
+     * Each fetch callback is wrapped in try/catch to ensure a synchronous
+     * throw from one fetch does not cancel subsequent polling ticks.
+     * Async rejections are handled by _fetchAndTransform's own .catch().
+     *
      * @param {'public'|'authed'} group
      * @param {string}   name - Source name (for debugging)
      * @param {Function} fn   - Async fetch function
      * @param {number}   ms   - Polling interval (0 = no interval, just immediate fetch)
      */
     DataFetcherV2.prototype._startInterval = function (group, name, fn, ms) {
-      // Immediate first fetch
-      fn();
+      var self = this;
+
+      /**
+       * Wrapped fetch that catches synchronous throws so a single failed
+       * callback does not break the interval or subsequent polling ticks.
+       * @returns {Promise|undefined}
+       */
+      function safeFetch() {
+        try {
+          return fn();
+        } catch (err) {
+          self._onError(name, err);
+          return undefined;
+        }
+      }
+
+      // Immediate first fetch (wrapped in try/catch)
+      safeFetch();
 
       // Start regular interval if ms > 0
       if (ms > 0) {
-        var id = setInterval(fn, jitter(ms));
+        var id = setInterval(safeFetch, jitter(ms));
         var entry = { name: name, id: id };
         if (group === 'public') {
           this._publicIntervalIds.push(entry);
@@ -743,5 +814,7 @@
      Export to window scope
      ────────────────────────────────────────────── */
 
-  window.DataFetcherV2 = DataFetcherV2;
+  if (typeof window !== 'undefined') {
+    window.DataFetcherV2 = DataFetcherV2;
+  }
 })();

@@ -8,6 +8,21 @@
 // Set up window global
 globalThis.window = globalThis.window || {};
 
+// Ensure window has addEventListener/removeEventListener (needed by DataFetcherV2)
+if (!globalThis.window.addEventListener) {
+  var _windowListeners = {};
+  globalThis.window.addEventListener = function (event, handler) {
+    if (!_windowListeners[event]) _windowListeners[event] = [];
+    _windowListeners[event].push(handler);
+  };
+  globalThis.window.removeEventListener = function (event, handler) {
+    if (_windowListeners[event]) {
+      var idx = _windowListeners[event].indexOf(handler);
+      if (idx !== -1) _windowListeners[event].splice(idx, 1);
+    }
+  };
+}
+
 // Set up document global (for screen-override.js and integration-adapter.js)
 globalThis.document = globalThis.document || {
   addEventListener: function (event, handler) {
@@ -33,6 +48,20 @@ var _effectFn = null; // tracks the most recent effect function
 
 // Set up React global (for screen-override.js and bridge-context.js)
 globalThis.React = globalThis.React || {
+  // Base Component class for error boundary and class component support.
+  Component: class Component {
+    constructor(props) {
+      this.props = props;
+      this.state = {};
+    }
+    setState(partial) {
+      var nextState = typeof partial === 'function'
+        ? partial(this.state, this.props)
+        : partial;
+      this.state = Object.assign({}, this.state, nextState);
+    }
+  },
+
   createElement: function (comp, props) {
     var args = Array.prototype.slice.call(arguments);
     var children = args.length > 2 ? args.slice(2) : [];
