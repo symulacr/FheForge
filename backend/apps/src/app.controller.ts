@@ -51,7 +51,7 @@ export class AppController {
       : false;
     const supabaseConfigured = Boolean(
       this.configService.get<string>('SUPABASE_URL') &&
-        this.configService.get<string>('SUPABASE_KEY'),
+      this.configService.get<string>('SUPABASE_KEY'),
     );
     const tokenRegistryConfigured = Boolean(
       this.configService.get<string>('TOKEN_REGISTRY_ADDRESS'),
@@ -71,7 +71,8 @@ export class AppController {
     if (!tokenRegistryConfigured) {
       missingDependencies.push('TOKEN_REGISTRY_ADDRESS');
     }
-    if (!priceOracleConfigured) missingDependencies.push('PRICE_ORACLE_ADDRESS');
+    if (!priceOracleConfigured)
+      missingDependencies.push('PRICE_ORACLE_ADDRESS');
     if (!poolConfigured) missingDependencies.push('POOL_ADDRESS');
 
     const data = {
@@ -116,7 +117,10 @@ export class AppController {
       await Promise.race([
         provider.getBlockNumber(),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('COFHE_RPC readiness timeout')), 2_500),
+          setTimeout(
+            () => reject(new Error('COFHE_RPC readiness timeout')),
+            2_500,
+          ),
         ),
       ]);
       return true;

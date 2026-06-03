@@ -139,18 +139,23 @@ export class MarketsService {
     const priceOracleConfigured = Boolean(
       this.configService?.get<string>('PRICE_ORACLE_ADDRESS'),
     );
-    const poolConfigured = Boolean(this.configService?.get<string>('POOL_ADDRESS'));
+    const poolConfigured = Boolean(
+      this.configService?.get<string>('POOL_ADDRESS'),
+    );
 
     const registryRead = contracts.tokenRegistry
       ? await this.readLendableTokens(contracts.tokenRegistry)
       : null;
-    const tokenCount = registryRead?.reachable ? registryRead.tokens.length : null;
+    const tokenCount = registryRead?.reachable
+      ? registryRead.tokens.length
+      : null;
     const missingDependencies: string[] = [];
     if (!cofheRpcConfigured) missingDependencies.push('COFHE_RPC');
     if (!tokenRegistryConfigured || registryRead?.reachable === false) {
       missingDependencies.push('TOKEN_REGISTRY_ADDRESS');
     }
-    if (!priceOracleConfigured) missingDependencies.push('PRICE_ORACLE_ADDRESS');
+    if (!priceOracleConfigured)
+      missingDependencies.push('PRICE_ORACLE_ADDRESS');
     if (!poolConfigured) missingDependencies.push('POOL_ADDRESS');
 
     const tokenRegistryStatus = !tokenRegistryConfigured
@@ -160,13 +165,14 @@ export class MarketsService {
         : tokenCount === 0
           ? 'empty'
           : 'live';
-    const status = !cofheRpcConfigured || tokenRegistryStatus === 'unreachable'
-      ? 'unavailable'
-      : missingDependencies.length > 0
-        ? 'degraded'
-        : tokenCount === 0
-          ? 'empty'
-          : 'live';
+    const status =
+      !cofheRpcConfigured || tokenRegistryStatus === 'unreachable'
+        ? 'unavailable'
+        : missingDependencies.length > 0
+          ? 'degraded'
+          : tokenCount === 0
+            ? 'empty'
+            : 'live';
 
     const data: MarketsStatus = {
       status,
