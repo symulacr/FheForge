@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -55,4 +55,20 @@ import { UsersModule } from './users/users.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements OnModuleInit {
+  private readonly logger = new Logger('MigrationRunner');
+
+  async onModuleInit() {
+    if (process.env.SKIP_MIGRATIONS === '1') return;
+    try {
+      const { execSync } = await import('node:child_process');
+      const path = await import('node:path');
+      const script = path.join(__dirname, '..', 'migrations', 'run-migration.js');
+      this.logger.log('Running pending migrations...');
+      execSync(`node ${script}`, { stdio: 'inherit', env: process.env });
+      this.logger.log('Migrations complete');
+    } catch (err) {
+      this.logger.warn('Migration runner skipped or failed (non-fatal): ' + (err as Error).message);
+    }
+  }
+}

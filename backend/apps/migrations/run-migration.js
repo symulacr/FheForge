@@ -38,6 +38,7 @@ const MIGRATION_FILES = [
   '001_event_indexing_tables.sql',
   '002_defi_action_required.sql',
   '003_auth_nonces.sql',
+  '004_full_schema.sql',
 ];
 
 /**
