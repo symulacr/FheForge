@@ -1804,13 +1804,13 @@ var CONTRACT_ABIS = {
         {
           name: "borrowToken",
           type: "address",
-          indexed: true,
+          indexed: false,
           internalType: "address"
         },
         {
           name: "commitId",
           type: "bytes32",
-          indexed: false,
+          indexed: true,
           internalType: "bytes32"
         }
       ],
@@ -1873,7 +1873,7 @@ var CONTRACT_ABIS = {
         {
           name: "amount",
           type: "uint256",
-          indexed: true,
+          indexed: false,
           internalType: "uint256"
         },
         {
@@ -2017,7 +2017,7 @@ var CONTRACT_ABIS = {
         {
           name: "amount",
           type: "uint256",
-          indexed: true,
+          indexed: false,
           internalType: "uint256"
         }
       ],
@@ -3228,21 +3228,6 @@ var CONTRACT_ABIS = {
               internalType: "address"
             },
             {
-              name: "ltvNum",
-              type: "uint128",
-              internalType: "uint128"
-            },
-            {
-              name: "ltvDen",
-              type: "uint128",
-              internalType: "uint128"
-            },
-            {
-              name: "useOracleBorrow",
-              type: "bool",
-              internalType: "bool"
-            },
-            {
               name: "apyTarget",
               type: "uint16",
               internalType: "uint16"
@@ -3446,21 +3431,6 @@ var CONTRACT_ABIS = {
               name: "borrowToken",
               type: "address",
               internalType: "address"
-            },
-            {
-              name: "useOracleBorrow",
-              type: "bool",
-              internalType: "bool"
-            },
-            {
-              name: "ltvNum",
-              type: "uint128",
-              internalType: "uint128"
-            },
-            {
-              name: "ltvDen",
-              type: "uint128",
-              internalType: "uint128"
             }
           ]
         },
@@ -4270,7 +4240,7 @@ var CONTRACT_ABIS = {
         {
           name: "outputAmount",
           type: "uint256",
-          indexed: true,
+          indexed: false,
           internalType: "uint256"
         }
       ],
@@ -6588,6 +6558,11 @@ var CONTRACT_ABIS = {
           name: "",
           type: "bytes32",
           internalType: "bytes32"
+        },
+        {
+          name: "",
+          type: "address",
+          internalType: "address"
         }
       ],
       outputs: [
@@ -6721,6 +6696,11 @@ var CONTRACT_ABIS = {
           name: "strategyId",
           type: "bytes32",
           internalType: "bytes32"
+        },
+        {
+          name: "user",
+          type: "address",
+          internalType: "address"
         }
       ],
       outputs: [],
@@ -7074,6 +7054,25 @@ var CONTRACT_ABIS = {
     },
     {
       type: "function",
+      name: "isRegistered",
+      inputs: [
+        {
+          name: "",
+          type: "address",
+          internalType: "address"
+        }
+      ],
+      outputs: [
+        {
+          name: "",
+          type: "bool",
+          internalType: "bool"
+        }
+      ],
+      stateMutability: "view"
+    },
+    {
+      type: "function",
       name: "isTokenEnabled",
       inputs: [
         {
@@ -7202,6 +7201,19 @@ var CONTRACT_ABIS = {
               internalType: "uint256"
             }
           ]
+        }
+      ],
+      outputs: [],
+      stateMutability: "nonpayable"
+    },
+    {
+      type: "function",
+      name: "removeToken",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
         }
       ],
       outputs: [],
@@ -7549,6 +7561,11 @@ var CONTRACT_ABIS = {
     {
       type: "error",
       name: "TokenMismatch",
+      inputs: []
+    },
+    {
+      type: "error",
+      name: "TokenNotRegistered",
       inputs: []
     },
     {

@@ -59,7 +59,7 @@ done
 echo ""
 echo "─── Backend ───"
 for ENDPOINT in health strategies defi-modules; do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BACKEND_URL/$ENDPOINT" 2>/dev/null || echo "000")
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Origin: https://fheforge.vercel.app" "$BACKEND_URL/$ENDPOINT" 2>/dev/null || echo "000")
   if [ "$STATUS" = "200" ]; then
     pass "GET /$ENDPOINT → $STATUS"
   else
