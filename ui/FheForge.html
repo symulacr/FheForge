@@ -73,7 +73,7 @@
   <div id="boot">
     <div style="text-align: center;">
       <span class="mark"><span class="dot"></span> FheForge</span>
-      <small>booting · cofhe-sdk · 421614</small>
+      <small>booting · fheforge</small>
     </div>
   </div>
 
@@ -159,6 +159,10 @@
       }
     });
     obs.observe(document.getElementById("root"), { childList: true });
+    setTimeout(() => {
+      const boot = document.getElementById("boot");
+      if (boot) { boot.classList.add("gone"); setTimeout(() => boot.remove(), 400); }
+    }, 10000);
   </script>
 </body>
 </html>

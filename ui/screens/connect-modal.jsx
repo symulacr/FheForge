@@ -150,9 +150,9 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit, onNext }) {
 
 function StepWallet({ wallet, setWallet, onNext }) {
   const wallets = [
-    { k: "metamask", name: "MetaMask", sub: "Browser extension" },
-    { k: "rabby",    name: "Rabby",    sub: "Recommended for DeFi" },
-    { k: "wc",       name: "WalletConnect", sub: "Mobile pairing" },
+    { k: "metaMask",       name: "MetaMask", sub: "Browser extension" },
+    { k: "rabby",          name: "Rabby",    sub: "Recommended for DeFi" },
+    { k: "walletConnect",  name: "WalletConnect", sub: "Mobile pairing" },
   ];
   return (
     <div style={{ padding: 20 }}>

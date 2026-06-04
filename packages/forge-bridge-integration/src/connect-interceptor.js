@@ -63,6 +63,9 @@ let currentProcessingStep = null;
 /** @type {Promise|null} Promise tracking the active flow to prevent race conditions */
 let currentFlowPromise = null;
 
+/** @type {number} Internal step tracker (replaces props.step which doesn't exist) */
+let internalStep = 0;
+
 /** @type {Object|null} Reference to BridgeBus */
 let bus = null;
 
@@ -361,8 +364,23 @@ function processStep0To1(connectorId) {
   currentProcessingStep = 0;
 
   const ss = getSessionStorage();
-  const connectorToUse =
-    connectorId || (ss ? ss.getItem(SESSION_STORAGE_CONNECTOR_KEY) : null) || undefined;
+  if (!connectorId && ss) {
+    try {
+      connectorId = ss.getItem(SESSION_STORAGE_CONNECTOR_KEY) || 'metaMask';
+    } catch {
+      connectorId = 'metaMask';
+    }
+  }
+  if (!connectorId) connectorId = 'metaMask';
+  const connectorToUse = connectorId;
+
+  if (ss) {
+    try {
+      ss.setItem(SESSION_STORAGE_CONNECTOR_KEY, connectorToUse);
+    } catch {
+      console.warn('[ConnectInterceptor] Failed to persist connector choice to sessionStorage');
+    }
+  }
 
   return executeWalletConnect(connectorToUse)
     .then((result) => {
@@ -375,14 +393,6 @@ function processStep0To1(connectorId) {
         });
     })
     .then((result) => {
-      if (connectorToUse && ss) {
-        try {
-          ss.setItem(SESSION_STORAGE_CONNECTOR_KEY, connectorToUse);
-        } catch {
-          console.warn('[ConnectInterceptor] Failed to persist connector choice to sessionStorage');
-        }
-      }
-
       persistStep(1);
       // Set currentProcessingStep BEFORE emitWalletConnected so the
       // Guard 1 check in onWalletConnected is effective.
@@ -503,6 +513,7 @@ function handleDisconnect() {
   connectFlowInProgress = false;
   currentProcessingStep = null;
   currentFlowPromise = null;
+  internalStep = 0;
 }
 
 // ─── BridgeBus Event Handlers ───────────────────────────────────────────────
@@ -557,16 +568,17 @@ function wrapConnectModal(OriginalModal) {
     const origOnNext = props.onNext;
     const origGrantPermit = props.grantPermit;
 
-    function wrappedOnNext() {
-      const currentStep = props.step != null ? props.step : 0;
+    function wrappedOnNext(connectorId) {
+      const currentStep = internalStep;
 
       let stepPromise;
 
       if (currentStep === 0) {
-        stepPromise = processStep0To1()
+        stepPromise = processStep0To1(connectorId)
           .then(() => {
+            internalStep = 1;
             const bus = window.__bridgeBus;
-            if (bus) bus.set('step:advanced', { from: currentStep, to: currentStep + 1 });
+            if (bus) bus.set('step:advanced', { from: currentStep, to: 1 });
             if (origOnNext) origOnNext();
           })
           .catch((err) => {
@@ -581,8 +593,9 @@ function wrapConnectModal(OriginalModal) {
             return processStep1To2(address);
           })
           .then(() => {
+            internalStep = 2;
             const bus = window.__bridgeBus;
-            if (bus) bus.set('step:advanced', { from: currentStep, to: currentStep + 1 });
+            if (bus) bus.set('step:advanced', { from: currentStep, to: 2 });
             if (origOnNext) origOnNext();
           })
           .catch((err) => {
@@ -593,8 +606,9 @@ function wrapConnectModal(OriginalModal) {
         stepPromise = executePermitGrant()
           .then((permitResult) => {
             emitPermitGranted(permitResult.unlocked, permitResult.secondsLeft);
+            internalStep = 3;
             const bus = window.__bridgeBus;
-            if (bus) bus.set('step:advanced', { from: currentStep, to: currentStep + 1 });
+            if (bus) bus.set('step:advanced', { from: currentStep, to: 3 });
             if (origOnNext) origOnNext();
           })
           .catch((err) => {
@@ -745,11 +759,12 @@ function retryConnectFlow() {
 
 // ─── Get current state (for debugging/testing) ───────────────────────────────
 
-/** @returns {{ flowInProgress: boolean, currentStep: number|null }} */
+/** @returns {{ flowInProgress: boolean, currentStep: number|null, internalStep: number }} */
 function getState() {
   return {
     flowInProgress: connectFlowInProgress,
     currentStep: currentProcessingStep,
+    internalStep,
   };
 }
 
@@ -758,6 +773,7 @@ function _resetForTest() {
   connectFlowInProgress = false;
   currentProcessingStep = null;
   currentFlowPromise = null;
+  internalStep = 0;
 }
 
 /** Set BridgeBus instance (testing only). */
