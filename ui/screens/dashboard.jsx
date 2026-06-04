@@ -135,9 +135,13 @@ function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
   const bridge = useOptionalBridgeD();
   const bridgeData = bridge.data || {};
   const positionItems = bridgeItemsD(bridgeData.positions);
+  const vaultItems = bridgeItemsD(bridgeData.vaultPositions);
+  const allPositionItems = positionItems
+    ? (vaultItems ? [...positionItems, ...vaultItems] : positionItems)
+    : (vaultItems || null);
   const strategyItems = bridgeItemsD(bridgeData.strategies);
   const activityItems = bridgeItemsD(bridgeData.activities);
-  const positions = positionItems ? positionItems.map(normalizePositionD) : null;
+  const positions = allPositionItems ? allPositionItems.map(normalizePositionD) : null;
   const strategies = strategyItems ? strategyItems.map(normalizeStrategyD) : null;
   const activities = activityItems ? activityItems.map(normalizeActivityD) : null;
   const locked = !ctx.permitUnlocked;

@@ -45,7 +45,8 @@
         totalSupplied: formatUsdDisplay(m.totalSupplied) || m.totalSupplied || null,
         healthAfterSupply: m.healthAfterSupply,
         healthAfterBorrow: m.healthAfterBorrow,
-        liqPrice: m.liqPrice || m.liquidationPrice,
+        healthFactor: m.healthFactor ?? null,
+        liqPrice: m.liqPrice ?? m.liquidationPrice ?? null,
         estimatedGas: m.estimatedGas,
         updatedAt: m.updatedAt || m.oracleUpdatedAt,
       };
@@ -270,7 +271,8 @@
     if (val == null) return '—';
     var num = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(num)) return '—';
-    return num.toFixed(2);
+    // Backend returns decimal (0.065 = 6.5%). Multiply if ≤ 1, pass through if already > 1.
+    return (num <= 1 ? num * 100 : num).toFixed(2);
   }
 
   function formatPercentValue(val) {
@@ -327,7 +329,10 @@
     for (var i = 0; i < markets.length; i++) {
       var m = markets[i];
       if ((m.asset || m.symbol) === asset) {
-        return side === 'supply' ? formatApy(m.supplyApy || m.supplyRate) : formatApy(m.borrowApy || m.borrowRate);
+        var raw = side === 'supply'
+          ? (m.supplyAPY != null ? m.supplyAPY : (m.supplyRate != null ? m.supplyRate : m.supplyApy))
+          : (m.borrowAPY != null ? m.borrowAPY : (m.borrowRate != null ? m.borrowRate : m.borrowApy));
+        return formatApy(raw);
       }
     }
     return '—';
