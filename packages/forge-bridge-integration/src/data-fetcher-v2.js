@@ -882,16 +882,51 @@
                     return !b.plaintext || b.plaintext !== '0';
                   });
 
-                  if (filteredSupplies.length === 0 && filteredBorrows.length === 0) {
-                    return self._emptyPositionsPayload('empty', 'No non-zero positions found', markets);
+                  // Fetch vault positions
+                  var getUserPositions = self._getContractReadHelper(b, 'getUserPositions');
+                  var getPosMeta = self._getContractReadHelper(b, 'getPositionMeta');
+                  var getCollateral = self._getContractReadHelper(b, 'getCollateral');
+
+                  var vaultPromise;
+                  if (getUserPositions && getPosMeta && getCollateral) {
+                    vaultPromise = getUserPositions(addr).catch(function () { return []; }).then(function (positionIds) {
+                      if (!positionIds || positionIds.length === 0) return [];
+                      var posPromises = [];
+                      for (var pi = 0; pi < positionIds.length; pi++) {
+                        (function (pid) {
+                          posPromises.push(
+                            Promise.all([getPosMeta(pid), getCollateral(pid)]).then(function (res) {
+                              var meta = res[0], collateral = res[1];
+                              if (permitUnlocked && collateral) {
+                                return b.fhe.decrypt(collateral).catch(function () { return null; }).then(function (plain) {
+                                  return { id: pid, strategyId: meta && meta.strategyId || 0, createdAt: meta && meta.createdAt || 0, collateral: plain, collateralEncrypted: collateral, venue: 'Vault', side: 'vault' };
+                                });
+                              }
+                              return { id: pid, strategyId: meta && meta.strategyId || 0, createdAt: meta && meta.createdAt || 0, collateral: null, collateralEncrypted: collateral, venue: 'Vault', side: 'vault' };
+                            }).catch(function () { return null; })
+                          );
+                        })(positionIds[pi]);
+                      }
+                      return Promise.all(posPromises);
+                    }).then(function (rawVault) {
+                      return rawVault.filter(function (p) { return p !== null; });
+                    });
+                  } else {
+                    vaultPromise = Promise.resolve([]);
                   }
 
-                  return {
-                    supplies: filteredSupplies,
-                    borrows: filteredBorrows,
-                    markets: markets,
-                    status: permitUnlocked ? 'ok' : 'locked',
-                  };
+                  return vaultPromise.then(function (vaultPositions) {
+                    if (filteredSupplies.length === 0 && filteredBorrows.length === 0 && vaultPositions.length === 0) {
+                      return self._emptyPositionsPayload('empty', 'No non-zero positions found', markets);
+                    }
+                    return {
+                      supplies: filteredSupplies,
+                      borrows: filteredBorrows,
+                      vaultPositions: vaultPositions,
+                      markets: markets,
+                      status: permitUnlocked ? 'ok' : 'locked',
+                    };
+                  });
                 });
               });
             });
@@ -907,7 +942,11 @@
             };
           }
           if (!self._xf) return raw;
-          return self._xf.transformPositions(raw.supplies, raw.borrows, raw.markets);
+          var result = self._xf.transformPositions(raw.supplies, raw.borrows, raw.markets);
+          if (result && typeof result === 'object' && raw.vaultPositions) {
+            result.vaultPositions = raw.vaultPositions;
+          }
+          return result;
         },
         event: 'data:positions',
         name: 'positions',

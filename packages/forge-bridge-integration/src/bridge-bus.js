@@ -93,8 +93,12 @@ const EVENT_MAP = {
 	"data:positions": { domain: "authed", key: "positions" },
 	"data:strategies": { domain: "authed", key: "strategies" },
 	"data:proposals": { domain: "authed", key: "proposals" },
+	"data:community": { domain: "authed", key: "community" },
+	"data:templates": { domain: "authed", key: "templates" },
 	"data:nodeTypes": { domain: "authed", key: "nodeTypes" },
 	"data:walletBalance": { domain: "authed", key: "walletBalance" },
+	// Events → public domain (readiness)
+	"data:readiness": { domain: "public", key: "readiness" },
 	// Events → wallet domain (shallow-merge into entire domain)
 	"wallet:connected": { domain: "wallet", key: null },
 	"wallet:disconnected": { domain: "wallet", key: null },

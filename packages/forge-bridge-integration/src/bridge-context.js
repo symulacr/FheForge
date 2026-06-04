@@ -267,12 +267,6 @@ function ForgeProvider({ children }) {
 				setWallet((prev) => ({ ...prev, ...walletData }));
 			}),
 		);
-		unsubFns.push(
-			bridgeBus.on("wallet:networkChanged", (walletData) => {
-				setWallet((prev) => ({ ...prev, ...walletData }));
-			}),
-		);
-
 		// --- Permit event subscriptions ---
 		// Each handler does a shallow merge into permit state
 		unsubFns.push(
@@ -335,6 +329,13 @@ function ForgeProvider({ children }) {
 				if (typeof window !== "undefined" && window.__dataFetcherV2 && typeof window.__dataFetcherV2.refreshAfterTransaction === "function") {
 					window.__dataFetcherV2.refreshAfterTransaction();
 				}
+			}),
+		);
+
+		unsubFns.push(
+			bridgeBus.on("transaction:failed", (data) => {
+				console.warn("Transaction failed:", data);
+				// Could show a toast notification here
 			}),
 		);
 
