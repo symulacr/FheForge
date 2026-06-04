@@ -205,6 +205,62 @@ export function createFheAdapter(config) {
 	}
 
 	/**
+	 * Decrypt an encrypted handle for use in a transaction (e.g. liquidation).
+	 * Uses @cofhe/sdk 0.5.2 `decryptForTx()` which produces a signature
+	 * that can be passed directly to a contract function.
+	 *
+	 * @param {string} ctHash - The ciphertext handle (hex string) to decrypt
+	 * @param {object} [opts] - Options
+	 * @param {number} [opts.timeout=60_000] - Timeout in ms (default 60s)
+	 * @param {number} [opts.pollInterval=2_000] - Poll interval in ms (default 2s)
+	 * @returns {Promise<{ plaintext: string, signature: string }>}
+	 */
+	async function decryptForExecute(ctHash, opts = {}) {
+		if (!_cofheClient) {
+			throw new FheError("NO_PERMIT", "Grant an FHE permit before decrypting for tx");
+		}
+
+		const timeout = opts.timeout ?? 60_000;
+		const pollInterval = opts.pollInterval ?? 2_000;
+		const start = Date.now();
+
+		try {
+			// decryptForTx returns a builder: .withoutPermit().execute()
+			// The SDK may internally poll until the decryption is ready.
+			const result = await _cofheClient
+				.decryptForTx(ctHash)
+				.withoutPermit()
+				.execute();
+
+			return {
+				plaintext: String(result.decryptedValue),
+				signature: result.signature,
+			};
+		} catch (error) {
+			const elapsed = Date.now() - start;
+
+			if (elapsed >= timeout) {
+				throw new FheError(
+					"DECRYPT_TIMEOUT",
+					`Decryption for tx timed out after ${Math.round(elapsed / 1000)}s for handle ${ctHash}`,
+				);
+			}
+
+			if (error.message && error.message.includes("not ready")) {
+				throw new FheError(
+					"DECRYPT_NOT_READY",
+					`Ciphertext ${ctHash} is not yet ready for decryption: ${error.message}`,
+				);
+			}
+
+			throw new FheError(
+				"DECRYPT_FOR_TX_FAILED",
+				error.message || `Failed to decrypt ${ctHash} for transaction`,
+			);
+		}
+	}
+
+	/**
 	 * Register a callback for permit state changes.
 	 * The callback is invoked immediately with the current state.
 	 * @param {(state: PermitState) => void} cb - Listener callback
@@ -230,13 +286,14 @@ export function createFheAdapter(config) {
 		permitCountdown,
 		encrypt,
 		decrypt,
+		decryptForExecute,
 		onPermitChange,
 
 		// Aliases for naming compatibility
 		grantPermit: permitGrant,
 		checkPermit: permitCheck,
 
-		// Staggered reveal stubs (deferred to forge integration phase)
+		// Staggered reveal — decrypts each handle for on-chain use
 		staggeredReveal: {
 			getAdapter() {
 				return {
@@ -244,14 +301,20 @@ export function createFheAdapter(config) {
 					permitCheck: adapter.permitCheck,
 					encrypt: adapter.encrypt,
 					decrypt: adapter.decrypt,
+					decryptForExecute: adapter.decryptForExecute,
 					onPermitChange: adapter.onPermitChange,
 				};
 			},
 			async revealAll(handles) {
-				return handles;
+				const results = [];
+				for (const handle of handles) {
+					const result = await decryptForExecute(handle);
+					results.push(result);
+				}
+				return results;
 			},
 			async revealOne(handle) {
-				return handle;
+				return decryptForExecute(handle);
 			},
 		},
 	};
@@ -282,11 +345,12 @@ export function createFheAdapter(config) {
  * @property {() => number} permitCountdown - Seconds until permit expires
  * @property {(plaintext: string, tokenAddress?: string) => Promise<EncryptedHandle>} encrypt - Encrypt a plaintext value
  * @property {(handle: string) => Promise<string>} decrypt - Decrypt an encrypted handle
+ * @property {(ctHash: string, opts?: { timeout?: number, pollInterval?: number }) => Promise<{ plaintext: string, signature: string }>} decryptForExecute - Decrypt for tx with signature
  * @property {(cb: (state: PermitState) => void) => () => void} onPermitChange - Register permit state listener
  * @property {() => Promise<PermitState>} grantPermit - Alias for permitGrant
  * @property {() => PermitState} checkPermit - Alias for permitCheck
- * @property {object} staggeredReveal - Staggered reveal stubs (deferred)
- * @property {() => Pick<FheAdapter, 'permitGrant' | 'permitCheck' | 'encrypt' | 'decrypt' | 'onPermitChange'>} staggeredReveal.getAdapter
- * @property {(handles: string[]) => Promise<string[]>} staggeredReveal.revealAll
- * @property {(handle: string) => Promise<string>} staggeredReveal.revealOne
+ * @property {object} staggeredReveal - Staggered reveal using decryptForExecute
+ * @property {() => Pick<FheAdapter, 'permitGrant' | 'permitCheck' | 'encrypt' | 'decrypt' | 'decryptForExecute' | 'onPermitChange'>} staggeredReveal.getAdapter
+ * @property {(handles: string[]) => Promise<Array<{ plaintext: string, signature: string }>>} staggeredReveal.revealAll
+ * @property {(handle: string) => Promise<{ plaintext: string, signature: string }>} staggeredReveal.revealOne
  */

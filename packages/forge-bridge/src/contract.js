@@ -300,6 +300,14 @@ const ERC20_READ_ABI = [
  * @property {(params: object, account: `0x${string}`) => Promise<TransactionResult>} composerOpenPosition
  * @property {(tokenIn: `0x${string}`, tokenOut: `0x${string}`, amountIn: bigint, minAmountOut: bigint, deadlineOffset: bigint, account: `0x${string}`) => Promise<TransactionResult>} submitSwapIntent
  * @property {(voteData: any) => Promise<any>} castVote
+ * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} shieldCommit
+ * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} shieldExecute
+ * @property {(token: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} borrowCommit
+ * @property {(commitId: string, account: `0x${string}`) => Promise<TransactionResult>} borrowExecute
+ * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} repayCommit
+ * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} repayExecute
+ * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} withdrawCommit
+ * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} withdrawExecute
  */
 
 /**
@@ -873,6 +881,204 @@ export function createContractAdapter(config, options = {}) {
 				CONTRACT_ABIS.LendingPool,
 				"partialUnshield",
 				[token, amount, finalEnc],
+				account,
+			);
+		},
+
+		// ── LendingPool commit-reveal pairs ──────────────────────────────
+
+		/**
+		 * Commit phase: encrypt amount and call shield(token, encAmount).
+		 * Returns { ...result, commitId } extracted from receipt logs.
+		 * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
+		 */
+		shieldCommit: async (token, amount, account) => {
+			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
+				? await _fheAdapter.encrypt(String(amount), token)
+				: undefined;
+			const wc = getWc();
+			const result = await estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.LendingPool,
+				CONTRACT_ABIS.LendingPool,
+				"shield",
+				[token, encAmount],
+				account,
+			);
+			let commitId = "";
+			if (result.receipt?.logs) {
+				for (const log of result.receipt.logs) {
+					if (log.topics?.[0] && log.data && log.data !== "0x") {
+						commitId = log.topics[1] ?? log.data.slice(0, 66);
+						break;
+					}
+				}
+			}
+			return { ...result, commitId };
+		},
+
+		/**
+		 * Execute phase: decrypt handle, then call executeShield(token, commitId, plaintext, signature).
+		 * @type {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>}
+		 */
+		shieldExecute: async (token, commitId, account) => {
+			const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+			const wc = getWc();
+			return estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.LendingPool,
+				CONTRACT_ABIS.LendingPool,
+				"executeShield",
+				[token, commitId, plaintext, signature],
+				account,
+			);
+		},
+
+		/**
+		 * Commit phase: encrypt amount and call commitBorrow(token, encAmount, ltvNum, ltvDen).
+		 * Returns { ...result, commitId } extracted from receipt logs.
+		 * @type {(token: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
+		 */
+		borrowCommit: async (token, amount, ltvNum, ltvDen, account) => {
+			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
+				? await _fheAdapter.encrypt(String(amount), token)
+				: undefined;
+			const wc = getWc();
+			const result = await estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.LendingPool,
+				CONTRACT_ABIS.LendingPool,
+				"commitBorrow",
+				[token, encAmount, ltvNum, ltvDen],
+				account,
+			);
+			let commitId = "";
+			if (result.receipt?.logs) {
+				for (const log of result.receipt.logs) {
+					if (log.topics?.[0] && log.data && log.data !== "0x") {
+						commitId = log.topics[1] ?? log.data.slice(0, 66);
+						break;
+					}
+				}
+			}
+			return { ...result, commitId };
+		},
+
+		/**
+		 * Execute phase: decrypt handle, then call executeBorrow(commitId, plaintext, signature).
+		 * @type {(commitId: string, account: `0x${string}`) => Promise<TransactionResult>}
+		 */
+		borrowExecute: async (commitId, account) => {
+			const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+			const wc = getWc();
+			return estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.LendingPool,
+				CONTRACT_ABIS.LendingPool,
+				"executeBorrow",
+				[commitId, plaintext, signature],
+				account,
+			);
+		},
+
+		/**
+		 * Commit phase: encrypt amount and call repay(token, encAmount).
+		 * Returns { ...result, commitId } extracted from receipt logs.
+		 * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
+		 */
+		repayCommit: async (token, amount, account) => {
+			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
+				? await _fheAdapter.encrypt(String(amount), token)
+				: undefined;
+			const wc = getWc();
+			const result = await estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.LendingPool,
+				CONTRACT_ABIS.LendingPool,
+				"repay",
+				[token, encAmount],
+				account,
+			);
+			let commitId = "";
+			if (result.receipt?.logs) {
+				for (const log of result.receipt.logs) {
+					if (log.topics?.[0] && log.data && log.data !== "0x") {
+						commitId = log.topics[1] ?? log.data.slice(0, 66);
+						break;
+					}
+				}
+			}
+			return { ...result, commitId };
+		},
+
+		/**
+		 * Execute phase: decrypt handle, then call executeRepay(token, commitId, plaintext, signature).
+		 * @type {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>}
+		 */
+		repayExecute: async (token, commitId, account) => {
+			const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+			const wc = getWc();
+			return estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.LendingPool,
+				CONTRACT_ABIS.LendingPool,
+				"executeRepay",
+				[token, commitId, plaintext, signature],
+				account,
+			);
+		},
+
+		/**
+		 * Commit phase: encrypt amount and call withdraw(token, encAmount).
+		 * Returns { ...result, commitId } extracted from receipt logs.
+		 * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
+		 */
+		withdrawCommit: async (token, amount, account) => {
+			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
+				? await _fheAdapter.encrypt(String(amount), token)
+				: undefined;
+			const wc = getWc();
+			const result = await estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.LendingPool,
+				CONTRACT_ABIS.LendingPool,
+				"withdraw",
+				[token, encAmount],
+				account,
+			);
+			let commitId = "";
+			if (result.receipt?.logs) {
+				for (const log of result.receipt.logs) {
+					if (log.topics?.[0] && log.data && log.data !== "0x") {
+						commitId = log.topics[1] ?? log.data.slice(0, 66);
+						break;
+					}
+				}
+			}
+			return { ...result, commitId };
+		},
+
+		/**
+		 * Execute phase: decrypt handle, then call executeWithdraw(token, commitId, plaintext, signature).
+		 * @type {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>}
+		 */
+		withdrawExecute: async (token, commitId, account) => {
+			const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+			const wc = getWc();
+			return estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.LendingPool,
+				CONTRACT_ABIS.LendingPool,
+				"executeWithdraw",
+				[token, commitId, plaintext, signature],
 				account,
 			);
 		},
