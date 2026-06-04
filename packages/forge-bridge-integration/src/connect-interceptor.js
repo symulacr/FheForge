@@ -35,6 +35,9 @@ let listenersRegistered = false;
 /** @type {Object|null} DataFetcherV2 instance for authenticated polling lifecycle */
 let _dataFetcherV2Instance = null;
 
+/** @type {number|null} Interval ID for permit countdown ticker */
+let _permitTickInterval = null;
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
@@ -230,6 +233,19 @@ function startConnectFlow(connectorId) {
     .then((permitResult) => {
       emitPermitGranted(permitResult.unlocked, permitResult.secondsLeft);
 
+      // Start permit countdown ticker
+      if (_permitTickInterval) clearInterval(_permitTickInterval);
+      _permitTickInterval = setInterval(() => {
+        const state = window.bridge?.fhe?.getPermitState?.();
+        if (state) {
+          bus.set("permit:tick", { unlocked: state.unlocked, secondsLeft: state.secondsLeft });
+          if (!state.unlocked) {
+            clearInterval(_permitTickInterval);
+            _permitTickInterval = null;
+          }
+        }
+      }, 30000);
+
       // Start authenticated polling
       const fetcher = getDataFetcherV2();
       if (fetcher) fetcher.startAuthenticatedPolling();
@@ -255,6 +271,11 @@ function handleDisconnect() {
     try { ss.removeItem(SESSION_STORAGE_CONNECTOR_KEY); } catch {
       console.warn('[ConnectInterceptor] Failed to clear sessionStorage on disconnect');
     }
+  }
+
+  if (_permitTickInterval) {
+    clearInterval(_permitTickInterval);
+    _permitTickInterval = null;
   }
 
   const fetcher = getDataFetcherV2();
