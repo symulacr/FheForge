@@ -22,9 +22,9 @@ cd backend/apps && bun run start:dev
 - `docs/` — ADRs, security audits, execution plan
 
 ## Deployed Contracts (Arb Sepolia)
-- LendingPool: 0x6903df3E8f45497C3097A16E534787D6Fc9F58eF
-- StrategyVault: 0xf3cB0A1b02128C630C2bca9b50151FbC350f6AFC
-- SwapRouter: 0x1136E5eF8bB8E189aE83894eCB2F0c67E3097Ea1
+- LendingPool: 0xff687831dfD3657D6C6879403cE56f53518b378C
+- StrategyVault: 0xfCb89417e0a21813c84647614764e920bBdFEb94
+- SwapRouter: 0x9C9bEb3d95184BbA11AfE1D973927562C8eb0409
 - See README.md for full list
 
 ## Key Patterns
