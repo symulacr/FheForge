@@ -72,6 +72,22 @@ export class MarketResponseDto {
   totalBorrowed: number | null;
 
   @ApiProperty({
+    example: 1.82,
+    nullable: true,
+    description:
+      'Health factor = (totalSupplied * liquidationThreshold) / totalBorrowed. null when no borrows or missing data.',
+  })
+  healthFactor: number | null;
+
+  @ApiProperty({
+    example: 2_100.5,
+    nullable: true,
+    description:
+      'Liquidation price in USD — the price at which the position becomes liquidatable. null when no borrows or missing data.',
+  })
+  liqPrice: number | null;
+
+  @ApiProperty({
     example: 'partial',
     description: 'Data completeness for this market',
     enum: ['live', 'partial', 'unavailable'],

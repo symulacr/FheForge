@@ -11,16 +11,16 @@ import { SupabaseService } from '../shared/infrastructure/supabase.service';
 // ── Contract ABIs (only the events we index) ───────────────────────────
 
 const STRATEGY_VAULT_ABI = [
-  'event PositionOpened(address indexed user, uint256 positionId, address collateral, uint256 amount)',
-  'event PositionClosed(address indexed user, uint256 positionId, uint256 amountRepaid)',
-  'event CollateralAdded(address indexed user, uint256 positionId, uint256 amountAdded)',
+  'event PositionOpened(bytes32 indexed positionId, address indexed user, address indexed collateralToken, uint256 strategyId)',
+  'event PositionClosed(bytes32 indexed positionId, address indexed user, address indexed collateralToken, bool fullClose)',
+  'event CollateralAdded(bytes32 indexed positionId, address indexed user, address indexed collateralToken)',
 ];
 
 const LENDING_POOL_ABI = [
-  'event Supplied(address indexed user, address indexed asset, uint256 amount, address indexed onBehalfOf)',
-  'event Borrowed(address indexed user, address indexed asset, uint256 amount, uint256 interestRate)',
-  'event Repaid(address indexed user, address indexed asset, uint256 amount, bool useAsCollateral)',
-  'event Withdrawn(address indexed user, address indexed asset, uint256 amount, address indexed to)',
+  'event Supplied(address indexed user, address indexed token)',
+  'event Borrowed(address indexed user, address indexed collateralToken, address indexed borrowToken)',
+  'event Repaid(address indexed user, address indexed token)',
+  'event Withdrawn(address indexed user, address indexed token)',
 ];
 
 interface IndexedEvent {

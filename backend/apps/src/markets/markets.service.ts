@@ -359,6 +359,24 @@ export class MarketsService implements OnModuleInit, OnModuleDestroy {
     const borrowAPY =
       Number(this.configService?.get('BORROW_APY_BPS', '550')) / 10000;
 
+    // Health factor = (supplyValue * liquidationThreshold) / borrowValue
+    const liqThreshold = liquidationThreshold !== null ? liquidationThreshold : 0;
+    const healthFactor =
+      totalBorrowed !== null && totalBorrowed > 0 && totalSupplied !== null && liqThreshold > 0
+        ? (totalSupplied * liqThreshold) / totalBorrowed
+        : null;
+
+    // Liquidation price = currentPrice * (1 - borrowValue / (supplyValue * liqThreshold))
+    const liqPrice =
+      totalBorrowed !== null &&
+      totalBorrowed > 0 &&
+      totalSupplied !== null &&
+      totalSupplied > 0 &&
+      price.price !== null &&
+      liqThreshold > 0
+        ? price.price * (1 - totalBorrowed / (totalSupplied * liqThreshold))
+        : null;
+
     const missingFields = [
       totalSupplied === null ? 'totalSupplied' : null,
       totalBorrowed === null ? 'totalBorrowed' : null,
@@ -379,6 +397,8 @@ export class MarketsService implements OnModuleInit, OnModuleDestroy {
       oraclePrice: price.price,
       totalSupplied,
       totalBorrowed,
+      healthFactor,
+      liqPrice,
       status: missingFields.length === 0 ? 'live' : 'partial',
       missingFields,
     };
