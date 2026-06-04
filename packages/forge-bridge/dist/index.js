@@ -7813,18 +7813,7 @@ function getWagmiConfig(config) {
     _wagmiConfig = createConfig2({
       chains: [arbitrumSepolia2],
       connectors: [
-        injected({
-          target: {
-            id: "metaMask",
-            name: "MetaMask",
-            provider: () => findInjectedProvider("metaMask") ?? window.ethereum
-          },
-          shimDisconnect: true
-        }),
-        injected({
-          target: { id: "rabby", name: "Rabby", provider: () => findInjectedProvider("rabby") },
-          shimDisconnect: true
-        }),
+        injected(),
         ...config.walletConnectProjectId ? [walletConnect({ projectId: config.walletConnectProjectId })] : []
       ],
       transports: {
@@ -7846,48 +7835,6 @@ function getPublicClient(config) {
     });
   }
   return _publicClient;
-}
-function getInjectedProviders() {
-  if (typeof window === "undefined")
-    return [];
-  const ethereum = window.ethereum;
-  if (!ethereum)
-    return [];
-  if (Array.isArray(ethereum.providers))
-    return ethereum.providers;
-  return [ethereum];
-}
-function findInjectedProvider(walletId) {
-  const providers = getInjectedProviders();
-  if (walletId === "rabby") {
-    return providers.find((provider) => provider?.isRabby) ?? undefined;
-  }
-  if (walletId === "metaMask") {
-    return providers.find((provider) => provider?.isMetaMask && !provider?.isRabby) ?? undefined;
-  }
-  return;
-}
-var INJECTED_WALLET_NAMES = {
-  metaMask: "MetaMask",
-  rabby: "Rabby"
-};
-function getInjectedProviderStatus(walletId) {
-  const provider = findInjectedProvider(walletId);
-  return {
-    walletId,
-    name: INJECTED_WALLET_NAMES[walletId],
-    available: Boolean(provider),
-    provider
-  };
-}
-function assertInjectedProviderAvailable(walletId) {
-  const status = getInjectedProviderStatus(walletId);
-  if (!status.available) {
-    throw new WalletError("PROVIDER_NOT_FOUND", `${status.name} provider not found. Install ${status.name} or enable it for this site.`);
-  }
-}
-function isInjectedWalletConnectorId(connectorId) {
-  return connectorId === "metaMask" || connectorId === "rabby";
 }
 function decodeJwtPayload(token) {
   try {
@@ -7932,9 +7879,6 @@ function createWalletAdapter(config) {
         if (!connector) {
           throw new WalletError("CONNECTOR_NOT_FOUND", `Connector "${connectorId}" not found. Available: ${connectors.map((c) => c.id).join(", ")}`);
         }
-        if (isInjectedWalletConnectorId(connectorId)) {
-          assertInjectedProviderAvailable(connectorId);
-        }
         try {
           const result = await wagmiConnect(wagmiConfig, { connector });
           return { accounts: result };
@@ -7942,14 +7886,13 @@ function createWalletAdapter(config) {
           throw new WalletError("CONNECT_FAILED", error.message || "Failed to connect wallet");
         }
       }
-      assertInjectedProviderAvailable("metaMask");
       try {
         const result = await wagmiConnect(wagmiConfig, {
           connector: connectors[0]
         });
         return { accounts: result };
       } catch (error) {
-        throw new WalletError("CONNECT_FAILED", error.message || "Failed to connect MetaMask.");
+        throw new WalletError("CONNECT_FAILED", error.message || "Failed to connect wallet.");
       }
     },
     async disconnect() {
@@ -8073,7 +8016,6 @@ function createWalletAdapter(config) {
       }
     },
     onChainChange(cb) {
-      const providerUnsubscribers = [];
       if (unwatchAccountFn) {
         unwatchAccountFn();
         unwatchAccountFn = null;
@@ -8092,25 +8034,6 @@ function createWalletAdapter(config) {
           cb({ chainId });
         }
       });
-      for (const provider of getInjectedProviders()) {
-        if (!provider?.on || !provider?.removeListener)
-          continue;
-        const handleAccountsChanged = (accounts) => {
-          const nextAccount = Array.isArray(accounts) ? accounts[0] : undefined;
-          cb({ account: nextAccount });
-        };
-        const handleChainChanged = (chainId) => {
-          const parsed = typeof chainId === "string" ? Number.parseInt(chainId, 16) : Number(chainId);
-          if (!Number.isNaN(parsed))
-            cb({ chainId: parsed });
-        };
-        provider.on("accountsChanged", handleAccountsChanged);
-        provider.on("chainChanged", handleChainChanged);
-        providerUnsubscribers.push(() => {
-          provider.removeListener("accountsChanged", handleAccountsChanged);
-          provider.removeListener("chainChanged", handleChainChanged);
-        });
-      }
       return () => {
         if (unwatchAccountFn) {
           unwatchAccountFn();
@@ -8119,9 +8042,6 @@ function createWalletAdapter(config) {
         if (unwatchChainFn) {
           unwatchChainFn();
           unwatchChainFn = null;
-        }
-        for (const unsubscribeProvider of providerUnsubscribers) {
-          unsubscribeProvider();
         }
       };
     },

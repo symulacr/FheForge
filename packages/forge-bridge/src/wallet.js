@@ -1,5 +1,5 @@
 /**
- * @file Wallet adapter — wagmi v2 integration with MetaMask, Rabby, WalletConnect
+ * @file Wallet adapter — wagmi v2 with EIP-6963 auto-discovery and WalletConnect
  * JWT lifecycle with localStorage persistence and auto-refresh.
  *
  * @typedef {import('./config.js').BridgeConfig} BridgeConfig
@@ -61,19 +61,7 @@ function getWagmiConfig(config) {
 		_wagmiConfig = createConfig({
 			chains: [arbitrumSepolia],
 			connectors: [
-				injected({
-					target: {
-						id: "metaMask",
-						name: "MetaMask",
-						provider: () =>
-							findInjectedProvider("metaMask") ?? /** @type {any} */ (window).ethereum,
-					},
-					shimDisconnect: true,
-				}),
-				injected({
-					target: { id: "rabby", name: "Rabby", provider: () => findInjectedProvider("rabby") },
-					shimDisconnect: true,
-				}),
+				injected(),
 				// Only add WalletConnect if a real projectId is configured
 				...(config.walletConnectProjectId
 					? [walletConnect({ projectId: config.walletConnectProjectId })]
@@ -110,86 +98,6 @@ function getPublicClient(config) {
 		});
 	}
 	return _publicClient;
-}
-
-/**
- * Return injected providers exposed by wallets, including EIP-5749 multi-injected arrays.
- * @returns {Array<any>}
- */
-function getInjectedProviders() {
-	if (typeof window === "undefined") return [];
-	const ethereum = /** @type {any} */ (window).ethereum;
-	if (!ethereum) return [];
-	if (Array.isArray(ethereum.providers)) return ethereum.providers;
-	return [ethereum];
-}
-
-/**
- * Find a browser wallet provider by wallet id. Falls back to window.ethereum safely.
- * @param {'metaMask' | 'rabby'} walletId
- * @returns {any | undefined}
- */
-function findInjectedProvider(walletId) {
-	const providers = getInjectedProviders();
-	if (walletId === "rabby") {
-		return providers.find((provider) => provider?.isRabby) ?? undefined;
-	}
-	if (walletId === "metaMask") {
-		return providers.find((provider) => provider?.isMetaMask && !provider?.isRabby) ?? undefined;
-	}
-	return undefined;
-}
-
-/**
- * @typedef {Object} InjectedProviderStatus
- * @property {'metaMask' | 'rabby'} walletId - Wallet identifier.
- * @property {string} name - Human-readable wallet name.
- * @property {boolean} available - Whether the wallet's injected provider is present.
- * @property {any | undefined} provider - The discovered injected provider, if present.
- */
-
-const INJECTED_WALLET_NAMES = {
-	metaMask: "MetaMask",
-	rabby: "Rabby",
-};
-
-/**
- * Get readiness status for an injected wallet provider.
- * @param {'metaMask' | 'rabby'} walletId
- * @returns {InjectedProviderStatus}
- */
-export function getInjectedProviderStatus(walletId) {
-	const provider = findInjectedProvider(walletId);
-	return {
-		walletId,
-		name: INJECTED_WALLET_NAMES[walletId],
-		available: Boolean(provider),
-		provider,
-	};
-}
-
-/**
- * Throw a deterministic wallet-specific error when an injected provider is unavailable.
- * @param {'metaMask' | 'rabby'} walletId
- * @returns {void}
- */
-function assertInjectedProviderAvailable(walletId) {
-	const status = getInjectedProviderStatus(walletId);
-	if (!status.available) {
-		throw new WalletError(
-			"PROVIDER_NOT_FOUND",
-			`${status.name} provider not found. Install ${status.name} or enable it for this site.`,
-		);
-	}
-}
-
-/**
- * Return true when a connector id maps to an injected provider with explicit discovery.
- * @param {string | undefined} connectorId
- * @returns {connectorId is 'metaMask' | 'rabby'}
- */
-function isInjectedWalletConnectorId(connectorId) {
-	return connectorId === "metaMask" || connectorId === "rabby";
 }
 
 /**
@@ -273,8 +181,9 @@ export function createWalletAdapter(config) {
 
 	return {
 		/**
-		 * Connect a wallet. If no connectorId is given, tries injected (MetaMask) first.
-		 * @param {string} [connectorId] - Optional connector id ("metaMask", "rabby", "walletConnect")
+		 * Connect a wallet. If no connectorId is given, tries the first available connector.
+		 * EIP-6963 wallets are auto-discovered; their IDs are set by the wallet (e.g. "io.metamask", "io.rabby").
+		 * @param {string} [connectorId] - Optional connector id
 		 * @returns {Promise<{accounts: ConnectReturnType | undefined}>}
 		 */
 		async connect(connectorId) {
@@ -288,9 +197,6 @@ export function createWalletAdapter(config) {
 						`Connector "${connectorId}" not found. Available: ${connectors.map((c) => c.id).join(", ")}`,
 					);
 				}
-				if (isInjectedWalletConnectorId(connectorId)) {
-					assertInjectedProviderAvailable(connectorId);
-				}
 				try {
 					const result = await wagmiConnect(wagmiConfig, { connector });
 					return { accounts: result };
@@ -302,8 +208,7 @@ export function createWalletAdapter(config) {
 				}
 			}
 
-			// Try the first connector (metaMask injected) by default
-			assertInjectedProviderAvailable("metaMask");
+			// Default: try the first available connector (EIP-6963 discovered or generic injected)
 			try {
 				const result = await wagmiConnect(wagmiConfig, {
 					connector: connectors[0],
@@ -312,7 +217,7 @@ export function createWalletAdapter(config) {
 			} catch (error) {
 				throw new WalletError(
 					"CONNECT_FAILED",
-					/** @type {Error} */ (error).message || "Failed to connect MetaMask.",
+					/** @type {Error} */ (error).message || "Failed to connect wallet.",
 				);
 			}
 		},
@@ -534,9 +439,6 @@ export function createWalletAdapter(config) {
 		 * @returns {() => void} Unsubscribe function
 		 */
 		onChainChange(cb) {
-			/** @type {Array<() => void>} */
-			const providerUnsubscribers = [];
-
 			// Clean up previous watchers
 			if (unwatchAccountFn) {
 				unwatchAccountFn();
@@ -559,27 +461,6 @@ export function createWalletAdapter(config) {
 				},
 			});
 
-			for (const provider of getInjectedProviders()) {
-				if (!provider?.on || !provider?.removeListener) continue;
-				/** @param {unknown} accounts */
-				const handleAccountsChanged = (accounts) => {
-					const nextAccount = Array.isArray(accounts) ? accounts[0] : undefined;
-					cb({ account: nextAccount });
-				};
-				/** @param {string | number} chainId */
-				const handleChainChanged = (chainId) => {
-					const parsed =
-						typeof chainId === "string" ? Number.parseInt(chainId, 16) : Number(chainId);
-					if (!Number.isNaN(parsed)) cb({ chainId: parsed });
-				};
-				provider.on("accountsChanged", handleAccountsChanged);
-				provider.on("chainChanged", handleChainChanged);
-				providerUnsubscribers.push(() => {
-					provider.removeListener("accountsChanged", handleAccountsChanged);
-					provider.removeListener("chainChanged", handleChainChanged);
-				});
-			}
-
 			return () => {
 				if (unwatchAccountFn) {
 					unwatchAccountFn();
@@ -588,9 +469,6 @@ export function createWalletAdapter(config) {
 				if (unwatchChainFn) {
 					unwatchChainFn();
 					unwatchChainFn = null;
-				}
-				for (const unsubscribeProvider of providerUnsubscribers) {
-					unsubscribeProvider();
 				}
 			};
 		},
