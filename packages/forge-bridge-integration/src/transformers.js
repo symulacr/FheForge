@@ -41,6 +41,8 @@
         liq: formatPercentValue(liq),
         oracle: m.oracle || m.oracleSource || (m.oraclePrice != null ? 'on-chain' : 'unavailable'),
         price: m.price || formatUsdDisplay(m.oraclePrice),
+        totalBorrowed: formatUsdDisplay(m.totalBorrowed) || m.totalBorrowed || null,
+        totalSupplied: formatUsdDisplay(m.totalSupplied) || m.totalSupplied || null,
         healthAfterSupply: m.healthAfterSupply,
         healthAfterBorrow: m.healthAfterBorrow,
         liqPrice: m.liqPrice || m.liquidationPrice,
@@ -171,6 +173,27 @@
   }
 
   /* ──────────────────────────────────────────────
+     transformCommunity
+     API community strategies → forge COMMUNITY format
+     ────────────────────────────────────────────── */
+  function transformCommunity(apiCommunity) {
+    if (!Array.isArray(apiCommunity)) return [];
+    return apiCommunity.map(function (item) {
+      return {
+        id: item.id || item.strategyId || 'comm-' + Math.random().toString(36).slice(2, 8),
+        name: item.name || item.strategistName || 'Strategy',
+        author: item.author || item.strategistHandle || item.strategistName || 'anonymous',
+        risk: (item.risk || 'medium').toLowerCase(),
+        apy: item.apy || item.estimatedApy || 0,
+        tvl: item.tvl || item.totalStakedUsd || '0',
+        asset: item.asset || item.token || 'UNKNOWN',
+        deployers: item.deployers || item.deployerCount || 0,
+        template: item.template || item.templateId || '',
+      };
+    });
+  }
+
+  /* ──────────────────────────────────────────────
      transformNodeTypes
      Defi modules → node type definition map
      ────────────────────────────────────────────── */
@@ -247,7 +270,7 @@
     if (val == null) return '—';
     var num = typeof val === 'string' ? parseFloat(val) : val;
     if (isNaN(num)) return '—';
-    return num.toFixed(2) + '%';
+    return num.toFixed(2);
   }
 
   function formatPercentValue(val) {
@@ -330,6 +353,7 @@
   transformers.formatTicker = formatTicker;
   transformers.transformStrategies = transformStrategies;
   transformers.transformProposals = transformProposals;
+  transformers.transformCommunity = transformCommunity;
   transformers.transformNodeTypes = transformNodeTypes;
   transformers.calculateNetValue = calculateNetValue;
   transformers.calculateLTV = calculateLTV;

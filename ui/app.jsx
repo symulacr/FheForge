@@ -89,18 +89,15 @@ function App() {
     }
   }, [ctx.permitSeconds, grantPermit]);
 
-  // Grant permit: stagger cipher reveal across visible elements
-  const grantPermit = useCallbackA(() => {
-    if (!ctx.connected) {
-      setCtx(c => ({ ...c, connected: true, address: "0x9f3a2c4b1e0d8f7a6c5b4a39" }));
+  // Grant permit: call real bridge FHE permit
+  const grantPermit = useCallbackA(async () => {
+    if (!ctx.connected) return;
+    try {
+      await window.bridge?.fhe?.permitGrant();
+      setCtx(c => ({ ...c, permitUnlocked: true, permitSeconds: 15 * 60 }));
+    } catch (e) {
+      console.error("Permit grant failed:", e);
     }
-    // Apply per-element delay to make the reveal feel staggered
-    requestAnimationFrame(() => {
-      const ciphers = [...document.querySelectorAll(".cipher")];
-      ciphers.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-      ciphers.forEach((el, i) => el.style.setProperty("--cipher-delay", (i * 50) + "ms"));
-    });
-    setCtx(c => ({ ...c, permitUnlocked: true, permitSeconds: 15 * 60 }));
   }, [ctx.connected]);
 
   // Wallet chip clicked
