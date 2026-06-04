@@ -53,9 +53,6 @@ contract FheForgeComposer is FheForgeBase {
         address collateralToken;
         address borrowToken;
         address swapTokenOut;
-        uint128 ltvNum;
-        uint128 ltvDen;
-        bool useOracleBorrow;
         uint16 apyTarget;
         uint8 loopCount;
     }
@@ -102,9 +99,7 @@ contract FheForgeComposer is FheForgeBase {
     ) internal returns (bytes32 positionId) {
         if (p.collateralAmount == 0) return bytes32(0);
         _ensureApproval(p.collateralToken, address(VAULT), p.collateralAmount);
-        euint128 incomingColl = FHE.asEuint128(e.collateral);
-        euint128 verifiedColl = _verifyEquality(incomingColl, p.collateralAmount);
-        FHE.allowTransient(verifiedColl, address(VAULT));
+        euint128 verifiedColl = _verifyAndAllow(e.collateral, p.collateralAmount, address(VAULT));
         return
             VAULT.openPosition(
                 p.collateralToken,
@@ -122,9 +117,7 @@ contract FheForgeComposer is FheForgeBase {
     ) internal {
         if (supplyAmount == 0) return;
         _ensureApproval(p.collateralToken, address(POOL), supplyAmount);
-        euint128 incomingSupply = FHE.asEuint128(e.supplyEnc);
-        euint128 verifiedSupply = _verifyEquality(incomingSupply, supplyAmount);
-        FHE.allowTransient(verifiedSupply, address(POOL));
+        euint128 verifiedSupply = _verifyAndAllow(e.supplyEnc, supplyAmount, address(POOL));
         POOL.depositFor(p.collateralToken, supplyAmount, verifiedSupply, _msgSender());
     }
 
@@ -133,9 +126,7 @@ contract FheForgeComposer is FheForgeBase {
         OpenStrategyEncrypted calldata e
     ) internal {
         if (p.poolBorrowAmount == 0) return;
-        euint128 incomingBorrow = FHE.asEuint128(e.borrowEnc);
-        euint128 verifiedBorrow = _verifyEquality(incomingBorrow, p.poolBorrowAmount);
-        FHE.allowTransient(verifiedBorrow, address(POOL));
+        euint128 verifiedBorrow = _verifyAndAllow(e.borrowEnc, p.poolBorrowAmount, address(POOL));
         POOL.borrowFor(p.borrowToken, p.poolBorrowAmount, verifiedBorrow, _msgSender());
     }
 
@@ -173,9 +164,6 @@ contract FheForgeComposer is FheForgeBase {
         address repayToken;
         uint256 newBorrowAmount;
         address borrowToken;
-        bool useOracleBorrow;
-        uint128 ltvNum;
-        uint128 ltvDen;
     }
 
     struct RebalanceEncrypted {
@@ -201,9 +189,7 @@ contract FheForgeComposer is FheForgeBase {
         }
         if (p.addCollateralAmount > 0) {
             _ensureApproval(p.collateralToken, address(VAULT), p.addCollateralAmount);
-            euint128 addCollEnc = FHE.asEuint128(e.addCollateralEnc);
-            euint128 verifiedAddColl = _verifyEquality(addCollEnc, p.addCollateralAmount);
-            FHE.allowTransient(verifiedAddColl, address(VAULT));
+            euint128 verifiedAddColl = _verifyAndAllow(e.addCollateralEnc, p.addCollateralAmount, address(VAULT));
             VAULT.addCollateral(
                 p.positionId,
                 p.collateralToken,
@@ -215,16 +201,12 @@ contract FheForgeComposer is FheForgeBase {
 
         if (p.repayAmount > 0) {
             _ensureApproval(p.repayToken, address(POOL), p.repayAmount);
-            euint128 repayEnc = FHE.asEuint128(e.repayEnc);
-            euint128 verifiedRepay = _verifyEquality(repayEnc, p.repayAmount);
-            FHE.allowTransient(verifiedRepay, address(POOL));
+            euint128 verifiedRepay = _verifyAndAllow(e.repayEnc, p.repayAmount, address(POOL));
             POOL.repayFor(p.repayToken, p.repayAmount, verifiedRepay, _msgSender());
         }
 
         if (p.newBorrowAmount > 0) {
-            euint128 newBorrowEnc = FHE.asEuint128(e.newBorrowEnc);
-            euint128 verifiedNewBorrow = _verifyEquality(newBorrowEnc, p.newBorrowAmount);
-            FHE.allowTransient(verifiedNewBorrow, address(POOL));
+            euint128 verifiedNewBorrow = _verifyAndAllow(e.newBorrowEnc, p.newBorrowAmount, address(POOL));
             POOL.borrowFor(p.borrowToken, p.newBorrowAmount, verifiedNewBorrow, _msgSender());
         }
 
@@ -240,6 +222,13 @@ contract FheForgeComposer is FheForgeBase {
         if (bal > 0) {
             IERC20(token).safeTransfer(to, bal);
         }
+    }
+
+    function _verifyAndAllow(InEuint128 calldata enc, uint256 amount, address target) internal returns (euint128) {
+        euint128 cast = FHE.asEuint128(enc);
+        euint128 verified = _verifyEquality(cast, amount);
+        FHE.allowTransient(verified, target);
+        return verified;
     }
 
     function _ensureApproval(address token, address spender, uint256 amount) internal {
