@@ -220,7 +220,7 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
               </div>
             </div>
             <div className="tabstrip" style={{ border: 0 }}>
-              {["supply", "borrow"].map(s => (
+              {["supply", "borrow", "repay", "withdraw"].map(s => (
                 <button key={s} className={"tab" + (side === s ? " active" : "")}
                   onClick={() => setSide(s)}>{s}</button>
               ))}
@@ -262,7 +262,7 @@ function toWeiL(amountStr, asset) {
 }
 
 function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, grantPermit, ctx, openConnect, bridgeData, positionSummary }) {
-  const apy = side === "supply" ? market.supplyApy : market.borrowApy;
+  const apy = side === "supply" || side === "repay" ? market.supplyApy : market.borrowApy;
   const walletBalance = bridgeData && bridgeData.walletBalance;
   const walletValue = !ctx.connected ? "wallet required" : walletBalance && walletBalance.balance != null ? walletBalance.balance : "unavailable";
   const walletNumeric = parseNumberL(walletValue);
@@ -340,7 +340,60 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     }
   }
 
-  const handleAction = side === "supply" ? handleSupply : handleBorrow;
+  async function handleRepay() {
+    if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
+    const wei = toWeiL(amount, market.asset);
+    if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
+    const bridge = typeof window !== "undefined" ? window.bridge : null;
+    if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
+    setTxStatus("pending");
+    setTxResult(null);
+    try {
+      const res = await bridge.contract.write.repayDebt(market.assetAddress, wei, null, ctx.address);
+      if (res.status === "confirmed") {
+        setTxStatus("success");
+        setTxResult(res.hash);
+      } else if (res.status === "reverted") {
+        setTxStatus("error");
+        setTxResult("transaction reverted");
+      } else {
+        setTxStatus("success");
+        setTxResult(res.hash || "submitted");
+      }
+    } catch (e) {
+      setTxStatus("error");
+      setTxResult(e.message || "transaction failed");
+    }
+  }
+
+  async function handleWithdraw() {
+    if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
+    const wei = toWeiL(amount, market.asset);
+    if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
+    const bridge = typeof window !== "undefined" ? window.bridge : null;
+    if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
+    setTxStatus("pending");
+    setTxResult(null);
+    try {
+      const res = await bridge.contract.write.partialUnshield(market.assetAddress, wei, null, ctx.address);
+      if (res.status === "confirmed") {
+        setTxStatus("success");
+        setTxResult(res.hash);
+      } else if (res.status === "reverted") {
+        setTxStatus("error");
+        setTxResult("transaction reverted");
+      } else {
+        setTxStatus("success");
+        setTxResult(res.hash || "submitted");
+      }
+    } catch (e) {
+      setTxStatus("error");
+      setTxResult(e.message || "transaction failed");
+    }
+  }
+
+  const handleActions = { supply: handleSupply, borrow: handleBorrow, repay: handleRepay, withdraw: handleWithdraw };
+  const handleAction = handleActions[side] || handleSupply;
   return (
     <div className="fade-enter" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)", gap: 28, alignItems: "start" }}>
       {/* Action form */}
@@ -415,7 +468,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
               {approving
                 ? "Approving…"
                 : txStatus === "pending"
-                  ? "submitting…"
+                  ? `${side === "repay" ? "Repaying…" : side === "withdraw" ? "Withdrawing…" : "submitting…"}`
                   : `Encrypt & ${side} ${amount} ${market.asset}`
               } <span className="ar">→</span>
             </button>
@@ -448,8 +501,8 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         <div style={{ background: "var(--paper)", border: "1px solid var(--hairline)", padding: 20 }}>
           <span className="eyebrow">summary</span>
           <div className="stack-2" style={{ marginTop: 12 }}>
-            <div className="kv"><span className="k">{side} apy</span><span className="v" style={{ color: side === "supply" ? "var(--positive)" : "var(--danger)" }}>{side === "supply" ? "+" : "−"}{apy}%</span></div>
-            <div className="kv"><span className="k">health after</span><span className="v"><Cipher value={side === "supply" ? (market.healthAfterSupply || "unavailable") : (market.healthAfterBorrow || "unavailable")} locked={locked} size="sm" inline /></span></div>
+            <div className="kv"><span className="k">{side} apy</span><span className="v" style={{ color: side === "supply" || side === "repay" ? "var(--positive)" : "var(--danger)" }}>{side === "supply" || side === "repay" ? "+" : "−"}{apy}%</span></div>
+            <div className="kv"><span className="k">health after</span><span className="v"><Cipher value={side === "supply" || side === "repay" ? (market.healthAfterSupply || "unavailable") : (market.healthAfterBorrow || "unavailable")} locked={locked} size="sm" inline /></span></div>
             <div className="kv"><span className="k">liq price</span><span className="v">{market.liqPrice || "–"}</span></div>
             <div className="kv"><span className="k">est. gas</span><span className="v">{market.estimatedGas || "unavailable"}</span></div>
           </div>
