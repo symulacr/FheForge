@@ -203,6 +203,12 @@ lost+found/
 /layer-report-security.md
 /research-findings.md
 /wt-*.md
+/FORGE_PORT_MATRIX.md
+/PHASE5_INTEGRATION_PLAN.md
+/PHASE6_MISSION_PLAN.md
+/PHASE6_REARCHITECTURE_PLAN.md
+/VALIDATION_INTEGRATION.md
+/mock-data-interception-research.md
 
 # === AGENT EXTRACTION / WORKFLOW ARTIFACTS ===
 forge.zip
@@ -328,6 +334,7 @@ fheforge-demo/
 
 # === TEST ARTIFACTS ===
 /test-results/
+/tests/
 
 # === AGENT-GENERATED INTEGRATION ARTIFACTS ===
 /forge-integration/
