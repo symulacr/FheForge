@@ -147,17 +147,11 @@ contract PriceOracle is FheForgeBase {
         uint256 fee = PYTH.getUpdateFee(updateData);
         if (msg.value != fee) revert PythUpdateFeeMismatch();
         PYTH.updatePriceFeeds{ value: fee }(updateData);
-
-        uint256 timestamp = block.timestamp;
-        uint256 regLen = registeredTokens.length;
-        for (uint256 i = 0; i < regLen; ) {
-            address token = registeredTokens[i];
-            lastPriceUpdate[token] = timestamp;
-            unchecked {
-                ++i;
-            }
-        }
-
+        // NOTE: Do NOT reset lastPriceUpdate for all registered tokens here.
+        // The previous loop stamped every token regardless of which feeds were
+        // actually in updateData, masking stale prices for untouched tokens.
+        // Staleness is already enforced per-feed by Pyth's getPriceNoOlderThan()
+        // and by publishTime in _isPythStale / isStale.
         emit PythCacheUpdated(msg.sender, fee);
     }
 
