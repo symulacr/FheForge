@@ -332,13 +332,13 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     // TX1: Commit
     setCrStep("committing");
     try {
-      const tx1 = await bridge.contract.write.borrowCommit(market.assetAddress, borrowTokenAddr, wei, null, ltvNum, ltvDen, ctx.address);
+      const tx1 = await bridge.contract.write.borrowCommit(market.assetAddress, borrowTokenAddr, wei, ltvNum, ltvDen, ctx.address);
       if (tx1.status === "reverted") { setCrStep("failed"); setCrError("commit reverted"); return; }
       setCommitId(tx1.commitId);
       setCrStep("decrypting");
 
       // TX2: Execute
-      const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, market.assetAddress, borrowTokenAddr, wei, null, ltvNum, ltvDen, ctx.address);
+      const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, ctx.address);
       if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
       setCrStep("done");
     } catch (e) {
@@ -357,13 +357,13 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     // TX1: Commit
     setCrStep("committing");
     try {
-      const tx1 = await bridge.contract.write.repayCommit(market.assetAddress, wei, null, ctx.address);
+      const tx1 = await bridge.contract.write.repayCommit(market.assetAddress, wei, ctx.address);
       if (tx1.status === "reverted") { setCrStep("failed"); setCrError("commit reverted"); return; }
       setCommitId(tx1.commitId);
       setCrStep("decrypting");
 
       // TX2: Execute
-      const tx2 = await bridge.contract.write.repayExecute(market.assetAddress, tx1.commitId, wei, null, ctx.address);
+      const tx2 = await bridge.contract.write.repayExecute(market.assetAddress, tx1.commitId, ctx.address);
       if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
       setCrStep("done");
     } catch (e) {
@@ -382,13 +382,13 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     // TX1: Commit
     setCrStep("committing");
     try {
-      const tx1 = await bridge.contract.write.withdrawCommit(market.assetAddress, wei, null, ctx.address);
+      const tx1 = await bridge.contract.write.withdrawCommit(market.assetAddress, wei, ctx.address);
       if (tx1.status === "reverted") { setCrStep("failed"); setCrError("commit reverted"); return; }
       setCommitId(tx1.commitId);
       setCrStep("decrypting");
 
       // TX2: Execute
-      const tx2 = await bridge.contract.write.withdrawExecute(market.assetAddress, tx1.commitId, wei, null, ctx.address);
+      const tx2 = await bridge.contract.write.withdrawExecute(market.assetAddress, tx1.commitId, ctx.address);
       if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
       setCrStep("done");
     } catch (e) {
