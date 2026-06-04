@@ -74,7 +74,7 @@ contract LendingPool is FheForgeBase {
     );
     event Repaid(address indexed user, address indexed token);
     event Withdrawn(address indexed user, address indexed token);
-    event PausedWithdrawn(address indexed user, address indexed token, uint256 indexed amount);
+    event PausedWithdrawn(address indexed user, address indexed token, uint256 amount);
     event OracleSet(address indexed oracle);
     event OracleDisabled();
     event WethSet(address indexed weth);
@@ -82,7 +82,7 @@ contract LendingPool is FheForgeBase {
     event ComposerSet(address indexed composer);
     event ShieldCommitted(address indexed user, address indexed token, bytes32 indexed commitId);
     event ShieldEthCommitted(address indexed user, bytes32 indexed commitId);
-    event BorrowCommitted(address indexed user, address indexed collateralToken, address indexed borrowToken, bytes32 commitId);
+    event BorrowCommitted(address indexed user, address indexed collateralToken, address borrowToken, bytes32 indexed commitId);
     event RepayCommitted(address indexed user, address indexed token, bytes32 indexed commitId);
     event WithdrawCommitted(address indexed user, address indexed token, bytes32 indexed commitId);
     event WithdrawEthCommitted(address indexed user, bytes32 indexed commitId);
@@ -275,7 +275,6 @@ contract LendingPool is FheForgeBase {
             liquidReserve[token] = reserve - amount;
         }
         supplyBalances[token][msg.sender] = _ZERO;
-        borrowBalances[token][msg.sender] = _ZERO;
         IERC20(token).safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, token);
     }
@@ -313,6 +312,7 @@ contract LendingPool is FheForgeBase {
             }
             liquidReserve[token] = reserve - amount;
         }
+        // Emergency: zeros both supply and borrow for paused withdrawal
         supplyBalances[token][msg.sender] = _ZERO;
         borrowBalances[token][msg.sender] = _ZERO;
         IERC20(token).safeTransfer(msg.sender, amount);
@@ -759,7 +759,7 @@ contract LendingPool is FheForgeBase {
     event FlashLoan(
         address indexed receiver,
         address indexed token,
-        uint256 indexed amount,
+        uint256 amount,
         uint256 fee
     );
 
