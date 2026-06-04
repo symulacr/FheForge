@@ -7170,15 +7170,15 @@ var CONTRACT_ABIS = {
   ]
 };
 var CONTRACT_ADDRESSES = {
-  LendingPool: "0x6903df3E8f45497C3097A16E534787D6Fc9F58eF",
-  StrategyVault: "0xf3cB0A1b02128C630C2bca9b50151FbC350f6AFC",
-  Composer: "0x65dB0572076f14b838327F5C2513f32b927Ec36E",
-  SwapRouter: "0x1136E5eF8bB8E189aE83894eCB2F0c67E3097Ea1",
-  PriceOracle: "0xFB8fb4232f70bF41750515F54861b0698938ceDe",
-  StrategyRegistry: "0xC1256f738f1bF9D08F8168eE48e34d4E929DDE9C",
-  StrategyExecutor: "0x9eCC8c61F65EBB652d3DfA3A32Eac08487CC1e00",
-  TokenRegistry: "__TOKEN_REGISTRY_ADDRESS__",
-  ExecutorContract: "0x80EF32CE77f5DC7aA92d200f36357cd83ef8407D"
+  LendingPool: "0xff687831dfD3657D6C6879403cE56f53518b378C",
+  StrategyVault: "0xfCb89417e0a21813c84647614764e920bBdFEb94",
+  Composer: "0xEab68D8Ee6DC5Ddc10293fF3B1bb21679d81dC8b",
+  SwapRouter: "0x9C9bEb3d95184BbA11AfE1D973927562C8eb0409",
+  PriceOracle: "0x46ef25fDd66Ce1A331942064Ef6879848621fBd9",
+  StrategyRegistry: "0xB39E9B573b8f39fBc407f8F7d9F621481d3E12C8",
+  StrategyExecutor: "0x03De449445c1c11d190b49bf9dBf98FCfC6b58D8",
+  TokenRegistry: "0x68c6A763e85367c4964b36e207DaFfe745B1B980",
+  ExecutorContract: "0x1bF7eb45695A4d9b83F5392F16DC262840B4A7d1"
 };
 
 // src/contract.js
@@ -7651,6 +7651,7 @@ var PERMIT_DURATION_MS = 900000;
 function createFheAdapter(config) {
   let _grantedAt = 0;
   let _unlocked = false;
+  let _cofheClient = null;
   const _listeners = new Set;
   function computePermitState() {
     if (!_unlocked) {
@@ -7677,11 +7678,19 @@ function createFheAdapter(config) {
   async function permitGrant() {
     try {
       const { PermitUtils } = await import("@cofhe/sdk/permits");
+      const { createCofheClientBase, createCofheConfigBase } = await import("@cofhe/sdk");
       const userAddress = config && config.userAddress || typeof window !== "undefined" && window.ethereum?.selectedAddress || "0x0000000000000000000000000000000000000000";
       PermitUtils.createSelf({
         issuer: userAddress,
         expiration: Math.floor(Date.now() / 1000) + PERMIT_DURATION_MS / 1000
       });
+      const chainId = config?.chainId || 421614;
+      const cofheConfig = createCofheConfigBase({
+        supportedChains: [chainId],
+        userAddress,
+        chainId
+      });
+      _cofheClient = createCofheClientBase(cofheConfig);
       _grantedAt = Date.now();
       _unlocked = true;
       notifyListeners();
@@ -7698,8 +7707,12 @@ function createFheAdapter(config) {
   }
   async function encrypt(plaintext, tokenAddress) {
     try {
-      const handle = `0x_enc_${plaintext}_${tokenAddress ?? "any"}`;
-      return { handle, type: "InEuint128" };
+      if (!_cofheClient) {
+        throw new FheError("NO_PERMIT", "Grant an FHE permit before encrypting");
+      }
+      const { Encryptable } = await import("@cofhe/sdk");
+      const [encryptedHandle] = await _cofheClient.encryptInputs([Encryptable.uint128(BigInt(plaintext))]).execute();
+      return { handle: encryptedHandle, type: "InEuint128" };
     } catch (error) {
       throw new FheError("ENCRYPT_FAILED", error.message || "Failed to encrypt value");
     }

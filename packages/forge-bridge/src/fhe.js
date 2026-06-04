@@ -46,6 +46,9 @@ export function createFheAdapter(config) {
 	/** @type {boolean} Whether a permit is currently unlocked. */
 	let _unlocked = false;
 
+	/** @type {object|null} Cached CoFHE client instance. */
+	let _cofheClient = null;
+
 	/** @type {Set<(state: PermitState) => void>} */
 	const _listeners = new Set();
 
@@ -103,11 +106,9 @@ export function createFheAdapter(config) {
 	 */
 	async function permitGrant() {
 		try {
-			// Dynamic import allows the module to be tree-shaken in test
-			// environments where it is mocked.
 			const { PermitUtils } = await import("@cofhe/sdk/permits");
+			const { createCofheClientBase, createCofheConfigBase } = await import("@cofhe/sdk");
 
-			// Resolve the user's wallet address
 			const userAddress = /** @type {string} */ (
 				(config && /** @type {Record<string, unknown>} */ (config).userAddress) ||
 					(typeof window !== "undefined" &&
@@ -115,16 +116,20 @@ export function createFheAdapter(config) {
 					"0x0000000000000000000000000000000000000000"
 			);
 
-			// Create a self-permit with 15-minute expiration.
-			// The SDK generates a fresh sealing key pair and computes a stable hash.
 			PermitUtils.createSelf({
 				issuer: userAddress,
 				expiration: Math.floor(Date.now() / 1000) + PERMIT_DURATION_MS / 1000,
 			});
 
-			// Mark the permit as granted locally.
-			// Full wallet signing integration (EIP-712, ACL contract) is deferred
-			// to the forge integration phase.
+			// Initialize the CoFHE client for real encryption
+			const chainId = config?.chainId || 421614;
+			const cofheConfig = createCofheConfigBase({
+				supportedChains: [chainId],
+				userAddress,
+				chainId,
+			});
+			_cofheClient = createCofheClientBase(cofheConfig);
+
 			_grantedAt = Date.now();
 			_unlocked = true;
 			notifyListeners();
@@ -162,14 +167,14 @@ export function createFheAdapter(config) {
 	 */
 	async function encrypt(plaintext, tokenAddress) {
 		try {
-			// In production, this would use:
-			//   const builder = client.encryptInputs([BigInt(plaintext)]);
-			//   const result = await builder.toEncryptedInputs();
-			//   return { handle: String(result.handles[0]), type: "InEuint128" };
-			//
-			// For the bridge adapter stub, return a deterministic handle.
-			const handle = `0x_enc_${plaintext}_${tokenAddress ?? "any"}`;
-			return { handle, type: "InEuint128" };
+			if (!_cofheClient) {
+				throw new FheError("NO_PERMIT", "Grant an FHE permit before encrypting");
+			}
+			const { Encryptable } = await import("@cofhe/sdk");
+			const [encryptedHandle] = await _cofheClient
+				.encryptInputs([Encryptable.uint128(BigInt(plaintext))])
+				.execute();
+			return { handle: encryptedHandle, type: "InEuint128" };
 		} catch (error) {
 			throw new FheError(
 				"ENCRYPT_FAILED",
