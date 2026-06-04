@@ -274,6 +274,16 @@ const ERC20_READ_ABI = [
 		outputs: [{ name: "", type: "uint256" }],
 		stateMutability: "view",
 	},
+	{
+		type: "function",
+		name: "approve",
+		inputs: [
+			{ name: "spender", type: "address" },
+			{ name: "amount", type: "uint256" },
+		],
+		outputs: [{ name: "", type: "bool" }],
+		stateMutability: "nonpayable",
+	},
 ];
 
 // ---------------------------------------------------------------------------
@@ -878,6 +888,25 @@ export function createContractAdapter(config, options = {}) {
 				CONTRACT_ABIS.SwapRouter,
 				"submitSwapIntent",
 				[tokenIn, tokenOut, amountIn, minAmountOut, deadlineOffset],
+				account,
+			);
+		},
+
+		// ── ERC20 ──
+
+		/**
+		 * Approve a spender for max uint256 on an ERC20 token.
+		 * @type {(token: `0x${string}`, spender: `0x${string}`, account: `0x${string}`) => Promise<TransactionResult>}
+		 */
+		erc20Approve: async (token, spender, account) => {
+			const wc = getWc();
+			return estimateSendAndWait(
+				publicClient,
+				wc,
+				token,
+				ERC20_READ_ABI,
+				"approve",
+				[spender, 2n ** 256n - 1n],
 				account,
 			);
 		},

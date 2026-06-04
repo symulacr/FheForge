@@ -3,6 +3,22 @@
 
 const { useState: useStateB, useRef: useRefB, useEffect: useEffectB, useCallback: useCallbackB, useMemo: useMemoB } = React;
 
+const EMPTY_BRIDGE_CONTEXT_BW = React.createContext({ data: {} });
+function useOptionalBridgeBW() {
+  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
+  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_BW);
+}
+
+const TOKEN_MAP_BW = {
+  WETH: "0x84BddCAfaccbBDBc0e3F1CAcCDd352EBf5e40A32",
+  MCK: "0x150376EdEbc5AC48771655a61a795d828BeC8Df6",
+};
+function parseAmountBW(display, decimals = 18) {
+  const cleaned = String(display).replace(/[,≈\s]/g, "");
+  const num = parseFloat(cleaned) || 0;
+  return BigInt(Math.round(num * 10 ** decimals));
+}
+
 const NODE_W = 124;
 const NODE_H = 56;
 
@@ -271,6 +287,7 @@ function organizeLayout(nodes, edges, canvasWidth = 800, canvasHeight = 500) {
 
 /* ─── BuilderWorkspace · canvas + inspector ─── */
 function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, openConnect, nodeTypes }) {
+  const bridge = useOptionalBridgeBW();
   const { nodes, edges, name } = workflow;
   const activeNodeTypes = nodeTypes && Object.keys(nodeTypes).length ? nodeTypes : null;
   const setNodes = (fn) => setWorkflow(wf => ({ ...wf, nodes: typeof fn === "function" ? fn(wf.nodes) : fn }));
@@ -902,10 +919,38 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
           <button
             className="btn sm"
             disabled={!ctx.connected || locked || deploying || hasError || !nodes.length}
-            onClick={() => {
+            onClick={async () => {
               if (!ctx.connected) { openConnect(); return; }
+              if (!bridge?.contract?.write) { setDeployResult({ ok: false, error: "Bridge not ready" }); return; }
               setDeploying(true);
               setDeployResult(null);
+              try {
+                const order = walkOrder(nodes, edges);
+                for (const nodeId of order) {
+                  const node = nodes.find(n => n.id === nodeId);
+                  if (!node) continue;
+                  const cfg = node.config || {};
+                  const tokenAddr = TOKEN_MAP_BW[cfg.asset] || TOKEN_MAP_BW[cfg.from] || Object.values(TOKEN_MAP_BW)[0];
+                  const amount = parseAmountBW(cfg.amount || "0");
+                  const account = ctx.address;
+                  if (node.type === "supply" && amount > 0n) {
+                    await bridge.contract.write.shield(tokenAddr, amount, null, account);
+                  } else if (node.type === "borrow" && amount > 0n) {
+                    const borrowToken = TOKEN_MAP_BW[cfg.asset] || Object.values(TOKEN_MAP_BW)[0];
+                    await bridge.contract.write.borrowWithLtvCheck(tokenAddr, borrowToken, amount, null, BigInt(cfg.ltv || 50), 100n, account);
+                  } else if (node.type === "swap" && amount > 0n) {
+                    const tokenOut = TOKEN_MAP_BW[cfg.to] || Object.values(TOKEN_MAP_BW)[0];
+                    const slipBps = Math.round((cfg.slip || 0.5) * 100);
+                    const minOut = amount * BigInt(10000 - slipBps) / 10000n;
+                    await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, amount, minOut, 300n, account);
+                  }
+                }
+                setDeployResult({ ok: true, tx: "confirmed", block: 0 });
+              } catch (err) {
+                setDeployResult({ ok: false, error: err.message || "Transaction failed" });
+              } finally {
+                setDeploying(false);
+              }
             }}
           >
             {deploying ? <>Signing… <span className="ar">⋯</span></> : <>Deploy <span className="ar">→</span></>}

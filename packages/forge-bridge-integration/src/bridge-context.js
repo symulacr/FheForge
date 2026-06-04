@@ -349,7 +349,7 @@ function ForgeProvider({ children }) {
 					window.__dataFetcherV2 = fetcher;
 					// Start real public polling for ticker and markets.
 					// Demo/mock population is intentionally not auto-started here.
-					fetcher.startDemoMode();
+					fetcher.startPublicPolling();
 				} catch (err) {
 					console.warn("[ForgeProvider] Failed to start polling:", err);
 				}

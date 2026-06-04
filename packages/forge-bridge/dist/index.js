@@ -7357,6 +7357,16 @@ var ERC20_READ_ABI = [
     inputs: [],
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view"
+  },
+  {
+    type: "function",
+    name: "approve",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" }
+    ],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable"
   }
 ];
 function createContractAdapter(config, options = {}) {
@@ -7603,6 +7613,10 @@ function createContractAdapter(config, options = {}) {
       const wc = getWc();
       return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.SwapRouter, CONTRACT_ABIS.SwapRouter, "submitSwapIntent", [tokenIn, tokenOut, amountIn, minAmountOut, deadlineOffset], account);
     },
+    erc20Approve: async (token, spender, account) => {
+      const wc = getWc();
+      return estimateSendAndWait(publicClient, wc, token, ERC20_READ_ABI, "approve", [spender, 2n ** 256n - 1n], account);
+    },
     castVote: async (voteData) => {
       if (!apiAdapter?.governance?.castVote) {
         throw new ContractError("API_ADAPTER_REQUIRED", "API adapter with governance.castVote is required for voting");
@@ -7677,20 +7691,24 @@ function createFheAdapter(config) {
   }
   async function permitGrant() {
     try {
-      const { PermitUtils } = await import("@cofhe/sdk/permits");
-      const { createCofheClientBase, createCofheConfigBase } = await import("@cofhe/sdk");
-      const userAddress = config && config.userAddress || typeof window !== "undefined" && window.ethereum?.selectedAddress || "0x0000000000000000000000000000000000000000";
-      PermitUtils.createSelf({
-        issuer: userAddress,
-        expiration: Math.floor(Date.now() / 1000) + PERMIT_DURATION_MS / 1000
+      const { createCofheConfig, createCofheClient } = await import("@cofhe/sdk/web");
+      const { chains } = await import("@cofhe/sdk/chains");
+      const config2 = createCofheConfig({
+        supportedChains: [chains.arbitrumSepolia || chains.arbSepolia || { id: 421614 }]
       });
-      const chainId = config?.chainId || 421614;
-      const cofheConfig = createCofheConfigBase({
-        supportedChains: [chainId],
-        userAddress,
-        chainId
+      _cofheClient = createCofheClient(config2);
+      const { createPublicClient: createPublicClient2, createWalletClient: createWalletClient2, http: http2, custom: custom2 } = await import("viem");
+      const { arbitrumSepolia: arbitrumSepolia2 } = await import("viem/chains");
+      const publicClient = createPublicClient2({
+        chain: arbitrumSepolia2,
+        transport: http2()
       });
-      _cofheClient = createCofheClientBase(cofheConfig);
+      const walletClient = createWalletClient2({
+        chain: arbitrumSepolia2,
+        transport: custom2(window.ethereum)
+      });
+      await _cofheClient.connect(publicClient, walletClient);
+      await _cofheClient.permits.getOrCreateSelfPermit();
       _grantedAt = Date.now();
       _unlocked = true;
       notifyListeners();
@@ -7718,15 +7736,7 @@ function createFheAdapter(config) {
     }
   }
   async function decrypt(handle) {
-    try {
-      const match = String(handle).match(/^0x_enc_(.+?)_/);
-      if (match) {
-        return match[1];
-      }
-      return `decrypted_${String(handle).slice(0, 16)}`;
-    } catch (error) {
-      throw new FheError("DECRYPT_FAILED", error.message || "Failed to decrypt value");
-    }
+    throw new FheError("NOT_IMPLEMENTED", "Client-side decryption not yet wired");
   }
   function onPermitChange(cb) {
     _listeners.add(cb);

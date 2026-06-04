@@ -248,7 +248,7 @@ function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
         )
       }
       detailBody={
-        selected ? <DetailFor selected={selected} locked={locked} setRoute={setRoute} grantPermit={grantPermit} />
+        selected ? <DetailFor selected={selected} locked={locked} setRoute={setRoute} grantPermit={grantPermit} bridge={bridge} ctx={ctx} />
                  : <Overview locked={locked} grantPermit={grantPermit} setRoute={setRoute} bridgeData={bridgeData} positions={positions} strategies={strategies} activities={activities} />
       }
     />
@@ -328,14 +328,39 @@ function Overview({ locked, grantPermit, setRoute, bridgeData, positions, strate
 }
 
 /* ─── DetailFor (renders based on selected.kind) ─── */
-function DetailFor({ selected, locked, setRoute, grantPermit }) {
-  if (selected.kind === "position") return <PositionDetail p={selected} locked={locked} setRoute={setRoute} />;
+function DetailFor({ selected, locked, setRoute, grantPermit, bridge, ctx }) {
+  if (selected.kind === "position") return <PositionDetail p={selected} locked={locked} setRoute={setRoute} bridge={bridge} ctx={ctx} />;
   if (selected.kind === "strategy") return <StrategyDetail s={selected} locked={locked} setRoute={setRoute} />;
   if (selected.kind === "activity") return <ActivityDetail a={selected} locked={locked} />;
   return null;
 }
 
-function PositionDetail({ p, locked, setRoute }) {
+function PositionDetail({ p, locked, setRoute, bridge, ctx }) {
+  const [closing, setClosing] = useStateD(false);
+  const [closeErr, setCloseErr] = useStateD(null);
+
+  async function handleClose() {
+    setCloseErr(null);
+    const token = firstD(p, ["tokenAddress", "token", "address", "market"], null);
+    const amount = firstD(p, ["amount", "balance", "value", "decryptedAmount", "encryptedAmount", "supplied"], null);
+    if (!token || !amount || amount === "–") {
+      setCloseErr("Missing token or amount");
+      return;
+    }
+    if (!bridge?.contract?.write?.partialUnshield) {
+      setCloseErr("Bridge not ready");
+      return;
+    }
+    setClosing(true);
+    try {
+      await bridge.contract.write.partialUnshield(token, amount, null, ctx.address);
+    } catch (e) {
+      setCloseErr(e?.message || "Close failed");
+    } finally {
+      setClosing(false);
+    }
+  }
+
   return (
     <div className="fade-enter" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 1, background: "var(--hairline)", border: "1px solid var(--hairline)" }}>
@@ -350,10 +375,20 @@ function PositionDetail({ p, locked, setRoute }) {
         <div className="kv"><span className="k">interest accrued</span><span className="v">{p.interestAccrued ? <Cipher value={p.interestAccrued} locked={locked} size="sm" inline /> : "–"}</span></div>
         <div className="kv"><span className="k">oracle</span><span className="v">{textD(p.oracle)}</span></div>
       </div>
+      {closeErr && (
+        <div className="mono" style={{ fontSize: 12, color: "var(--danger)", padding: "8px 0" }}>{closeErr}</div>
+      )}
       <div className="row" style={{ gap: 8 }}>
         <button className="btn sm" onClick={() => setRoute("lend")}>Add to position <span className="ar">→</span></button>
         <button className="btn ghost sm" onClick={() => setRoute("lend")}>Withdraw</button>
-        <button className="btn ghost sm" style={{ color: "var(--danger)" }} onClick={() => setRoute("lend")}>Close position</button>
+        <button
+          className="btn ghost sm"
+          style={{ color: "var(--danger)" }}
+          onClick={handleClose}
+          disabled={closing}
+        >
+          {closing ? "Closing…" : "Close position"}
+        </button>
       </div>
     </div>
   );

@@ -106,29 +106,33 @@ export function createFheAdapter(config) {
 	 */
 	async function permitGrant() {
 		try {
-			const { PermitUtils } = await import("@cofhe/sdk/permits");
-			const { createCofheClientBase, createCofheConfigBase } = await import("@cofhe/sdk");
+			const { createCofheConfig, createCofheClient } = await import("@cofhe/sdk/web");
+			const { chains } = await import("@cofhe/sdk/chains");
 
-			const userAddress = /** @type {string} */ (
-				(config && /** @type {Record<string, unknown>} */ (config).userAddress) ||
-					(typeof window !== "undefined" &&
-						/** @type {any} */ (window).ethereum?.selectedAddress) ||
-					"0x0000000000000000000000000000000000000000"
-			);
+			// Create config for Arbitrum Sepolia
+			const config = createCofheConfig({
+				supportedChains: [chains.arbitrumSepolia || chains.arbSepolia || { id: 421614 }],
+			});
+			_cofheClient = createCofheClient(config);
 
-			PermitUtils.createSelf({
-				issuer: userAddress,
-				expiration: Math.floor(Date.now() / 1000) + PERMIT_DURATION_MS / 1000,
+			// Create viem clients from the user's wallet
+			const { createPublicClient, createWalletClient, http, custom } = await import("viem");
+			const { arbitrumSepolia } = await import("viem/chains");
+
+			const publicClient = createPublicClient({
+				chain: arbitrumSepolia,
+				transport: http(),
+			});
+			const walletClient = createWalletClient({
+				chain: arbitrumSepolia,
+				transport: custom(window.ethereum),
 			});
 
-			// Initialize the CoFHE client for real encryption
-			const chainId = config?.chainId || 421614;
-			const cofheConfig = createCofheConfigBase({
-				supportedChains: [chainId],
-				userAddress,
-				chainId,
-			});
-			_cofheClient = createCofheClientBase(cofheConfig);
+			// Connect the cofhe client
+			await _cofheClient.connect(publicClient, walletClient);
+
+			// Create permit for decryption
+			await _cofheClient.permits.getOrCreateSelfPermit();
 
 			_grantedAt = Date.now();
 			_unlocked = true;
@@ -178,7 +182,7 @@ export function createFheAdapter(config) {
 		} catch (error) {
 			throw new FheError(
 				"ENCRYPT_FAILED",
-				/** @type {Error} */ (error).message || "Failed to encrypt value",
+				error.message || "Failed to encrypt value",
 			);
 		}
 	}
@@ -189,19 +193,7 @@ export function createFheAdapter(config) {
 	 * @returns {Promise<string>}
 	 */
 	async function decrypt(handle) {
-		try {
-			// For the bridge adapter stub, extract from deterministic handle format.
-			const match = String(handle).match(/^0x_enc_(.+?)_/);
-			if (match) {
-				return match[1];
-			}
-			return `decrypted_${String(handle).slice(0, 16)}`;
-		} catch (error) {
-			throw new FheError(
-				"DECRYPT_FAILED",
-				/** @type {Error} */ (error).message || "Failed to decrypt value",
-			);
-		}
+		throw new FheError("NOT_IMPLEMENTED", "Client-side decryption not yet wired");
 	}
 
 	/**
