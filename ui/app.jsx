@@ -46,13 +46,11 @@ function App() {
   const [route, setRoute] = useStateA("home");
 
   // Wallet / permit context
-  // In demo mode (window.__DEMO_MODE__), start as if connected so all
-  // screens render their full data views without requiring a real wallet.
   const [ctx, setCtx] = useStateA({
-    connected: t.startConnected || window.__DEMO_MODE__,
-    address: "0x9f3a2c4b1e0d8f7a6c5b4a39",
-    permitUnlocked: (t.startConnected && t.startUnlocked) || window.__DEMO_MODE__,
-    permitSeconds: (t.startConnected && t.startUnlocked) || window.__DEMO_MODE__ ? 14 * 60 : 0,
+    connected: t.startConnected,
+    address: null,
+    permitUnlocked: t.startConnected && t.startUnlocked,
+    permitSeconds: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
     revealing: false,
   });
 
@@ -65,10 +63,10 @@ function App() {
   useEffectA(() => {
     setCtx(c => ({
       ...c,
-      connected: t.startConnected || window.__DEMO_MODE__,
-      address: t.startConnected || window.__DEMO_MODE__ ? c.address : null,
-      permitUnlocked: (t.startConnected && t.startUnlocked) || window.__DEMO_MODE__,
-      permitSeconds: (t.startConnected && t.startUnlocked) || window.__DEMO_MODE__ ? 14 * 60 : 0,
+      connected: t.startConnected,
+      address: t.startConnected ? c.address : null,
+      permitUnlocked: t.startConnected && t.startUnlocked,
+      permitSeconds: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
     }));
   }, [t.startConnected, t.startUnlocked]);
 
@@ -83,6 +81,13 @@ function App() {
     }, 1000);
     return () => clearInterval(id);
   }, [ctx.permitUnlocked]);
+
+  // Auto-renew permit at 2 minutes remaining (silent, no wallet popup)
+  useEffectA(() => {
+    if (ctx.permitUnlocked && ctx.permitSeconds === 120) {
+      try { grantPermit(); } catch { /* silent — countdown continues to 0 */ }
+    }
+  }, [ctx.permitSeconds, grantPermit]);
 
   // Grant permit: stagger cipher reveal across visible elements
   const grantPermit = useCallbackA(() => {
