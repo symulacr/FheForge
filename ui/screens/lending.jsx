@@ -49,6 +49,7 @@ function normalizeMarketL(market) {
   const liq = market.liq ?? market.liquidationThreshold ?? 80;
   return {
     asset,
+    assetAddress: market.assetAddress || null,
     supplyApy: market.supplyApy ?? market.supplyAPY ?? market.depositApy ?? market.depositAPY ?? 0,
     borrowApy: market.borrowApy ?? market.borrowAPY ?? 0,
     util: utilization > 0 && utilization <= 1 ? Math.round(utilization * 100) : Math.round(utilization),
@@ -222,11 +223,82 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
   );
 }
 
+function getDecimalsForAssetL(asset) {
+  const sym = String(asset || "").toUpperCase();
+  if (sym === "USDC" || sym === "USDT") return 6;
+  return 18;
+}
+
+function toWeiL(amountStr, asset) {
+  const n = Number(String(amountStr || "").replace(/,/g, ""));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const decimals = getDecimalsForAssetL(asset);
+  return BigInt(Math.round(n * 10 ** decimals));
+}
+
 function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, grantPermit, ctx, openConnect, bridgeData, positionSummary }) {
   const apy = side === "supply" ? market.supplyApy : market.borrowApy;
   const walletBalance = bridgeData && bridgeData.walletBalance;
   const walletValue = !ctx.connected ? "wallet required" : walletBalance && walletBalance.balance != null ? walletBalance.balance : "unavailable";
   const walletNumeric = parseNumberL(walletValue);
+  const [txStatus, setTxStatus] = useStateL("idle");
+  const [txResult, setTxResult] = useStateL(null);
+
+  async function handleSupply() {
+    if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
+    const wei = toWeiL(amount, market.asset);
+    if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
+    const bridge = typeof window !== "undefined" ? window.bridge : null;
+    if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
+    setTxStatus("pending");
+    setTxResult(null);
+    try {
+      const res = await bridge.contract.write.shield(market.assetAddress, wei, null, ctx.address);
+      if (res.status === "confirmed") {
+        setTxStatus("success");
+        setTxResult(res.hash);
+      } else if (res.status === "reverted") {
+        setTxStatus("error");
+        setTxResult("transaction reverted");
+      } else {
+        setTxStatus("success");
+        setTxResult(res.hash || "submitted");
+      }
+    } catch (e) {
+      setTxStatus("error");
+      setTxResult(e.message || "transaction failed");
+    }
+  }
+
+  async function handleBorrow() {
+    if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
+    const wei = toWeiL(amount, market.asset);
+    if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
+    const bridge = typeof window !== "undefined" ? window.bridge : null;
+    if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
+    setTxStatus("pending");
+    setTxResult(null);
+    try {
+      const ltvNum = BigInt(Math.round(ltv));
+      const ltvDen = 100n;
+      const res = await bridge.contract.write.borrowWithLtvCheck(market.assetAddress, market.assetAddress, wei, null, ltvNum, ltvDen, ctx.address);
+      if (res.status === "confirmed") {
+        setTxStatus("success");
+        setTxResult(res.hash);
+      } else if (res.status === "reverted") {
+        setTxStatus("error");
+        setTxResult("transaction reverted");
+      } else {
+        setTxStatus("success");
+        setTxResult(res.hash || "submitted");
+      }
+    } catch (e) {
+      setTxStatus("error");
+      setTxResult(e.message || "transaction failed");
+    }
+  }
+
+  const handleAction = side === "supply" ? handleSupply : handleBorrow;
   return (
     <div className="fade-enter" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)", gap: 28, alignItems: "start" }}>
       {/* Action form */}
@@ -297,11 +369,34 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
           ) : locked ? (
             <button className="btn accent lg" style={{ flex: 1 }} onClick={grantPermit}>Grant permit first <span className="ar">→</span></button>
           ) : (
-            <button className="btn lg" style={{ flex: 1 }}>
-              Encrypt &amp; {side} {amount} {market.asset} <span className="ar">→</span>
+            <button className="btn lg" style={{ flex: 1 }} onClick={handleAction} disabled={txStatus === "pending"}>
+              {txStatus === "pending"
+                ? "submitting…"
+                : `Encrypt & ${side} ${amount} ${market.asset}`
+              } <span className="ar">→</span>
             </button>
           )}
         </div>
+
+        {txStatus === "success" && txResult && (
+          <div style={{
+            marginTop: 8, padding: "10px 12px",
+            background: "var(--success-soft, #0a2a1a)", border: "1px solid var(--success)",
+            color: "var(--success)", fontFamily: "var(--mono)", fontSize: 11.5, lineHeight: 1.55,
+          }}>
+            <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Confirmed</strong> · {typeof txResult === "string" && txResult.startsWith("0x") ? txResult.slice(0, 18) + "…" : txResult}
+          </div>
+        )}
+
+        {txStatus === "error" && txResult && (
+          <div style={{
+            marginTop: 8, padding: "10px 12px",
+            background: "var(--danger-soft, #2a0a0a)", border: "1px solid var(--destructive)",
+            color: "var(--destructive)", fontFamily: "var(--mono)", fontSize: 11.5, lineHeight: 1.55,
+          }}>
+            <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Failed</strong> · {txResult}
+          </div>
+        )}
       </div>
 
       {/* Summary card */}

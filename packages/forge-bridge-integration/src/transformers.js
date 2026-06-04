@@ -33,6 +33,7 @@
       var liq = m.liq ?? m.liquidationThreshold;
       return {
         asset: m.asset || m.symbol || 'UNKNOWN',
+        assetAddress: m.assetAddress || null,
         supplyApy: formatApy(m.supplyAPY != null ? m.supplyAPY : (m.supplyRate != null ? m.supplyRate : m.supplyApy)),
         borrowApy: formatApy(m.borrowAPY != null ? m.borrowAPY : (m.borrowRate != null ? m.borrowRate : m.borrowApy)),
         util: formatPercentValue(utilization),
@@ -153,11 +154,11 @@
         title: p.title || 'Proposal',
         status: (p.status || 'pending').toLowerCase(),
         body: p.description || p.body || '',
-        forVotes: p.forVotes != null ? String(p.forVotes) : '0',
-        againstVotes: p.againstVotes != null ? String(p.againstVotes) : '0',
+        forVotes: p.forVotes != null ? String(p.forVotes) : (p.votesFor != null ? String(p.votesFor) : '0'),
+        againstVotes: p.againstVotes != null ? String(p.againstVotes) : (p.votesAgainst != null ? String(p.votesAgainst) : '0'),
         abstain: p.abstainVotes != null ? String(p.abstainVotes) : '0',
         quorum: p.quorum ? String(p.quorum) : '0',
-        timeLeft: p.deadline ? relativeTime(p.deadline) : '—',
+        timeLeft: p.deadline ? relativeTime(p.deadline) : (p.endsAt ? relativeTime(p.endsAt) : '—'),
         proposer: p.proposer || p.creator || '0x0000',
       };
     });

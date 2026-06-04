@@ -132,7 +132,7 @@ function Governance({ setRoute, ctx, grantPermit, openConnect }) {
         ) : null
       }
       detailBody={
-        selected ? <ProposalDetail p={selected} ctx={ctx} openConnect={openConnect} />
+        selected ? <ProposalDetail p={selected} ctx={ctx} openConnect={openConnect} bridge={bridge} />
                  : proposalError
                    ? <div className="mono" style={{ color: "var(--danger)", fontSize: 12 }}>Governance proposals unavailable.</div>
                    : !proposals
@@ -143,8 +143,10 @@ function Governance({ setRoute, ctx, grantPermit, openConnect }) {
   );
 }
 
-function ProposalDetail({ p, ctx, openConnect }) {
+function ProposalDetail({ p, ctx, openConnect, bridge }) {
   const [vote, setVote] = useStateG(null);
+  const [voting, setVoting] = useStateG(false);
+  const [voteResult, setVoteResult] = useStateG(null);
   const total = p.forVotes + p.againstVotes + p.abstain;
   const pct = (n) => total ? ((n / total) * 100).toFixed(1) : "0";
   const quorumPct = p.quorum ? Math.min(100, (total / p.quorum) * 100) : 0;
@@ -194,20 +196,26 @@ function ProposalDetail({ p, ctx, openConnect }) {
         <div style={{ background: "var(--paper)", border: "1px solid var(--ink)", padding: 22 }}>
           <span className="eyebrow">cast vote</span>
           <div className="mono" style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-            {ctx.connected ? "vote controls are display-only" : "connect wallet to inspect voting state"}
+            {voting ? "submitting vote on-chain…"
+              : voteResult === "success" ? "vote cast successfully"
+              : voteResult && voteResult !== "success" ? ("vote failed · " + voteResult)
+              : ctx.connected ? "select a position and submit"
+              : "connect wallet to vote"}
           </div>
           <div className="row" style={{ gap: 8, marginTop: 14 }}>
             {["for", "against", "abstain"].map(v => (
               <button
-                key={v} onClick={() => setVote(v)} disabled={true}
+                key={v}
+                onClick={() => { setVote(v); setVoteResult(null); }}
+                disabled={!ctx.connected || voting}
                 style={{
                   flex: 1, padding: "11px 14px",
                   border: "1px solid " + (vote === v ? "var(--ink)" : "var(--hairline)"),
                   background: vote === v ? "var(--paper-2)" : "var(--paper)",
                   color: "var(--ink)",
                   fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.06,
-                  cursor: "not-allowed",
-                  opacity: 0.5,
+                  cursor: (!ctx.connected || voting) ? "not-allowed" : "pointer",
+                  opacity: (!ctx.connected || voting) ? 0.5 : 1,
                 }}
               >● {v}</button>
             ))}
@@ -217,8 +225,29 @@ function ProposalDetail({ p, ctx, openConnect }) {
               Connect wallet <span className="ar">→</span>
             </button>
           ) : (
-            <button className="btn" style={{ width: "100%", marginTop: 14 }} disabled={true}>
-              Voting transactions not wired <span className="ar">→</span>
+            <button
+              className="btn"
+              style={{ width: "100%", marginTop: 14 }}
+              disabled={!vote || voting}
+              onClick={async () => {
+                if (!vote || !bridge?.api?.governance?.castVote) return;
+                setVoting(true);
+                setVoteResult(null);
+                try {
+                  await bridge.api.governance.castVote({
+                    proposalId: p.id,
+                    support: vote === "for" ? 1 : vote === "against" ? 0 : 2,
+                    votes: 1,
+                  });
+                  setVoteResult("success");
+                } catch (err) {
+                  setVoteResult(err?.message || "transaction failed");
+                } finally {
+                  setVoting(false);
+                }
+              }}
+            >
+              {voting ? "Casting vote…" : vote ? "Cast " + vote + " vote" : "Select a position"} <span className="ar">→</span>
             </button>
           )}
         </div>

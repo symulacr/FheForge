@@ -353,7 +353,7 @@ function PositionDetail({ p, locked, setRoute }) {
       <div className="row" style={{ gap: 8 }}>
         <button className="btn sm" onClick={() => setRoute("lend")}>Add to position <span className="ar">→</span></button>
         <button className="btn ghost sm" onClick={() => setRoute("lend")}>Withdraw</button>
-        <button className="btn ghost sm" style={{ color: "var(--danger)" }}>Close position</button>
+        <button className="btn ghost sm" style={{ color: "var(--danger)" }} onClick={() => setRoute("lend")}>Close position</button>
       </div>
     </div>
   );
