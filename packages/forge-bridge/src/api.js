@@ -376,21 +376,6 @@ export function createApiAdapter(config, walletAdapter) {
 		}
 	}
 
-	/**
-	 * Perform a PUT request.
-	 * @param {string} url
-	 * @param {unknown} [body]
-	 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-	 */
-	async function put(url, body) {
-		try {
-			const response = await client.put(url, body);
-			return { status: "success", data: response.data, error: null };
-		} catch (error) {
-			return normalizeError(error);
-		}
-	}
-
 	// -----------------------------------------------------------------------
 	// Domain methods
 	// -----------------------------------------------------------------------
@@ -458,13 +443,6 @@ export function createApiAdapter(config, walletAdapter) {
 			 */
 			listStrategies: (params) => cachedGet("strategies-list", "/strategies", params),
 
-			/**
-			 * Get a strategy by its ID.
-			 * GET /strategies/:id  (uncached)
-			 * @param {string} id
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			getStrategy: (id) => get(`/strategies/${id}`),
 		},
 
 		/** Governance — proposals and voting */
@@ -476,14 +454,6 @@ export function createApiAdapter(config, walletAdapter) {
 			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
 			 */
 			listProposals: (params) => cachedGet("governance-proposals", "/governance/proposals", params),
-
-			/**
-			 * Get a single governance proposal.
-			 * GET /governance/proposals/:id  (uncached)
-			 * @param {string} id
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			getProposal: (id) => get(`/governance/proposals/${id}`),
 
 			/**
 			 * Cast a vote on an active proposal.
@@ -526,29 +496,12 @@ export function createApiAdapter(config, walletAdapter) {
 			getDefiStrategies: (params) => cachedGet("defi-strategies", "/defi-strategies", params),
 
 			/**
-			 * Get a single DeFi strategy by ID.
-			 * GET /defi-strategies/:id  (uncached)
-			 * @param {string} id
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			getDefiStrategy: (id) => get(`/defi-strategies/${id}`),
-
-			/**
 			 * Create a new DeFi strategy.
 			 * POST /defi-strategies  (uncached, requires JWT)
 			 * @param {unknown} data
 			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
 			 */
 			createDefiStrategy: (data) => post("/defi-strategies", data),
-
-			/**
-			 * Update an existing DeFi strategy.
-			 * PUT /defi-strategies/:id  (uncached, requires JWT)
-			 * @param {string} id
-			 * @param {unknown} data
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			updateDefiStrategy: (id, data) => put(`/defi-strategies/${id}`, data),
 
 			/**
 			 * Simulate a DeFi strategy.
@@ -569,60 +522,8 @@ export function createApiAdapter(config, walletAdapter) {
 			 */
 			buildStrategy: (data) => post("/ai-strategy-builder/build", data),
 
-			/**
-			 * Analyze strategy risk using Gemini AI.
-			 * POST /ai-strategy-builder/advanced/analyze-risk  (uncached, requires JWT)
-			 * @param {unknown} data
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			analyzeRisk: (data) => post("/ai-strategy-builder/advanced/analyze-risk", data),
-
-			/**
-			 * Optimize a strategy using Gemini AI.
-			 * POST /ai-strategy-builder/advanced/optimize  (uncached, requires JWT)
-			 * @param {unknown} data
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			optimize: (data) => post("/ai-strategy-builder/advanced/optimize", data),
 		},
 
-		/** Users — user profiles */
-		users: {
-			/**
-			 * Get current user by wallet address.
-			 * GET /users/me  (uncached)
-			 * @param {Record<string, unknown>} [params] - Optional query params (address)
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			getMe: (params) => get("/users/me", params),
-
-			/**
-			 * Create a new user.
-			 * POST /users  (uncached)
-			 * @param {unknown} data
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			createUser: (data) => post("/users", data),
-		},
-
-		/** Auth — wallet-based JWT authentication */
-		auth: {
-			/**
-			 * Get a nonce for wallet authentication.
-			 * GET /auth/nonce/:walletAddress  (uncached)
-			 * @param {string} walletAddress
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			getNonce: (walletAddress) => get(`/auth/nonce/${walletAddress}`),
-
-			/**
-			 * Authenticate with wallet signature.
-			 * POST /auth/wallet-login  (uncached)
-			 * @param {unknown} data
-			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-			 */
-			walletLogin: (data) => post("/auth/wallet-login", data),
-		},
 	};
 }
 
@@ -639,10 +540,8 @@ export function createApiAdapter(config, walletAdapter) {
  * @property {() => Promise<ApiResult>} stats.getStats
  * @property {object} strategies
  * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} strategies.listStrategies
- * @property {(id: string) => Promise<ApiResult>} strategies.getStrategy
  * @property {object} governance
  * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} governance.listProposals
- * @property {(id: string) => Promise<ApiResult>} governance.getProposal
  * @property {(data: { proposalId: string; support: boolean; votes?: number }) => Promise<ApiResult>} governance.castVote
  * @property {object} activities
  * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} activities.getActivities
@@ -650,20 +549,10 @@ export function createApiAdapter(config, walletAdapter) {
  * @property {() => Promise<ApiResult>} defiModules.getDefiModules
  * @property {object} defiStrategies
  * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} defiStrategies.getDefiStrategies
- * @property {(id: string) => Promise<ApiResult>} defiStrategies.getDefiStrategy
  * @property {(data: unknown) => Promise<ApiResult>} defiStrategies.createDefiStrategy
- * @property {(id: string, data: unknown) => Promise<ApiResult>} defiStrategies.updateDefiStrategy
  * @property {(data: unknown) => Promise<ApiResult>} defiStrategies.simulateDefiStrategy
  * @property {object} aiBuilder
  * @property {(data: unknown) => Promise<ApiResult>} aiBuilder.buildStrategy
- * @property {(data: unknown) => Promise<ApiResult>} aiBuilder.analyzeRisk
- * @property {(data: unknown) => Promise<ApiResult>} aiBuilder.optimize
- * @property {object} users
- * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} users.getMe
- * @property {(data: unknown) => Promise<ApiResult>} users.createUser
- * @property {object} auth
- * @property {(walletAddress: string) => Promise<ApiResult>} auth.getNonce
- * @property {(data: unknown) => Promise<ApiResult>} auth.walletLogin
  */
 
 /**

@@ -325,13 +325,13 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
   const [multiSelected, setMultiSelected] = useStateB(() => new Set());
   // Clipboard for copy / paste
   const clipboardRef = useRefB(null);
+  const stateRef = useRefB({});
 
   // Polish state ─────────────────────────────────────────────────
   const [draggingId, setDraggingId] = useStateB(null);    // node being dragged on canvas
   const [dropActive, setDropActive] = useStateB(false);   // palette item being dragged over canvas
   const [recentEdges, setRecentEdges] = useStateB(() => new Set());  // edge keys recently added (for draw-on)
   const [savedAt, setSavedAt] = useStateB(Date.now());    // for "saved Ns ago" indicator
-  const [, setNow] = useStateB(Date.now());
   const [selectedEdge, setSelectedEdge] = useStateB(null);
 
   // Pan + zoom
@@ -388,16 +388,15 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
     return s;
   }, [issues]);
 
-  // tick every 5s so the "saved Ns ago" stays fresh
+  // bump savedAt ONLY after a debounce pause (not on every drag frame)
+  const saveTimerRef = useRefB(null);
   useEffectB(() => {
-    const id = setInterval(() => setNow(Date.now()), 5000);
-    return () => clearInterval(id);
-  }, []);
-
-  // bump savedAt whenever workflow changes (it auto-persists in parent)
-  useEffectB(() => {
-    setSavedAt(Date.now());
     pushHistory({ nodes, edges });
+    // Debounce savedAt: wait 1500ms after last change before marking "saved"
+    // This prevents the indicator from flashing on every node-drag frame.
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => { setSavedAt(Date.now()); }, 1500);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [nodes, edges, name]);
 
   // Undo / redo
@@ -481,10 +480,14 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
     setSelected(null);
   }, [selected, selectedEdge, multiSelected]); // eslint-disable-line
 
-  // Keyboard: full shortcut layer
+  // Sync volatile state into ref so the keyboard handler always reads fresh values
+  stateRef.current = { selected, selectedEdge, multiSelected, nodes, edges, pan, scale, fullscreen, showCheat, inlineConfigFor, deleteSelected, undo, redo };
+
+  // Keyboard: full shortcut layer — reads from stateRef to avoid stale closures
   useEffectB(() => {
     const onKey = (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      const { selected, selectedEdge, multiSelected, nodes, edges, pan, scale, fullscreen, showCheat, inlineConfigFor, deleteSelected, undo, redo } = stateRef.current;
       const meta = e.metaKey || e.ctrlKey;
 
       // Help overlay
@@ -674,7 +677,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selected, selectedEdge, multiSelected, deleteSelected, undo, redo, nodes, edges, pan, scale, fullscreen, showCheat]);
+  }, []);
 
   const canvasRef = useRefB(null);
   const dragRef = useRefB(null);
@@ -918,7 +921,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
           <Tag tone="default">draft</Tag>
         </div>
         <div className="row toolbar-group" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          <SavedIndicator savedAt={savedAt} />
+          <TimeAgo savedAt={savedAt} />
           <button className="btn ghost sm" onClick={undo} disabled={historyRef.current.past.length < 2} title="Undo · ⌘Z">↶</button>
           <button className="btn ghost sm" onClick={redo} disabled={!historyRef.current.future.length} title="Redo · ⌘⇧Z">↷</button>
           <span style={{ width: 1, alignSelf: "stretch", background: "var(--hairline)", margin: "0 2px" }} />
@@ -1390,9 +1393,15 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
   );
 }
 
-/* ─── Saved indicator ─── */
-function SavedIndicator({ savedAt }) {
-  const ago = Math.max(0, Math.floor((Date.now() - savedAt) / 1000));
+/* ─── Saved indicator (self-contained timer) ─── */
+function TimeAgo({ savedAt }) {
+  const [now, setNow] = useStateB(Date.now());
+  useEffectB(() => {
+    const id = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(id);
+  }, []);
+  if (!savedAt) return null;
+  const ago = Math.max(0, Math.floor((now - savedAt) / 1000));
   const label = ago < 5 ? "Saved" : ago < 60 ? `Saved ${ago}s ago` : ago < 3600 ? `Saved ${Math.floor(ago/60)}m ago` : "Saved";
   return (
     <span

@@ -155,15 +155,6 @@ export function createFheAdapter(config) {
 	}
 
 	/**
-	 * Get the number of seconds remaining until the permit expires.
-	 * Returns 0 if no permit is active or the permit has expired.
-	 * @returns {number}
-	 */
-	function permitCountdown() {
-		return computePermitState().secondsLeft;
-	}
-
-	/**
 	 * Encrypt a plaintext value for use in FHE write transactions.
 	 * @param {string} plaintext - The value to encrypt
 	 * @param {string} [tokenAddress] - Optional token address for context
@@ -283,7 +274,6 @@ export function createFheAdapter(config) {
 	const adapter = {
 		permitGrant,
 		permitCheck,
-		permitCountdown,
 		encrypt,
 		decrypt,
 		decryptForExecute,
@@ -291,32 +281,6 @@ export function createFheAdapter(config) {
 
 		// Aliases for naming compatibility
 		grantPermit: permitGrant,
-		checkPermit: permitCheck,
-
-		// Staggered reveal — decrypts each handle for on-chain use
-		staggeredReveal: {
-			getAdapter() {
-				return {
-					permitGrant: adapter.permitGrant,
-					permitCheck: adapter.permitCheck,
-					encrypt: adapter.encrypt,
-					decrypt: adapter.decrypt,
-					decryptForExecute: adapter.decryptForExecute,
-					onPermitChange: adapter.onPermitChange,
-				};
-			},
-			async revealAll(handles) {
-				const results = [];
-				for (const handle of handles) {
-					const result = await decryptForExecute(handle);
-					results.push(result);
-				}
-				return results;
-			},
-			async revealOne(handle) {
-				return decryptForExecute(handle);
-			},
-		},
 	};
 
 	return adapter;
@@ -340,15 +304,11 @@ export function createFheAdapter(config) {
  * @typedef {Object} FheAdapter
  * @property {() => Promise<PermitState>} permitGrant - Grant an FHE permit
  * @property {() => PermitState} permitCheck - Check current permit state
- * @property {() => number} permitCountdown - Seconds until permit expires
+
  * @property {(plaintext: string, tokenAddress?: string) => Promise<InEuint128>} encrypt - Encrypt a plaintext value
  * @property {(handle: string) => Promise<string>} decrypt - Decrypt an encrypted handle
  * @property {(ctHash: string, opts?: { timeout?: number, pollInterval?: number }) => Promise<{ plaintext: string, signature: string }>} decryptForExecute - Decrypt for tx with signature
  * @property {(cb: (state: PermitState) => void) => () => void} onPermitChange - Register permit state listener
  * @property {() => Promise<PermitState>} grantPermit - Alias for permitGrant
- * @property {() => PermitState} checkPermit - Alias for permitCheck
- * @property {object} staggeredReveal - Staggered reveal using decryptForExecute
- * @property {() => Pick<FheAdapter, 'permitGrant' | 'permitCheck' | 'encrypt' | 'decrypt' | 'decryptForExecute' | 'onPermitChange'>} staggeredReveal.getAdapter
- * @property {(handles: string[]) => Promise<Array<{ plaintext: string, signature: string }>>} staggeredReveal.revealAll
- * @property {(handle: string) => Promise<{ plaintext: string, signature: string }>} staggeredReveal.revealOne
+
  */

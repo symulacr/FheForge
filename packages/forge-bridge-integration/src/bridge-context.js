@@ -45,6 +45,7 @@ const DEFAULT_CONTEXT_VALUE = {
 		portfolioLTV: null,
 		readiness: null,
 	},
+	ready: false,
 	meta: { dataVersion: 0, errors: [] },
 };
 
@@ -239,6 +240,10 @@ function ForgeProvider({ children }) {
 	const [errors, setErrors] = React.useState([]);
 	const errorsRef = React.useRef([]);
 
+	// ── Ready state ──────────────────────────────────────────────────
+	// false until the first successful data fetch completes
+	const [ready, setReady] = React.useState(false);
+
 	// ── Memoize context value ─────────────────────────────────────────
 	// Prevents unnecessary child re-renders when state hasn't changed
 	const contextValue = React.useMemo(
@@ -246,9 +251,10 @@ function ForgeProvider({ children }) {
 			wallet,
 			permit,
 			data,
+			ready,
 			meta: { dataVersion, errors },
 		}),
-		[wallet, permit, data, dataVersion, errors],
+		[wallet, permit, data, dataVersion, errors, ready],
 	);
 
 	// ── BridgeBus subscription (mount/unmount effect) ─────────────────
@@ -302,6 +308,8 @@ function ForgeProvider({ children }) {
 						return next;
 					});
 					setDataVersion((prev) => prev + 1);
+					// Mark bridge as ready on first successful data fetch
+					setReady(true);
 				}),
 			);
 		});

@@ -52,6 +52,17 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
       const permitResult = await bridge.fhe.permitGrant();
       if (bus) bus.set("permit:granted", { unlocked: true, secondsLeft: permitResult?.secondsLeft || 900 });
 
+      // Enable authenticated domain on BridgeBus + start authenticated polling
+      if (window.__bridgeBus) {
+        window.__bridgeBus.enableAuthenticated();
+      }
+      if (window.__dataFetcherV2) {
+        const fetcher = window.__dataFetcherV2;
+        if (typeof fetcher.startAuthenticatedPolling === 'function') {
+          fetcher.startAuthenticatedPolling();
+        }
+      }
+
       if (setCtx) {
         setCtx(prev => ({
           ...prev,

@@ -190,6 +190,11 @@ export class BridgeBus {
 		if (mapping) {
 			const { domain, key } = mapping;
 
+			// If writing to authed domain but auth not yet enabled, skip both state and emit
+			if (domain === "authed" && !this._authEnabled && this._started) {
+				return;
+			}
+
 			// Domain-level merge (wallet, permit)
 			if (key === null) {
 				this._state[domain] = { ...this._state[domain], ...data };
@@ -200,11 +205,6 @@ export class BridgeBus {
 			}
 
 			this._state.meta.dataVersion++;
-
-			// If writing to authed domain but auth not yet enabled, skip emit
-			if (domain === "authed" && !this._authEnabled && this._started) {
-				return;
-			}
 
 			this._emit(event, this._getDomainData(domain, key));
 		} else if (event === "reset") {
@@ -269,6 +269,11 @@ export class BridgeBus {
 					this._state[domain][key] = data;
 				}
 
+				// If writing to authed domain but auth not yet enabled, update state but skip emit
+				if (domain === "authed" && !this._authEnabled && this._started) {
+					continue;
+				}
+
 				// Track for emission deduplication
 				if (!eventsToEmit.includes(event)) {
 					eventsToEmit.push(event);
@@ -319,6 +324,12 @@ export class BridgeBus {
 	 */
 	enableAuthenticated() {
 		this._authEnabled = true;
+		// Replay deferred authed data that was silently dropped before auth
+		for (const [key, mapping] of Object.entries(EVENT_MAP)) {
+			if (mapping.domain === "authed" && this._state.authed[mapping.key] != null) {
+				this._emit(key, this._state.authed[mapping.key]);
+			}
+		}
 		this._emit("authenticated", true);
 	}
 

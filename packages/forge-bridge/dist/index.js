@@ -234,14 +234,6 @@ function createApiAdapter(config, walletAdapter) {
       return normalizeError(error);
     }
   }
-  async function put(url, body) {
-    try {
-      const response = await client.put(url, body);
-      return { status: "success", data: response.data, error: null };
-    } catch (error) {
-      return normalizeError(error);
-    }
-  }
   return {
     system: {
       getReady: () => get("/ready"),
@@ -256,12 +248,10 @@ function createApiAdapter(config, walletAdapter) {
       getStats: () => cachedGet("stats", "/stats")
     },
     strategies: {
-      listStrategies: (params) => cachedGet("strategies-list", "/strategies", params),
-      getStrategy: (id) => get(`/strategies/${id}`)
+      listStrategies: (params) => cachedGet("strategies-list", "/strategies", params)
     },
     governance: {
       listProposals: (params) => cachedGet("governance-proposals", "/governance/proposals", params),
-      getProposal: (id) => get(`/governance/proposals/${id}`),
       castVote: (data) => post("/governance/vote", data)
     },
     activities: {
@@ -272,23 +262,11 @@ function createApiAdapter(config, walletAdapter) {
     },
     defiStrategies: {
       getDefiStrategies: (params) => cachedGet("defi-strategies", "/defi-strategies", params),
-      getDefiStrategy: (id) => get(`/defi-strategies/${id}`),
       createDefiStrategy: (data) => post("/defi-strategies", data),
-      updateDefiStrategy: (id, data) => put(`/defi-strategies/${id}`, data),
       simulateDefiStrategy: (data) => post("/defi-strategies/simulate", data)
     },
     aiBuilder: {
-      buildStrategy: (data) => post("/ai-strategy-builder/build", data),
-      analyzeRisk: (data) => post("/ai-strategy-builder/advanced/analyze-risk", data),
-      optimize: (data) => post("/ai-strategy-builder/advanced/optimize", data)
-    },
-    users: {
-      getMe: (params) => get("/users/me", params),
-      createUser: (data) => post("/users", data)
-    },
-    auth: {
-      getNonce: (walletAddress) => get(`/auth/nonce/${walletAddress}`),
-      walletLogin: (data) => post("/auth/wallet-login", data)
+      buildStrategy: (data) => post("/ai-strategy-builder/build", data)
     }
   };
 }
@@ -7931,46 +7909,11 @@ var DEFAULT_RPC_URL = "https://sepolia-arbitrum-rpc.publicnode.com";
 var ERC20_READ_ABI = [
   {
     type: "function",
-    name: "balanceOf",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
     name: "allowance",
     inputs: [
       { name: "owner", type: "address" },
       { name: "spender", type: "address" }
     ],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "decimals",
-    inputs: [],
-    outputs: [{ name: "", type: "uint8" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "symbol",
-    inputs: [],
-    outputs: [{ name: "", type: "string" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "name",
-    inputs: [],
-    outputs: [{ name: "", type: "string" }],
-    stateMutability: "view"
-  },
-  {
-    type: "function",
-    name: "totalSupply",
-    inputs: [],
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view"
   },
@@ -8007,30 +7950,6 @@ function createContractAdapter(config, options = {}) {
       functionName: "getBorrowBalance",
       args: [token]
     }),
-    isLiquidatable: (user, collateralToken, debtToken, collateralAmount, borrowAmount) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.LendingPool,
-      abi: CONTRACT_ABIS.LendingPool,
-      functionName: "isLiquidatable",
-      args: [user, collateralToken, debtToken, collateralAmount, borrowAmount]
-    }),
-    totalPlainBorrow: (token) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.LendingPool,
-      abi: CONTRACT_ABIS.LendingPool,
-      functionName: "totalPlainBorrow",
-      args: [token]
-    }),
-    liquidReserve: (token) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.LendingPool,
-      abi: CONTRACT_ABIS.LendingPool,
-      functionName: "liquidReserve",
-      args: [token]
-    }),
-    pausedLendingPool: () => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.LendingPool,
-      abi: CONTRACT_ABIS.LendingPool,
-      functionName: "paused",
-      args: []
-    }),
     getCollateral: (positionId) => publicClient.readContract({
       address: CONTRACT_ADDRESSES.StrategyVault,
       abi: CONTRACT_ABIS.StrategyVault,
@@ -8049,193 +7968,25 @@ function createContractAdapter(config, options = {}) {
       functionName: "getUserPositions",
       args: [user]
     }),
-    getPriceUsd: (token) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.PriceOracle,
-      abi: CONTRACT_ABIS.PriceOracle,
-      functionName: "getPriceUsd",
-      args: [token]
-    }),
-    getPriceWithFallback: (token) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.PriceOracle,
-      abi: CONTRACT_ABIS.PriceOracle,
-      functionName: "getPriceWithFallback",
-      args: [token]
-    }),
-    convertToUsd: (token, amount) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.PriceOracle,
-      abi: CONTRACT_ABIS.PriceOracle,
-      functionName: "convertToUsd",
-      args: [token, amount]
-    }),
-    isTokenSupported: (token) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.PriceOracle,
-      abi: CONTRACT_ABIS.PriceOracle,
-      functionName: "isSupported",
-      args: [token]
-    }),
-    getIntentMeta: (intentId) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.SwapRouter,
-      abi: CONTRACT_ABIS.SwapRouter,
-      functionName: "getIntentMeta",
-      args: [intentId]
-    }),
-    getStrategyInfo: async (strategyId) => {
-      const [meta, params, encryptedTvl] = await Promise.all([
-        read.getStrategyMeta(strategyId),
-        read.getStrategyParams(strategyId),
-        read.getEncryptedTvl(strategyId)
-      ]);
-      return { meta, params, encryptedTvl };
-    },
-    getStrategyMeta: (strategyId) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.StrategyRegistry,
-      abi: CONTRACT_ABIS.StrategyRegistry,
-      functionName: "getStrategyMeta",
-      args: [strategyId]
-    }),
-    getStrategyParams: (strategyId) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.StrategyRegistry,
-      abi: CONTRACT_ABIS.StrategyRegistry,
-      functionName: "getStrategyParams",
-      args: [strategyId]
-    }),
-    getEncryptedTvl: (strategyId) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.StrategyRegistry,
-      abi: CONTRACT_ABIS.StrategyRegistry,
-      functionName: "getEncryptedTvl",
-      args: [strategyId]
-    }),
-    strategyCount: () => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.StrategyRegistry,
-      abi: CONTRACT_ABIS.StrategyRegistry,
-      functionName: "strategyCount",
-      args: []
-    }),
-    strategyVaultAddress: () => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.StrategyRegistry,
-      abi: CONTRACT_ABIS.StrategyRegistry,
-      functionName: "vaultAddress",
-      args: []
-    }),
-    getTokenInfo: (token) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.TokenRegistry,
-      abi: CONTRACT_ABIS.TokenRegistry,
-      functionName: "tokens",
-      args: [token]
-    }),
-    getTokenAt: (index) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.TokenRegistry,
-      abi: CONTRACT_ABIS.TokenRegistry,
-      functionName: "tokenList",
-      args: [BigInt(index)]
-    }),
-    isRegisteredToken: (token) => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.TokenRegistry,
-      abi: CONTRACT_ABIS.TokenRegistry,
-      functionName: "isTokenEnabled",
-      args: [token]
-    }),
-    getTokenCount: () => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.TokenRegistry,
-      abi: CONTRACT_ABIS.TokenRegistry,
-      functionName: "getTokenCount",
-      args: []
-    }),
     getLendableTokens: () => publicClient.readContract({
       address: CONTRACT_ADDRESSES.TokenRegistry,
       abi: CONTRACT_ABIS.TokenRegistry,
       functionName: "getLendableTokens",
       args: []
     }),
-    getBorrowableTokens: () => publicClient.readContract({
-      address: CONTRACT_ADDRESSES.TokenRegistry,
-      abi: CONTRACT_ABIS.TokenRegistry,
-      functionName: "getBorrowableTokens",
-      args: []
-    }),
-    erc20BalanceOf: (token, account) => publicClient.readContract({
-      address: token,
-      abi: ERC20_READ_ABI,
-      functionName: "balanceOf",
-      args: [account]
-    }),
     erc20Allowance: (token, owner, spender) => publicClient.readContract({
       address: token,
       abi: ERC20_READ_ABI,
       functionName: "allowance",
       args: [owner, spender]
-    }),
-    erc20Decimals: (token) => publicClient.readContract({
-      address: token,
-      abi: ERC20_READ_ABI,
-      functionName: "decimals",
-      args: []
-    }),
-    erc20Symbol: (token) => publicClient.readContract({
-      address: token,
-      abi: ERC20_READ_ABI,
-      functionName: "symbol",
-      args: []
-    }),
-    erc20Name: (token) => publicClient.readContract({
-      address: token,
-      abi: ERC20_READ_ABI,
-      functionName: "name",
-      args: []
-    }),
-    erc20TotalSupply: (token) => publicClient.readContract({
-      address: token,
-      abi: ERC20_READ_ABI,
-      functionName: "totalSupply",
-      args: []
-    }),
-    pausedGeneric: (contractAddress, abi) => publicClient.readContract({
-      address: contractAddress,
-      abi,
-      functionName: "paused",
-      args: []
-    }),
-    owner: (contractAddress, abi) => publicClient.readContract({
-      address: contractAddress,
-      abi,
-      functionName: "owner",
-      args: []
     })
   };
   const write = {
-    shield: async (token, amount, encAmount, account) => {
-      let finalEncAmount = encAmount;
-      if (!finalEncAmount && _fheAdapter && typeof _fheAdapter.encrypt === "function") {
-        finalEncAmount = await _fheAdapter.encrypt(String(amount), token);
-      }
-      const wc = getWc();
-      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "shield", [token, amount, finalEncAmount], account);
-    },
-    borrowWithLtvCheck: async (collateralToken, borrowToken, borrowAmount, encBorrowAmount, ltvNum, ltvDen, account) => {
-      let finalEnc = encBorrowAmount;
-      if (!finalEnc && _fheAdapter && typeof _fheAdapter.encrypt === "function") {
-        finalEnc = await _fheAdapter.encrypt(String(borrowAmount), borrowToken);
-      }
-      const wc = getWc();
-      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "borrowWithLtvCheck", [collateralToken, borrowToken, borrowAmount, finalEnc, ltvNum, ltvDen], account);
-    },
-    repayDebt: async (token, amount, encAmount, account) => {
-      let finalEnc = encAmount;
-      if (!finalEnc && _fheAdapter && typeof _fheAdapter.encrypt === "function") {
-        finalEnc = await _fheAdapter.encrypt(String(amount), token);
-      }
-      const wc = getWc();
-      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "repayDebt", [token, amount, finalEnc], account);
-    },
-    partialUnshield: async (token, amount, encAmount, account) => {
-      let finalEnc = encAmount;
-      if (!finalEnc && _fheAdapter && typeof _fheAdapter.encrypt === "function") {
-        finalEnc = await _fheAdapter.encrypt(String(amount), token);
-      }
-      const wc = getWc();
-      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "partialUnshield", [token, amount, finalEnc], account);
-    },
     shieldCommit: async (token, amount, account) => {
+      if (!amount || amount <= 0n)
+        throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
+      if (!token || token === "0x0000000000000000000000000000000000000000")
+        throw new ContractError("INVALID_TOKEN", "Invalid token address");
       const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), token) : undefined;
       const wc = getWc();
       const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "shield", [token, encAmount], account);
@@ -8256,6 +8007,10 @@ function createContractAdapter(config, options = {}) {
       return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeShield", [token, commitId, plaintext, signature], account);
     },
     borrowCommit: async (collateralToken, borrowToken, amount, ltvNum, ltvDen, account) => {
+      if (!amount || amount <= 0n)
+        throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
+      if (!collateralToken || collateralToken === "0x0000000000000000000000000000000000000000")
+        throw new ContractError("INVALID_TOKEN", "Invalid token address");
       const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), borrowToken) : undefined;
       const wc = getWc();
       const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "commitBorrow", [collateralToken, borrowToken, encAmount, ltvNum, ltvDen], account);
@@ -8276,6 +8031,10 @@ function createContractAdapter(config, options = {}) {
       return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeBorrow", [commitId, plaintext, signature], account);
     },
     repayCommit: async (token, amount, account) => {
+      if (!amount || amount <= 0n)
+        throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
+      if (!token || token === "0x0000000000000000000000000000000000000000")
+        throw new ContractError("INVALID_TOKEN", "Invalid token address");
       const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), token) : undefined;
       const wc = getWc();
       const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "repay", [token, encAmount], account);
@@ -8296,6 +8055,10 @@ function createContractAdapter(config, options = {}) {
       return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeRepay", [token, commitId, plaintext, signature], account);
     },
     withdrawCommit: async (token, amount, account) => {
+      if (!amount || amount <= 0n)
+        throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
+      if (!token || token === "0x0000000000000000000000000000000000000000")
+        throw new ContractError("INVALID_TOKEN", "Invalid token address");
       const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), token) : undefined;
       const wc = getWc();
       const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "withdraw", [token, encAmount], account);
@@ -8314,14 +8077,6 @@ function createContractAdapter(config, options = {}) {
       const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
       const wc = getWc();
       return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeWithdraw", [token, commitId, plaintext, signature], account);
-    },
-    openPosition: async (token, amount, encAmount, strategyId, user, account) => {
-      let finalEnc = encAmount;
-      if (!finalEnc && _fheAdapter && typeof _fheAdapter.encrypt === "function") {
-        finalEnc = await _fheAdapter.encrypt(String(amount), token);
-      }
-      const wc = getWc();
-      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.StrategyVault, CONTRACT_ABIS.StrategyVault, "openPosition", [token, amount, finalEnc, strategyId, user], account);
     },
     composerOpenPosition: async (params, account) => {
       const EMPTY_ENC = { ctHash: 0n, securityZone: 0, utype: 0, signature: "0x" };
@@ -8357,12 +8112,6 @@ function createContractAdapter(config, options = {}) {
     erc20Approve: async (token, spender, account) => {
       const wc = getWc();
       return estimateSendAndWait(publicClient, wc, token, ERC20_READ_ABI, "approve", [spender, 2n ** 256n - 1n], account);
-    },
-    castVote: async (voteData) => {
-      if (!apiAdapter?.governance?.castVote) {
-        throw new ContractError("API_ADAPTER_REQUIRED", "API adapter with governance.castVote is required for voting");
-      }
-      return apiAdapter.governance.castVote(voteData);
     }
   };
   const simulate = {
@@ -8389,15 +8138,7 @@ function createContractAdapter(config, options = {}) {
   return {
     read,
     write,
-    simulate,
-    getClient: () => ({ publicClient, walletClient: _walletClient }),
-    setWalletClient(wc) {
-      _walletClient = wc;
-    },
-    setWalletProvider(provider) {
-      _walletProvider = provider;
-      _walletClient = null;
-    }
+    simulate
   };
 }
 
@@ -8461,9 +8202,6 @@ function createFheAdapter(config) {
   function permitCheck() {
     return computePermitState();
   }
-  function permitCountdown() {
-    return computePermitState().secondsLeft;
-  }
   async function encrypt(plaintext, tokenAddress) {
     try {
       if (!_cofheClient) {
@@ -8523,36 +8261,11 @@ function createFheAdapter(config) {
   const adapter = {
     permitGrant,
     permitCheck,
-    permitCountdown,
     encrypt,
     decrypt,
     decryptForExecute,
     onPermitChange,
-    grantPermit: permitGrant,
-    checkPermit: permitCheck,
-    staggeredReveal: {
-      getAdapter() {
-        return {
-          permitGrant: adapter.permitGrant,
-          permitCheck: adapter.permitCheck,
-          encrypt: adapter.encrypt,
-          decrypt: adapter.decrypt,
-          decryptForExecute: adapter.decryptForExecute,
-          onPermitChange: adapter.onPermitChange
-        };
-      },
-      async revealAll(handles) {
-        const results = [];
-        for (const handle of handles) {
-          const result = await decryptForExecute(handle);
-          results.push(result);
-        }
-        return results;
-      },
-      async revealOne(handle) {
-        return decryptForExecute(handle);
-      }
-    }
+    grantPermit: permitGrant
   };
   return adapter;
 }
