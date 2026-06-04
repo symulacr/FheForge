@@ -167,7 +167,7 @@ export function createFheAdapter(config) {
 	 * Encrypt a plaintext value for use in FHE write transactions.
 	 * @param {string} plaintext - The value to encrypt
 	 * @param {string} [tokenAddress] - Optional token address for context
-	 * @returns {Promise<EncryptedHandle>}
+	 * @returns {Promise<InEuint128>}
 	 */
 	async function encrypt(plaintext, tokenAddress) {
 		try {
@@ -178,7 +178,7 @@ export function createFheAdapter(config) {
 			const [encryptedHandle] = await _cofheClient
 				.encryptInputs([Encryptable.uint128(BigInt(plaintext))])
 				.execute();
-			return { handle: encryptedHandle, type: "InEuint128" };
+			return encryptedHandle;
 		} catch (error) {
 			throw new FheError(
 				"ENCRYPT_FAILED",
@@ -333,9 +333,7 @@ export function createFheAdapter(config) {
  */
 
 /**
- * @typedef {Object} EncryptedHandle
- * @property {string} handle - The encrypted handle string (hex)
- * @property {string} type - The encrypted type (e.g. "InEuint128")
+ * @typedef {string} InEuint128 - Encrypted handle (hex string) for an euint128 value
  */
 
 /**
@@ -343,7 +341,7 @@ export function createFheAdapter(config) {
  * @property {() => Promise<PermitState>} permitGrant - Grant an FHE permit
  * @property {() => PermitState} permitCheck - Check current permit state
  * @property {() => number} permitCountdown - Seconds until permit expires
- * @property {(plaintext: string, tokenAddress?: string) => Promise<EncryptedHandle>} encrypt - Encrypt a plaintext value
+ * @property {(plaintext: string, tokenAddress?: string) => Promise<InEuint128>} encrypt - Encrypt a plaintext value
  * @property {(handle: string) => Promise<string>} decrypt - Decrypt an encrypted handle
  * @property {(ctHash: string, opts?: { timeout?: number, pollInterval?: number }) => Promise<{ plaintext: string, signature: string }>} decryptForExecute - Decrypt for tx with signature
  * @property {(cb: (state: PermitState) => void) => () => void} onPermitChange - Register permit state listener
