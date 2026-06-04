@@ -324,6 +324,19 @@ var CONTRACT_ABIS = {
     },
     {
       type: "function",
+      name: "COMMIT_DEADLINE",
+      inputs: [],
+      outputs: [
+        {
+          name: "",
+          type: "uint256",
+          internalType: "uint256"
+        }
+      ],
+      stateMutability: "view"
+    },
+    {
+      type: "function",
       name: "FLASH_FEE_BPS",
       inputs: [],
       outputs: [
@@ -551,6 +564,67 @@ var CONTRACT_ABIS = {
     },
     {
       type: "function",
+      name: "commitBorrow",
+      inputs: [
+        {
+          name: "collateralToken",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "borrowToken",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "encBorrowAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        },
+        {
+          name: "ltvNum",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "ltvDen",
+          type: "uint128",
+          internalType: "uint128"
+        }
+      ],
+      outputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
       name: "composer",
       inputs: [],
       outputs: [
@@ -601,6 +675,165 @@ var CONTRACT_ABIS = {
       type: "function",
       name: "disableWeth",
       inputs: [],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeBorrow",
+      inputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "balanceProof",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "balanceSig",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [
+        {
+          name: "actual",
+          type: "bytes32",
+          internalType: "euint128"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeRepay",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "balanceProof",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "balanceSig",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeShield",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "balanceProof",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "balanceSig",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeShieldEth",
+      inputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "balanceProof",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "balanceSig",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeWithdraw",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "balanceProof",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "balanceSig",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeWithdrawEth",
+      inputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "balanceProof",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "balanceSig",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
       outputs: [],
       stateMutability: "payable"
     },
@@ -995,6 +1228,52 @@ var CONTRACT_ABIS = {
     },
     {
       type: "function",
+      name: "repay",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
       name: "repayDebt",
       inputs: [
         {
@@ -1154,6 +1433,52 @@ var CONTRACT_ABIS = {
           internalType: "address"
         },
         {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "shield",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
           name: "amount",
           type: "uint256",
           internalType: "uint256"
@@ -1222,6 +1547,52 @@ var CONTRACT_ABIS = {
         }
       ],
       outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "shieldEth",
+      inputs: [
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        },
+        {
+          name: "",
+          type: "bool",
+          internalType: "bool"
+        }
+      ],
+      outputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
       stateMutability: "payable"
     },
     {
@@ -1301,6 +1672,98 @@ var CONTRACT_ABIS = {
     },
     {
       type: "function",
+      name: "withdraw",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "withdrawEth",
+      inputs: [
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        },
+        {
+          name: "",
+          type: "bool",
+          internalType: "bool"
+        }
+      ],
+      outputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
       name: "withdrawPausedWithProof",
       inputs: [
         {
@@ -1321,6 +1784,37 @@ var CONTRACT_ABIS = {
       ],
       outputs: [],
       stateMutability: "payable"
+    },
+    {
+      type: "event",
+      name: "BorrowCommitted",
+      inputs: [
+        {
+          name: "user",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "collateralToken",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "borrowToken",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          indexed: false,
+          internalType: "bytes32"
+        }
+      ],
+      anonymous: false
     },
     {
       type: "event",
@@ -1550,6 +2044,75 @@ var CONTRACT_ABIS = {
     },
     {
       type: "event",
+      name: "RepayCommitted",
+      inputs: [
+        {
+          name: "user",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "token",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          indexed: true,
+          internalType: "bytes32"
+        }
+      ],
+      anonymous: false
+    },
+    {
+      type: "event",
+      name: "ShieldCommitted",
+      inputs: [
+        {
+          name: "user",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "token",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          indexed: true,
+          internalType: "bytes32"
+        }
+      ],
+      anonymous: false
+    },
+    {
+      type: "event",
+      name: "ShieldEthCommitted",
+      inputs: [
+        {
+          name: "user",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          indexed: true,
+          internalType: "bytes32"
+        }
+      ],
+      anonymous: false
+    },
+    {
+      type: "event",
       name: "Supplied",
       inputs: [
         {
@@ -1620,6 +2183,50 @@ var CONTRACT_ABIS = {
     },
     {
       type: "event",
+      name: "WithdrawCommitted",
+      inputs: [
+        {
+          name: "user",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "token",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          indexed: true,
+          internalType: "bytes32"
+        }
+      ],
+      anonymous: false
+    },
+    {
+      type: "event",
+      name: "WithdrawEthCommitted",
+      inputs: [
+        {
+          name: "user",
+          type: "address",
+          indexed: true,
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          indexed: true,
+          internalType: "bytes32"
+        }
+      ],
+      anonymous: false
+    },
+    {
+      type: "event",
       name: "Withdrawn",
       inputs: [
         {
@@ -1640,6 +2247,16 @@ var CONTRACT_ABIS = {
     {
       type: "error",
       name: "CannotSelfLiquidate",
+      inputs: []
+    },
+    {
+      type: "error",
+      name: "CommitmentExpired",
+      inputs: []
+    },
+    {
+      type: "error",
+      name: "CommitmentNotFound",
       inputs: []
     },
     {
@@ -1782,6 +2399,11 @@ var CONTRACT_ABIS = {
     },
     {
       type: "error",
+      name: "ValueMismatch",
+      inputs: []
+    },
+    {
+      type: "error",
       name: "WethNotSet",
       inputs: []
     },
@@ -1794,451 +2416,6 @@ var CONTRACT_ABIS = {
       type: "error",
       name: "ZeroAmount",
       inputs: []
-    },
-    {
-      type: "function",
-      name: "shield",
-      inputs: [
-        {
-          name: "token",
-          type: "address",
-          internalType: "address"
-        },
-        {
-          name: "encAmount",
-          type: "tuple",
-          internalType: "struct InEuint128",
-          components: [
-            {
-              name: "ctHash",
-              type: "uint256",
-              internalType: "uint256"
-            },
-            {
-              name: "securityZone",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "utype",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes"
-            }
-          ]
-        }
-      ],
-      outputs: [
-        {
-          name: "",
-          type: "bytes32",
-          internalType: "bytes32"
-        }
-      ],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "executeShield",
-      inputs: [
-        {
-          name: "token",
-          type: "address",
-          internalType: "address"
-        },
-        {
-          name: "commitId",
-          type: "bytes32",
-          internalType: "bytes32"
-        },
-        {
-          name: "plaintext",
-          type: "uint128",
-          internalType: "uint128"
-        },
-        {
-          name: "signature",
-          type: "bytes",
-          internalType: "bytes"
-        }
-      ],
-      outputs: [],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "commitBorrow",
-      inputs: [
-        {
-          name: "token",
-          type: "address",
-          internalType: "address"
-        },
-        {
-          name: "encAmount",
-          type: "tuple",
-          internalType: "struct InEuint128",
-          components: [
-            {
-              name: "ctHash",
-              type: "uint256",
-              internalType: "uint256"
-            },
-            {
-              name: "securityZone",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "utype",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes"
-            }
-          ]
-        },
-        {
-          name: "ltvNum",
-          type: "uint128",
-          internalType: "uint128"
-        },
-        {
-          name: "ltvDen",
-          type: "uint128",
-          internalType: "uint128"
-        }
-      ],
-      outputs: [
-        {
-          name: "",
-          type: "bytes32",
-          internalType: "bytes32"
-        }
-      ],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "executeBorrow",
-      inputs: [
-        {
-          name: "commitId",
-          type: "bytes32",
-          internalType: "bytes32"
-        },
-        {
-          name: "plaintext",
-          type: "uint128",
-          internalType: "uint128"
-        },
-        {
-          name: "signature",
-          type: "bytes",
-          internalType: "bytes"
-        }
-      ],
-      outputs: [
-        {
-          name: "",
-          type: "bytes32",
-          internalType: "euint128"
-        }
-      ],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "repay",
-      inputs: [
-        {
-          name: "token",
-          type: "address",
-          internalType: "address"
-        },
-        {
-          name: "encAmount",
-          type: "tuple",
-          internalType: "struct InEuint128",
-          components: [
-            {
-              name: "ctHash",
-              type: "uint256",
-              internalType: "uint256"
-            },
-            {
-              name: "securityZone",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "utype",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes"
-            }
-          ]
-        }
-      ],
-      outputs: [
-        {
-          name: "",
-          type: "bytes32",
-          internalType: "bytes32"
-        }
-      ],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "executeRepay",
-      inputs: [
-        {
-          name: "token",
-          type: "address",
-          internalType: "address"
-        },
-        {
-          name: "commitId",
-          type: "bytes32",
-          internalType: "bytes32"
-        },
-        {
-          name: "plaintext",
-          type: "uint128",
-          internalType: "uint128"
-        },
-        {
-          name: "signature",
-          type: "bytes",
-          internalType: "bytes"
-        }
-      ],
-      outputs: [],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "withdraw",
-      inputs: [
-        {
-          name: "token",
-          type: "address",
-          internalType: "address"
-        },
-        {
-          name: "encAmount",
-          type: "tuple",
-          internalType: "struct InEuint128",
-          components: [
-            {
-              name: "ctHash",
-              type: "uint256",
-              internalType: "uint256"
-            },
-            {
-              name: "securityZone",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "utype",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes"
-            }
-          ]
-        }
-      ],
-      outputs: [
-        {
-          name: "",
-          type: "bytes32",
-          internalType: "bytes32"
-        }
-      ],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "executeWithdraw",
-      inputs: [
-        {
-          name: "token",
-          type: "address",
-          internalType: "address"
-        },
-        {
-          name: "commitId",
-          type: "bytes32",
-          internalType: "bytes32"
-        },
-        {
-          name: "plaintext",
-          type: "uint128",
-          internalType: "uint128"
-        },
-        {
-          name: "signature",
-          type: "bytes",
-          internalType: "bytes"
-        }
-      ],
-      outputs: [],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "shieldEth",
-      inputs: [
-        {
-          name: "",
-          type: "bool",
-          internalType: "bool"
-        },
-        {
-          name: "encAmount",
-          type: "tuple",
-          internalType: "struct InEuint128",
-          components: [
-            {
-              name: "ctHash",
-              type: "uint256",
-              internalType: "uint256"
-            },
-            {
-              name: "securityZone",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "utype",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes"
-            }
-          ]
-        }
-      ],
-      outputs: [
-        {
-          name: "",
-          type: "bytes32",
-          internalType: "bytes32"
-        }
-      ],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "executeShieldEth",
-      inputs: [
-        {
-          name: "commitId",
-          type: "bytes32",
-          internalType: "bytes32"
-        },
-        {
-          name: "plaintext",
-          type: "uint128",
-          internalType: "uint128"
-        },
-        {
-          name: "signature",
-          type: "bytes",
-          internalType: "bytes"
-        }
-      ],
-      outputs: [],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "withdrawEth",
-      inputs: [
-        {
-          name: "",
-          type: "bool",
-          internalType: "bool"
-        },
-        {
-          name: "encAmount",
-          type: "tuple",
-          internalType: "struct InEuint128",
-          components: [
-            {
-              name: "ctHash",
-              type: "uint256",
-              internalType: "uint256"
-            },
-            {
-              name: "securityZone",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "utype",
-              type: "uint8",
-              internalType: "uint8"
-            },
-            {
-              name: "signature",
-              type: "bytes",
-              internalType: "bytes"
-            }
-          ]
-        }
-      ],
-      outputs: [
-        {
-          name: "",
-          type: "bytes32",
-          internalType: "bytes32"
-        }
-      ],
-      stateMutability: "payable"
-    },
-    {
-      type: "function",
-      name: "executeWithdrawEth",
-      inputs: [
-        {
-          name: "commitId",
-          type: "bytes32",
-          internalType: "bytes32"
-        },
-        {
-          name: "plaintext",
-          type: "uint128",
-          internalType: "uint128"
-        },
-        {
-          name: "signature",
-          type: "bytes",
-          internalType: "bytes"
-        }
-      ],
-      outputs: [],
-      stateMutability: "payable"
     }
   ],
   StrategyVault: [
