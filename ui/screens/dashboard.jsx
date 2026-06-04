@@ -342,8 +342,8 @@ function PositionDetail({ p, locked, setRoute, bridge, ctx }) {
   async function handleClose() {
     setCrError(null);
     const token = firstD(p, ["tokenAddress", "token", "address", "market"], null);
-    const amount = firstD(p, ["amount", "balance", "value", "decryptedAmount", "encryptedAmount", "supplied"], null);
-    if (!token || !amount || amount === "–") {
+    const displayAmount = firstD(p, ["amount", "balance", "value", "decryptedAmount", "encryptedAmount", "supplied"], null);
+    if (!token || !displayAmount || displayAmount === "–") {
       setCrError("Missing token or amount");
       return;
     }
@@ -351,9 +351,23 @@ function PositionDetail({ p, locked, setRoute, bridge, ctx }) {
       setCrError("Bridge not ready");
       return;
     }
+    // Convert amount to bigint (wei) for contract call
+    let amountWei;
+    const rawWei = firstD(p, ["amountWei", "rawAmount", "balanceWei", "amountRaw"], null);
+    if (rawWei !== null && rawWei !== undefined && rawWei !== "") {
+      amountWei = BigInt(String(rawWei));
+    } else {
+      const decimals = firstD(p, ["decimals", "tokenDecimals"], 18);
+      const parsed = parseFloat(String(displayAmount).replace(/[$,]/g, ""));
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        setCrError("Invalid amount");
+        return;
+      }
+      amountWei = BigInt(Math.round(parsed * 10 ** Number(decimals)));
+    }
     setCrStep("committing");
     try {
-      const tx1 = await bridge.contract.write.withdrawCommit(token, amount, ctx.address);
+      const tx1 = await bridge.contract.write.withdrawCommit(token, amountWei, ctx.address);
       if (tx1.status === "reverted") { setCrStep("failed"); return; }
       setCrStep("decrypting");
       const tx2 = await bridge.contract.write.withdrawExecute(token, tx1.commitId, ctx.address);

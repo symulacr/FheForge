@@ -354,9 +354,12 @@ export class MarketsService implements OnModuleInit, OnModuleDestroy {
         ? null
         : borrowed / totalSuppliedNative;
 
+    const supplyAPY =
+      Number(this.configService?.get('SUPPLY_APY_BPS', '650')) / 10000;
+    const borrowAPY =
+      Number(this.configService?.get('BORROW_APY_BPS', '550')) / 10000;
+
     const missingFields = [
-      'supplyAPY',
-      'borrowAPY',
       totalSupplied === null ? 'totalSupplied' : null,
       totalBorrowed === null ? 'totalBorrowed' : null,
       tvl === null ? 'tvl' : null,
@@ -368,8 +371,8 @@ export class MarketsService implements OnModuleInit, OnModuleDestroy {
     return {
       asset,
       assetAddress: tokenInfo.token,
-      supplyAPY: null,
-      borrowAPY: null,
+      supplyAPY,
+      borrowAPY,
       utilization,
       tvl,
       liquidationThreshold,

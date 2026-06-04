@@ -62,8 +62,11 @@
           id: s.id || 'sup-' + (s.asset || Math.random().toString(36).slice(2, 8)),
           venue: 'Lending Pool',
           asset: s.asset || 'UNKNOWN',
+          tokenAddress: s.tokenAddress || s.token || s.assetAddress || null,
           side: 'supply',
           amount: s.amountUsd || s.amount || '0',
+          amountWei: s.amountWei || s.rawAmount || s.balanceWei || null,
+          decimals: s.decimals || s.tokenDecimals || null,
           apy: lookupApy(markets, s.asset, 'supply'),
           liq: s.liquidationThreshold || '0',
         });
@@ -75,8 +78,11 @@
           id: b.id || 'bor-' + (b.asset || Math.random().toString(36).slice(2, 8)),
           venue: 'Lending Pool',
           asset: b.asset || 'UNKNOWN',
+          tokenAddress: b.tokenAddress || b.token || b.assetAddress || null,
           side: 'borrow',
           amount: b.amountUsd || b.amount || '0',
+          amountWei: b.amountWei || b.rawAmount || b.balanceWei || null,
+          decimals: b.decimals || b.tokenDecimals || null,
           apy: lookupApy(markets, b.asset, 'borrow'),
           liq: b.liquidationThreshold || '0',
         });

@@ -18,12 +18,22 @@ export class StatsService {
       return this.cache.data;
     }
 
+    const withTimeout = <T>(p: Promise<T>, ms: number, fallback: T): Promise<T> =>
+      Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fallback), ms))]);
+
     const [markets, totalUsers, activeStrategies, totalDeployments] =
       await Promise.all([
-        this.marketsService.getAllMarkets(),
-        this.countRows('users'),
-        this.countRows('defi_strategies', { column: 'is_public', value: true }),
-        this.countRows('defi_strategy_executions'),
+        withTimeout(this.marketsService.getAllMarkets(), 5_000, []),
+        withTimeout(this.countRows('users'), 5_000, null),
+        withTimeout(
+          this.countRows('defi_strategies', {
+            column: 'is_public',
+            value: true,
+          }),
+          5_000,
+          null,
+        ),
+        withTimeout(this.countRows('defi_strategy_executions'), 5_000, null),
       ]);
 
     const poolTvls = Object.fromEntries(

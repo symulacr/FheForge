@@ -318,7 +318,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
   const [pending, setPending] = useStateB(null);
   const [deploying, setDeploying] = useStateB(false);
   const [deployResult, setDeployResult] = useStateB(null);
-  const [deployStep, setDeployStep] = useStateB(null); // null | "committing" | "decrypting"
+  const [deployStep, setDeployStep] = useStateB(null); // null | "signing" | "committing" | "decrypting"
   const [inspectorTab, setInspectorTab] = useStateB("config");
 
   // Multi-selection (Set of node ids)
@@ -972,9 +972,29 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                   const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
                   const loopCount = repeatNode?.config?.loops || 1;
 
+                  // ERC20 approval: ensure Composer can pull collateral tokens
+                  const COMPOSER_ADDRESS = "0xEab68D8Ee6DC5Ddc10293fF3B1bb21679d81dC8b";
+                  if (collateralAmount > 0n) {
+                    const allowance = await bridge.contract.read.erc20Allowance(collateralToken, ctx.address, COMPOSER_ADDRESS);
+                    if (BigInt(allowance) < collateralAmount) {
+                      setDeployStep("signing");
+                      const approvalRes = await bridge.contract.write.erc20Approve(collateralToken, COMPOSER_ADDRESS, ctx.address);
+                      if (approvalRes.status === "reverted") { setDeployResult({ ok: false, error: "ERC20 approval reverted" }); return; }
+                    }
+                  }
+
+                  // Real workflowHash: keccak256 of the strategy graph structure
+                  const { keccak256: bwKeccak, toHex: bwToHex } = await import("viem");
+                  const graphPayload = JSON.stringify({
+                    nodes: nodes.map(n => ({ id: n.id, type: n.type, config: n.config })),
+                    edges: edges.map(e => e.from + "->" + e.to),
+                  });
+                  const workflowHash = bwKeccak(bwToHex(graphPayload));
+
+                  setDeployStep("committing");
                   await bridge.contract.write.composerOpenPosition({
                     strategyName: workflow.name || "Untitled",
-                    workflowHash: "0x" + "00".repeat(32),
+                    workflowHash,
                     collateralAmount,
                     poolSupplyAmount: 0n,
                     poolBorrowAmount: borrowAmount,
@@ -1034,7 +1054,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
               }
             }}
           >
-            {deploying ? <>{deployStep === "committing" ? "Committing…" : deployStep === "decrypting" ? "Decrypting…" : "Signing…"} <span className="ar">⋯</span></> : <>Deploy <span className="ar">→</span></>}
+            {deploying ? <>{deployStep === "signing" ? "Approving…" : deployStep === "committing" ? "Committing…" : deployStep === "decrypting" ? "Decrypting…" : "Signing…"} <span className="ar">⋯</span></> : <>Deploy <span className="ar">→</span></>}
           </button>
         </div>
       </div>
@@ -1361,15 +1381,9 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
         onClose={() => setDeployResult(null)}
         onRetry={() => {
           setDeployResult(null);
-          setDeploying(true);
-          setTimeout(() => {
-            setDeploying(false);
-            setDeployResult({
-              ok: true,
-              tx: "0x" + Math.random().toString(16).slice(2, 10) + "…" + Math.random().toString(16).slice(2, 6),
-              block: 182944108 + Math.floor(Math.random() * 100),
-            });
-          }, 1500);
+          // Re-trigger the real deploy by clicking the deploy button programmatically
+          const btn = document.querySelector('[data-testid="deploy-button"]');
+          if (btn && !btn.disabled) btn.click();
         }}
       />}
     </div>
@@ -2156,31 +2170,83 @@ window.IssuePin = IssuePin;
 function DeployProgressModal({ nodes, runOrder, onComplete, onCancel }) {
   const [step, setStep] = useStateB(0);
   const [status, setStatus] = useStateB("running"); // running | done | failed
+  const [txResults, setTxResults] = useStateB([]);
+  const [errorMsg, setErrorMsg] = useStateB(null);
   const stepsCount = Math.max(1, runOrder.length);
+  const cancelledRef = useRefB(false);
 
   useEffectB(() => {
-    if (status !== "running") return;
+    cancelledRef.current = false;
+    return () => { cancelledRef.current = true; };
+  }, []);
+
+  useEffectB(() => {
+    if (status !== "running" || cancelledRef.current) return;
+
     if (step >= stepsCount) {
-      const t = setTimeout(() => {
-        const willFail = Math.random() < 0.15;
-        setStatus(willFail ? "failed" : "done");
-      }, 400);
-      return () => clearTimeout(t);
+      // All steps complete — gather results
+      const lastTx = txResults[txResults.length - 1];
+      setStatus("done");
+      onComplete({ ok: true, tx: lastTx?.txHash || "confirmed", block: lastTx?.block || 0, results: txResults });
+      return;
     }
-    const t = setTimeout(() => setStep(s => s + 1), 600);
-    return () => clearTimeout(t);
-  }, [step, status, stepsCount]);
 
-  useEffectB(() => {
-    if (status === "done") {
-      const t = setTimeout(() => onComplete({ ok: true, tx: "0x" + Math.random().toString(16).slice(2, 10) + "…" + Math.random().toString(16).slice(2, 6), block: 182944108 + Math.floor(Math.random() * 100) }), 1200);
-      return () => clearTimeout(t);
-    }
-    if (status === "failed") {
-      const t = setTimeout(() => onComplete({ ok: false, msg: "Permit allowance insufficient" }), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [status, onComplete]);
+    const nodeId = runOrder[step];
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) { setStep(s => s + 1); return; }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const bridge = typeof window !== "undefined" ? window.bridge : null;
+        if (!bridge?.contract?.write) throw new Error("Bridge not ready");
+
+        const ctx = typeof window !== "undefined" ? window.__forgeCtx : null;
+        const account = ctx?.address;
+        const tokenMap = {};
+        if (bridge?.data?.markets) {
+          bridge.data.markets.forEach(m => { if (m.asset && m.assetAddress) tokenMap[m.asset] = m.assetAddress; });
+        }
+        const cfg = node.config || {};
+        const tokenAddr = tokenMap[cfg.asset] || tokenMap[cfg.from] || Object.values(tokenMap)[0];
+        const amount = parseAmountBW(cfg.amount || "0");
+        let result = null;
+
+        if (node.type === "supply" && amount > 0n) {
+          const tx1 = await bridge.contract.write.shieldCommit(tokenAddr, amount, account);
+          if (tx1.status === "reverted") throw new Error("Supply commit reverted");
+          const tx2 = await bridge.contract.write.shieldExecute(tokenAddr, tx1.commitId, account);
+          if (tx2.status === "reverted") throw new Error("Supply execute reverted");
+          result = { txHash: tx2.txHash, block: tx2.block };
+        } else if (node.type === "borrow" && amount > 0n) {
+          const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, amount, BigInt(cfg.ltv || 50), 100n, account);
+          if (tx1.status === "reverted") throw new Error("Borrow commit reverted");
+          const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, account);
+          if (tx2.status === "reverted") throw new Error("Borrow execute reverted");
+          result = { txHash: tx2.txHash, block: tx2.block };
+        } else if (node.type === "swap" && amount > 0n) {
+          const tokenOut = tokenMap[cfg.to] || Object.values(tokenMap)[0];
+          const slipBps = Math.round((cfg.slip || 0.5) * 100);
+          const minOut = amount * BigInt(10000 - slipBps) / 10000n;
+          const tx = await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, amount, minOut, 300n, account);
+          result = { txHash: tx.txHash, block: tx.block };
+        } else {
+          result = { txHash: "skipped", block: 0 };
+        }
+
+        if (cancelled || cancelledRef.current) return;
+        setTxResults(prev => [...prev, result]);
+        setStep(s => s + 1);
+      } catch (e) {
+        if (cancelled || cancelledRef.current) return;
+        setStatus("failed");
+        setErrorMsg(e.message || "Transaction failed");
+        onComplete({ ok: false, msg: e.message || "Transaction failed" });
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [step, status, stepsCount, runOrder, nodes, onComplete, txResults]);
 
   return (
     <div style={{
@@ -2201,35 +2267,46 @@ function DeployProgressModal({ nodes, runOrder, onComplete, onCancel }) {
             {status === "failed" ? "reverted" : status === "done" ? "confirmed" : "signing"}
           </Tag>
           <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-            step {Math.min(step, stepsCount)} / {stepsCount}
+            step {Math.min(step + 1, stepsCount)} / {stepsCount}
           </span>
         </div>
         <h3 className="serif" style={{ fontSize: 18, fontWeight: 500, margin: "0 0 16px 0" }}>Composer call</h3>
+        {errorMsg && (
+          <div style={{ padding: "8px 12px", marginBottom: 12, border: "1px solid var(--danger)", color: "var(--danger)", fontSize: 12 }}>
+            {errorMsg}
+          </div>
+        )}
         <ol style={{ listStyle: "none", padding: 0, margin: 0, maxHeight: 320, overflowY: "auto" }}>
           {runOrder.map((id, i) => {
             const n = nodes.find(x => x.id === id);
             if (!n) return null;
             const t = NODE_TYPES[n.type];
             const done = i < step;
-            const active = i === step;
+            const active = i === step && status === "running";
+            const failed = i === step && status === "failed";
+            const txResult = txResults[i];
             return (
               <li key={id} style={{
                 display: "grid", gridTemplateColumns: "26px auto 1fr auto", gap: 10, alignItems: "center",
                 padding: "8px 0",
                 borderTop: i === 0 ? 0 : "1px dashed var(--hairline-2)",
-                opacity: done ? 1 : active ? 1 : 0.45,
+                opacity: done ? 1 : active || failed ? 1 : 0.45,
               }}>
-                <span className="mono" style={{ fontSize: 11, color: done ? "var(--positive)" : active ? "var(--accent-ink)" : "var(--muted)" }}>
-                  {done ? "✓" : active ? "···" : String(i+1).padStart(2,"0")}
+                <span className="mono" style={{ fontSize: 11, color: done ? "var(--positive)" : failed ? "var(--danger)" : active ? "var(--accent-ink)" : "var(--muted)" }}>
+                  {done ? "✓" : failed ? "✗" : active ? "···" : String(i+1).padStart(2,"0")}
                 </span>
-                <span style={{ width: 8, height: 8, background: t.swatch, display: "inline-block" }} />
+                <span style={{ width: 8, height: 8, background: failed ? "var(--danger)" : t.swatch, display: "inline-block" }} />
                 <span style={{ fontSize: 13 }}>{t.label}</span>
-                <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>{n.type === "borrow" ? "448k" : n.type === "swap" ? "196k" : n.type === "settle" ? "22k" : "312k"} gas</span>
+                <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+                  {done && txResult?.txHash && txResult.txHash !== "skipped"
+                    ? txResult.txHash.slice(0, 10) + "…"
+                    : n.type === "borrow" ? "448k" : n.type === "swap" ? "196k" : n.type === "settle" ? "22k" : "312k"} gas
+                </span>
               </li>
             );
           })}
         </ol>
-        {status === "running" && (
+        {(status === "running" || status === "failed") && (
           <div className="row" style={{ gap: 8, marginTop: 18, justifyContent: "flex-end" }}>
             <button className="btn ghost sm" onClick={onCancel}>Cancel</button>
           </div>
