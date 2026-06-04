@@ -109,6 +109,24 @@ function getPositionSummaryL(bridgeData) {
 }
 
 
+async function handleFaucetDrip(tokenAddress, connected, connectFn) {
+  if (!connected) { connectFn(); return; }
+  try {
+    // faucetMint() selector = 0x13eda8fc
+    const data = "0x13eda8fc";
+    const accounts = await window.ethereum.request({ method: "eth_accounts" });
+    const from = accounts[0];
+    if (!from) { alert("Connect wallet first"); return; }
+    const txHash = await window.ethereum.request({
+      method: "eth_sendTransaction",
+      params: [{ from, to: tokenAddress, data }],
+    });
+    alert("Tokens minted! tx: " + txHash.slice(0, 18) + "…");
+  } catch (err) {
+    alert(err?.reason || err?.message || "Faucet failed");
+  }
+}
+
 function Lending({ setRoute, ctx, grantPermit, openConnect }) {
   const bridge = useOptionalBridgeL();
   const bridgeData = bridge.data || {};
@@ -172,6 +190,13 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
                 <div style={{ textAlign: "right", display: "flex", flexDirection: "column", gap: 2 }}>
                   <span className="mono" style={{ fontSize: 11, color: "var(--positive)" }}>+{m.supplyApy}%</span>
                   <span className="mono" style={{ fontSize: 11, color: "var(--danger)" }}>−{m.borrowApy}%</span>
+                  {m.assetAddress && ctx.connected && (
+                    <button
+                      className="btn ghost sm"
+                      style={{ padding: "2px 6px", fontSize: 9, letterSpacing: 0.06, textTransform: "uppercase", marginTop: 2 }}
+                      onClick={(e) => { e.stopPropagation(); handleFaucetDrip(m.assetAddress, ctx.connected, openConnect); }}
+                    >Drip</button>
+                  )}
                 </div>
               }
               selected={assetId === m.asset}
