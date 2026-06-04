@@ -807,29 +807,6 @@ export const CONTRACT_ABIS = {
   },
   {
     "type": "function",
-    "name": "requestLiquidityCheck",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "collateralToken",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "debtToken",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "payable"
-  },
-  {
-    "type": "function",
     "name": "requestUnshield",
     "inputs": [
       {

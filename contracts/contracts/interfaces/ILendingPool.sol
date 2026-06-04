@@ -28,11 +28,6 @@ interface ILendingPool {
     function partialUnshield(address token, uint256 amount, InEuint128 calldata encAmount) external;
     function partialUnshieldEth(uint256 amount, InEuint128 calldata encAmount) external;
     function requestBalanceReveal(address token) external;
-    function requestLiquidityCheck(
-        address user,
-        address collateralToken,
-        address debtToken
-    ) external;
     function withdrawPausedWithProof(
         address token,
         uint128 balanceProof,

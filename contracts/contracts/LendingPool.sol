@@ -420,18 +420,6 @@ contract LendingPool is FheForgeBase {
         emit Repaid(user, token);
     }
 
-    function requestLiquidityCheck(
-        address user,
-        address collateralToken,
-        address debtToken
-    ) external payable {
-        if (user == address(0)) revert ZeroAddress();
-        if (collateralToken == address(0) || debtToken == address(0)) revert ZeroAddress();
-        if (msg.sender != user) revert NotAuthorized();
-        FHE.allowPublic(_ensureInitialized(borrowBalances[debtToken][user]));
-        FHE.allowPublic(_ensureInitialized(supplyBalances[collateralToken][user]));
-    }
-
     function liquidateWithProof(
         address user,
         address collateralToken,

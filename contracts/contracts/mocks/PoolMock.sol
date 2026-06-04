@@ -97,10 +97,6 @@ contract PoolMock is ILendingPool {
         revert NotMocked();
     }
 
-    function requestLiquidityCheck(address, address, address) external pure {
-        revert NotMocked();
-    }
-
     function withdrawPausedWithProof(address, uint128, bytes calldata) external pure {
         revert NotMocked();
     }
