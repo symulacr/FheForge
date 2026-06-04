@@ -950,6 +950,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
             data-testid="deploy-button"
             disabled={!ctx.connected || locked || deploying || hasError || !nodes.length}
             onClick={async () => {
+              if (deploying) return;
               if (!ctx.connected) { openConnect(); return; }
               if (!bridge?.contract?.write) { setDeployResult({ ok: false, error: "Bridge not ready" }); return; }
               setDeploying(true);
@@ -1052,6 +1053,17 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                       const slipBps = Math.round((cfg.slip || 0.5) * 100);
                       const minOut = amount * BigInt(10000 - slipBps) / 10000n;
                       await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, amount, minOut, 300n, account);
+                    } else if (node.type === "settle") {
+                      setDeployStep("committing");
+                      // Settle: grant ACL decryption rights for the user's positions
+                      if (bridge.contract.write.settlePosition) {
+                        const settleTx = await bridge.contract.write.settlePosition(account);
+                        if (settleTx.status === "reverted") { setDeployResult({ ok: false, error: "Settle reverted" }); setDeploying(false); setDeployStep(null); return; }
+                        result = { txHash: settleTx.txHash, block: settleTx.block };
+                      } else {
+                        result = { txHash: "skipped", block: 0 };
+                      }
+                      setDeployStep(null);
                     }
                   }
                 }
@@ -2125,7 +2137,6 @@ function EdgePopover({ x, y, from, to, onDelete, onClose }) {
 }
 window.EdgePopover = EdgePopover;
 
-/* ─── IssuePin: floating annotation near a problematic node ─── */
 function IssuePin({ x, y, severity, msg, onApply }) {
   const [open, setOpen] = useStateB(false);
   // All severities now use the accent palette — no alarm red
@@ -2181,155 +2192,3 @@ function IssuePin({ x, y, severity, msg, onApply }) {
   );
 }
 window.IssuePin = IssuePin;
-
-/* ─── DeployProgressModal: progressive contract-call walkthrough ─── */
-function DeployProgressModal({ nodes, runOrder, onComplete, onCancel }) {
-  const [step, setStep] = useStateB(0);
-  const [status, setStatus] = useStateB("running"); // running | done | failed
-  const [txResults, setTxResults] = useStateB([]);
-  const [errorMsg, setErrorMsg] = useStateB(null);
-  const stepsCount = Math.max(1, runOrder.length);
-  const cancelledRef = useRefB(false);
-
-  useEffectB(() => {
-    cancelledRef.current = false;
-    return () => { cancelledRef.current = true; };
-  }, []);
-
-  useEffectB(() => {
-    if (status !== "running" || cancelledRef.current) return;
-
-    if (step >= stepsCount) {
-      // All steps complete — gather results
-      const lastTx = txResults[txResults.length - 1];
-      setStatus("done");
-      onComplete({ ok: true, tx: lastTx?.txHash || "confirmed", block: lastTx?.block || 0, results: txResults });
-      return;
-    }
-
-    const nodeId = runOrder[step];
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) { setStep(s => s + 1); return; }
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const bridge = typeof window !== "undefined" ? window.bridge : null;
-        if (!bridge?.contract?.write) throw new Error("Bridge not ready");
-
-        const ctx = typeof window !== "undefined" ? window.__forgeCtx : null;
-        const account = ctx?.address;
-        const tokenMap = {};
-        if (bridge?.data?.markets) {
-          bridge.data.markets.forEach(m => { if (m.asset && m.assetAddress) tokenMap[m.asset] = m.assetAddress; });
-        }
-        const cfg = node.config || {};
-        const tokenAddr = tokenMap[cfg.asset] || tokenMap[cfg.from] || Object.values(tokenMap)[0];
-        const amount = parseAmountBW(cfg.amount || "0");
-        let result = null;
-
-        if (node.type === "supply" && amount > 0n) {
-          const tx1 = await bridge.contract.write.shieldCommit(tokenAddr, amount, account);
-          if (tx1.status === "reverted") throw new Error("Supply commit reverted");
-          const tx2 = await bridge.contract.write.shieldExecute(tokenAddr, tx1.commitId, account);
-          if (tx2.status === "reverted") throw new Error("Supply execute reverted");
-          result = { txHash: tx2.txHash, block: tx2.block };
-        } else if (node.type === "borrow" && amount > 0n) {
-          const borrowToken = tokenMap[cfg.asset] || Object.values(tokenMap)[0];
-          const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, amount, BigInt(cfg.ltv || 50), 100n, account, borrowToken);
-          if (tx1.status === "reverted") throw new Error("Borrow commit reverted");
-          const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, account);
-          if (tx2.status === "reverted") throw new Error("Borrow execute reverted");
-          result = { txHash: tx2.txHash, block: tx2.block };
-        } else if (node.type === "swap" && amount > 0n) {
-          const tokenOut = tokenMap[cfg.to] || Object.values(tokenMap)[0];
-          const slipBps = Math.round((cfg.slip || 0.5) * 100);
-          const minOut = amount * BigInt(10000 - slipBps) / 10000n;
-          const tx = await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, amount, minOut, 300n, account);
-          result = { txHash: tx.txHash, block: tx.block };
-        } else {
-          result = { txHash: "skipped", block: 0 };
-        }
-
-        if (cancelled || cancelledRef.current) return;
-        setTxResults(prev => [...prev, result]);
-        setStep(s => s + 1);
-      } catch (e) {
-        if (cancelled || cancelledRef.current) return;
-        setStatus("failed");
-        setErrorMsg(e.message || "Transaction failed");
-        onComplete({ ok: false, msg: e.message || "Transaction failed" });
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [step, status, stepsCount, runOrder, nodes, onComplete, txResults]);
-
-  return (
-    <div style={{
-      position: "absolute", inset: 0, zIndex: 9,
-      backdropFilter: "blur(8px)",
-      background: "color-mix(in oklch, var(--ink) 40%, transparent)",
-      display: "grid", placeItems: "center",
-      animation: "fadeIn 240ms var(--ease) forwards",
-    }}>
-      <div style={{
-        background: "var(--paper)",
-        border: "1px solid var(--ink)",
-        boxShadow: "6px 6px 0 0 var(--ink)",
-        padding: 28, width: "min(560px, 92%)",
-      }}>
-        <div className="spread" style={{ marginBottom: 16 }}>
-          <Tag tone={status === "failed" ? "danger" : status === "done" ? "positive" : "accent"}>
-            {status === "failed" ? "reverted" : status === "done" ? "confirmed" : "signing"}
-          </Tag>
-          <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-            step {Math.min(step + 1, stepsCount)} / {stepsCount}
-          </span>
-        </div>
-        <h3 className="serif" style={{ fontSize: 18, fontWeight: 500, margin: "0 0 16px 0" }}>Composer call</h3>
-        {errorMsg && (
-          <div style={{ padding: "8px 12px", marginBottom: 12, border: "1px solid var(--danger)", color: "var(--danger)", fontSize: 12 }}>
-            {errorMsg}
-          </div>
-        )}
-        <ol style={{ listStyle: "none", padding: 0, margin: 0, maxHeight: 320, overflowY: "auto" }}>
-          {runOrder.map((id, i) => {
-            const n = nodes.find(x => x.id === id);
-            if (!n) return null;
-            const t = NODE_TYPES[n.type];
-            const done = i < step;
-            const active = i === step && status === "running";
-            const failed = i === step && status === "failed";
-            const txResult = txResults[i];
-            return (
-              <li key={id} style={{
-                display: "grid", gridTemplateColumns: "26px auto 1fr auto", gap: 10, alignItems: "center",
-                padding: "8px 0",
-                borderTop: i === 0 ? 0 : "1px dashed var(--hairline-2)",
-                opacity: done ? 1 : active || failed ? 1 : 0.45,
-              }}>
-                <span className="mono" style={{ fontSize: 11, color: done ? "var(--positive)" : failed ? "var(--danger)" : active ? "var(--accent-ink)" : "var(--muted)" }}>
-                  {done ? "✓" : failed ? "✗" : active ? "···" : String(i+1).padStart(2,"0")}
-                </span>
-                <span style={{ width: 8, height: 8, background: failed ? "var(--danger)" : t.swatch, display: "inline-block" }} />
-                <span style={{ fontSize: 13 }}>{t.label}</span>
-                <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-                  {done && txResult?.txHash && txResult.txHash !== "skipped"
-                    ? txResult.txHash.slice(0, 10) + "…"
-                    : n.type === "borrow" ? "448k" : n.type === "swap" ? "196k" : n.type === "settle" ? "22k" : "312k"} gas
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-        {(status === "running" || status === "failed") && (
-          <div className="row" style={{ gap: 8, marginTop: 18, justifyContent: "flex-end" }}>
-            <button className="btn ghost sm" onClick={onCancel}>Cancel</button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-window.DeployProgressModal = DeployProgressModal;

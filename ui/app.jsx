@@ -28,6 +28,11 @@ function initialTheme() {
   return "light";
 }
 
+function initialRoute() {
+  const h = window.location.hash.slice(1);
+  return ["home","portfolio","lend","strategies","governance"].includes(h) ? h : "home";
+}
+
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
@@ -43,7 +48,7 @@ function App() {
   }, [t.showGrain]);
 
   // Route
-  const [route, setRoute] = useStateA("home");
+  const [route, setRoute] = useStateA(initialRoute());
 
   // Wallet / permit context
   const [ctx, setCtx] = useStateA({
@@ -58,6 +63,16 @@ function App() {
   const [showConnect, setShowConnect] = useStateA(false);
   const openConnect = useCallbackA(() => setShowConnect(true), []);
   const closeConnect = useCallbackA(() => setShowConnect(false), []);
+
+  useEffectA(() => { window.location.hash = route; }, [route]);
+  useEffectA(() => {
+    const onHash = () => {
+      const h = window.location.hash.slice(1);
+      if (["home","portfolio","lend","strategies","governance"].includes(h)) setRoute(h);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   // Re-sync when tweaks change
   useEffectA(() => {

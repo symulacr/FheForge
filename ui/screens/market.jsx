@@ -45,7 +45,7 @@ function loadDrafts() {
 
 function Market({ setRoute, ctx, grantPermit, openConnect }) {
   const bridgeData = useOptionalBridgeDataM();
-  const templates = getTemplateSetM(bridgeData.templates);
+  const templates = getTemplateSetM(bridgeData.templates) || (typeof window !== "undefined" && window.TEMPLATES) || null;
   const nodeTypes = bridgeData.nodeTypes && typeof bridgeData.nodeTypes === "object" ? bridgeData.nodeTypes : null;
   const community = Array.isArray(bridgeData.community) ? bridgeData.community.map(normalizeCommunityM) : null;
   const [drafts, setDrafts] = useStateM(loadDrafts);

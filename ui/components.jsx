@@ -431,7 +431,6 @@ function MobileNav({ route, setRoute }) {
         position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40,
         background: "var(--paper)",
         borderTop: "1px solid var(--ink)",
-        display: "none",
       }}
     >
       <div className="row" style={{ justifyContent: "space-around", padding: "6px 6px" }}>
@@ -441,8 +440,8 @@ function MobileNav({ route, setRoute }) {
             onClick={() => setRoute(k)}
             style={{
               border: 0, background: "transparent",
-              padding: "8px 10px",
-              fontFamily: "var(--mono)", fontSize: 11, textTransform: "uppercase",
+              padding: "12px 16px",
+              fontFamily: "var(--mono)", fontSize: 13, textTransform: "uppercase",
               letterSpacing: 0.08,
               color: route === k ? "var(--ink)" : "var(--muted)",
               borderTop: route === k ? "1.5px solid var(--ink)" : "1.5px solid transparent",

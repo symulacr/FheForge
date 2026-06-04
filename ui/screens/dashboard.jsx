@@ -163,6 +163,7 @@ function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
   if (!ctx.connected) return <DashboardEmpty openConnect={openConnect} setRoute={setRoute} />;
 
   return (
+    <div role="main" aria-label="Portfolio" style={{ display: "contents" }}>
     <MasterDetail
       collapseKey="portfolio"
       listHeader={
@@ -178,7 +179,8 @@ function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
       listBody={
         <>
           <MDGroup>Positions · {positions ? positions.length : "loading"}</MDGroup>
-          {positions && positions.length ? positions.map((p, i) => (
+          {positions && positions.length ? <div role="list">{positions.map((p, i) => (
+            <div role="listitem" key={p.id}>
             <MDItem
               key={p.id}
               idx={String(i + 1).padStart(2, "0")}
@@ -192,7 +194,8 @@ function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
               selected={selectedId === p.id}
               onClick={() => setSelectedId(p.id)}
             />
-          )) : (
+            </div>
+          ))}</div> : (
             <EmptyListMessageD>{listStatusD("positions", bridgeData.positions, bridge)}</EmptyListMessageD>
           )}
 
@@ -256,6 +259,7 @@ function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
                  : <Overview locked={locked} grantPermit={grantPermit} setRoute={setRoute} bridgeData={bridgeData} positions={positions} strategies={strategies} activities={activities} />
       }
     />
+    </div>
   );
 }
 

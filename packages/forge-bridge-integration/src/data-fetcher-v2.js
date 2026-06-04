@@ -810,61 +810,79 @@
                 return self._emptyPositionsPayload('empty', 'No lendable tokens registered', markets);
               }
 
-              // Fetch supply and borrow balances for every token
-              var balancePromises = [];
-              for (var i = 0; i < tokenList.length; i++) {
-                balancePromises.push(
-                  Promise.allSettled([
-                    getSupplyBalance(tokenList[i]),
-                    getBorrowBalance(tokenList[i]),
-                  ]).then(function (settled) {
-                    return { settled: settled };
-                  })
-                );
+              // Fetch supply and borrow balances via multicall (single RPC batch)
+              var getAllBalances = (b.contract && typeof b.contract.getAllBalances === 'function')
+                ? b.contract.getAllBalances.bind(b.contract)
+                : self._getContractReadHelper(b, 'getAllBalances');
+              var balancePromise;
+              if (getAllBalances) {
+                balancePromise = getAllBalances(tokenList).then(function (mcResults) {
+                  return mcResults;
+                });
+              } else {
+                // Fallback to per-token reads
+                var balancePromises = [];
+                for (var i = 0; i < tokenList.length; i++) {
+                  balancePromises.push(
+                    Promise.allSettled([
+                      getSupplyBalance(tokenList[i]),
+                      getBorrowBalance(tokenList[i]),
+                    ]).then(function (settled) {
+                      return { settled: settled };
+                    })
+                  );
+                }
+                balancePromise = Promise.all(balancePromises);
               }
 
-              return Promise.all(balancePromises).then(function (results) {
+              return balancePromise.then(function (results) {
                 var supplies = [];
                 var borrows = [];
 
-                for (var j = 0; j < results.length; j++) {
-                  (function (idx) {
-                    var tkn = tokenList[idx];
-                    var settled = results[idx].settled;
-                    var supplyResult = settled[0];
-                    var borrowResult = settled[1];
+                for (var j = 0; j < tokenList.length; j++) {
+                  var tkn = tokenList[j];
+                  var supplyHandle, borrowHandle;
 
-                    var supplyHandle = supplyResult.status === 'fulfilled' ? supplyResult.value : null;
-                    var borrowHandle = borrowResult.status === 'fulfilled' ? borrowResult.value : null;
+                  if (getAllBalances) {
+                    // Multicall: results are [supply0, borrow0, supply1, borrow1, ...]
+                    var sResult = results[j * 2];
+                    var bResult = results[j * 2 + 1];
+                    supplyHandle = sResult && sResult.success ? sResult.result : null;
+                    borrowHandle = bResult && bResult.success ? bResult.result : null;
+                  } else {
+                    // Per-token: results[j].settled is [supplySettled, borrowSettled]
+                    var settled = results[j].settled;
+                    supplyHandle = settled[0].status === 'fulfilled' ? settled[0].value : null;
+                    borrowHandle = settled[1].status === 'fulfilled' ? settled[1].value : null;
+                  }
 
-                    if (permitUnlocked && supplyHandle) {
-                      supplies.push(
-                        b.fhe.decrypt(supplyHandle)
-                          .then(function (plaintext) {
-                            return { token: tkn, plaintext: plaintext };
-                          })
-                          .catch(function () {
-                            return { token: tkn, plaintext: null };
-                          })
-                      );
-                    } else if (supplyHandle) {
-                      supplies.push(Promise.resolve({ token: tkn, encrypted: supplyHandle }));
-                    }
+                  if (permitUnlocked && supplyHandle) {
+                    supplies.push(
+                      b.fhe.decrypt(supplyHandle)
+                        .then(function (plaintext) {
+                          return { token: tkn, plaintext: plaintext };
+                        })
+                        .catch(function () {
+                          return { token: tkn, plaintext: null };
+                        })
+                    );
+                  } else if (supplyHandle) {
+                    supplies.push(Promise.resolve({ token: tkn, encrypted: supplyHandle }));
+                  }
 
-                    if (permitUnlocked && borrowHandle) {
-                      borrows.push(
-                        b.fhe.decrypt(borrowHandle)
-                          .then(function (plaintext) {
-                            return { token: tkn, plaintext: plaintext };
-                          })
-                          .catch(function () {
-                            return { token: tkn, plaintext: null };
-                          })
-                      );
-                    } else if (borrowHandle) {
-                      borrows.push(Promise.resolve({ token: tkn, encrypted: borrowHandle }));
-                    }
-                  })(j);
+                  if (permitUnlocked && borrowHandle) {
+                    borrows.push(
+                      b.fhe.decrypt(borrowHandle)
+                        .then(function (plaintext) {
+                          return { token: tkn, plaintext: plaintext };
+                        })
+                        .catch(function () {
+                          return { token: tkn, plaintext: null };
+                        })
+                    );
+                  } else if (borrowHandle) {
+                    borrows.push(Promise.resolve({ token: tkn, encrypted: borrowHandle }));
+                  }
                 }
 
                 return Promise.all([
@@ -882,13 +900,43 @@
                     return !b.plaintext || b.plaintext !== '0';
                   });
 
-                  // Fetch vault positions
+                  // Fetch vault positions via multicall (single RPC batch)
                   var getUserPositions = self._getContractReadHelper(b, 'getUserPositions');
+                  var getAllPositionData = (b.contract && typeof b.contract.getAllPositionData === 'function')
+                    ? b.contract.getAllPositionData.bind(b.contract)
+                    : self._getContractReadHelper(b, 'getAllPositionData');
                   var getPosMeta = self._getContractReadHelper(b, 'getPositionMeta');
                   var getCollateral = self._getContractReadHelper(b, 'getCollateral');
 
                   var vaultPromise;
-                  if (getUserPositions && getPosMeta && getCollateral) {
+                  if (getUserPositions && getAllPositionData) {
+                    vaultPromise = getUserPositions(addr).catch(function () { return []; }).then(function (positionIds) {
+                      if (!positionIds || positionIds.length === 0) return [];
+                      return getAllPositionData(positionIds).then(function (mcResults) {
+                        var rawVault = [];
+                        for (var pi = 0; pi < positionIds.length; pi++) {
+                          var pid = positionIds[pi];
+                          var metaResult = mcResults[pi * 2];
+                          var collResult = mcResults[pi * 2 + 1];
+                          var meta = metaResult && metaResult.success ? metaResult.result : null;
+                          var collateral = collResult && collResult.success ? collResult.result : null;
+                          if (permitUnlocked && collateral) {
+                            rawVault.push(
+                              b.fhe.decrypt(collateral).catch(function () { return null; }).then(function (plain) {
+                                return { id: pid, strategyId: meta && meta.strategyId || 0, createdAt: meta && meta.createdAt || 0, collateral: plain, collateralEncrypted: collateral, venue: 'Vault', side: 'vault' };
+                              })
+                            );
+                          } else {
+                            rawVault.push(Promise.resolve({ id: pid, strategyId: meta && meta.strategyId || 0, createdAt: meta && meta.createdAt || 0, collateral: null, collateralEncrypted: collateral, venue: 'Vault', side: 'vault' }));
+                          }
+                        }
+                        return Promise.all(rawVault);
+                      });
+                    }).then(function (rawVault) {
+                      return rawVault.filter(function (p) { return p !== null; });
+                    });
+                  } else if (getUserPositions && getPosMeta && getCollateral) {
+                    // Fallback to per-position reads
                     vaultPromise = getUserPositions(addr).catch(function () { return []; }).then(function (positionIds) {
                       if (!positionIds || positionIds.length === 0) return [];
                       var posPromises = [];

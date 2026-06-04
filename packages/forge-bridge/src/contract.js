@@ -757,9 +757,69 @@ export function createContractAdapter(config, options = {}) {
 		);
 	}
 
+	// ── Multicall batching ───────────────────────────────────────────────
+
+	/**
+	 * Execute multiple contract read calls in a single RPC multicall.
+	 *
+	 * @param {Array<{address: `0x${string}`, abi: import('viem').Abi, functionName: string, args: unknown[]}>} calls
+	 * @returns {Promise<Array<{success: boolean, result: any, error: Error | null}>>}
+	 */
+	const multicallRead = async (calls) => {
+		const results = await publicClient.multicall({
+			contracts: calls.map(c => ({
+				address: c.address,
+				abi: c.abi,
+				functionName: c.functionName,
+				args: c.args,
+			})),
+			allowFailure: true,
+		});
+		return results.map((r) => ({
+			success: r.status === 'success',
+			result: r.status === 'success' ? r.result : null,
+			error: r.status === 'failure' ? r.error : null,
+		}));
+	};
+
+	/**
+	 * Batch-fetch supply + borrow balances for multiple tokens in a single multicall.
+	 *
+	 * @param {`0x${string}`[]} tokens - Token addresses
+	 * @returns {Promise<Array<{success: boolean, result: any, error: Error | null}>>}
+	 */
+	const getAllBalances = async (tokens) => {
+		const lp = CONTRACT_ADDRESSES.LendingPool;
+		const lpAbi = CONTRACT_ABIS.LendingPool;
+		const calls = tokens.flatMap(t => [
+			{ address: lp, abi: lpAbi, functionName: 'getSupplyBalance', args: [t] },
+			{ address: lp, abi: lpAbi, functionName: 'getBorrowBalance', args: [t] },
+		]);
+		return multicallRead(calls);
+	};
+
+	/**
+	 * Batch-fetch position metadata + collateral for multiple positions in a single multicall.
+	 *
+	 * @param {Array<`0x${string}`>} positionIds - Position IDs
+	 * @returns {Promise<Array<{success: boolean, result: any, error: Error | null}>>}
+	 */
+	const getAllPositionData = async (positionIds) => {
+		const sv = CONTRACT_ADDRESSES.StrategyVault;
+		const svAbi = CONTRACT_ABIS.StrategyVault;
+		const calls = positionIds.flatMap(pid => [
+			{ address: sv, abi: svAbi, functionName: 'getPositionMeta', args: [pid] },
+			{ address: sv, abi: svAbi, functionName: 'getCollateral', args: [pid] },
+		]);
+		return multicallRead(calls);
+	};
+
 	return {
 		read,
 		write,
 		simulate,
+		multicallRead,
+		getAllBalances,
+		getAllPositionData,
 	};
 }

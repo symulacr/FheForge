@@ -8135,10 +8135,47 @@ function createContractAdapter(config, options = {}) {
     }
     throw new ContractError("WALLET_UNAVAILABLE", "No wallet client available. Connect a wallet (MetaMask/Rabby) or provide a wallet client.");
   }
+  const multicallRead = async (calls) => {
+    const results = await publicClient.multicall({
+      contracts: calls.map((c) => ({
+        address: c.address,
+        abi: c.abi,
+        functionName: c.functionName,
+        args: c.args
+      })),
+      allowFailure: true
+    });
+    return results.map((r) => ({
+      success: r.status === "success",
+      result: r.status === "success" ? r.result : null,
+      error: r.status === "failure" ? r.error : null
+    }));
+  };
+  const getAllBalances = async (tokens) => {
+    const lp = CONTRACT_ADDRESSES.LendingPool;
+    const lpAbi = CONTRACT_ABIS.LendingPool;
+    const calls = tokens.flatMap((t) => [
+      { address: lp, abi: lpAbi, functionName: "getSupplyBalance", args: [t] },
+      { address: lp, abi: lpAbi, functionName: "getBorrowBalance", args: [t] }
+    ]);
+    return multicallRead(calls);
+  };
+  const getAllPositionData = async (positionIds) => {
+    const sv = CONTRACT_ADDRESSES.StrategyVault;
+    const svAbi = CONTRACT_ABIS.StrategyVault;
+    const calls = positionIds.flatMap((pid) => [
+      { address: sv, abi: svAbi, functionName: "getPositionMeta", args: [pid] },
+      { address: sv, abi: svAbi, functionName: "getCollateral", args: [pid] }
+    ]);
+    return multicallRead(calls);
+  };
   return {
     read,
     write,
-    simulate
+    simulate,
+    multicallRead,
+    getAllBalances,
+    getAllPositionData
   };
 }
 

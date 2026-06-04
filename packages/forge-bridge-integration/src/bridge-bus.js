@@ -175,13 +175,18 @@ export class BridgeBus {
 		// Preserve existing domain data, record in meta.errors.
 		// Push directly to avoid creating a new array on every error.
 		if (event.startsWith("error:")) {
-			this._state.meta.dataVersion++;
-			this._state.meta.errors.push(data);
-			// LRU eviction: trim oldest errors when cap is exceeded
-			if (this._state.meta.errors.length > this._maxErrors) {
-				this._state.meta.errors = this._state.meta.errors.slice(-this._maxErrors);
-			}
+			const errors = [...this._state.meta.errors, data];
+			const trimmed = errors.length > this._maxErrors ? errors.slice(-this._maxErrors) : errors;
+			this._state = {
+				...this._state,
+				meta: {
+					...this._state.meta,
+					dataVersion: this._state.meta.dataVersion + 1,
+					errors: trimmed,
+				},
+			};
 			this._emit(event, data);
+			this._emit('_change', this._state);
 			return;
 		}
 
@@ -195,25 +200,50 @@ export class BridgeBus {
 				return;
 			}
 
+			// Shallow-clone _state so getSnapshot() returns a new reference
+			const next = { ...this._state };
+
 			// Domain-level merge (wallet, permit)
 			if (key === null) {
-				this._state[domain] = { ...this._state[domain], ...data };
+				next[domain] = { ...next[domain], ...data };
 			}
 			// Sub-key assignment (data events)
 			else {
-				this._state[domain][key] = data;
+				next[domain] = { ...next[domain], [key]: data };
 			}
 
-			this._state.meta.dataVersion++;
+			next.meta = { ...next.meta, dataVersion: next.meta.dataVersion + 1 };
+			this._state = next;
 
 			this._emit(event, this._getDomainData(domain, key));
+			this._emit('_change', this._state);
 		} else if (event === "reset") {
 			this._resetState();
 			this._emit("reset", this.getState());
+			this._emit('_change', this._state);
 		} else {
 			// Unmapped event — emit but don't store in state
 			this._emit(event, data);
 		}
+	}
+
+	/**
+	 * Subscribe to state changes for useSyncExternalStore.
+	 * Emits '_change' on every set() so React can detect updates.
+	 *
+	 * @param {() => void} callback
+	 * @returns {() => void} Unsubscribe function
+	 */
+	subscribe(callback) {
+		return this.on('_change', callback);
+	}
+
+	/**
+	 * Return current state snapshot for useSyncExternalStore.
+	 * @returns {BridgeState}
+	 */
+	getSnapshot() {
+		return this._state;
 	}
 
 	/**
@@ -234,6 +264,7 @@ export class BridgeBus {
 		this._started = false;
 		this._authEnabled = false;
 		this._emit("reset", this.getState());
+		this._emit('_change', this._state);
 	}
 
 	/**
@@ -250,12 +281,15 @@ export class BridgeBus {
 		// Track unique successfully-updated events for coalesced emission
 		const eventsToEmit = [];
 
+		// Work on a shallow clone so getSnapshot() returns a new reference
+		const next = { ...this._state };
+
 		for (const { event, data } of updates) {
 			const mapping = EVENT_MAP[event];
 
 			// Error events are always processed regardless of EVENT_MAP
 			if (event.startsWith("error:")) {
-				this._state.meta.errors.push(data);
+				next.meta.errors.push(data);
 				if (!eventsToEmit.includes(event)) eventsToEmit.push(event);
 				continue;
 			}
@@ -264,9 +298,9 @@ export class BridgeBus {
 				const { domain, key } = mapping;
 
 				if (key === null) {
-					this._state[domain] = { ...this._state[domain], ...data };
+					next[domain] = { ...next[domain], ...data };
 				} else {
-					this._state[domain][key] = data;
+					next[domain] = { ...next[domain], [key]: data };
 				}
 
 				// If writing to authed domain but auth not yet enabled, update state but skip emit
@@ -281,12 +315,15 @@ export class BridgeBus {
 			}
 		}
 
-		this._state.meta.dataVersion++;
+		next.meta.dataVersion++;
 
 		// LRU eviction: trim oldest errors when cap is exceeded
-		if (this._state.meta.errors.length > this._maxErrors) {
-			this._state.meta.errors = this._state.meta.errors.slice(-this._maxErrors);
+		if (next.meta.errors.length > this._maxErrors) {
+			next.meta.errors = next.meta.errors.slice(-this._maxErrors);
 		}
+
+		// Replace state atomically so getSnapshot() returns a new reference
+		this._state = next;
 
 		// Emit all events once, after all state changes are applied
 		for (const event of eventsToEmit) {
@@ -296,6 +333,8 @@ export class BridgeBus {
 				this._emit(event, this._getDomainData(domain, key));
 			}
 		}
+
+		this._emit('_change', this._state);
 	}
 
 	/**

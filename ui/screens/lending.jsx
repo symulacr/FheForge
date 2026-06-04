@@ -231,9 +231,11 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
                 </div>
               </div>
             </div>
-            <div className="tabstrip" style={{ border: 0 }}>
+            <div className="tabstrip" style={{ border: 0 }} role="tablist">
               {["supply", "borrow", "repay", "withdraw"].map(s => (
                 <button key={s} className={"tab" + (side === s ? " active" : "")}
+                  role="tab"
+                  aria-selected={side === s}
                   onClick={() => setSide(s)}
                   data-testid={`tab-${s}`}>{s}</button>
               ))}
@@ -439,6 +441,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+              aria-label={side === "supply" ? "Amount to supply" : "Amount to borrow"}
               style={{ border: 0, outline: "none", background: "transparent", fontFamily: "var(--mono)", fontSize: 30, flex: 1, color: "var(--ink)", fontVariantNumeric: "tabular-nums", minWidth: 0 }}
               data-testid="amount-input"
             />
@@ -491,6 +494,10 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
             </div>
             <input type="range" min="0" max="80" value={ltv}
                    onChange={(e) => setLtv(+e.target.value)}
+                   aria-valuemin={0}
+                   aria-valuemax={80}
+                   aria-valuenow={ltv}
+                   aria-label="Loan to value ratio"
                    style={{ width: "100%", accentColor: "var(--ink)" }} />
             <LtvGauge ltv={ltv} liqAt={market.liq} />
             {ltv >= 70 && (
