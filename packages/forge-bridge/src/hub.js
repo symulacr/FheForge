@@ -1,9 +1,9 @@
 /**
  * @file Bridge Hub — createBridge(config) factory function.
  *
- * Wires all 4 adapters (wallet, api, contract, fhe) together.
+ * Wires all 4 adapters (wallet, api, fhe, contract) together.
  * Init sequence: validate config → create wallet adapter → create API adapter →
- * create contract adapter → create FHE adapter.
+ * create FHE adapter → create contract adapter.
  *
  * On init failure, returns partial state with BridgeError info.
  * On success, returns fully initialized { wallet, api, contract, fhe, getState }.
@@ -134,8 +134,8 @@ function buildPartialResult(adapters, errors, config) {
  *   2. Validate config
  *   3. Create wallet adapter
  *   4. Create API adapter (wired to wallet for JWT lifecycle)
- *   5. Create contract adapter (wired to API for simulation)
- *   6. Create FHE adapter
+ *   5. Create FHE adapter (must precede contract adapter)
+ *   6. Create contract adapter (wired to API for simulation, FHE for encryption)
  *   7. Wire wallet account change → auto-refresh API JWT
  *   8. Return { wallet, api, contract, fhe, getState }
  *
@@ -199,23 +199,7 @@ export function createBridge(config = {}) {
 		return buildPartialResult(adapters, initErrors, mergedConfig);
 	}
 
-	// 5. Create contract adapter — wired to API adapter for simulation
-	try {
-		adapters.contract = createContractAdapter(mergedConfig, { apiAdapter: adapters.api });
-	} catch (err) {
-		initErrors.contract =
-			err instanceof BridgeError
-				? err
-				: new BridgeError(
-						"CONTRACT_INIT_FAILED",
-						/** @type {Error} */ (err).message || "Failed to initialize contract adapter",
-						"contract",
-						false,
-					);
-		return buildPartialResult(adapters, initErrors, mergedConfig);
-	}
-
-	// 6. Create FHE adapter
+	// 5. Create FHE adapter (must precede contract adapter so it can receive fheAdapter)
 	try {
 		adapters.fhe = createFheAdapter(mergedConfig);
 	} catch (err) {
@@ -227,6 +211,22 @@ export function createBridge(config = {}) {
 						/** @type {Error} */ (err).message || "Failed to initialize FHE adapter",
 						"cofhe",
 						true,
+					);
+		return buildPartialResult(adapters, initErrors, mergedConfig);
+	}
+
+	// 6. Create contract adapter — wired to API adapter for simulation and FHE adapter for encryption
+	try {
+		adapters.contract = createContractAdapter(mergedConfig, { apiAdapter: adapters.api, fheAdapter: adapters.fhe });
+	} catch (err) {
+		initErrors.contract =
+			err instanceof BridgeError
+				? err
+				: new BridgeError(
+						"CONTRACT_INIT_FAILED",
+						/** @type {Error} */ (err).message || "Failed to initialize contract adapter",
+						"contract",
+						false,
 					);
 		return buildPartialResult(adapters, initErrors, mergedConfig);
 	}

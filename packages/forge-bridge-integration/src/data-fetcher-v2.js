@@ -766,60 +766,134 @@
               return self._emptyPositionsPayload('locked', 'No wallet connected', []);
             }
 
-            var getUserPositions = self._getContractReadHelper(b, 'getUserPositions');
-            if (!getUserPositions) {
+            // Check if getLendableTokens is available — needed to enumerate positions
+            var getLendableTokens = self._getContractReadHelper(b, 'getLendableTokens');
+            if (!getLendableTokens) {
               return (b.api && b.api.markets && typeof b.api.markets.getMarkets === 'function'
                 ? b.api.markets.getMarkets().catch(function () { return []; })
                 : Promise.resolve([])
               ).then(function (markets) {
                 return self._emptyPositionsPayload(
                   'unavailable',
-                  'No position read helper available on bridge contract adapter',
+                  'No getLendableTokens helper available on bridge contract adapter',
                   markets,
                 );
               });
             }
 
-            return Promise.all([
-              getUserPositions(addr).catch(function (err) {
-                return { __error: err };
-              }),
-              b.api && b.api.markets && typeof b.api.markets.getMarkets === 'function'
-                ? b.api.markets.getMarkets().catch(function () { return []; })
-                : Promise.resolve([]),
-            ]).then(function (results) {
-              var rawPositions = results[0];
-              var markets = results[1] || [];
+            var getSupplyBalance = self._getContractReadHelper(b, 'getSupplyBalance');
+            var getBorrowBalance = self._getContractReadHelper(b, 'getBorrowBalance');
+            if (!getSupplyBalance || !getBorrowBalance) {
+              return self._emptyPositionsPayload(
+                'unavailable',
+                'Balance read helpers not available on bridge contract adapter',
+                [],
+              );
+            }
 
-              if (rawPositions && rawPositions.__error) {
-                return self._emptyPositionsPayload(
-                  'error',
-                  rawPositions.__error.message || String(rawPositions.__error),
-                  markets,
+            // Check FHE permit state
+            var permitUnlocked = b.fhe && typeof b.fhe.permitCheck === 'function' && b.fhe.permitCheck().unlocked;
+
+            return Promise.all([
+              Promise.all([
+                getLendableTokens().catch(function () { return []; }),
+                b.api && b.api.markets && typeof b.api.markets.getMarkets === 'function'
+                  ? b.api.markets.getMarkets().catch(function () { return []; })
+                  : Promise.resolve([]),
+              ]),
+            ]).then(function (res) {
+              var tokens = res[0][0];
+              var markets = res[0][1] || [];
+              var tokenList = Array.isArray(tokens) ? tokens : (tokens && tokens.length > 0 ? Array.from(tokens) : []);
+
+              if (tokenList.length === 0) {
+                return self._emptyPositionsPayload('empty', 'No lendable tokens registered', markets);
+              }
+
+              // Fetch supply and borrow balances for every token
+              var balancePromises = [];
+              for (var i = 0; i < tokenList.length; i++) {
+                balancePromises.push(
+                  Promise.allSettled([
+                    getSupplyBalance(tokenList[i]),
+                    getBorrowBalance(tokenList[i]),
+                  ]).then(function (settled) {
+                    return { settled: settled };
+                  })
                 );
               }
 
-              if (!rawPositions || (Array.isArray(rawPositions) && rawPositions.length === 0)) {
-                return self._emptyPositionsPayload('empty', 'No positions returned by contract', markets);
-              }
+              return Promise.all(balancePromises).then(function (results) {
+                var supplies = [];
+                var borrows = [];
 
-              if (!Array.isArray(rawPositions) && (rawPositions.supplies || rawPositions.borrows)) {
-                return {
-                  supplies: rawPositions.supplies || [],
-                  borrows: rawPositions.borrows || [],
-                  vaultPositions: rawPositions.vaultPositions || [],
-                  markets: markets,
-                };
-              }
+                for (var j = 0; j < results.length; j++) {
+                  (function (idx) {
+                    var tkn = tokenList[idx];
+                    var settled = results[idx].settled;
+                    var supplyResult = settled[0];
+                    var borrowResult = settled[1];
 
-              return {
-                supplies: [],
-                borrows: [],
-                vaultPositions: Array.isArray(rawPositions) ? rawPositions : [rawPositions],
-                markets: markets,
-                status: 'locked',
-                reason: 'Encrypted vault positions require a decrypt permit before amounts can be displayed',
-              };
+                    var supplyHandle = supplyResult.status === 'fulfilled' ? supplyResult.value : null;
+                    var borrowHandle = borrowResult.status === 'fulfilled' ? borrowResult.value : null;
+
+                    if (permitUnlocked && supplyHandle) {
+                      supplies.push(
+                        b.fhe.decrypt(supplyHandle)
+                          .then(function (plaintext) {
+                            return { token: tkn, plaintext: plaintext };
+                          })
+                          .catch(function () {
+                            return { token: tkn, plaintext: null };
+                          })
+                      );
+                    } else if (supplyHandle) {
+                      supplies.push(Promise.resolve({ token: tkn, encrypted: supplyHandle }));
+                    }
+
+                    if (permitUnlocked && borrowHandle) {
+                      borrows.push(
+                        b.fhe.decrypt(borrowHandle)
+                          .then(function (plaintext) {
+                            return { token: tkn, plaintext: plaintext };
+                          })
+                          .catch(function () {
+                            return { token: tkn, plaintext: null };
+                          })
+                      );
+                    } else if (borrowHandle) {
+                      borrows.push(Promise.resolve({ token: tkn, encrypted: borrowHandle }));
+                    }
+                  })(j);
+                }
+
+                return Promise.all([
+                  Promise.all(supplies),
+                  Promise.all(borrows),
+                ]).then(function (resolved) {
+                  var rawSupplies = resolved[0];
+                  var rawBorrows = resolved[1];
+
+                  // Filter out zero balances when decrypted
+                  var filteredSupplies = rawSupplies.filter(function (s) {
+                    return !s.plaintext || s.plaintext !== '0';
+                  });
+                  var filteredBorrows = rawBorrows.filter(function (b) {
+                    return !b.plaintext || b.plaintext !== '0';
+                  });
+
+                  if (filteredSupplies.length === 0 && filteredBorrows.length === 0) {
+                    return self._emptyPositionsPayload('empty', 'No non-zero positions found', markets);
+                  }
+
+                  return {
+                    supplies: filteredSupplies,
+                    borrows: filteredBorrows,
+                    markets: markets,
+                    status: permitUnlocked ? 'ok' : 'locked',
+                  };
+                });
+              });
             });
           });
         },

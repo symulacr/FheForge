@@ -297,6 +297,7 @@ const ERC20_READ_ABI = [
  * @property {(token: `0x${string}`, amount: bigint, encAmount: any, account: `0x${string}`) => Promise<TransactionResult>} repayDebt
  * @property {(token: `0x${string}`, amount: bigint, encAmount: any, account: `0x${string}`) => Promise<TransactionResult>} partialUnshield
  * @property {(token: `0x${string}`, amount: bigint, encAmount: any, strategyId: bigint, user: `0x${string}`, account: `0x${string}`) => Promise<TransactionResult>} openPosition
+ * @property {(params: object, account: `0x${string}`) => Promise<TransactionResult>} composerOpenPosition
  * @property {(tokenIn: `0x${string}`, tokenOut: `0x${string}`, amountIn: bigint, minAmountOut: bigint, deadlineOffset: bigint, account: `0x${string}`) => Promise<TransactionResult>} submitSwapIntent
  * @property {(voteData: any) => Promise<any>} castVote
  */
@@ -637,6 +638,39 @@ export function createContractAdapter(config, options = {}) {
 				args: [token],
 			}),
 
+		/**
+		 * @returns {Promise<any>}
+		 */
+		getTokenCount: () =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.TokenRegistry,
+				abi: CONTRACT_ABIS.TokenRegistry,
+				functionName: "getTokenCount",
+				args: [],
+			}),
+
+		/**
+		 * @returns {Promise<any>}
+		 */
+		getLendableTokens: () =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.TokenRegistry,
+				abi: CONTRACT_ABIS.TokenRegistry,
+				functionName: "getLendableTokens",
+				args: [],
+			}),
+
+		/**
+		 * @returns {Promise<any>}
+		 */
+		getBorrowableTokens: () =>
+			publicClient.readContract({
+				address: CONTRACT_ADDRESSES.TokenRegistry,
+				abi: CONTRACT_ABIS.TokenRegistry,
+				functionName: "getBorrowableTokens",
+				args: [],
+			}),
+
 		// ── ERC20 ──
 
 		/**
@@ -862,6 +896,56 @@ export function createContractAdapter(config, options = {}) {
 				CONTRACT_ABIS.StrategyVault,
 				"openPosition",
 				[token, amount, finalEnc, strategyId, user],
+				account,
+			);
+		},
+
+		// ── Composer ──
+
+		/**
+		 * Open a multi-step leveraged strategy via the Composer contract.
+		 * Orchestrates vault + pool + swap in a single atomic transaction.
+		 * @param {{strategyName: string, workflowHash: string, collateralAmount: bigint, poolSupplyAmount: bigint, poolBorrowAmount: bigint, swapDeadlineOffset: bigint, strategyId: bigint, swapAmountIn: bigint, swapMinOut: bigint, collateralToken: `0x${string}`, borrowToken: `0x${string}`, swapTokenOut: `0x${string}`, ltvNum: bigint, ltvDen: bigint, useOracleBorrow: boolean, apyTarget: number, loopCount: number}} params
+		 * @param {`0x${string}`} account
+		 * @returns {Promise<TransactionResult>}
+		 */
+		composerOpenPosition: async (params, account) => {
+			const EMPTY_ENC = { ctHash: 0n, securityZone: 0, utype: 0, signature: "0x" };
+			let collateralEnc = EMPTY_ENC;
+			let supplyEnc = EMPTY_ENC;
+			let borrowEnc = EMPTY_ENC;
+
+			if (_fheAdapter && typeof _fheAdapter.encrypt === "function") {
+				const encPromises = [];
+				if (params.collateralAmount > 0n) {
+					encPromises.push(
+						_fheAdapter.encrypt(String(params.collateralAmount), params.collateralToken)
+							.then(h => { collateralEnc = h; }),
+					);
+				}
+				if (params.poolSupplyAmount > 0n) {
+					encPromises.push(
+						_fheAdapter.encrypt(String(params.poolSupplyAmount), params.collateralToken)
+							.then(h => { supplyEnc = h; }),
+					);
+				}
+				if (params.poolBorrowAmount > 0n) {
+					encPromises.push(
+						_fheAdapter.encrypt(String(params.poolBorrowAmount), params.borrowToken)
+							.then(h => { borrowEnc = h; }),
+					);
+				}
+				await Promise.all(encPromises);
+			}
+
+			const wc = getWc();
+			return estimateSendAndWait(
+				publicClient,
+				wc,
+				CONTRACT_ADDRESSES.Composer,
+				CONTRACT_ABIS.Composer,
+				"openPosition",
+				[params, { collateral: collateralEnc, supplyEnc, borrowEnc }],
 				account,
 			);
 		},

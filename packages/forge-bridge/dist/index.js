@@ -7519,6 +7519,24 @@ function createContractAdapter(config, options = {}) {
       functionName: "isSupported",
       args: [token]
     }),
+    getTokenCount: () => publicClient.readContract({
+      address: CONTRACT_ADDRESSES.TokenRegistry,
+      abi: CONTRACT_ABIS.TokenRegistry,
+      functionName: "getTokenCount",
+      args: []
+    }),
+    getLendableTokens: () => publicClient.readContract({
+      address: CONTRACT_ADDRESSES.TokenRegistry,
+      abi: CONTRACT_ABIS.TokenRegistry,
+      functionName: "getLendableTokens",
+      args: []
+    }),
+    getBorrowableTokens: () => publicClient.readContract({
+      address: CONTRACT_ADDRESSES.TokenRegistry,
+      abi: CONTRACT_ABIS.TokenRegistry,
+      functionName: "getBorrowableTokens",
+      args: []
+    }),
     erc20BalanceOf: (token, account) => publicClient.readContract({
       address: token,
       abi: ERC20_READ_ABI,
@@ -7608,6 +7626,33 @@ function createContractAdapter(config, options = {}) {
       }
       const wc = getWc();
       return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.StrategyVault, CONTRACT_ABIS.StrategyVault, "openPosition", [token, amount, finalEnc, strategyId, user], account);
+    },
+    composerOpenPosition: async (params, account) => {
+      const EMPTY_ENC = { ctHash: 0n, securityZone: 0, utype: 0, signature: "0x" };
+      let collateralEnc = EMPTY_ENC;
+      let supplyEnc = EMPTY_ENC;
+      let borrowEnc = EMPTY_ENC;
+      if (_fheAdapter && typeof _fheAdapter.encrypt === "function") {
+        const encPromises = [];
+        if (params.collateralAmount > 0n) {
+          encPromises.push(_fheAdapter.encrypt(String(params.collateralAmount), params.collateralToken).then((h) => {
+            collateralEnc = h;
+          }));
+        }
+        if (params.poolSupplyAmount > 0n) {
+          encPromises.push(_fheAdapter.encrypt(String(params.poolSupplyAmount), params.collateralToken).then((h) => {
+            supplyEnc = h;
+          }));
+        }
+        if (params.poolBorrowAmount > 0n) {
+          encPromises.push(_fheAdapter.encrypt(String(params.poolBorrowAmount), params.borrowToken).then((h) => {
+            borrowEnc = h;
+          }));
+        }
+        await Promise.all(encPromises);
+      }
+      const wc = getWc();
+      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.Composer, CONTRACT_ABIS.Composer, "openPosition", [params, { collateral: collateralEnc, supplyEnc, borrowEnc }], account);
     },
     submitSwapIntent: async (tokenIn, tokenOut, amountIn, minAmountOut, deadlineOffset, account) => {
       const wc = getWc();
@@ -7736,7 +7781,15 @@ function createFheAdapter(config) {
     }
   }
   async function decrypt(handle) {
-    throw new FheError("NOT_IMPLEMENTED", "Client-side decryption not yet wired");
+    if (!_cofheClient) {
+      throw new FheError("NO_PERMIT", "Grant an FHE permit before decrypting");
+    }
+    try {
+      const plaintext = await _cofheClient.decrypt(handle);
+      return String(plaintext);
+    } catch (error) {
+      throw new FheError("DECRYPT_FAILED", error.message || "Failed to decrypt value");
+    }
   }
   function onPermitChange(cb) {
     _listeners.add(cb);
@@ -8126,15 +8179,15 @@ function createBridge(config = {}) {
     return buildPartialResult(adapters, initErrors, mergedConfig);
   }
   try {
-    adapters.contract = createContractAdapter(mergedConfig, { apiAdapter: adapters.api });
-  } catch (err) {
-    initErrors.contract = err instanceof BridgeError ? err : new BridgeError("CONTRACT_INIT_FAILED", err.message || "Failed to initialize contract adapter", "contract", false);
-    return buildPartialResult(adapters, initErrors, mergedConfig);
-  }
-  try {
     adapters.fhe = createFheAdapter(mergedConfig);
   } catch (err) {
     initErrors.fhe = err instanceof BridgeError ? err : new BridgeError("FHE_INIT_FAILED", err.message || "Failed to initialize FHE adapter", "cofhe", true);
+    return buildPartialResult(adapters, initErrors, mergedConfig);
+  }
+  try {
+    adapters.contract = createContractAdapter(mergedConfig, { apiAdapter: adapters.api, fheAdapter: adapters.fhe });
+  } catch (err) {
+    initErrors.contract = err instanceof BridgeError ? err : new BridgeError("CONTRACT_INIT_FAILED", err.message || "Failed to initialize contract adapter", "contract", false);
     return buildPartialResult(adapters, initErrors, mergedConfig);
   }
   try {

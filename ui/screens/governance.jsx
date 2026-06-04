@@ -132,12 +132,18 @@ function Governance({ setRoute, ctx, grantPermit, openConnect }) {
         ) : null
       }
       detailBody={
-        selected ? <ProposalDetail p={selected} ctx={ctx} openConnect={openConnect} bridge={bridge} />
-                 : proposalError
-                   ? <div className="mono" style={{ color: "var(--danger)", fontSize: 12 }}>Governance proposals unavailable.</div>
-                   : !proposals
-                     ? <div className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>Loading bridge proposals.</div>
-                     : <div className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>No proposal selected.</div>
+        <>
+          <div style={{ padding: "12px 16px", background: "var(--warning)", color: "#000", fontSize: "0.875rem", marginBottom: 16 }}>
+            Coming soon — governance voting will be available when the on-chain governance contract is deployed.
+          </div>
+          {selected ? <ProposalDetail p={selected} ctx={ctx} openConnect={openConnect} bridge={bridge} />
+                   : proposalError
+                     ? <div className="mono" style={{ color: "var(--danger)", fontSize: 12 }}>Governance proposals unavailable.</div>
+                     : !proposals
+                       ? <div className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>Loading bridge proposals.</div>
+                       : <div className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>No proposal selected.</div>
+          }
+        </>
       }
     />
   );
@@ -213,15 +219,15 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
                   <button
                     key={v}
                     onClick={() => { setVote(v); setVoteResult(null); }}
-                    disabled={voting}
+                    disabled={true}
                     style={{
                       flex: 1, padding: "11px 14px",
                       border: "1px solid " + (vote === v ? "var(--ink)" : "var(--hairline)"),
                       background: vote === v ? "var(--paper-2)" : "var(--paper)",
                       color: "var(--ink)",
                       fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.06,
-                      cursor: voting ? "not-allowed" : "pointer",
-                      opacity: voting ? 0.5 : 1,
+                      cursor: "not-allowed",
+                      opacity: 0.5,
                     }}
                   >● {v}</button>
                 ))}
@@ -229,7 +235,7 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
               <button
                 className="btn"
                 style={{ width: "100%", marginTop: 14 }}
-                disabled={!vote || voting}
+                disabled={true}
                 onClick={async () => {
                   if (!vote || !bridge?.api?.governance?.castVote) return;
                   setVoting(true);

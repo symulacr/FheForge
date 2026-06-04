@@ -288,6 +288,17 @@ function organizeLayout(nodes, edges, canvasWidth = 800, canvasHeight = 500) {
 /* ─── BuilderWorkspace · canvas + inspector ─── */
 function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, openConnect, nodeTypes }) {
   const bridge = useOptionalBridgeBW();
+  const tokenMap = React.useMemo(() => {
+    const markets = bridge?.data?.markets;
+    if (!Array.isArray(markets) || markets.length === 0) return TOKEN_MAP_BW;
+    const map = {};
+    for (const m of markets) {
+      if (m.asset && m.assetAddress) {
+        map[m.asset] = m.assetAddress;
+      }
+    }
+    return Object.keys(map).length > 0 ? map : TOKEN_MAP_BW;
+  }, [bridge?.data?.markets]);
   const { nodes, edges, name } = workflow;
   const activeNodeTypes = nodeTypes && Object.keys(nodeTypes).length ? nodeTypes : null;
   const setNodes = (fn) => setWorkflow(wf => ({ ...wf, nodes: typeof fn === "function" ? fn(wf.nodes) : fn }));
@@ -926,23 +937,71 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
               setDeployResult(null);
               try {
                 const order = walkOrder(nodes, edges);
-                for (const nodeId of order) {
-                  const node = nodes.find(n => n.id === nodeId);
-                  if (!node) continue;
-                  const cfg = node.config || {};
-                  const tokenAddr = TOKEN_MAP_BW[cfg.asset] || TOKEN_MAP_BW[cfg.from] || Object.values(TOKEN_MAP_BW)[0];
-                  const amount = parseAmountBW(cfg.amount || "0");
-                  const account = ctx.address;
-                  if (node.type === "supply" && amount > 0n) {
-                    await bridge.contract.write.shield(tokenAddr, amount, null, account);
-                  } else if (node.type === "borrow" && amount > 0n) {
-                    const borrowToken = TOKEN_MAP_BW[cfg.asset] || Object.values(TOKEN_MAP_BW)[0];
-                    await bridge.contract.write.borrowWithLtvCheck(tokenAddr, borrowToken, amount, null, BigInt(cfg.ltv || 50), 100n, account);
-                  } else if (node.type === "swap" && amount > 0n) {
-                    const tokenOut = TOKEN_MAP_BW[cfg.to] || Object.values(TOKEN_MAP_BW)[0];
-                    const slipBps = Math.round((cfg.slip || 0.5) * 100);
-                    const minOut = amount * BigInt(10000 - slipBps) / 10000n;
-                    await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, amount, minOut, 300n, account);
+                // Count actionable nodes (supply, borrow, swap — not repeat/settle)
+                const actionableNodes = order.filter(id => {
+                  const n = nodes.find(nd => nd.id === id);
+                  return n && n.type !== "repeat" && n.type !== "settle";
+                });
+
+                if (actionableNodes.length >= 2 && bridge.contract.write.composerOpenPosition) {
+                  // Multi-node: use Composer for atomic strategy execution
+                  const supplyNode = nodes.find(n => n.type === "supply");
+                  const borrowNode = nodes.find(n => n.type === "borrow");
+                  const swapNode = nodes.find(n => n.type === "swap");
+                  const repeatNode = nodes.find(n => n.type === "repeat");
+
+                  const supplyCfg = supplyNode?.config || {};
+                  const borrowCfg = borrowNode?.config || {};
+                  const swapCfg = swapNode?.config || {};
+
+                  const collateralToken = tokenMap[supplyCfg.asset] || Object.values(tokenMap)[0];
+                  const collateralAmount = parseAmountBW(supplyCfg.amount || "0");
+                  const borrowToken = tokenMap[borrowCfg.asset] || collateralToken;
+                  const borrowAmount = parseAmountBW(borrowCfg.amount || "0");
+                  const ltv = borrowCfg.ltv || 50;
+                  const swapTokenOut = tokenMap[swapCfg.to] || "0x0000000000000000000000000000000000000000";
+                  const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
+                  const loopCount = repeatNode?.config?.loops || 1;
+
+                  await bridge.contract.write.composerOpenPosition({
+                    strategyName: workflow.name || "Untitled",
+                    workflowHash: "0x" + "00".repeat(32),
+                    collateralAmount,
+                    poolSupplyAmount: 0n,
+                    poolBorrowAmount: borrowAmount,
+                    swapDeadlineOffset: 300n,
+                    strategyId: 0n,
+                    swapAmountIn: borrowAmount,
+                    swapMinOut,
+                    collateralToken,
+                    borrowToken,
+                    swapTokenOut,
+                    ltvNum: BigInt(ltv),
+                    ltvDen: 100n,
+                    useOracleBorrow: false,
+                    apyTarget: 0,
+                    loopCount: loopCount,
+                  }, ctx.address);
+                } else {
+                  // Single node: use individual contract calls
+                  for (const nodeId of order) {
+                    const node = nodes.find(n => n.id === nodeId);
+                    if (!node) continue;
+                    const cfg = node.config || {};
+                    const tokenAddr = tokenMap[cfg.asset] || tokenMap[cfg.from] || Object.values(tokenMap)[0];
+                    const amount = parseAmountBW(cfg.amount || "0");
+                    const account = ctx.address;
+                    if (node.type === "supply" && amount > 0n) {
+                      await bridge.contract.write.shield(tokenAddr, amount, null, account);
+                    } else if (node.type === "borrow" && amount > 0n) {
+                      const borrowToken = tokenMap[cfg.asset] || Object.values(tokenMap)[0];
+                      await bridge.contract.write.borrowWithLtvCheck(tokenAddr, borrowToken, amount, null, BigInt(cfg.ltv || 50), 100n, account);
+                    } else if (node.type === "swap" && amount > 0n) {
+                      const tokenOut = tokenMap[cfg.to] || Object.values(tokenMap)[0];
+                      const slipBps = Math.round((cfg.slip || 0.5) * 100);
+                      const minOut = amount * BigInt(10000 - slipBps) / 10000n;
+                      await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, amount, minOut, 300n, account);
+                    }
                   }
                 }
                 setDeployResult({ ok: true, tx: "confirmed", block: 0 });

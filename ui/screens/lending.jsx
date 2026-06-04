@@ -243,6 +243,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
   const walletNumeric = parseNumberL(walletValue);
   const [txStatus, setTxStatus] = useStateL("idle");
   const [txResult, setTxResult] = useStateL(null);
+  const [approving, setApproving] = useStateL(false);
 
   async function handleSupply() {
     if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
@@ -253,6 +254,21 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     setTxStatus("pending");
     setTxResult(null);
     try {
+      const LENDING_POOL_ADDRESS = "0xff687831dfD3657D6C6879403cE56f53518b378C";
+      const allowance = await bridge.contract.read.erc20Allowance(market.assetAddress, ctx.address, LENDING_POOL_ADDRESS);
+      if (BigInt(allowance) < wei) {
+        setApproving(true);
+        setTxResult("approving token spend…");
+        const approvalRes = await bridge.contract.write.erc20Approve(market.assetAddress, LENDING_POOL_ADDRESS, ctx.address);
+        if (approvalRes.status === "reverted") {
+          setApproving(false);
+          setTxStatus("error");
+          setTxResult("approval reverted");
+          return;
+        }
+        setApproving(false);
+        setTxResult(null);
+      }
       const res = await bridge.contract.write.shield(market.assetAddress, wei, null, ctx.address);
       if (res.status === "confirmed") {
         setTxStatus("success");
@@ -265,6 +281,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setTxResult(res.hash || "submitted");
       }
     } catch (e) {
+      setApproving(false);
       setTxStatus("error");
       setTxResult(e.message || "transaction failed");
     }
@@ -370,9 +387,11 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
             <button className="btn accent lg" style={{ flex: 1 }} onClick={grantPermit}>Grant permit first <span className="ar">→</span></button>
           ) : (
             <button className="btn lg" style={{ flex: 1 }} onClick={handleAction} disabled={txStatus === "pending"}>
-              {txStatus === "pending"
-                ? "submitting…"
-                : `Encrypt & ${side} ${amount} ${market.asset}`
+              {approving
+                ? "Approving…"
+                : txStatus === "pending"
+                  ? "submitting…"
+                  : `Encrypt & ${side} ${amount} ${market.asset}`
               } <span className="ar">→</span>
             </button>
           )}

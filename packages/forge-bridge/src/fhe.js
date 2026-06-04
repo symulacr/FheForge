@@ -193,7 +193,15 @@ export function createFheAdapter(config) {
 	 * @returns {Promise<string>}
 	 */
 	async function decrypt(handle) {
-		throw new FheError("NOT_IMPLEMENTED", "Client-side decryption not yet wired");
+		if (!_cofheClient) {
+			throw new FheError("NO_PERMIT", "Grant an FHE permit before decrypting");
+		}
+		try {
+			const plaintext = await _cofheClient.decrypt(handle);
+			return String(plaintext);
+		} catch (error) {
+			throw new FheError("DECRYPT_FAILED", error.message || "Failed to decrypt value");
+		}
 	}
 
 	/**
