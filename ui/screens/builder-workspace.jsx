@@ -318,6 +318,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
   const [pending, setPending] = useStateB(null);
   const [deploying, setDeploying] = useStateB(false);
   const [deployResult, setDeployResult] = useStateB(null);
+  const [deployStep, setDeployStep] = useStateB(null); // null | "committing" | "decrypting"
   const [inspectorTab, setInspectorTab] = useStateB("config");
 
   // Multi-selection (Set of node ids)
@@ -991,7 +992,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     loopCount: loopCount,
                   }, ctx.address);
                 } else {
-                  // Single node: use individual contract calls
+                  // Single node: use commit-reveal for supply/borrow, direct for swap
                   for (const nodeId of order) {
                     const node = nodes.find(n => n.id === nodeId);
                     if (!node) continue;
@@ -1000,10 +1001,22 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     const amount = parseAmountBW(cfg.amount || "0");
                     const account = ctx.address;
                     if (node.type === "supply" && amount > 0n) {
-                      await bridge.contract.write.shield(tokenAddr, amount, null, account);
+                      setDeployStep("committing");
+                      const tx1 = await bridge.contract.write.shieldCommit(tokenAddr, amount, account);
+                      if (tx1.status === "reverted") { setDeployResult({ ok: false, error: "Supply commit reverted" }); setDeploying(false); setDeployStep(null); return; }
+                      setDeployStep("decrypting");
+                      const tx2 = await bridge.contract.write.shieldExecute(tokenAddr, tx1.commitId, account);
+                      if (tx2.status === "reverted") { setDeployResult({ ok: false, error: "Supply execute reverted" }); setDeploying(false); setDeployStep(null); return; }
+                      setDeployStep(null);
                     } else if (node.type === "borrow" && amount > 0n) {
                       const borrowToken = tokenMap[cfg.asset] || Object.values(tokenMap)[0];
-                      await bridge.contract.write.borrowWithLtvCheck(tokenAddr, borrowToken, amount, null, BigInt(cfg.ltv || 50), 100n, account);
+                      setDeployStep("committing");
+                      const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, amount, BigInt(cfg.ltv || 50), 100n, account);
+                      if (tx1.status === "reverted") { setDeployResult({ ok: false, error: "Borrow commit reverted" }); setDeploying(false); setDeployStep(null); return; }
+                      setDeployStep("decrypting");
+                      const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, account);
+                      if (tx2.status === "reverted") { setDeployResult({ ok: false, error: "Borrow execute reverted" }); setDeploying(false); setDeployStep(null); return; }
+                      setDeployStep(null);
                     } else if (node.type === "swap" && amount > 0n) {
                       const tokenOut = tokenMap[cfg.to] || Object.values(tokenMap)[0];
                       const slipBps = Math.round((cfg.slip || 0.5) * 100);
@@ -1017,10 +1030,11 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                 setDeployResult({ ok: false, error: err.message || "Transaction failed" });
               } finally {
                 setDeploying(false);
+                setDeployStep(null);
               }
             }}
           >
-            {deploying ? <>Signing… <span className="ar">⋯</span></> : <>Deploy <span className="ar">→</span></>}
+            {deploying ? <>{deployStep === "committing" ? "Committing…" : deployStep === "decrypting" ? "Decrypting…" : "Signing…"} <span className="ar">⋯</span></> : <>Deploy <span className="ar">→</span></>}
           </button>
         </div>
       </div>

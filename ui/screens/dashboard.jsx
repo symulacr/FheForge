@@ -336,28 +336,32 @@ function DetailFor({ selected, locked, setRoute, grantPermit, bridge, ctx }) {
 }
 
 function PositionDetail({ p, locked, setRoute, bridge, ctx }) {
-  const [closing, setClosing] = useStateD(false);
-  const [closeErr, setCloseErr] = useStateD(null);
+  const [crStep, setCrStep] = useStateD(null); // null | "committing" | "decrypting" | "done" | "failed"
+  const [crError, setCrError] = useStateD(null);
 
   async function handleClose() {
-    setCloseErr(null);
+    setCrError(null);
     const token = firstD(p, ["tokenAddress", "token", "address", "market"], null);
     const amount = firstD(p, ["amount", "balance", "value", "decryptedAmount", "encryptedAmount", "supplied"], null);
     if (!token || !amount || amount === "–") {
-      setCloseErr("Missing token or amount");
+      setCrError("Missing token or amount");
       return;
     }
-    if (!bridge?.contract?.write?.partialUnshield) {
-      setCloseErr("Bridge not ready");
+    if (!bridge?.contract?.write?.withdrawCommit || !bridge?.contract?.write?.withdrawExecute) {
+      setCrError("Bridge not ready");
       return;
     }
-    setClosing(true);
+    setCrStep("committing");
     try {
-      await bridge.contract.write.partialUnshield(token, amount, null, ctx.address);
+      const tx1 = await bridge.contract.write.withdrawCommit(token, amount, ctx.address);
+      if (tx1.status === "reverted") { setCrStep("failed"); return; }
+      setCrStep("decrypting");
+      const tx2 = await bridge.contract.write.withdrawExecute(token, tx1.commitId, ctx.address);
+      if (tx2.status === "reverted") { setCrStep("failed"); return; }
+      setCrStep("done");
     } catch (e) {
-      setCloseErr(e?.message || "Close failed");
-    } finally {
-      setClosing(false);
+      setCrStep("failed");
+      setCrError(e.message);
     }
   }
 
@@ -375,8 +379,8 @@ function PositionDetail({ p, locked, setRoute, bridge, ctx }) {
         <div className="kv"><span className="k">interest accrued</span><span className="v">{p.interestAccrued ? <Cipher value={p.interestAccrued} locked={locked} size="sm" inline /> : "–"}</span></div>
         <div className="kv"><span className="k">oracle</span><span className="v">{textD(p.oracle)}</span></div>
       </div>
-      {closeErr && (
-        <div className="mono" style={{ fontSize: 12, color: "var(--danger)", padding: "8px 0" }}>{closeErr}</div>
+      {crError && (
+        <div className="mono" style={{ fontSize: 12, color: "var(--danger)", padding: "8px 0" }}>{crError}</div>
       )}
       <div className="row" style={{ gap: 8 }}>
         <button className="btn sm" onClick={() => setRoute("lend")}>Add to position <span className="ar">→</span></button>
@@ -385,9 +389,12 @@ function PositionDetail({ p, locked, setRoute, bridge, ctx }) {
           className="btn ghost sm"
           style={{ color: "var(--danger)" }}
           onClick={handleClose}
-          disabled={closing}
+          disabled={!!crStep && crStep !== "failed" && crStep !== "done"}
         >
-          {closing ? "Closing…" : "Close position"}
+          {crStep === "committing" ? "Committing…" :
+           crStep === "decrypting" ? "Decrypting…" :
+           crStep === "done" ? "Done" :
+           "Close position"}
         </button>
       </div>
     </div>

@@ -280,145 +280,120 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
   const walletBalance = bridgeData && bridgeData.walletBalance;
   const walletValue = !ctx.connected ? "wallet required" : walletBalance && walletBalance.balance != null ? walletBalance.balance : "unavailable";
   const walletNumeric = parseNumberL(walletValue);
-  const [txStatus, setTxStatus] = useStateL("idle");
-  const [txResult, setTxResult] = useStateL(null);
-  const [approving, setApproving] = useStateL(false);
-  const [encrypting, setEncrypting] = useStateL(false);
+  const [crStep, setCrStep] = useStateL("idle"); // idle | committing | decrypting | executing | done | failed
+  const [commitId, setCommitId] = useStateL(null);
+  const [crError, setCrError] = useStateL(null);
   const [borrowAssetId, setBorrowAssetId] = useStateL(null);
 
   async function handleSupply() {
-    if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
+    if (!market.assetAddress) { setCrStep("failed"); setCrError("missing token address"); return; }
     const wei = toWeiL(amount, market.asset);
-    if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
+    if (!wei) { setCrStep("failed"); setCrError("invalid amount"); return; }
     const bridge = typeof window !== "undefined" ? window.bridge : null;
-    if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
-    setTxStatus("pending");
-    setTxResult(null);
-    setEncrypting(true);
+    if (!bridge?.contract) { setCrStep("failed"); setCrError("bridge unavailable"); return; }
+
+    // Approval check
+    const LENDING_POOL = "0xff687831dfD3657D6C6879403cE56f53518b378C";
+    const allowance = await bridge.contract.read.erc20Allowance(market.assetAddress, ctx.address, LENDING_POOL);
+    if (BigInt(allowance) < wei) {
+      const approvalRes = await bridge.contract.write.erc20Approve(market.assetAddress, LENDING_POOL, ctx.address);
+      if (approvalRes.status === "reverted") { setCrStep("failed"); setCrError("approval failed"); return; }
+    }
+
+    // TX1: Commit
+    setCrStep("committing");
     try {
-      const LENDING_POOL_ADDRESS = "0xff687831dfD3657D6C6879403cE56f53518b378C";
-      const allowance = await bridge.contract.read.erc20Allowance(market.assetAddress, ctx.address, LENDING_POOL_ADDRESS);
-      if (BigInt(allowance) < wei) {
-        setApproving(true);
-        setTxResult("approving token spend…");
-        const approvalRes = await bridge.contract.write.erc20Approve(market.assetAddress, LENDING_POOL_ADDRESS, ctx.address);
-        if (approvalRes.status === "reverted") {
-          setApproving(false);
-          setTxStatus("error");
-          setTxResult("approval reverted");
-          return;
-        }
-        setApproving(false);
-        setTxResult(null);
-      }
-      const res = await bridge.contract.write.shield(market.assetAddress, wei, null, ctx.address);
-      if (res.status === "confirmed") {
-        setTxStatus("success");
-        setTxResult(res.hash);
-      } else if (res.status === "reverted") {
-        setTxStatus("error");
-        setTxResult("transaction reverted");
-      } else {
-        setTxStatus("success");
-        setTxResult(res.hash || "submitted");
-      }
+      const tx1 = await bridge.contract.write.shieldCommit(market.assetAddress, wei, ctx.address);
+      if (tx1.status === "reverted") { setCrStep("failed"); setCrError("commit reverted"); return; }
+      setCommitId(tx1.commitId);
+      setCrStep("decrypting");
+
+      // TX2: Execute (bridge internally calls decryptForExecute)
+      const tx2 = await bridge.contract.write.shieldExecute(market.assetAddress, tx1.commitId, ctx.address);
+      if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
+      setCrStep("done");
     } catch (e) {
-      setApproving(false);
-      setTxStatus("error");
-      setTxResult(e.message || "transaction failed");
-    } finally {
-      setEncrypting(false);
+      setCrStep("failed");
+      setCrError(e.message || "transaction failed");
     }
   }
 
   async function handleBorrow() {
-    if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
+    if (!market.assetAddress) { setCrStep("failed"); setCrError("missing token address"); return; }
     const wei = toWeiL(amount, market.asset);
-    if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
+    if (!wei) { setCrStep("failed"); setCrError("invalid amount"); return; }
     const bridge = typeof window !== "undefined" ? window.bridge : null;
-    if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
+    if (!bridge?.contract) { setCrStep("failed"); setCrError("bridge unavailable"); return; }
     const borrowMarket = markets && markets.find(m => m.asset === (borrowAssetId || (markets.find(mm => mm.asset !== market.asset) || {}).asset));
     const borrowTokenAddr = borrowMarket ? borrowMarket.assetAddress : market.assetAddress;
-    setTxStatus("pending");
-    setTxResult(null);
-    setEncrypting(true);
+    const ltvNum = BigInt(Math.round(ltv));
+    const ltvDen = 100n;
+
+    // TX1: Commit
+    setCrStep("committing");
     try {
-      const ltvNum = BigInt(Math.round(ltv));
-      const ltvDen = 100n;
-      const res = await bridge.contract.write.borrowWithLtvCheck(market.assetAddress, borrowTokenAddr, wei, null, ltvNum, ltvDen, ctx.address);
-      if (res.status === "confirmed") {
-        setTxStatus("success");
-        setTxResult(res.hash);
-      } else if (res.status === "reverted") {
-        setTxStatus("error");
-        setTxResult("transaction reverted");
-      } else {
-        setTxStatus("success");
-        setTxResult(res.hash || "submitted");
-      }
+      const tx1 = await bridge.contract.write.borrowCommit(market.assetAddress, borrowTokenAddr, wei, null, ltvNum, ltvDen, ctx.address);
+      if (tx1.status === "reverted") { setCrStep("failed"); setCrError("commit reverted"); return; }
+      setCommitId(tx1.commitId);
+      setCrStep("decrypting");
+
+      // TX2: Execute
+      const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, market.assetAddress, borrowTokenAddr, wei, null, ltvNum, ltvDen, ctx.address);
+      if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
+      setCrStep("done");
     } catch (e) {
-      setTxStatus("error");
-      setTxResult(e.message || "transaction failed");
-    } finally {
-      setEncrypting(false);
+      setCrStep("failed");
+      setCrError(e.message || "transaction failed");
     }
   }
 
   async function handleRepay() {
-    if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
+    if (!market.assetAddress) { setCrStep("failed"); setCrError("missing token address"); return; }
     const wei = toWeiL(amount, market.asset);
-    if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
+    if (!wei) { setCrStep("failed"); setCrError("invalid amount"); return; }
     const bridge = typeof window !== "undefined" ? window.bridge : null;
-    if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
-    setTxStatus("pending");
-    setTxResult(null);
-    setEncrypting(true);
+    if (!bridge?.contract) { setCrStep("failed"); setCrError("bridge unavailable"); return; }
+
+    // TX1: Commit
+    setCrStep("committing");
     try {
-      const res = await bridge.contract.write.repayDebt(market.assetAddress, wei, null, ctx.address);
-      if (res.status === "confirmed") {
-        setTxStatus("success");
-        setTxResult(res.hash);
-      } else if (res.status === "reverted") {
-        setTxStatus("error");
-        setTxResult("transaction reverted");
-      } else {
-        setTxStatus("success");
-        setTxResult(res.hash || "submitted");
-      }
+      const tx1 = await bridge.contract.write.repayCommit(market.assetAddress, wei, null, ctx.address);
+      if (tx1.status === "reverted") { setCrStep("failed"); setCrError("commit reverted"); return; }
+      setCommitId(tx1.commitId);
+      setCrStep("decrypting");
+
+      // TX2: Execute
+      const tx2 = await bridge.contract.write.repayExecute(market.assetAddress, tx1.commitId, wei, null, ctx.address);
+      if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
+      setCrStep("done");
     } catch (e) {
-      setTxStatus("error");
-      setTxResult(e.message || "transaction failed");
-    } finally {
-      setEncrypting(false);
+      setCrStep("failed");
+      setCrError(e.message || "transaction failed");
     }
   }
 
   async function handleWithdraw() {
-    if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
+    if (!market.assetAddress) { setCrStep("failed"); setCrError("missing token address"); return; }
     const wei = toWeiL(amount, market.asset);
-    if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
+    if (!wei) { setCrStep("failed"); setCrError("invalid amount"); return; }
     const bridge = typeof window !== "undefined" ? window.bridge : null;
-    if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
-    setTxStatus("pending");
-    setTxResult(null);
-    setEncrypting(true);
+    if (!bridge?.contract) { setCrStep("failed"); setCrError("bridge unavailable"); return; }
+
+    // TX1: Commit
+    setCrStep("committing");
     try {
-      const res = await bridge.contract.write.partialUnshield(market.assetAddress, wei, null, ctx.address);
-      if (res.status === "confirmed") {
-        setTxStatus("success");
-        setTxResult(res.hash);
-      } else if (res.status === "reverted") {
-        setTxStatus("error");
-        setTxResult("transaction reverted");
-      } else {
-        setTxStatus("success");
-        setTxResult(res.hash || "submitted");
-      }
+      const tx1 = await bridge.contract.write.withdrawCommit(market.assetAddress, wei, null, ctx.address);
+      if (tx1.status === "reverted") { setCrStep("failed"); setCrError("commit reverted"); return; }
+      setCommitId(tx1.commitId);
+      setCrStep("decrypting");
+
+      // TX2: Execute
+      const tx2 = await bridge.contract.write.withdrawExecute(market.assetAddress, tx1.commitId, wei, null, ctx.address);
+      if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
+      setCrStep("done");
     } catch (e) {
-      setTxStatus("error");
-      setTxResult(e.message || "transaction failed");
-    } finally {
-      setEncrypting(false);
+      setCrStep("failed");
+      setCrError(e.message || "transaction failed");
     }
   }
 
@@ -511,36 +486,29 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
           ) : locked ? (
             <button className="btn accent lg" style={{ flex: 1 }} onClick={grantPermit}>Grant permit first <span className="ar">→</span></button>
           ) : (
-            <button className="btn lg" style={{ flex: 1 }} onClick={handleAction} disabled={txStatus === "pending"} data-testid="submit-action">
-              {approving
-                ? "Approving…"
-                : encrypting
-                  ? "Encrypting…"
-                  : txStatus === "pending"
-                    ? `${side === "repay" ? "Repaying…" : side === "withdraw" ? "Withdrawing…" : "submitting…"}`
-                    : `Encrypt & ${side} ${amount} ${market.asset}`
-              } <span className="ar">→</span>
+            <button className="btn lg" style={{ flex: 1 }} onClick={handleAction} disabled={crStep !== "idle" && crStep !== "done" && crStep !== "failed"} data-testid="submit-action">
+              {crStep === "committing" ? "Committing…" :
+               crStep === "decrypting" ? "Decrypting… (est. 10-30s)" :
+               crStep === "executing" ? "Executing…" :
+               `Encrypt & ${side} ${amount} ${market.asset}`}
+              <span className="ar">→</span>
             </button>
           )}
         </div>
 
-        {txStatus === "success" && txResult && (
-          <div style={{
-            marginTop: 8, padding: "10px 12px",
-            background: "var(--success-soft, #0a2a1a)", border: "1px solid var(--success)",
-            color: "var(--success)", fontFamily: "var(--mono)", fontSize: 11.5, lineHeight: 1.55,
-          }}>
-            <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Confirmed</strong> · {typeof txResult === "string" && txResult.startsWith("0x") ? txResult.slice(0, 18) + "…" : txResult}
+        {crStep === "decrypting" && (
+          <div style={{ marginTop: 8, padding: "10px 12px", background: "var(--accent-soft, #0a1a2a)", border: "1px solid var(--accent)", color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
+            <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Decrypting</strong> · waiting for CoFHE threshold network · est. 10-30s
           </div>
         )}
-
-        {txStatus === "error" && txResult && (
-          <div style={{
-            marginTop: 8, padding: "10px 12px",
-            background: "var(--danger-soft, #2a0a0a)", border: "1px solid var(--destructive)",
-            color: "var(--destructive)", fontFamily: "var(--mono)", fontSize: 11.5, lineHeight: 1.55,
-          }}>
-            <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Failed</strong> · {txResult}
+        {crStep === "done" && (
+          <div style={{ marginTop: 8, padding: "10px 12px", background: "var(--success-soft, #0a2a1a)", border: "1px solid var(--success)", color: "var(--success)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
+            <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Confirmed</strong> · {side} complete
+          </div>
+        )}
+        {crStep === "failed" && crError && (
+          <div style={{ marginTop: 8, padding: "10px 12px", background: "var(--danger-soft, #2a0a0a)", border: "1px solid var(--destructive)", color: "var(--destructive)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
+            <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Failed</strong> · {crError}
           </div>
         )}
       </div>
