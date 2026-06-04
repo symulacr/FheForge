@@ -19,30 +19,46 @@ contract TokenRegistry is FheForgeBase {
     }
 
     mapping(address => TokenInfo) public tokens;
+    mapping(address => bool) public isRegistered;
     address[] public tokenList;
 
     event TokenRegistered(address indexed token, bytes32 indexed priceId, uint8 indexed decimals);
     event TokenUpdated(address indexed token);
     event TokenDisabled(address indexed token);
+    error TokenNotRegistered();
 
     /// @param info TokenInfo struct with token address, price ID, flags, caps, and LTV.
     function registerToken(TokenInfo calldata info) external onlyOwner {
         if (info.token == address(0)) revert ZeroAddress();
-        TokenInfo memory m = info;
-        tokens[info.token] = m;
+        tokens[info.token] = info;
+        if (!isRegistered[info.token]) {
+            isRegistered[info.token] = true;
+            tokenList.push(info.token);
+            emit TokenRegistered(info.token, info.pythPriceId, info.decimals);
+        } else {
+            emit TokenUpdated(info.token);
+        }
+    }
+
+    /// @notice Remove a token from the registry (swap-and-pop from tokenList).
+    /// @param token The token address to remove.
+    function removeToken(address token) external onlyOwner {
+        if (!isRegistered[token]) revert TokenNotRegistered();
+        delete tokens[token];
+        isRegistered[token] = false;
+        // swap-and-pop
         uint256 len = tokenList.length;
-        bool found;
         for (uint256 i = 0; i < len; ) {
-            if (tokenList[i] == info.token) {
-                found = true;
+            if (tokenList[i] == token) {
+                tokenList[i] = tokenList[len - 1];
+                tokenList.pop();
                 break;
             }
             unchecked {
                 ++i;
             }
         }
-        if (!found) tokenList.push(info.token);
-        emit TokenRegistered(info.token, info.pythPriceId, info.decimals);
+        emit TokenDisabled(token);
     }
 
     /// @param info The new TokenInfo configuration.

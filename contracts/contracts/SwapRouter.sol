@@ -75,7 +75,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
     event IntentExecuted(
         bytes32 indexed intentId,
         address indexed user,
-        uint256 indexed outputAmount
+        uint256 outputAmount
     );
     event IntentCancelled(bytes32 indexed intentId, address indexed user);
     event ExecutorProposed(address indexed newExecutor, uint256 indexed earliest);
@@ -101,6 +101,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         address uniswapV3Router_
     ) TimelockedRotation(executorRotationDelay_) {
         if (executor_ == address(0)) revert ZeroAddress();
+        if (uniswapV3Router_ == address(0)) revert ZeroAddress();
         if (minDeadlineOffset_ == 0) revert DeadlineTooShort();
         if (maxDeadlineOffset_ < minDeadlineOffset_) revert DeadlineTooLong();
         executor = executor_;
@@ -163,10 +164,11 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
 
     /// @notice Cancel a pending swap intent and return escrowed tokens.
     function cancelIntent(bytes32 intentId) external nonReentrant {
-        if (intents[intentId].user != _msgSender()) revert NotCreator();
+        SwapIntent storage intent = intents[intentId];
+        if (intent.user != _msgSender()) revert NotCreator();
         // C-04: Return escrowed tokensIn to user
-        address tokenIn = intents[intentId].tokenIn;
-        uint256 amountIn = intents[intentId].amountIn;
+        address tokenIn = intent.tokenIn;
+        uint256 amountIn = intent.amountIn;
         delete intents[intentId];
         IERC20(tokenIn).safeTransfer(_msgSender(), amountIn);
         emit IntentCancelled(intentId, msg.sender);
@@ -219,7 +221,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
                 tokenOut: tokenOut,
                 fee: fee,
                 recipient: _msgSender(),
-                deadline: block.timestamp,
+                deadline: block.timestamp + 300,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum,
                 sqrtPriceLimitX96: 0
@@ -247,7 +249,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
             IUniswapV3SwapRouter.ExactInputParams({
                 path: path,
                 recipient: _msgSender(),
-                deadline: block.timestamp,
+                deadline: block.timestamp + 300,
                 amountIn: amountIn,
                 amountOutMinimum: amountOutMinimum
             })

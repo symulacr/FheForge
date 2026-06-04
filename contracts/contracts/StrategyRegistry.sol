@@ -131,10 +131,11 @@ contract StrategyRegistry is IStrategyRegistry, FheForgeBase, TimelockedRotation
         emit StrategyRegistered(id, msg.sender, name);
     }
 
-    /// @notice Activate or deactivate a strategy (creator only).
+    /// @notice Activate or deactivate a strategy (creator or owner).
     function setActive(uint256 strategyId, bool active) external whenNotPaused {
         if (strategyId == 0 || strategyId > strategyCount) revert InvalidStrategyId();
-        if (strategies[strategyId].creator != _msgSender()) revert OnlyCreator();
+        address caller = _msgSender();
+        if (strategies[strategyId].creator != caller && caller != owner()) revert OnlyCreator();
         strategies[strategyId].active = active;
         emit StrategyActiveSet(strategyId, active);
     }
