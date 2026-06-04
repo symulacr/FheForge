@@ -566,6 +566,13 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
         }));
         setNodes(ns => [...ns, ...newNodes]);
         setMultiSelected(new Set(newNodes.map(n => n.id)));
+        // Remap edges between copied nodes
+        const oldIds = clipboardRef.current.map(n => n.id);
+        const idMap = {};
+        oldIds.forEach((oldId, i) => { idMap[oldId] = newNodes[i].id; });
+        const newEdges = edges.filter(e => oldIds.includes(e.from) && oldIds.includes(e.to))
+          .map(e => ({ from: idMap[e.from], to: idMap[e.to] }));
+        if (newEdges.length) setEdges(es => [...es, ...newEdges]);
         return;
       }
 
@@ -600,7 +607,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
         const step = e.shiftKey ? 8 : 1;
         const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
         const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
-        setNodes(ns => ns.map(n => n.id === selected ? { ...n, x: Math.max(8, n.x + dx), y: Math.max(8, n.y + dy) } : n));
+        setNodes(ns => ns.map(n => n.id === selected ? { ...n, x: Math.min(4000, Math.max(8, n.x + dx)), y: Math.min(3000, Math.max(8, n.y + dy)) } : n));
         return;
       }
 
@@ -799,7 +806,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
     setNodes(ns => ns.map(n => {
       const m = moving.find(x => x.id === n.id);
       if (!m) return n;
-      return { ...n, x: Math.max(8, w.x - m.dx), y: Math.max(8, w.y - m.dy) };
+      return { ...n, x: Math.min(4000, Math.max(8, w.x - m.dx)), y: Math.min(3000, Math.max(8, w.y - m.dy)) };
     }));
   };
   const onPointerUp = () => {
@@ -1034,7 +1041,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     } else if (node.type === "borrow" && amount > 0n) {
                       const borrowToken = tokenMap[cfg.asset] || Object.values(tokenMap)[0];
                       setDeployStep("committing");
-                      const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, amount, BigInt(cfg.ltv || 50), 100n, account);
+                      const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, amount, BigInt(cfg.ltv || 50), 100n, account, borrowToken);
                       if (tx1.status === "reverted") { setDeployResult({ ok: false, error: "Borrow commit reverted" }); setDeploying(false); setDeployStep(null); return; }
                       setDeployStep("decrypting");
                       const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, account);
@@ -1809,7 +1816,7 @@ function DeployToast({ result, onClose, onRetry }) {
       ) : (
         <>
           <Tag tone="danger">reverted</Tag>
-          <span style={{ fontSize: 13, color: "var(--danger)" }}>{result.msg}</span>
+          <span style={{ fontSize: 13, color: "var(--danger)" }}>{result.error || result.msg}</span>
           <button onClick={onRetry} className="btn sm" style={{
             background: "var(--danger)", borderColor: "var(--danger)", color: "var(--paper)",
           }}>Retry <span className="ar">→</span></button>
@@ -2228,7 +2235,8 @@ function DeployProgressModal({ nodes, runOrder, onComplete, onCancel }) {
           if (tx2.status === "reverted") throw new Error("Supply execute reverted");
           result = { txHash: tx2.txHash, block: tx2.block };
         } else if (node.type === "borrow" && amount > 0n) {
-          const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, amount, BigInt(cfg.ltv || 50), 100n, account);
+          const borrowToken = tokenMap[cfg.asset] || Object.values(tokenMap)[0];
+          const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, amount, BigInt(cfg.ltv || 50), 100n, account, borrowToken);
           if (tx1.status === "reverted") throw new Error("Borrow commit reverted");
           const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, account);
           if (tx2.status === "reverted") throw new Error("Borrow execute reverted");

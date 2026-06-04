@@ -135,7 +135,7 @@ function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
   const bridge = useOptionalBridgeD();
   const bridgeData = bridge.data || {};
   const positionItems = bridgeItemsD(bridgeData.positions);
-  const vaultItems = bridgeItemsD(bridgeData.vaultPositions);
+  const vaultItems = bridgeItemsD(bridgeData.vaultPositions) || bridgeItemsD(bridgeData.positions?.vaultPositions) || (Array.isArray(bridgeData.positions) ? bridgeData.positions.filter(p => p.venue === "Strategy Vault" || p.venue === "Vault") : null);
   const allPositionItems = positionItems
     ? (vaultItems ? [...positionItems, ...vaultItems] : positionItems)
     : (vaultItems || null);

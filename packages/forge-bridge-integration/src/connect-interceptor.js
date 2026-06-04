@@ -214,8 +214,10 @@ function startConnectFlow(connectorId) {
     )
     .then((result) => {
       emitWalletConnected(result.address, result.chainId);
+      bus?.set('connect:phase', { phase: 'connected' });
 
       // Step 2: Sign + JWT login
+      bus?.set('connect:phase', { phase: 'signing' });
       return executeJwtLogin().then(() => result);
     })
     .then((result) => {
@@ -226,12 +228,17 @@ function startConnectFlow(connectorId) {
       } catch { /* non-critical */ }
 
       bus?.set('wallet:authenticated', { address: result.address });
+      bus?.set('connect:phase', { phase: 'authenticated' });
 
       // Step 3: FHE permit
-      return executePermitGrant();
+      bus?.set('connect:phase', { phase: 'permitting' });
+      const permitTimeout = new Promise((_, rej) => setTimeout(() => rej(new Error('Permit timed out')), 30000));
+      return Promise.race([executePermitGrant(), permitTimeout]);
     })
     .then((permitResult) => {
       emitPermitGranted(permitResult.unlocked, permitResult.secondsLeft);
+      bus?.set('connect:phase', { phase: 'done' });
+      bus?.enableAuthenticated?.();
 
       // Start permit countdown ticker
       if (_permitTickInterval) clearInterval(_permitTickInterval);

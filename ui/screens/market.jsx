@@ -123,7 +123,10 @@ function Market({ setRoute, ctx, grantPermit, openConnect }) {
             <span className="eyebrow">Strategies</span>
             <div className="row" style={{ gap: 6 }}>
               <button className="btn ghost sm" onClick={() => createDraft("blank")} title="Start from a blank canvas">+ New</button>
-              <button className="btn ghost sm" onClick={() => createDraft("leverage")} disabled={!templates?.leverage} title="Start from a template">+ Template</button>
+              <select onChange={(e) => { if (e.target.value) { createDraft(e.target.value); e.target.value = ""; } }} defaultValue="" style={{ fontFamily: "var(--mono)", fontSize: 11, background: "var(--paper)", color: "var(--muted)", border: "1px solid var(--hairline)", padding: "4px 8px" }} title="Start from a template">
+                <option value="" disabled>+ Template</option>
+                {templates && Object.entries(templates).filter(([k]) => k !== "blank").map(([k, t]) => (<option key={k} value={k}>{t.label || k}</option>))}
+              </select>
             </div>
           </div>
           <input
@@ -275,7 +278,10 @@ function EmptyDetail({ createDraft, templateAvailable }) {
         </p>
         <div className="row" style={{ gap: 8, justifyContent: "center" }}>
           <button className="btn" onClick={() => createDraft("blank")}>Start blank <span className="ar">→</span></button>
-          <button className="btn ghost" onClick={() => createDraft("leverage")} disabled={!templateAvailable}>Use a template</button>
+          <select onChange={(e) => { if (e.target.value) { createDraft(e.target.value); e.target.value = ""; } }} defaultValue="" style={{ fontFamily: "var(--mono)", fontSize: 12, background: "var(--paper)", color: "var(--muted)", border: "1px solid var(--hairline)", padding: "6px 10px" }}>
+            <option value="" disabled>Use a template</option>
+            {window.TEMPLATES && Object.entries(window.TEMPLATES).filter(([k]) => k !== "blank").map(([k, t]) => (<option key={k} value={k}>{t.label || k}</option>))}
+          </select>
         </div>
       </div>
     </div>

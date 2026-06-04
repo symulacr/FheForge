@@ -95,6 +95,28 @@
   }
 
   /* ──────────────────────────────────────────────
+     transformVaultPositions
+     API vault positions → forge-compatible shape
+     ────────────────────────────────────────────── */
+  function transformVaultPositions(apiVaultPositions) {
+    if (!Array.isArray(apiVaultPositions)) return [];
+    return apiVaultPositions.map(function (v) {
+      return {
+        id: v.id || v.vaultId || 'vault-' + Math.random().toString(36).slice(2, 8),
+        vaultAddress: v.vaultAddress || v.address || null,
+        name: v.name || v.vaultName || 'Vault',
+        asset: v.asset || v.depositAsset || 'UNKNOWN',
+        depositedAmount: v.depositedAmount || v.amount || '0',
+        depositedUsd: v.depositedUsd || v.amountUsd || '0',
+        shares: v.shares || v.shareBalance || '0',
+        apy: v.apy || 0,
+        strategy: v.strategy || v.strategyName || '',
+        pendingRewards: v.pendingRewards || '0',
+      };
+    });
+  }
+
+  /* ──────────────────────────────────────────────
      transformActivities
      API events → forge D_ACTIVITY format
      ────────────────────────────────────────────── */
@@ -360,6 +382,7 @@
   transformers.transformProposals = transformProposals;
   transformers.transformCommunity = transformCommunity;
   transformers.transformNodeTypes = transformNodeTypes;
+  transformers.transformVaultPositions = transformVaultPositions;
   transformers.calculateNetValue = calculateNetValue;
   transformers.calculateLTV = calculateLTV;
 

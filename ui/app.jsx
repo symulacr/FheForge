@@ -100,6 +100,26 @@ function App() {
     }
   }, [ctx.connected]);
 
+  // Wallet account/chain change detection
+  useEffectA(() => {
+    if (!window.ethereum?.on) return;
+    const onAccounts = (accts) => {
+      if (!accts.length) {
+        window.__bridgeBus?.set("wallet:disconnected", { connected: false, address: null });
+        setCtx(prev => ({ ...prev, connected: false, address: null, permitUnlocked: false, permitSeconds: 0 }));
+      } else if (ctx.connected && accts[0] !== ctx.address) {
+        window.__bridgeBus?.set("wallet:connected", { connected: true, address: accts[0] });
+        setCtx(prev => ({ ...prev, address: accts[0] }));
+      }
+    };
+    const onChain = (chainId) => {
+      window.__bridgeBus?.set("network:changed", { chainId: typeof chainId === "string" ? parseInt(chainId, 16) : chainId });
+    };
+    window.ethereum.on("accountsChanged", onAccounts);
+    window.ethereum.on("chainChanged", onChain);
+    return () => { window.ethereum.removeListener("accountsChanged", onAccounts); window.ethereum.removeListener("chainChanged", onChain); };
+  }, [ctx.connected, ctx.address]);
+
   // Wallet chip clicked
   const onWalletClick = useCallbackA(() => {
     openConnect();

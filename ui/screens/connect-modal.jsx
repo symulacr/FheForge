@@ -30,56 +30,44 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
     if (!open) { setPhase("idle"); setError(null); setSelected(null); }
   }, [open]);
 
+  // ESC to close
+  useEffectCM(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   async function startFlow(connectorId) {
     setSelected(connectorId);
     setError(null);
+    setPhase("connecting");
     try {
-      const bridge = await window.__getBridge();
-      const bus = typeof window !== "undefined" && window.__bridgeBus;
+      const interceptor = window.__ConnectInterceptor;
+      if (!interceptor) throw new Error("Connect interceptor not available");
+      const bus = window.__bridgeBus;
 
-      setPhase("connecting");
-      await bridge.wallet.connect(connectorId);
-      bridge.wallet.switchNetwork(421614).catch(() => {});
-      const addr = bridge.wallet.getAccount();
-      const chain = bridge.wallet.getChainId();
-      if (bus) bus.set("wallet:connected", { connected: true, address: addr, chainId: chain });
-
-      setPhase("signing");
-      await bridge.wallet.login();
-      if (bus) bus.set("wallet:authenticated", { address: addr });
-
-      setPhase("permitting");
-      const permitResult = await bridge.fhe.permitGrant();
-      if (bus) bus.set("permit:granted", { unlocked: true, secondsLeft: permitResult?.secondsLeft || 900 });
-
-      // Enable authenticated domain on BridgeBus + start authenticated polling
-      if (window.__bridgeBus) {
-        window.__bridgeBus.enableAuthenticated();
-      }
-      if (window.__dataFetcherV2) {
-        const fetcher = window.__dataFetcherV2;
-        if (typeof fetcher.startAuthenticatedPolling === 'function') {
-          fetcher.startAuthenticatedPolling();
+      const onPhase = (d) => {
+        if (d.phase === "connected") setPhase("connecting");
+        else if (d.phase === "signing") setPhase("signing");
+        else if (d.phase === "permitting") setPhase("permitting");
+        else if (d.phase === "done") {
+          setPhase("done");
+          const w = bus?.get("wallet:connected") || {};
+          const p = bus?.get("permit:granted") || {};
+          if (setCtx) setCtx(prev => ({ ...prev, connected: true, address: w.address || prev.address, permitUnlocked: true, permitSeconds: p.secondsLeft || 900 }));
+          setTimeout(onClose, 300);
         }
-      }
-
-      if (setCtx) {
-        setCtx(prev => ({
-          ...prev,
-          connected: true,
-          address: addr,
-          permitUnlocked: true,
-          permitSeconds: permitResult?.secondsLeft || 900,
-        }));
-      }
-
-      setPhase("done");
-      setTimeout(onClose, 300);
+      };
+      if (bus) bus.on("connect:phase", onPhase);
+      await interceptor.startConnectFlow(connectorId);
+      if (bus) bus.off("connect:phase", onPhase);
     } catch (err) {
+      const msg = err?.message || "";
       setError(
-        err?.code === "PROVIDER_NOT_FOUND"
-          ? "Wallet provider not found. Install or enable MetaMask/Rabby, then retry."
-          : err?.message || "Connection failed"
+        err?.code === "PROVIDER_NOT_FOUND" ? "Wallet provider not found. Install or enable MetaMask/Rabby, then retry."
+          : msg.includes("timed out") ? "Permit grant timed out. Check your wallet for a pending signature."
+          : msg || "Connection failed"
       );
     }
   }
@@ -90,7 +78,7 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
 
   return (
     <Modal open={open} onClose={onClose} width={420}>
-      <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--hairline)", background: "var(--paper-2)" }}>
+      <div role="dialog" aria-modal="true" aria-label="Connect wallet" style={{ padding: "14px 18px", borderBottom: "1px solid var(--hairline)", background: "var(--paper-2)" }}>
         <h3 style={{ margin: 0, fontSize: "1rem", color: "var(--ink)" }}>
           {phase === "idle" ? "Pick a wallet" : "Connecting"}
         </h3>
@@ -127,6 +115,7 @@ function WalletPicker({ onSelect }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {wallets.map(w => (
         <button key={w.key} onClick={() => onSelect(w.id)} className="btn ghost sm"
+          aria-label={`Connect with ${w.name}`}
           data-testid={`wallet-${w.key}`}
           style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", textAlign: "left", width: "100%" }}>
           <div>
@@ -149,9 +138,9 @@ function ProgressList({ phase }) {
   ];
   const idx = ["connecting", "signing", "permitting"].indexOf(phase);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div role="list" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {steps.map((s, i) => (
-        <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div key={s.key} role="listitem" aria-current={i === idx ? "step" : undefined} style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ color: i < idx ? "var(--positive)" : i === idx ? "var(--accent)" : "var(--muted)", fontSize: "0.875rem", width: 16, textAlign: "center" }}>
             {i < idx ? "✓" : i === idx ? "▸" : "○"}
           </span>

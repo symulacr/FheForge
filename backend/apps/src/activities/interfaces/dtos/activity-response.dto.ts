@@ -8,4 +8,15 @@ export class ActivityResponseDto {
   currentStep?: number;
   totalSteps?: number;
   createdAt?: Date;
+  type?: string;
+  asset?: string;
+  amount?: string;
+  amountUsd?: string;
+  tokenAddress?: string;
+  txHashSingle?: string;
+  blockNumber?: number;
+  fheEncrypted?: boolean;
+  riskScore?: number;
+  yieldEarned?: string;
+  yieldEarnedUsd?: string;
 }
