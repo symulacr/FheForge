@@ -8242,7 +8242,7 @@ function createContractAdapter(config, options = {}) {
       let commitId = "";
       if (result.receipt?.logs) {
         for (const log of result.receipt.logs) {
-          if (log.topics?.[0] && log.data && log.data !== "0x") {
+          if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
             commitId = log.topics[1] ?? log.data.slice(0, 66);
             break;
           }
@@ -8255,14 +8255,14 @@ function createContractAdapter(config, options = {}) {
       const wc = getWc();
       return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeShield", [token, commitId, plaintext, signature], account);
     },
-    borrowCommit: async (token, amount, ltvNum, ltvDen, account) => {
-      const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), token) : undefined;
+    borrowCommit: async (collateralToken, borrowToken, amount, ltvNum, ltvDen, account) => {
+      const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), borrowToken) : undefined;
       const wc = getWc();
-      const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "commitBorrow", [token, encAmount, ltvNum, ltvDen], account);
+      const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "commitBorrow", [collateralToken, borrowToken, encAmount, ltvNum, ltvDen], account);
       let commitId = "";
       if (result.receipt?.logs) {
         for (const log of result.receipt.logs) {
-          if (log.topics?.[0] && log.data && log.data !== "0x") {
+          if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
             commitId = log.topics[1] ?? log.data.slice(0, 66);
             break;
           }
@@ -8282,7 +8282,7 @@ function createContractAdapter(config, options = {}) {
       let commitId = "";
       if (result.receipt?.logs) {
         for (const log of result.receipt.logs) {
-          if (log.topics?.[0] && log.data && log.data !== "0x") {
+          if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
             commitId = log.topics[1] ?? log.data.slice(0, 66);
             break;
           }
@@ -8302,7 +8302,7 @@ function createContractAdapter(config, options = {}) {
       let commitId = "";
       if (result.receipt?.logs) {
         for (const log of result.receipt.logs) {
-          if (log.topics?.[0] && log.data && log.data !== "0x") {
+          if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
             commitId = log.topics[1] ?? log.data.slice(0, 66);
             break;
           }
@@ -8471,7 +8471,7 @@ function createFheAdapter(config) {
       }
       const { Encryptable } = await import("@cofhe/sdk");
       const [encryptedHandle] = await _cofheClient.encryptInputs([Encryptable.uint128(BigInt(plaintext))]).execute();
-      return { handle: encryptedHandle, type: "InEuint128" };
+      return encryptedHandle;
     } catch (error) {
       throw new FheError("ENCRYPT_FAILED", error.message || "Failed to encrypt value");
     }
