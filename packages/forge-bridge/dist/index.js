@@ -1794,6 +1794,451 @@ var CONTRACT_ABIS = {
       type: "error",
       name: "ZeroAmount",
       inputs: []
+    },
+    {
+      type: "function",
+      name: "shield",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          name: "",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeShield",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "plaintext",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "signature",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "commitBorrow",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        },
+        {
+          name: "ltvNum",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "ltvDen",
+          type: "uint128",
+          internalType: "uint128"
+        }
+      ],
+      outputs: [
+        {
+          name: "",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeBorrow",
+      inputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "plaintext",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "signature",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [
+        {
+          name: "",
+          type: "bytes32",
+          internalType: "euint128"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "repay",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          name: "",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeRepay",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "plaintext",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "signature",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "withdraw",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          name: "",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeWithdraw",
+      inputs: [
+        {
+          name: "token",
+          type: "address",
+          internalType: "address"
+        },
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "plaintext",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "signature",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "shieldEth",
+      inputs: [
+        {
+          name: "",
+          type: "bool",
+          internalType: "bool"
+        },
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          name: "",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeShieldEth",
+      inputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "plaintext",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "signature",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "withdrawEth",
+      inputs: [
+        {
+          name: "",
+          type: "bool",
+          internalType: "bool"
+        },
+        {
+          name: "encAmount",
+          type: "tuple",
+          internalType: "struct InEuint128",
+          components: [
+            {
+              name: "ctHash",
+              type: "uint256",
+              internalType: "uint256"
+            },
+            {
+              name: "securityZone",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "utype",
+              type: "uint8",
+              internalType: "uint8"
+            },
+            {
+              name: "signature",
+              type: "bytes",
+              internalType: "bytes"
+            }
+          ]
+        }
+      ],
+      outputs: [
+        {
+          name: "",
+          type: "bytes32",
+          internalType: "bytes32"
+        }
+      ],
+      stateMutability: "payable"
+    },
+    {
+      type: "function",
+      name: "executeWithdrawEth",
+      inputs: [
+        {
+          name: "commitId",
+          type: "bytes32",
+          internalType: "bytes32"
+        },
+        {
+          name: "plaintext",
+          type: "uint128",
+          internalType: "uint128"
+        },
+        {
+          name: "signature",
+          type: "bytes",
+          internalType: "bytes"
+        }
+      ],
+      outputs: [],
+      stateMutability: "payable"
     }
   ],
   StrategyVault: [
@@ -7596,6 +8041,86 @@ function createContractAdapter(config, options = {}) {
       const wc = getWc();
       return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "partialUnshield", [token, amount, finalEnc], account);
     },
+    shieldCommit: async (token, amount, account) => {
+      const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), token) : undefined;
+      const wc = getWc();
+      const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "shield", [token, encAmount], account);
+      let commitId = "";
+      if (result.receipt?.logs) {
+        for (const log of result.receipt.logs) {
+          if (log.topics?.[0] && log.data && log.data !== "0x") {
+            commitId = log.topics[1] ?? log.data.slice(0, 66);
+            break;
+          }
+        }
+      }
+      return { ...result, commitId };
+    },
+    shieldExecute: async (token, commitId, account) => {
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+      const wc = getWc();
+      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeShield", [token, commitId, plaintext, signature], account);
+    },
+    borrowCommit: async (token, amount, ltvNum, ltvDen, account) => {
+      const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), token) : undefined;
+      const wc = getWc();
+      const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "commitBorrow", [token, encAmount, ltvNum, ltvDen], account);
+      let commitId = "";
+      if (result.receipt?.logs) {
+        for (const log of result.receipt.logs) {
+          if (log.topics?.[0] && log.data && log.data !== "0x") {
+            commitId = log.topics[1] ?? log.data.slice(0, 66);
+            break;
+          }
+        }
+      }
+      return { ...result, commitId };
+    },
+    borrowExecute: async (commitId, account) => {
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+      const wc = getWc();
+      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeBorrow", [commitId, plaintext, signature], account);
+    },
+    repayCommit: async (token, amount, account) => {
+      const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), token) : undefined;
+      const wc = getWc();
+      const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "repay", [token, encAmount], account);
+      let commitId = "";
+      if (result.receipt?.logs) {
+        for (const log of result.receipt.logs) {
+          if (log.topics?.[0] && log.data && log.data !== "0x") {
+            commitId = log.topics[1] ?? log.data.slice(0, 66);
+            break;
+          }
+        }
+      }
+      return { ...result, commitId };
+    },
+    repayExecute: async (token, commitId, account) => {
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+      const wc = getWc();
+      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeRepay", [token, commitId, plaintext, signature], account);
+    },
+    withdrawCommit: async (token, amount, account) => {
+      const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function" ? await _fheAdapter.encrypt(String(amount), token) : undefined;
+      const wc = getWc();
+      const result = await estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "withdraw", [token, encAmount], account);
+      let commitId = "";
+      if (result.receipt?.logs) {
+        for (const log of result.receipt.logs) {
+          if (log.topics?.[0] && log.data && log.data !== "0x") {
+            commitId = log.topics[1] ?? log.data.slice(0, 66);
+            break;
+          }
+        }
+      }
+      return { ...result, commitId };
+    },
+    withdrawExecute: async (token, commitId, account) => {
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+      const wc = getWc();
+      return estimateSendAndWait(publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool, "executeWithdraw", [token, commitId, plaintext, signature], account);
+    },
     openPosition: async (token, amount, encAmount, strategyId, user, account) => {
       let finalEnc = encAmount;
       if (!finalEnc && _fheAdapter && typeof _fheAdapter.encrypt === "function") {
@@ -7768,6 +8293,30 @@ function createFheAdapter(config) {
       throw new FheError("DECRYPT_FAILED", error.message || "Failed to decrypt value");
     }
   }
+  async function decryptForExecute(ctHash, opts = {}) {
+    if (!_cofheClient) {
+      throw new FheError("NO_PERMIT", "Grant an FHE permit before decrypting for tx");
+    }
+    const timeout = opts.timeout ?? 60000;
+    const pollInterval = opts.pollInterval ?? 2000;
+    const start = Date.now();
+    try {
+      const result = await _cofheClient.decryptForTx(ctHash).withoutPermit().execute();
+      return {
+        plaintext: String(result.decryptedValue),
+        signature: result.signature
+      };
+    } catch (error) {
+      const elapsed = Date.now() - start;
+      if (elapsed >= timeout) {
+        throw new FheError("DECRYPT_TIMEOUT", `Decryption for tx timed out after ${Math.round(elapsed / 1000)}s for handle ${ctHash}`);
+      }
+      if (error.message && error.message.includes("not ready")) {
+        throw new FheError("DECRYPT_NOT_READY", `Ciphertext ${ctHash} is not yet ready for decryption: ${error.message}`);
+      }
+      throw new FheError("DECRYPT_FOR_TX_FAILED", error.message || `Failed to decrypt ${ctHash} for transaction`);
+    }
+  }
   function onPermitChange(cb) {
     _listeners.add(cb);
     try {
@@ -7783,6 +8332,7 @@ function createFheAdapter(config) {
     permitCountdown,
     encrypt,
     decrypt,
+    decryptForExecute,
     onPermitChange,
     grantPermit: permitGrant,
     checkPermit: permitCheck,
@@ -7793,14 +8343,20 @@ function createFheAdapter(config) {
           permitCheck: adapter.permitCheck,
           encrypt: adapter.encrypt,
           decrypt: adapter.decrypt,
+          decryptForExecute: adapter.decryptForExecute,
           onPermitChange: adapter.onPermitChange
         };
       },
       async revealAll(handles) {
-        return handles;
+        const results = [];
+        for (const handle of handles) {
+          const result = await decryptForExecute(handle);
+          results.push(result);
+        }
+        return results;
       },
       async revealOne(handle) {
-        return handle;
+        return decryptForExecute(handle);
       }
     }
   };
