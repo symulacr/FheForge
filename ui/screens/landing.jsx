@@ -123,7 +123,7 @@ function Landing({ setRoute, ctx, grantPermit, openConnect }) {
             </p>
 
             <div className="row" style={{ gap: 12, marginTop: 32, flexWrap: "wrap" }}>
-              <button className="btn lg" onClick={openConnect}>
+              <button className="btn lg" onClick={openConnect} data-testid="connect-wallet">
                 Connect a wallet <span className="ar">→</span>
               </button>
               <button className="btn ghost lg" onClick={() => setRoute("strategies")}>

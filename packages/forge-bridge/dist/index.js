@@ -7516,7 +7516,7 @@ function createContractAdapter(config, options = {}) {
     isRegisteredToken: (token) => publicClient.readContract({
       address: CONTRACT_ADDRESSES.TokenRegistry,
       abi: CONTRACT_ABIS.TokenRegistry,
-      functionName: "isSupported",
+      functionName: "isTokenEnabled",
       args: [token]
     }),
     getTokenCount: () => publicClient.readContract({

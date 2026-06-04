@@ -58,6 +58,13 @@ type TokenRegistryRead = {
   reachable: boolean;
 };
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 @Injectable()
 export class MarketsService {
   private readonly logger = new Logger(MarketsService.name);
@@ -258,15 +265,22 @@ export class MarketsService {
     tokenRegistry: Contract,
   ): Promise<TokenRegistryRead> {
     try {
-      const tokenAddresses =
-        (await tokenRegistry.getLendableTokens()) as string[];
+      const tokenAddresses = await withTimeout(
+        tokenRegistry.getLendableTokens() as Promise<string[]>,
+        10_000,
+        [] as string[],
+      );
       const tokenInfos = await Promise.all(
         tokenAddresses.map(async (tokenAddress) => {
-          const info = (await tokenRegistry.tokens(tokenAddress)) as {
-            decimals: bigint | number;
-            enabled: boolean;
-            isLendable: boolean;
-          };
+          const info = await withTimeout(
+            tokenRegistry.tokens(tokenAddress) as Promise<{
+              decimals: bigint | number;
+              enabled: boolean;
+              isLendable: boolean;
+            }>,
+            10_000,
+            { decimals: 0, enabled: false, isLendable: false },
+          );
           return {
             token: tokenAddress,
             decimals: Number(info.decimals),
@@ -366,7 +380,11 @@ export class MarketsService {
     if (!this.provider) return tokenAddress;
     try {
       const token = new Contract(tokenAddress, ERC20_ABI, this.provider);
-      return String(await token.symbol());
+      return await withTimeout(
+        token.symbol().then((v: string) => String(v)),
+        10_000,
+        '',
+      );
     } catch {
       return tokenAddress;
     }
@@ -379,7 +397,12 @@ export class MarketsService {
   ): Promise<number | null> {
     if (!lendingPool) return null;
     try {
-      const value = (await lendingPool[method](tokenInfo.token)) as bigint;
+      const value = await withTimeout<bigint | null>(
+        lendingPool[method](tokenInfo.token) as Promise<bigint>,
+        10_000,
+        null,
+      );
+      if (value === null) return null;
       return Number(formatUnits(value, tokenInfo.decimals));
     } catch (error) {
       this.logger.warn(
@@ -395,9 +418,13 @@ export class MarketsService {
   ): Promise<{ price: number | null; updatedAt: string | null }> {
     if (!priceOracle) return { price: null, updatedAt: null };
     try {
-      const [priceWad, updatedAt] = (await priceOracle.getPriceUsd(
-        tokenAddress,
-      )) as [bigint, bigint];
+      const result = await withTimeout<[bigint, bigint] | null>(
+        priceOracle.getPriceUsd(tokenAddress) as Promise<[bigint, bigint]>,
+        10_000,
+        null,
+      );
+      if (result === null) return { price: null, updatedAt: null };
+      const [priceWad, updatedAt] = result;
       return {
         price: Number(formatUnits(priceWad, WAD_DECIMALS)),
         updatedAt:
@@ -419,9 +446,12 @@ export class MarketsService {
   ): Promise<number | null> {
     if (!priceOracle) return null;
     try {
-      const thresholdBps = (await priceOracle.liquidationThresholdBps(
-        tokenAddress,
-      )) as bigint;
+      const thresholdBps = await withTimeout<bigint | null>(
+        priceOracle.liquidationThresholdBps(tokenAddress) as Promise<bigint>,
+        10_000,
+        null,
+      );
+      if (thresholdBps === null) return null;
       const threshold = Number(thresholdBps) / 10_000;
       return threshold > 0 ? threshold : null;
     } catch (error) {

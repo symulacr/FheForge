@@ -116,6 +116,7 @@ function WalletPicker({ onSelect }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {wallets.map(w => (
         <button key={w.key} onClick={() => onSelect(w.id)} className="btn ghost sm"
+          data-testid={`wallet-${w.key}`}
           style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", textAlign: "left", width: "100%" }}>
           <div>
             <div style={{ fontSize: "0.875rem", color: "var(--ink)" }}>{w.name}</div>

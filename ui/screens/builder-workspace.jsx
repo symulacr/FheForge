@@ -53,46 +53,45 @@ const TEMPLATES = {
     edges: [],
   },
   leverage: {
-    label: "Leverage loop",
+    label: "Leverage Long ETH",
     nodes: [
-      { id: "n1", type: "supply", x: 16,  y: 32,  config: { asset: "USDC", amount: "20,000" } },
-      { id: "n2", type: "borrow", x: 192, y: 32,  config: { asset: "ETH",  ltv: 65, amount: "8,400" } },
-      { id: "n3", type: "swap",   x: 368, y: 32,  config: { from: "ETH", to: "USDC", slip: 0.5, amount: "≈20,400" } },
-      { id: "n4", type: "repeat", x: 192, y: 148, config: { loops: 4 } },
+      { id: "n1", type: "supply", x: 16, y: 32, config: { asset: "WETH", amount: "0.5" } },
+      { id: "n2", type: "borrow", x: 192, y: 32, config: { asset: "USDC", ltv: 65, amount: "800" } },
+      { id: "n3", type: "swap", x: 368, y: 32, config: { from: "USDC", to: "WETH", slip: 0.5, amount: "≈0.32" } },
+      { id: "n4", type: "repeat", x: 192, y: 148, config: { loops: 3 } },
       { id: "n5", type: "settle", x: 368, y: 148, config: {} },
     ],
-    edges: [
-      { from: "n1", to: "n2" },
-      { from: "n2", to: "n3" },
-      { from: "n3", to: "n4" },
-      { from: "n4", to: "n5" },
-    ],
+    edges: [{ from: "n1", to: "n2" }, { from: "n2", to: "n3" }, { from: "n3", to: "n4" }, { from: "n4", to: "n5" }],
   },
   deltaNeutral: {
-    label: "Delta-neutral",
+    label: "Delta Neutral ETH",
     nodes: [
-      { id: "n1", type: "supply", x: 16,  y: 32,  config: { asset: "ETH", amount: "10" } },
-      { id: "n2", type: "borrow", x: 192, y: 32,  config: { asset: "USDC", ltv: 50, amount: "12,500" } },
-      { id: "n3", type: "swap",   x: 368, y: 32,  config: { from: "USDC", to: "ETH", slip: 0.3, amount: "≈4.9" } },
-      { id: "n5", type: "settle", x: 368, y: 148, config: {} },
-    ],
-    edges: [
-      { from: "n1", to: "n2" },
-      { from: "n2", to: "n3" },
-      { from: "n3", to: "n5" },
-    ],
-  },
-  rebalance: {
-    label: "Auto-rebalance",
-    nodes: [
-      { id: "n1", type: "supply", x: 16,  y: 32, config: { asset: "USDC", amount: "5,000" } },
-      { id: "n4", type: "repeat", x: 192, y: 32, config: { loops: 2 } },
+      { id: "n1", type: "supply", x: 16, y: 32, config: { asset: "WETH", amount: "1" } },
+      { id: "n2", type: "borrow", x: 192, y: 32, config: { asset: "USDC", ltv: 50, amount: "2,500" } },
       { id: "n5", type: "settle", x: 368, y: 32, config: {} },
     ],
-    edges: [
-      { from: "n1", to: "n4" },
-      { from: "n4", to: "n5" },
+    edges: [{ from: "n1", to: "n2" }, { from: "n2", to: "n5" }],
+  },
+  yieldFarm: {
+    label: "Yield Farm USDC",
+    nodes: [
+      { id: "n1", type: "supply", x: 16, y: 32, config: { asset: "USDC", amount: "10,000" } },
+      { id: "n2", type: "borrow", x: 192, y: 32, config: { asset: "DAI", ltv: 50, amount: "5,000" } },
+      { id: "n3", type: "swap", x: 368, y: 32, config: { from: "DAI", to: "USDC", slip: 0.3, amount: "≈5,000" } },
+      { id: "n5", type: "settle", x: 368, y: 148, config: {} },
     ],
+    edges: [{ from: "n1", to: "n2" }, { from: "n2", to: "n3" }, { from: "n3", to: "n5" }],
+  },
+  leverageARB: {
+    label: "Leverage Long ARB",
+    nodes: [
+      { id: "n1", type: "supply", x: 16, y: 32, config: { asset: "ARB", amount: "1,000" } },
+      { id: "n2", type: "borrow", x: 192, y: 32, config: { asset: "USDC", ltv: 55, amount: "250" } },
+      { id: "n3", type: "swap", x: 368, y: 32, config: { from: "USDC", to: "ARB", slip: 0.5, amount: "≈500" } },
+      { id: "n4", type: "repeat", x: 192, y: 148, config: { loops: 2 } },
+      { id: "n5", type: "settle", x: 368, y: 148, config: {} },
+    ],
+    edges: [{ from: "n1", to: "n2" }, { from: "n2", to: "n3" }, { from: "n3", to: "n4" }, { from: "n4", to: "n5" }],
   },
 };
 
@@ -937,6 +936,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
           </button>
           <button
             className="btn sm"
+            data-testid="deploy-button"
             disabled={!ctx.connected || locked || deploying || hasError || !nodes.length}
             onClick={async () => {
               if (!ctx.connected) { openConnect(); return; }
@@ -1048,6 +1048,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
         <div
           ref={canvasRef}
           className={"canvas" + (dropActive ? " drop-active" : "") + (handTool || spaceHeld ? " hand-tool" : "")}
+          data-testid="builder-canvas"
           style={{ position: "relative", border: 0, minHeight: 0, overflow: "hidden" }}
           onDragEnter={onCanvasDragEnter}
           onDragLeave={onCanvasDragLeave}

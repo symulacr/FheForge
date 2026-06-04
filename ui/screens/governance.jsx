@@ -133,7 +133,7 @@ function Governance({ setRoute, ctx, grantPermit, openConnect }) {
       }
       detailBody={
         <>
-          <div style={{ padding: "12px 16px", background: "var(--warning)", color: "#000", fontSize: "0.875rem", marginBottom: 16 }}>
+          <div data-testid="governance-coming-soon" style={{ padding: "12px 16px", background: "var(--warning)", color: "#000", fontSize: "0.875rem", marginBottom: 16 }}>
             Coming soon — governance voting will be available when the on-chain governance contract is deployed.
           </div>
           {selected ? <ProposalDetail p={selected} ctx={ctx} openConnect={openConnect} bridge={bridge} />

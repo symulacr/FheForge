@@ -109,25 +109,26 @@ function getPositionSummaryL(bridgeData) {
 }
 
 
-async function handleFaucetDrip(tokenAddress, connected, connectFn) {
-  if (!connected) { connectFn(); return; }
-  try {
-    // faucetMint() selector = 0x13eda8fc
-    const data = "0x13eda8fc";
-    const accounts = await window.ethereum.request({ method: "eth_accounts" });
-    const from = accounts[0];
-    if (!from) { alert("Connect wallet first"); return; }
-    const txHash = await window.ethereum.request({
-      method: "eth_sendTransaction",
-      params: [{ from, to: tokenAddress, data }],
-    });
-    alert("Tokens minted! tx: " + txHash.slice(0, 18) + "…");
-  } catch (err) {
-    alert(err?.reason || err?.message || "Faucet failed");
-  }
-}
-
 function Lending({ setRoute, ctx, grantPermit, openConnect }) {
+  async function handleFaucetDrip(tokenAddress, e) {
+    if (e) e.stopPropagation();
+    if (!ctx.connected) { openConnect(); return; }
+    try {
+      const { createWalletClient, custom } = await import("viem");
+      const { arbitrumSepolia } = await import("viem/chains");
+      const walletClient = createWalletClient({ chain: arbitrumSepolia, transport: custom(window.ethereum) });
+      const [account] = await walletClient.getAddresses();
+      const hash = await walletClient.writeContract({
+        address: tokenAddress,
+        abi: [{ type: "function", name: "faucetMint", inputs: [], outputs: [], stateMutability: "nonpayable" }],
+        functionName: "faucetMint",
+        account,
+      });
+      alert("Tokens minted! tx: " + hash);
+    } catch (err) {
+      alert(err?.shortMessage || err?.message || "Faucet failed");
+    }
+  }
   const bridge = useOptionalBridgeL();
   const bridgeData = bridge.data || {};
   const markets = Array.isArray(bridgeData.markets) ? bridgeData.markets.map(normalizeMarketL) : null;
@@ -194,7 +195,8 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
                     <button
                       className="btn ghost sm"
                       style={{ padding: "2px 6px", fontSize: 9, letterSpacing: 0.06, textTransform: "uppercase", marginTop: 2 }}
-                      onClick={(e) => { e.stopPropagation(); handleFaucetDrip(m.assetAddress, ctx.connected, openConnect); }}
+                      onClick={(e) => handleFaucetDrip(m.assetAddress, e)}
+                      data-testid="drip-button"
                     >Drip</button>
                   )}
                 </div>
@@ -222,7 +224,8 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
             <div className="tabstrip" style={{ border: 0 }}>
               {["supply", "borrow", "repay", "withdraw"].map(s => (
                 <button key={s} className={"tab" + (side === s ? " active" : "")}
-                  onClick={() => setSide(s)}>{s}</button>
+                  onClick={() => setSide(s)}
+                  data-testid={`tab-${s}`}>{s}</button>
               ))}
             </div>
           </>
@@ -237,6 +240,7 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
             ltv={ltv} setLtv={setLtv}
             locked={locked} grantPermit={grantPermit} ctx={ctx} openConnect={openConnect}
             bridgeData={bridgeData} positionSummary={positionSummary}
+            markets={markets}
           />
         ) : (
           <div className="mono" style={{ padding: 20, color: "var(--muted)", fontSize: 12 }}>
@@ -261,7 +265,7 @@ function toWeiL(amountStr, asset) {
   return BigInt(Math.round(n * 10 ** decimals));
 }
 
-function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, grantPermit, ctx, openConnect, bridgeData, positionSummary }) {
+function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, grantPermit, ctx, openConnect, bridgeData, positionSummary, markets }) {
   const apy = side === "supply" || side === "repay" ? market.supplyApy : market.borrowApy;
   const walletBalance = bridgeData && bridgeData.walletBalance;
   const walletValue = !ctx.connected ? "wallet required" : walletBalance && walletBalance.balance != null ? walletBalance.balance : "unavailable";
@@ -269,6 +273,8 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
   const [txStatus, setTxStatus] = useStateL("idle");
   const [txResult, setTxResult] = useStateL(null);
   const [approving, setApproving] = useStateL(false);
+  const [encrypting, setEncrypting] = useStateL(false);
+  const [borrowAssetId, setBorrowAssetId] = useStateL(null);
 
   async function handleSupply() {
     if (!market.assetAddress) { setTxStatus("error"); setTxResult("missing token address"); return; }
@@ -278,6 +284,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
     setTxStatus("pending");
     setTxResult(null);
+    setEncrypting(true);
     try {
       const LENDING_POOL_ADDRESS = "0xff687831dfD3657D6C6879403cE56f53518b378C";
       const allowance = await bridge.contract.read.erc20Allowance(market.assetAddress, ctx.address, LENDING_POOL_ADDRESS);
@@ -309,6 +316,8 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
       setApproving(false);
       setTxStatus("error");
       setTxResult(e.message || "transaction failed");
+    } finally {
+      setEncrypting(false);
     }
   }
 
@@ -318,12 +327,15 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     if (!wei) { setTxStatus("error"); setTxResult("invalid amount"); return; }
     const bridge = typeof window !== "undefined" ? window.bridge : null;
     if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
+    const borrowMarket = markets && markets.find(m => m.asset === (borrowAssetId || (markets.find(mm => mm.asset !== market.asset) || {}).asset));
+    const borrowTokenAddr = borrowMarket ? borrowMarket.assetAddress : market.assetAddress;
     setTxStatus("pending");
     setTxResult(null);
+    setEncrypting(true);
     try {
       const ltvNum = BigInt(Math.round(ltv));
       const ltvDen = 100n;
-      const res = await bridge.contract.write.borrowWithLtvCheck(market.assetAddress, market.assetAddress, wei, null, ltvNum, ltvDen, ctx.address);
+      const res = await bridge.contract.write.borrowWithLtvCheck(market.assetAddress, borrowTokenAddr, wei, null, ltvNum, ltvDen, ctx.address);
       if (res.status === "confirmed") {
         setTxStatus("success");
         setTxResult(res.hash);
@@ -337,6 +349,8 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     } catch (e) {
       setTxStatus("error");
       setTxResult(e.message || "transaction failed");
+    } finally {
+      setEncrypting(false);
     }
   }
 
@@ -348,6 +362,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
     setTxStatus("pending");
     setTxResult(null);
+    setEncrypting(true);
     try {
       const res = await bridge.contract.write.repayDebt(market.assetAddress, wei, null, ctx.address);
       if (res.status === "confirmed") {
@@ -363,6 +378,8 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     } catch (e) {
       setTxStatus("error");
       setTxResult(e.message || "transaction failed");
+    } finally {
+      setEncrypting(false);
     }
   }
 
@@ -374,6 +391,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     if (!bridge || !bridge.contract) { setTxStatus("error"); setTxResult("bridge unavailable"); return; }
     setTxStatus("pending");
     setTxResult(null);
+    setEncrypting(true);
     try {
       const res = await bridge.contract.write.partialUnshield(market.assetAddress, wei, null, ctx.address);
       if (res.status === "confirmed") {
@@ -389,6 +407,8 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     } catch (e) {
       setTxStatus("error");
       setTxResult(e.message || "transaction failed");
+    } finally {
+      setEncrypting(false);
     }
   }
 
@@ -410,6 +430,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
               style={{ border: 0, outline: "none", background: "transparent", fontFamily: "var(--mono)", fontSize: 30, flex: 1, color: "var(--ink)", fontVariantNumeric: "tabular-nums", minWidth: 0 }}
+              data-testid="amount-input"
             />
             <span className="mono" style={{ fontSize: 14, color: "var(--muted)", alignSelf: "center" }}>{market.asset}</span>
           </div>
@@ -433,6 +454,22 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
             color: "var(--accent-ink)", fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.55,
           }}>
             <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Permit required</strong> · grant a permit so your wallet can encrypt and submit this amount. One signature, no gas, expires in 15 minutes.
+          </div>
+        )}
+
+        {side === "borrow" && markets && markets.length > 1 && (
+          <div style={{ marginBottom: 8 }}>
+            <span className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Borrow asset</span>
+            <select
+              value={borrowAssetId || (markets.find(m => m.asset !== market.asset) || {}).asset || ""}
+              onChange={(e) => setBorrowAssetId(e.target.value)}
+              style={{ width: "100%", padding: "8px", background: "var(--input)", color: "var(--foreground)", border: "1px solid var(--border)" }}
+              data-testid="borrow-asset-select"
+            >
+              {markets.filter(m => m.asset !== market.asset).map(m => (
+                <option key={m.asset} value={m.asset}>{m.asset}</option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -464,12 +501,14 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
           ) : locked ? (
             <button className="btn accent lg" style={{ flex: 1 }} onClick={grantPermit}>Grant permit first <span className="ar">→</span></button>
           ) : (
-            <button className="btn lg" style={{ flex: 1 }} onClick={handleAction} disabled={txStatus === "pending"}>
+            <button className="btn lg" style={{ flex: 1 }} onClick={handleAction} disabled={txStatus === "pending"} data-testid="submit-action">
               {approving
                 ? "Approving…"
-                : txStatus === "pending"
-                  ? `${side === "repay" ? "Repaying…" : side === "withdraw" ? "Withdrawing…" : "submitting…"}`
-                  : `Encrypt & ${side} ${amount} ${market.asset}`
+                : encrypting
+                  ? "Encrypting…"
+                  : txStatus === "pending"
+                    ? `${side === "repay" ? "Repaying…" : side === "withdraw" ? "Withdrawing…" : "submitting…"}`
+                    : `Encrypt & ${side} ${amount} ${market.asset}`
               } <span className="ar">→</span>
             </button>
           )}
