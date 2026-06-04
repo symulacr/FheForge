@@ -5,7 +5,6 @@ import { InEuint128, euint128 } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 
 interface ILendingPool {
     function shield(address token, uint256 amount, InEuint128 calldata encAmount) external;
-    function shieldEth(InEuint128 calldata encAmount) external payable;
     function depositFor(address token, uint256 amount, euint128 handle, address user) external;
     function borrowWithLtvCheck(
         address collateralToken,
@@ -52,4 +51,18 @@ interface ILendingPool {
         uint256 collateralAmount,
         uint256 borrowAmount
     ) external view returns (bool liquidatable);
+
+    // Commit-reveal functions (no plaintext in calldata)
+    function shield(address token, InEuint128 calldata encAmount) external payable returns (bytes32 commitId);
+    function executeShield(address token, bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable;
+    function commitBorrow(address collateralToken, address borrowToken, InEuint128 calldata encBorrowAmount, uint128 ltvNum, uint128 ltvDen) external payable returns (bytes32 commitId);
+    function executeBorrow(bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable returns (euint128 actual);
+    function repay(address token, InEuint128 calldata encAmount) external payable returns (bytes32 commitId);
+    function executeRepay(address token, bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable;
+    function withdraw(address token, InEuint128 calldata encAmount) external payable returns (bytes32 commitId);
+    function executeWithdraw(address token, bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable;
+    function shieldEth(InEuint128 calldata encAmount) external payable returns (bytes32 commitId);
+    function executeShieldEth(bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable;
+    function withdrawEth(InEuint128 calldata encAmount) external payable returns (bytes32 commitId);
+    function executeWithdrawEth(bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable;
 }

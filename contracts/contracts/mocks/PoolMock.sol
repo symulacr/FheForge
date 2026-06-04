@@ -56,10 +56,6 @@ contract PoolMock is ILendingPool {
         revert NotMocked();
     }
 
-    function shieldEth(InEuint128 calldata) external payable {
-        revert NotMocked();
-    }
-
     function borrowWithLtvCheck(
         address,
         address,
@@ -121,6 +117,56 @@ contract PoolMock is ILendingPool {
         uint128,
         bytes calldata
     ) external pure {
+        revert NotMocked();
+    }
+
+    // ── Commit-reveal stubs ───────────────────────────────────────
+
+    function shield(address, InEuint128 calldata) external payable returns (bytes32) {
+        revert NotMocked();
+    }
+
+    function executeShield(address, bytes32, uint128, bytes calldata) external payable {
+        revert NotMocked();
+    }
+
+    function commitBorrow(address, address, InEuint128 calldata, uint128, uint128) external payable returns (bytes32) {
+        revert NotMocked();
+    }
+
+    function executeBorrow(bytes32, uint128, bytes calldata) external payable returns (euint128) {
+        revert NotMocked();
+    }
+
+    function repay(address, InEuint128 calldata) external payable returns (bytes32) {
+        revert NotMocked();
+    }
+
+    function executeRepay(address, bytes32, uint128, bytes calldata) external payable {
+        revert NotMocked();
+    }
+
+    function withdraw(address, InEuint128 calldata) external payable returns (bytes32) {
+        revert NotMocked();
+    }
+
+    function executeWithdraw(address, bytes32, uint128, bytes calldata) external payable {
+        revert NotMocked();
+    }
+
+    function shieldEth(InEuint128 calldata) external payable returns (bytes32) {
+        revert NotMocked();
+    }
+
+    function executeShieldEth(bytes32, uint128, bytes calldata) external payable {
+        revert NotMocked();
+    }
+
+    function withdrawEth(InEuint128 calldata) external payable returns (bytes32) {
+        revert NotMocked();
+    }
+
+    function executeWithdrawEth(bytes32, uint128, bytes calldata) external payable {
         revert NotMocked();
     }
 }
