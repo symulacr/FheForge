@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Contract, formatUnits, JsonRpcProvider } from 'ethers';
 import { MarketResponseDto } from './dtos/market-response.dto';
@@ -66,7 +66,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 }
 
 @Injectable()
-export class MarketsService {
+export class MarketsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MarketsService.name);
   private provider: JsonRpcProvider | null = null;
   private contracts: MarketContracts | null = null;
@@ -77,9 +77,32 @@ export class MarketsService {
   private pricesCache: { data: PriceResponseDto[]; expiresAt: number } | null =
     null;
   private statusCache: { data: MarketsStatus; expiresAt: number } | null = null;
-  private readonly cacheTtlMs = 60_000;
+  private readonly cacheTtlMs = 5 * 60_000;
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(@Optional() private readonly configService?: ConfigService) {}
+
+  async onModuleInit(): Promise<void> {
+    try {
+      await this.getAllMarkets();
+      await this.getPrices();
+      this.logger.log('Markets cache pre-warmed');
+    } catch (e) {
+      this.logger.warn(`Markets pre-warm failed: ${(e as Error).message}`);
+    }
+    this.refreshTimer = setInterval(() => {
+      this.getAllMarkets().catch((e) =>
+        this.logger.warn(`Markets refresh failed: ${(e as Error).message}`),
+      );
+      this.getPrices().catch((e) =>
+        this.logger.warn(`Prices refresh failed: ${(e as Error).message}`),
+      );
+    }, this.cacheTtlMs);
+  }
+
+  onModuleDestroy(): void {
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+  }
 
   async getAllMarkets(): Promise<MarketResponseDto[]> {
     if (this.marketsCache && Date.now() < this.marketsCache.expiresAt) {
