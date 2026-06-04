@@ -302,7 +302,7 @@ const ERC20_READ_ABI = [
  * @property {(voteData: any) => Promise<any>} castVote
  * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} shieldCommit
  * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} shieldExecute
- * @property {(token: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} borrowCommit
+ * @property {(collateralToken: `0x${string}`, borrowToken: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} borrowCommit
  * @property {(commitId: string, account: `0x${string}`) => Promise<TransactionResult>} borrowExecute
  * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} repayCommit
  * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} repayExecute
@@ -909,7 +909,7 @@ export function createContractAdapter(config, options = {}) {
 			let commitId = "";
 			if (result.receipt?.logs) {
 				for (const log of result.receipt.logs) {
-					if (log.topics?.[0] && log.data && log.data !== "0x") {
+					if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
 						commitId = log.topics[1] ?? log.data.slice(0, 66);
 						break;
 					}
@@ -937,13 +937,13 @@ export function createContractAdapter(config, options = {}) {
 		},
 
 		/**
-		 * Commit phase: encrypt amount and call commitBorrow(token, encAmount, ltvNum, ltvDen).
+		 * Commit phase: encrypt amount and call commitBorrow(collateralToken, borrowToken, encAmount, ltvNum, ltvDen).
 		 * Returns { ...result, commitId } extracted from receipt logs.
-		 * @type {(token: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
+		 * @type {(collateralToken: `0x${string}`, borrowToken: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
 		 */
-		borrowCommit: async (token, amount, ltvNum, ltvDen, account) => {
+		borrowCommit: async (collateralToken, borrowToken, amount, ltvNum, ltvDen, account) => {
 			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
-				? await _fheAdapter.encrypt(String(amount), token)
+				? await _fheAdapter.encrypt(String(amount), borrowToken)
 				: undefined;
 			const wc = getWc();
 			const result = await estimateSendAndWait(
@@ -952,13 +952,13 @@ export function createContractAdapter(config, options = {}) {
 				CONTRACT_ADDRESSES.LendingPool,
 				CONTRACT_ABIS.LendingPool,
 				"commitBorrow",
-				[token, encAmount, ltvNum, ltvDen],
+				[collateralToken, borrowToken, encAmount, ltvNum, ltvDen],
 				account,
 			);
 			let commitId = "";
 			if (result.receipt?.logs) {
 				for (const log of result.receipt.logs) {
-					if (log.topics?.[0] && log.data && log.data !== "0x") {
+					if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
 						commitId = log.topics[1] ?? log.data.slice(0, 66);
 						break;
 					}
@@ -1007,7 +1007,7 @@ export function createContractAdapter(config, options = {}) {
 			let commitId = "";
 			if (result.receipt?.logs) {
 				for (const log of result.receipt.logs) {
-					if (log.topics?.[0] && log.data && log.data !== "0x") {
+					if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
 						commitId = log.topics[1] ?? log.data.slice(0, 66);
 						break;
 					}
@@ -1056,7 +1056,7 @@ export function createContractAdapter(config, options = {}) {
 			let commitId = "";
 			if (result.receipt?.logs) {
 				for (const log of result.receipt.logs) {
-					if (log.topics?.[0] && log.data && log.data !== "0x") {
+					if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
 						commitId = log.topics[1] ?? log.data.slice(0, 66);
 						break;
 					}
