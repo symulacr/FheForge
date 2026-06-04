@@ -1,8 +1,8 @@
 # 🏗️ FheForge — Private, Encrypted DeFi on Arbitrum Sepolia
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Solidity-0.8.28-363636?logo=solidity" alt="Solidity 0.8.28"/>
-  <img src="https://img.shields.io/badge/Next.js-14-000000?logo=next.js" alt="Next.js 14"/>
+  <img src="https://img.shields.io/badge/Solidity-0.8.34-363636?logo=solidity" alt="Solidity 0.8.34"/>
+  <img src="https://img.shields.io/badge/React-18-61DAFB?logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs" alt="NestJS 11"/>
   <img src="https://img.shields.io/badge/FHE-CoFHE/Fhenix-8B5CF6" alt="FHE"/>
   <img src="https://img.shields.io/badge/Chain-Arbitrum_Sepolia-2D374B?logo=arbitrum" alt="Arbitrum Sepolia"/>
@@ -21,7 +21,7 @@
 
 **FheForge** brings **fully homomorphic encryption (FHE)** to DeFi, letting you build, manage, and automate encrypted financial strategies — without exposing your positions to the world. Supply, borrow, swap, and liquidate with amounts that stay encrypted on-chain. Only you control who can decrypt and verify your position.
 
-🔗 **Live app:** [fheforge-xkq.vercel.app](https://fheforge-xkq.vercel.app)  
+🔗 **Live app:** [fheforge.vercel.app](https://fheforge.vercel.app)  
 🔗 **API:** [fheforge-api-production-6465.up.railway.app](https://fheforge-api-production-6465.up.railway.app)  
 🔗 **Source:** [github.com/symulacr/FheForge](https://github.com/symulacr/FheForge)  
 🔗 **Release:** [v1.2.0 — Buildathon submission](https://github.com/symulacr/FheForge/releases/tag/v1.2.0)
@@ -46,7 +46,7 @@
 
 Try the live demo — no install required:
 
-1. Open [fheforge-xkq.vercel.app](https://fheforge-xkq.vercel.app) with MetaMask on Arbitrum Sepolia
+1. Open [fheforge.vercel.app](https://fheforge.vercel.app) with MetaMask on Arbitrum Sepolia
 2. Connect your wallet and deposit collateral (faucet tokens available)
 3. Build a strategy using the visual ReactFlow canvas or describe it to the AI
 4. Deploy and watch your encrypted position execute
@@ -249,12 +249,12 @@ This project is submitted to the **Akindo "Private By Design" dApp Buildathon (W
 | **Track**        | RWA & Compliance · DeFi & Lending · Privacy Infrastructure                                                |
 | **Category**     | DeFi, RWA Tokenization, Privacy Infrastructure                                                            |
 | **Tags**         | `FHE`, `CoFHE`, `Fhenix`, `Encrypted-DeFi`, `Privacy`, `RWA`, `Lending`, `Liquidations`, `Strategy-Vault` |
-| **Demo URL**     | [fheforge-xkq.vercel.app](https://fheforge-xkq.vercel.app)                                                  |
+| **Demo URL**     | [fheforge.vercel.app](https://fheforge.vercel.app)                                                  |
 | **Repo**         | [github.com/symulacr/FheForge](https://github.com/symulacr/FheForge)                                      |
 
 ### Judges — Quick Links
 
-- **[Live App](https://fheforge-xkq.vercel.app)** — Connect wallet on Arbitrum Sepolia and try it
+- **[Live App](https://fheforge.vercel.app)** — Connect wallet on Arbitrum Sepolia and try it
 - **[Deployed Contracts](#contracts--arbitrum-sepolia-421614)** — Verified on Arbiscan
 - **[Architecture](#architecture)** — End-to-end system design
 - **[Test Results](#tests)** — Forge live test suite (expanded: dual input, state audit, governance)
@@ -284,11 +284,11 @@ graph TB
         BROWSER["Browser / Wallet<br/>(MetaMask, Rabby)"]
     end
 
-    subgraph "UI — Next.js 14"
+    subgraph "UI — Static SPA"
         WAGMI["Wagmi + Viem<br/>Wallet + Chain"]
         COFHE["@cofhe/react SDK<br/>Encrypt/Decrypt"]
         BUILDER["ReactFlow<br/>Strategy Canvas"]
-        NEXT["Next.js App Router"]
+        SPA["Babel Standalone + JSX"]
     end
 
     subgraph "BACKEND — NestJS"
@@ -307,11 +307,11 @@ graph TB
         REG["StrategyRegistry"]
     end
 
-    BROWSER --> NEXT
+    BROWSER --> SPA
     BROWSER --> WAGMI
     WAGMI --> COFHE
-    NEXT --> BUILDER
-    NEXT --> API
+    SPA --> BUILDER
+    SPA --> API
     API --> AI
     API --> STRAT
     API --> SUPA
@@ -329,22 +329,6 @@ graph TB
 **Data flow:** User builds a strategy in ReactFlow → Backend parses and simulates it → User confirms → Frontend calls FheForgeComposer → Composer orchestrates Vault/LendingPool/SwapRouter with encrypted amounts.
 
 _Infrastructure: Grafana + Prometheus (planned for production deployment)._
-
----
-
-## Contracts — Arbitrum Sepolia (421614)
-
-| Contract         | Address                                      |
-| ---------------- | -------------------------------------------- |
-| StrategyRegistry | `0xC1256f738f1bF9D08F8168eE48e34d4E929DDE9C` |
-| LendingPool      | `0x6903df3E8f45497C3097A16E534787D6Fc9F58eF` |
-| PriceOracle      | `0xFB8fb4232f70bF41750515F54861b0698938ceDe` |
-| SwapRouter       | `0x1136E5eF8bB8E189aE83894eCB2F0c67E3097Ea1` |
-| ExecutorContract | `0x80EF32CE77f5DC7aA92d200f36357cd83ef8407D` |
-| StrategyVault    | `0xf3cB0A1b02128C630C2bca9b50151FbC350f6AFC` |
-| FheForgeComposer | `0x65dB0572076f14b838327F5C2513f32b927Ec36E` |
-| TokenRegistry    | `0x7aF5d7E762D895C917EA3c9e72Ca134176A32AD3` |
-| StrategyExecutor | `0x9eCC8c61F65EBB652d3DfA3A32Eac08487CC1e00` |
 
 ---
 
@@ -496,8 +480,8 @@ The UI is a product-register interface: dark terminal aesthetic, JetBrains Mono 
 
 | Layer           | Technology                                                                                                      |
 | --------------- | --------------------------------------------------------------------------------------------------------------- |
-| Smart Contracts | Solidity 0.8.28, CoFHE SDK, OpenZeppelin, Hardhat + Foundry                                                     |
-| Frontend        | Next.js 14, React 18, wagmi v2, viem, @cofhe/react, ReactFlow, Tailwind CSS, shadcn/ui, TanStack Query, Zustand |
+| Smart Contracts | Solidity 0.8.34, CoFHE SDK, OpenZeppelin, Hardhat + Foundry                                                     |
+| Frontend        | React 18, Babel Standalone, wagmi v2, viem, @cofhe/react, ReactFlow, Tailwind CSS                                             |
 | Backend         | NestJS 11, Supabase (PostgreSQL), @nestjs/swagger, Google Gemini AI                                             |
 | Blockchain      | Arbitrum Sepolia (CoFHE TaskManager)                                                                            |
 | Deployment      | Vercel (frontend), Railway (API)                                                                                |
