@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { FHE, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import { FHESafeMath128 } from "./libraries/FHESafeMath128.sol";
+import { FheACL } from "./libraries/FheACL.sol";
 
 /// @notice Abstract base contract for all FheForge contracts.
 ///         Provides shared ownership, pausability, FHE helpers, errors, and constants.
@@ -140,8 +141,7 @@ abstract contract FheForgeBase {
     }
 
     function _grantAcl(euint128 handle, address user) internal {
-        FHE.allowThis(handle);
-        FHE.allow(handle, user);
+        FheACL.grantAccess(handle, user);
     }
 
     function _safeIncrease(
@@ -149,8 +149,7 @@ abstract contract FheForgeBase {
         euint128 delta,
         address user
     ) internal returns (euint128 newBalance) {
-        (, newBalance) = FHESafeMath128.tryIncrease(stored, delta);
-        _grantAcl(newBalance, user);
+        return FheACL.safeIncrease(stored, delta, user);
     }
 
     function _safeDecrease(
@@ -158,9 +157,7 @@ abstract contract FheForgeBase {
         euint128 delta,
         address user
     ) internal returns (euint128 newBalance) {
-        (, newBalance) = FHESafeMath128.tryDecrease(stored, delta);
-        _grantAcl(newBalance, user);
-        return newBalance;
+        return FheACL.safeDecrease(stored, delta, user);
     }
 
     function _verifyEquality(
