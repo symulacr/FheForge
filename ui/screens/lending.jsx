@@ -199,6 +199,16 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
                       data-testid="drip-button"
                     >Drip</button>
                   )}
+                  {i === 0 && ctx.connected && (
+                    <a
+                      href="https://faucets.chain.link/arbitrum-sepolia"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn ghost sm"
+                      style={{ padding: "2px 6px", fontSize: 9, letterSpacing: 0.06, textTransform: "uppercase", marginTop: 2, textDecoration: "none" }}
+                      data-testid="eth-faucet-link"
+                    >Get ETH ↗</a>
+                  )}
                 </div>
               }
               selected={assetId === m.asset}
