@@ -17,6 +17,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { Public } from '../../auth/public.decorator';
 import { StrategyMapper } from '../application/mappers/strategy.mapper';
 import { StrategyService } from '../application/strategy.service';
 import type { CreateStrategyDto } from './dtos/create-strategy.dto';
@@ -41,6 +42,7 @@ export class StrategiesController {
     return StrategyMapper.toResponse(created);
   }
 
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get strategy by ID' })
   @ApiParam({ name: 'id', description: 'Strategy ID' })
@@ -54,6 +56,7 @@ export class StrategiesController {
     return StrategyMapper.toResponse(found);
   }
 
+  @Public()
   @Get()
   @ApiOperation({
     summary: 'List strategies with filters, search, tags, sort, limit',

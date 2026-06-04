@@ -12,6 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Public } from '../../auth/public.decorator';
 import { DefiStrategiesService } from '../application/defi_strategies.service';
 import { DefiStrategyVersionService } from '../application/defi_strategy_version.service';
 import { DefiSimulationEngine } from '../application/defi-simulation-engine.service';
@@ -57,6 +58,7 @@ export class DefiStrategiesController {
     );
   }
 
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get a DeFi strategy by ID' })
   @ApiParam({ name: 'id', description: 'The ID of the DeFi strategy' })
@@ -64,6 +66,7 @@ export class DefiStrategiesController {
     return this.defiStrategiesService.getById(id);
   }
 
+  @Public()
   @Get()
   @ApiOperation({
     summary: 'Get all DeFi strategies, optionally filtered by owner',

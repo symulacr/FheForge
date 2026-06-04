@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { v4 as uuidv4 } from 'uuid';
+import { Public } from '../../auth/public.decorator';
 import { DefiActionRequiredService } from '../application/defi_action_required.service';
 import { DefiModuleActionsService } from '../application/defi_module_actions.service';
 import { DefiModulesService } from '../application/defi_modules.service';
@@ -28,6 +29,7 @@ export class DefiModulesController {
     return this.defiModulesService.create(body);
   }
 
+  @Public()
   @Get()
   @ApiOperation({
     summary: 'Get all DeFi modules',
@@ -69,6 +71,7 @@ export class DefiModulesController {
     );
   }
 
+  @Public()
   @Get('/actions/required')
   @ApiOperation({
     summary: 'Get valid actions',
