@@ -105,6 +105,12 @@ contract StrategyVault is FheForgeBase {
 
         SharedStrategyMeta.grantPositionAcl(user, encAmount, _ZERO);
 
+        if (strategyId != 0) {
+            FHE.allowThis(encAmount);
+            FHE.allowTransient(encAmount, REGISTRY);
+            IStrategyRegistry(REGISTRY).incrementTvl(strategyId, encAmount);
+        }
+
         emit PositionOpened(positionId, user, token, strategyId);
     }
 
@@ -139,6 +145,14 @@ contract StrategyVault is FheForgeBase {
 
         SharedStrategyMeta.grantUpdatedHandle(user, positions[user][positionId].collateral);
 
+        uint256 stratId = positionStrategyId[positionId];
+        if (stratId != 0) {
+            euint128 updatedColl = positions[user][positionId].collateral;
+            FHE.allowThis(updatedColl);
+            FHE.allowTransient(updatedColl, REGISTRY);
+            IStrategyRegistry(REGISTRY).incrementTvl(stratId, encAmount);
+        }
+
         emit CollateralAdded(positionId, user, collateralToken);
     }
 
@@ -172,6 +186,7 @@ contract StrategyVault is FheForgeBase {
 
         if (fullClose) {
             _deletePosition(beneficiary, positionId);
+            positionExists[positionId] = false;
         }
 
         if (strategyId != 0) {
