@@ -8,11 +8,11 @@ import type { OptimizeStrategyDto } from './dtos/optimize-strategy.dto';
 
 @ApiTags('AI Strategy Builder - Advanced')
 @Controller('ai-strategy-builder/advanced')
-@Public()
 @Throttle({ default: { ttl: 60000, limit: 5 } })
 export class AiStrategyBuilderAdvancedController {
   constructor(private readonly geminiAi: GeminiAiService) {}
 
+  @Public()
   @Post('analyze-risk')
   @ApiOperation({
     summary: 'Analyze strategy risk using Gemini AI',
@@ -27,6 +27,7 @@ export class AiStrategyBuilderAdvancedController {
     return this.geminiAi.analyzeStrategyRisk(dto.steps);
   }
 
+  @Public()
   @Post('optimize')
   @ApiOperation({
     summary: 'Optimize strategy using Gemini AI',

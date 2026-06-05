@@ -8,13 +8,13 @@ import { BuildStrategyResponseDto } from './dtos/build-strategy-response.dto';
 
 @ApiTags('AI Strategy Builder')
 @Controller('ai-strategy-builder')
-@Public()
 @Throttle({ default: { ttl: 60000, limit: 5 } })
 export class AiStrategyBuilderController {
   constructor(
     private readonly aiStrategyBuilderService: AiStrategyBuilderService,
   ) {}
 
+  @Public()
   @Post('build')
   @ApiOperation({
     summary: 'Build DeFi strategy from natural language',
