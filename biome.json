@@ -14,7 +14,9 @@
 			"!ui/.next",
 			"!backend/apps/dist",
 			"!contracts/artifacts",
-			"!contracts/cache"
+			"!contracts/cache",
+			"!contracts/out",
+			"!.agents"
 		]
 	},
 	"formatter": {

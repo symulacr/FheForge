@@ -147,7 +147,8 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO)) revert VerificationFailed();
+        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO))
+            revert VerificationFailed();
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         liquidReserve[token] += amount;
         euint128 stored = supplyBalances[token][msg.sender];
@@ -206,7 +207,8 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO)) revert VerificationFailed();
+        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO))
+            revert VerificationFailed();
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         totalPlainBorrow[token] -= amount;
         liquidReserve[token] += amount;
@@ -234,7 +236,8 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO)) revert VerificationFailed();
+        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO))
+            revert VerificationFailed();
         uint256 reserve = liquidReserve[token];
         if (reserve < amount) revert InsufficientReserve();
         unchecked {
@@ -366,7 +369,8 @@ contract LendingPool is FheForgeBase {
         liquidReserve[tokenAddr] += msg.value;
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, msg.value);
-        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO)) revert VerificationFailed();
+        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO))
+            revert VerificationFailed();
         euint128 stored = supplyBalances[tokenAddr][msg.sender];
         supplyBalances[tokenAddr][msg.sender] = _safeIncrease(stored, verifiedIncoming, msg.sender);
         weth.deposit{ value: msg.value }();
@@ -618,7 +622,8 @@ contract LendingPool is FheForgeBase {
 
         euint128 requested = FHE.asEuint128(encBorrowAmount);
         euint128 verifiedRequested = _verifyEquality(requested, borrowAmount);
-        if (euint128.unwrap(verifiedRequested) == euint128.unwrap(_ZERO)) revert VerificationFailed();
+        if (euint128.unwrap(verifiedRequested) == euint128.unwrap(_ZERO))
+            revert VerificationFailed();
 
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
         unchecked {

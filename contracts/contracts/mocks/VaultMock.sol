@@ -48,9 +48,7 @@ contract VaultMock is IStrategyVault {
         revert NotMocked();
     }
 
-    function getPositionMeta(
-        bytes32
-    ) external pure returns (uint256, uint256) {
+    function getPositionMeta(bytes32) external pure returns (uint256, uint256) {
         revert NotMocked();
     }
 
