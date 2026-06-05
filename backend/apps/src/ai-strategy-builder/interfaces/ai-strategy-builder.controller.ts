@@ -1,6 +1,5 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../auth/public.decorator';
 import { AiStrategyBuilderService } from '../application/ai-strategy-builder.service';
 import type { BuildStrategyDto } from './dtos/build-strategy.dto';
@@ -8,7 +7,6 @@ import { BuildStrategyResponseDto } from './dtos/build-strategy-response.dto';
 
 @ApiTags('AI Strategy Builder')
 @Controller('ai-strategy-builder')
-@Throttle({ default: { ttl: 60000, limit: 5 } })
 export class AiStrategyBuilderController {
   constructor(
     private readonly aiStrategyBuilderService: AiStrategyBuilderService,
