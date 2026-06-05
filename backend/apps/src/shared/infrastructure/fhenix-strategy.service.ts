@@ -1,5 +1,5 @@
 import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { Contract, formatUnits, JsonRpcProvider } from 'ethers';
 
 const PRICE_ORACLE_ABI = [
