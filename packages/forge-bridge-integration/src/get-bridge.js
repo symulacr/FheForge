@@ -28,7 +28,7 @@
  * @returns {typeof globalThis}
  */
 function getGlobal() {
-	return typeof window !== "undefined" ? window : globalThis;
+  return typeof window !== 'undefined' ? window : globalThis;
 }
 
 /**
@@ -39,8 +39,8 @@ function getGlobal() {
  * @returns {Object|null} Bridge adapter or null if not yet available
  */
 function getBridgeSync() {
-	const g = getGlobal();
-	return g.bridge || null;
+  const g = getGlobal();
+  return g.bridge || null;
 }
 
 // ─── Bridge Resolution ───────────────────────────────────────────────────
@@ -57,29 +57,29 @@ function getBridgeSync() {
  * @returns {Promise<Object>} The bridge adapter
  */
 function getBridge(timeout = 10000, interval = 100) {
-	const syncBridge = getBridgeSync();
-	if (syncBridge) return Promise.resolve(syncBridge);
+  const syncBridge = getBridgeSync();
+  if (syncBridge) return Promise.resolve(syncBridge);
 
-	return new Promise((resolve, reject) => {
-		let retries = 0;
-		const maxRetries = Math.max(1, Math.ceil(timeout / interval));
-		const timer = setInterval(() => {
-			const b = getBridgeSync();
-			if (b) {
-				clearInterval(timer);
-				resolve(b);
-			} else if (++retries >= maxRetries) {
-				clearInterval(timer);
-				reject(new Error("Bridge adapter not available after timeout"));
-			}
-		}, interval);
-	});
+  return new Promise((resolve, reject) => {
+    let retries = 0;
+    const maxRetries = Math.max(1, Math.ceil(timeout / interval));
+    const timer = setInterval(() => {
+      const b = getBridgeSync();
+      if (b) {
+        clearInterval(timer);
+        resolve(b);
+      } else if (++retries >= maxRetries) {
+        clearInterval(timer);
+        reject(new Error('Bridge adapter not available after timeout'));
+      }
+    }, interval);
+  });
 }
 
 // ─── Window Export (for IIFE / non-module consumers) ─────────────────────
 
-if (typeof window !== "undefined") {
-	window.__getBridge = getBridge;
+if (typeof window !== 'undefined') {
+  window.__getBridge = getBridge;
 }
 
 export default getBridge;

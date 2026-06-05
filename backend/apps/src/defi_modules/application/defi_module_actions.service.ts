@@ -1,33 +1,33 @@
-import { Injectable } from "@nestjs/common";
-import { v4 as uuidv4 } from "uuid";
-import { DefiModuleAction } from "../domain/defi_module_actions.entity";
-import type { DefiModuleActionsRepository } from "../domain/defi_module_actions.repository";
-import type { CreateDefiModuleActionDto } from "../interfaces/dtos/create_defi_module_action.dto";
-import type { DefiModulesService } from "./defi_modules.service";
+import { Injectable } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
+import { DefiModuleAction } from '../domain/defi_module_actions.entity';
+import type { DefiModuleActionsRepository } from '../domain/defi_module_actions.repository';
+import type { CreateDefiModuleActionDto } from '../interfaces/dtos/create_defi_module_action.dto';
+import type { DefiModulesService } from './defi_modules.service';
 
 @Injectable()
 export class DefiModuleActionsService {
-	constructor(
-		private readonly defiModuleActionsRepository: DefiModuleActionsRepository,
-		private readonly defiModulesService: DefiModulesService,
-	) {}
+  constructor(
+    private readonly defiModuleActionsRepository: DefiModuleActionsRepository,
+    private readonly defiModulesService: DefiModulesService,
+  ) {}
 
-	async createAction(data: CreateDefiModuleActionDto): Promise<DefiModuleAction> {
-		await this.defiModulesService.getById(data.module_id);
+  async createAction(data: CreateDefiModuleActionDto): Promise<DefiModuleAction> {
+    await this.defiModulesService.getById(data.module_id);
 
-		return this.defiModuleActionsRepository.save(
-			new DefiModuleAction(
-				uuidv4(),
-				data.module_id,
-				data.name,
-				data.pallet,
-				data.call,
-				data.description,
-				data.param_schema,
-				data.risk_level,
-				data.is_active,
-				new Date(),
-			),
-		);
-	}
+    return this.defiModuleActionsRepository.save(
+      new DefiModuleAction(
+        uuidv4(),
+        data.module_id,
+        data.name,
+        data.pallet,
+        data.call,
+        data.description,
+        data.param_schema,
+        data.risk_level,
+        data.is_active,
+        new Date(),
+      ),
+    );
+  }
 }

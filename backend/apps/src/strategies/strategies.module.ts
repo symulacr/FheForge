@@ -1,17 +1,17 @@
-import { Module } from "@nestjs/common";
-import { SupabaseModule } from "../shared/supabase.module";
-import { StrategyService } from "./application/strategy.service";
-import { StrategiesRepository } from "./domain/strategies.repository";
-import { StrategiesRepositoryImplement } from "./infrastructure/strategies.repository.impl";
-import { StrategiesController } from "./interfaces/stategies.controller";
+import { Module } from '@nestjs/common';
+import { SupabaseModule } from '../shared/supabase.module';
+import { StrategyService } from './application/strategy.service';
+import { StrategiesRepository } from './domain/strategies.repository';
+import { StrategiesRepositoryImplement } from './infrastructure/strategies.repository.impl';
+import { StrategiesController } from './interfaces/stategies.controller';
 
 @Module({
-	imports: [SupabaseModule],
-	controllers: [StrategiesController],
-	providers: [
-		StrategyService,
-		{ provide: StrategiesRepository, useClass: StrategiesRepositoryImplement },
-	],
-	exports: [StrategyService],
+  imports: [SupabaseModule],
+  controllers: [StrategiesController],
+  providers: [
+    StrategyService,
+    { provide: StrategiesRepository, useClass: StrategiesRepositoryImplement },
+  ],
+  exports: [StrategyService],
 })
 export class StrategiesModule {}

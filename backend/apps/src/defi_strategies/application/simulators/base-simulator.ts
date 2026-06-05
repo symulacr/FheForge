@@ -1,27 +1,27 @@
-import type { StrategyStepResponseDto } from "src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto";
+import type { StrategyStepResponseDto } from 'src/ai-strategy-builder/interfaces/dtos/strategy-step-response.dto';
 import type {
-	ActionSimulator,
-	SimulationContext,
-	SimulationStepResult,
-} from "../../domain/simulation-engine.interface";
+  ActionSimulator,
+  SimulationContext,
+  SimulationStepResult,
+} from '../../domain/simulation-engine.interface';
 
 export abstract class BaseSimulator implements ActionSimulator {
-	abstract simulate(
-		step: StrategyStepResponseDto,
-		context: SimulationContext,
-	): SimulationStepResult | Promise<SimulationStepResult>;
+  abstract simulate(
+    step: StrategyStepResponseDto,
+    context: SimulationContext,
+  ): SimulationStepResult | Promise<SimulationStepResult>;
 
-	protected calculateFee(amount: number, feePercentage: number): number {
-		return amount * (feePercentage / 100);
-	}
+  protected calculateFee(amount: number, feePercentage: number): number {
+    return amount * (feePercentage / 100);
+  }
 
-	protected calculateSlippage(amount: number, slippagePercentage: number): number {
-		return amount * (slippagePercentage / 100);
-	}
+  protected calculateSlippage(amount: number, slippagePercentage: number): number {
+    return amount * (slippagePercentage / 100);
+  }
 
-	protected addWarning(context: SimulationContext, warning: string): void {
-		if (!context.warnings.includes(warning)) {
-			context.warnings.push(warning);
-		}
-	}
+  protected addWarning(context: SimulationContext, warning: string): void {
+    if (!context.warnings.includes(warning)) {
+      context.warnings.push(warning);
+    }
+  }
 }

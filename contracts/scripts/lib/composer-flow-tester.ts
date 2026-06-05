@@ -1,60 +1,60 @@
-import type { ethers } from "ethers";
+import type { ethers } from 'ethers';
 
 export interface FlowResult {
-	flowName: string;
-	status: "PASS" | "FAIL" | "WARN";
-	txHash: string;
-	gasUsed: string;
-	wallClockTimeMs: number;
-	observation: string;
+  flowName: string;
+  status: 'PASS' | 'FAIL' | 'WARN';
+  txHash: string;
+  gasUsed: string;
+  wallClockTimeMs: number;
+  observation: string;
 }
 
 export class ComposerFlowTester {
-	private results: FlowResult[] = [];
+  private results: FlowResult[] = [];
 
-	constructor(provider: ethers.Provider) {
-		this.provider = provider;
-	}
+  constructor(provider: ethers.Provider) {
+    this.provider = provider;
+  }
 
-	public async executeFlow(
-		flowName: string,
-		executionFn: () => Promise<ethers.TransactionResponse>,
-	): Promise<string> {
-		const start = Date.now();
-		try {
-			const tx = await executionFn();
-			const receipt = await tx.wait();
-			const elapsed = Date.now() - start;
+  public async executeFlow(
+    flowName: string,
+    executionFn: () => Promise<ethers.TransactionResponse>,
+  ): Promise<string> {
+    const start = Date.now();
+    try {
+      const tx = await executionFn();
+      const receipt = await tx.wait();
+      const elapsed = Date.now() - start;
 
-			this.results.push({
-				flowName,
-				status: "PASS",
-				txHash: tx.hash,
-				gasUsed: receipt?.gasUsed.toString() ?? "0",
-				wallClockTimeMs: elapsed,
-				observation: "Completed successfully on-chain.",
-			});
-			return tx.hash;
-		} catch (e: unknown) {
-			const elapsed = Date.now() - start;
-			const revertReason = e instanceof Error ? e.message : String(e);
-			const txHash =
-				e && typeof e === "object" && "transactionHash" in e
-					? String((e as Record<string, unknown>).transactionHash)
-					: "";
-			this.results.push({
-				flowName,
-				status: "WARN",
-				txHash,
-				gasUsed: "0",
-				wallClockTimeMs: elapsed,
-				observation: `Flow bypassed/reverted safely: ${revertReason.slice(0, 120)}`,
-			});
-			return "";
-		}
-	}
+      this.results.push({
+        flowName,
+        status: 'PASS',
+        txHash: tx.hash,
+        gasUsed: receipt?.gasUsed.toString() ?? '0',
+        wallClockTimeMs: elapsed,
+        observation: 'Completed successfully on-chain.',
+      });
+      return tx.hash;
+    } catch (e: unknown) {
+      const elapsed = Date.now() - start;
+      const revertReason = e instanceof Error ? e.message : String(e);
+      const txHash =
+        e && typeof e === 'object' && 'transactionHash' in e
+          ? String((e as Record<string, unknown>).transactionHash)
+          : '';
+      this.results.push({
+        flowName,
+        status: 'WARN',
+        txHash,
+        gasUsed: '0',
+        wallClockTimeMs: elapsed,
+        observation: `Flow bypassed/reverted safely: ${revertReason.slice(0, 120)}`,
+      });
+      return '';
+    }
+  }
 
-	public getResults(): FlowResult[] {
-		return this.results;
-	}
+  public getResults(): FlowResult[] {
+    return this.results;
+  }
 }

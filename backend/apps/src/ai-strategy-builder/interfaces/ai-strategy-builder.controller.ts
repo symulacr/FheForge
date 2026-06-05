@@ -1,38 +1,38 @@
-import { Body, Controller, Get, Post } from "@nestjs/common";
-import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { Public } from "../../auth/public.decorator";
-import type { AiStrategyBuilderService } from "../application/ai-strategy-builder.service";
-import type { BuildStrategyDto } from "./dtos/build-strategy.dto";
-import { BuildStrategyResponseDto } from "./dtos/build-strategy-response.dto";
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Public } from '../../auth/public.decorator';
+import type { AiStrategyBuilderService } from '../application/ai-strategy-builder.service';
+import type { BuildStrategyDto } from './dtos/build-strategy.dto';
+import { BuildStrategyResponseDto } from './dtos/build-strategy-response.dto';
 
-@ApiTags("AI Strategy Builder")
-@Controller("ai-strategy-builder")
+@ApiTags('AI Strategy Builder')
+@Controller('ai-strategy-builder')
 export class AiStrategyBuilderController {
-	constructor(private readonly aiStrategyBuilderService: AiStrategyBuilderService) {}
+  constructor(private readonly aiStrategyBuilderService: AiStrategyBuilderService) {}
 
-	@Public()
-	@Get("health")
-	health() {
-		return { status: "ok", service: "ai-strategy-builder" };
-	}
+  @Public()
+  @Get('health')
+  health() {
+    return { status: 'ok', service: 'ai-strategy-builder' };
+  }
 
-	@Public()
-	@Post("build")
-	@ApiOperation({
-		summary: "Build DeFi strategy from natural language",
-		description:
-			"Parse natural language input and generate executable strategy steps with validation",
-	})
-	@ApiResponse({
-		status: 201,
-		description: "Strategy successfully built and validated",
-		type: BuildStrategyResponseDto,
-	})
-	@ApiResponse({
-		status: 400,
-		description: "Invalid input or strategy validation failed",
-	})
-	async buildStrategy(@Body() dto: BuildStrategyDto): Promise<BuildStrategyResponseDto> {
-		return this.aiStrategyBuilderService.buildStrategy(dto);
-	}
+  @Public()
+  @Post('build')
+  @ApiOperation({
+    summary: 'Build DeFi strategy from natural language',
+    description:
+      'Parse natural language input and generate executable strategy steps with validation',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Strategy successfully built and validated',
+    type: BuildStrategyResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid input or strategy validation failed',
+  })
+  async buildStrategy(@Body() dto: BuildStrategyDto): Promise<BuildStrategyResponseDto> {
+    return this.aiStrategyBuilderService.buildStrategy(dto);
+  }
 }

@@ -6,21 +6,21 @@
  * Default bridge configuration.
  */
 export const DEFAULT_CONFIG = (() => {
-	const config = {
-		/** Production NestJS API base URL */
-		apiBaseUrl: "https://fheforge-api-production-6465.up.railway.app",
-		/** Arbitrum Sepolia chain ID */
-		chainId: 421614,
-		/** Public Arbitrum Sepolia RPC URL */
-		rpcUrl: "https://sepolia-arbitrum-rpc.publicnode.com",
-		/** WalletConnect Cloud project ID. Set via window.__FHEFORGE_CONFIG__.walletConnectProjectId to enable WalletConnect as a wallet fallback for users without an injected provider. */
-		walletConnectProjectId: undefined,
-	};
-	// Runtime override: window.__FHEFORGE_CONFIG__ takes priority
-	if (typeof window !== "undefined" && window.__FHEFORGE_CONFIG__) {
-		Object.assign(config, window.__FHEFORGE_CONFIG__);
-	}
-	return config;
+  const config = {
+    /** Production NestJS API base URL */
+    apiBaseUrl: 'https://fheforge-api-production-6465.up.railway.app',
+    /** Arbitrum Sepolia chain ID */
+    chainId: 421614,
+    /** Public Arbitrum Sepolia RPC URL */
+    rpcUrl: 'https://sepolia-arbitrum-rpc.publicnode.com',
+    /** WalletConnect Cloud project ID. Set via window.__FHEFORGE_CONFIG__.walletConnectProjectId to enable WalletConnect as a wallet fallback for users without an injected provider. */
+    walletConnectProjectId: undefined,
+  };
+  // Runtime override: window.__FHEFORGE_CONFIG__ takes priority
+  if (typeof window !== 'undefined' && window.__FHEFORGE_CONFIG__) {
+    Object.assign(config, window.__FHEFORGE_CONFIG__);
+  }
+  return config;
 })();
 
 /**
@@ -37,7 +37,7 @@ export const DEFAULT_CONFIG = (() => {
  * @returns {BridgeConfig} Merged configuration
  */
 export function createConfig(overrides = {}) {
-	return { ...DEFAULT_CONFIG, ...overrides };
+  return { ...DEFAULT_CONFIG, ...overrides };
 }
 
 export default DEFAULT_CONFIG;

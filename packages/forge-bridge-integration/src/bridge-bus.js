@@ -40,31 +40,31 @@
 
 /** @type {BridgeState} */
 const DEFAULT_STATE = Object.freeze({
-	public: {
-		ticker: null,
-		markets: null,
-		activities: null,
-	},
-	authed: {
-		positions: null,
-		strategies: null,
-		proposals: null,
-		nodeTypes: null,
-		walletBalance: null,
-	},
-	wallet: {
-		connected: false,
-		address: null,
-		chainId: null,
-	},
-	permit: {
-		unlocked: false,
-		secondsLeft: 0,
-	},
-	meta: {
-		dataVersion: 0,
-		errors: [],
-	},
+  public: {
+    ticker: null,
+    markets: null,
+    activities: null,
+  },
+  authed: {
+    positions: null,
+    strategies: null,
+    proposals: null,
+    nodeTypes: null,
+    walletBalance: null,
+  },
+  wallet: {
+    connected: false,
+    address: null,
+    chainId: null,
+  },
+  permit: {
+    unlocked: false,
+    secondsLeft: 0,
+  },
+  meta: {
+    dataVersion: 0,
+    errors: [],
+  },
 });
 
 /**
@@ -85,375 +85,375 @@ const DEFAULT_STATE = Object.freeze({
  * Sub-key events (data:*) write to a specific key within a domain.
  */
 const EVENT_MAP = {
-	// Events → public domain
-	"data:ticker": { domain: "public", key: "ticker" },
-	"data:markets": { domain: "public", key: "markets" },
-	"data:activities": { domain: "public", key: "activities" },
-	// Events → authed domain
-	"data:positions": { domain: "authed", key: "positions" },
-	"data:strategies": { domain: "authed", key: "strategies" },
-	"data:proposals": { domain: "authed", key: "proposals" },
-	"data:community": { domain: "authed", key: "community" },
-	"data:templates": { domain: "authed", key: "templates" },
-	"data:nodeTypes": { domain: "authed", key: "nodeTypes" },
-	"data:walletBalance": { domain: "authed", key: "walletBalance" },
-	// Events → public domain (readiness)
-	"data:readiness": { domain: "public", key: "readiness" },
-	// Events → wallet domain (shallow-merge into entire domain)
-	"wallet:connected": { domain: "wallet", key: null },
-	"wallet:disconnected": { domain: "wallet", key: null },
-	"wallet:networkChanged": { domain: "wallet", key: null },
-	// Events → permit domain (shallow-merge into entire domain)
-	"permit:granted": { domain: "permit", key: null },
-	"permit:expired": { domain: "permit", key: null },
-	"permit:tick": { domain: "permit", key: null },
+  // Events → public domain
+  'data:ticker': { domain: 'public', key: 'ticker' },
+  'data:markets': { domain: 'public', key: 'markets' },
+  'data:activities': { domain: 'public', key: 'activities' },
+  // Events → authed domain
+  'data:positions': { domain: 'authed', key: 'positions' },
+  'data:strategies': { domain: 'authed', key: 'strategies' },
+  'data:proposals': { domain: 'authed', key: 'proposals' },
+  'data:community': { domain: 'authed', key: 'community' },
+  'data:templates': { domain: 'authed', key: 'templates' },
+  'data:nodeTypes': { domain: 'authed', key: 'nodeTypes' },
+  'data:walletBalance': { domain: 'authed', key: 'walletBalance' },
+  // Events → public domain (readiness)
+  'data:readiness': { domain: 'public', key: 'readiness' },
+  // Events → wallet domain (shallow-merge into entire domain)
+  'wallet:connected': { domain: 'wallet', key: null },
+  'wallet:disconnected': { domain: 'wallet', key: null },
+  'wallet:networkChanged': { domain: 'wallet', key: null },
+  // Events → permit domain (shallow-merge into entire domain)
+  'permit:granted': { domain: 'permit', key: null },
+  'permit:expired': { domain: 'permit', key: null },
+  'permit:tick': { domain: 'permit', key: null },
 };
 
 // ─── BridgeBus Class ────────────────────────────────────────────────────────
 
 export class BridgeBus {
-	constructor() {
-		this._resetState();
-		this._listeners = new Map();
-		this._started = false;
-		this._authEnabled = false;
-		this._maxErrors = 100;
-	}
+  constructor() {
+    this._resetState();
+    this._listeners = new Map();
+    this._started = false;
+    this._authEnabled = false;
+    this._maxErrors = 100;
+  }
 
-	/**
-	 * Reset state to defaults, preserving listeners.
-	 * Called from constructor and reset().
-	 */
-	_resetState() {
-		this._state = JSON.parse(JSON.stringify(DEFAULT_STATE));
-	}
+  /**
+   * Reset state to defaults, preserving listeners.
+   * Called from constructor and reset().
+   */
+  _resetState() {
+    this._state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  }
 
-	// ── Public API ─────────────────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────
 
-	/**
-	 * Subscribe to a named event.
-	 *
-	 * @param {string} event - Event name (e.g. 'data:ticker', 'wallet:connected', 'error:*')
-	 * @param {(data: any, eventName: string) => void} callback - Handler invoked with (payload, eventName)
-	 * @returns {() => void} Unsubscribe function — calling it removes this listener.
-	 */
-	on(event, callback) {
-		if (!this._listeners.has(event)) {
-			this._listeners.set(event, new Set());
-		}
-		this._listeners.get(event).add(callback);
+  /**
+   * Subscribe to a named event.
+   *
+   * @param {string} event - Event name (e.g. 'data:ticker', 'wallet:connected', 'error:*')
+   * @param {(data: any, eventName: string) => void} callback - Handler invoked with (payload, eventName)
+   * @returns {() => void} Unsubscribe function — calling it removes this listener.
+   */
+  on(event, callback) {
+    if (!this._listeners.has(event)) {
+      this._listeners.set(event, new Set());
+    }
+    this._listeners.get(event).add(callback);
 
-		const self = this;
-		return function unsubscribe() {
-			const set = self._listeners.get(event);
-			if (set) {
-				set.delete(callback);
-				if (set.size === 0) {
-					self._listeners.delete(event);
-				}
-			}
-		};
-	}
+    const self = this;
+    return function unsubscribe() {
+      const set = self._listeners.get(event);
+      if (set) {
+        set.delete(callback);
+        if (set.size === 0) {
+          self._listeners.delete(event);
+        }
+      }
+    };
+  }
 
-	/**
-	 * Update state for a given event and notify listeners.
-	 *
-	 * For data events (data:ticker, data:markets, etc.), the payload is assigned
-	 * to the corresponding sub-key within the domain.
-	 *
-	 * For domain events (wallet:*, permit:*), the payload is shallow-merged into
-	 * the entire domain — unchanged fields are preserved.
-	 *
-	 * For error events (error:*), the error is appended to meta.errors and
-	 * existing domain data is preserved (stale-while-revalidate).
-	 *
-	 * @param {string} event - Event name
-	 * @param {*} data - Data to store / merge
-	 */
-	set(event, data) {
-		// Error events: always handled regardless of EVENT_MAP entry.
-		// Preserve existing domain data, record in meta.errors.
-		// Push directly to avoid creating a new array on every error.
-		if (event.startsWith("error:")) {
-			const errors = [...this._state.meta.errors, data];
-			const trimmed = errors.length > this._maxErrors ? errors.slice(-this._maxErrors) : errors;
-			this._state = {
-				...this._state,
-				meta: {
-					...this._state.meta,
-					dataVersion: this._state.meta.dataVersion + 1,
-					errors: trimmed,
-				},
-			};
-			this._emit(event, data);
-			this._emit("_change", this._state);
-			return;
-		}
+  /**
+   * Update state for a given event and notify listeners.
+   *
+   * For data events (data:ticker, data:markets, etc.), the payload is assigned
+   * to the corresponding sub-key within the domain.
+   *
+   * For domain events (wallet:*, permit:*), the payload is shallow-merged into
+   * the entire domain — unchanged fields are preserved.
+   *
+   * For error events (error:*), the error is appended to meta.errors and
+   * existing domain data is preserved (stale-while-revalidate).
+   *
+   * @param {string} event - Event name
+   * @param {*} data - Data to store / merge
+   */
+  set(event, data) {
+    // Error events: always handled regardless of EVENT_MAP entry.
+    // Preserve existing domain data, record in meta.errors.
+    // Push directly to avoid creating a new array on every error.
+    if (event.startsWith('error:')) {
+      const errors = [...this._state.meta.errors, data];
+      const trimmed = errors.length > this._maxErrors ? errors.slice(-this._maxErrors) : errors;
+      this._state = {
+        ...this._state,
+        meta: {
+          ...this._state.meta,
+          dataVersion: this._state.meta.dataVersion + 1,
+          errors: trimmed,
+        },
+      };
+      this._emit(event, data);
+      this._emit('_change', this._state);
+      return;
+    }
 
-		const mapping = EVENT_MAP[event];
+    const mapping = EVENT_MAP[event];
 
-		if (mapping) {
-			const { domain, key } = mapping;
+    if (mapping) {
+      const { domain, key } = mapping;
 
-			// If writing to authed domain but auth not yet enabled, skip both state and emit
-			if (domain === "authed" && !this._authEnabled && this._started) {
-				return;
-			}
+      // If writing to authed domain but auth not yet enabled, skip both state and emit
+      if (domain === 'authed' && !this._authEnabled && this._started) {
+        return;
+      }
 
-			// Shallow-clone _state so getSnapshot() returns a new reference
-			const next = { ...this._state };
+      // Shallow-clone _state so getSnapshot() returns a new reference
+      const next = { ...this._state };
 
-			// Domain-level merge (wallet, permit)
-			if (key === null) {
-				next[domain] = { ...next[domain], ...data };
-			}
-			// Sub-key assignment (data events)
-			else {
-				next[domain] = { ...next[domain], [key]: data };
-			}
+      // Domain-level merge (wallet, permit)
+      if (key === null) {
+        next[domain] = { ...next[domain], ...data };
+      }
+      // Sub-key assignment (data events)
+      else {
+        next[domain] = { ...next[domain], [key]: data };
+      }
 
-			next.meta = { ...next.meta, dataVersion: next.meta.dataVersion + 1 };
-			this._state = next;
+      next.meta = { ...next.meta, dataVersion: next.meta.dataVersion + 1 };
+      this._state = next;
 
-			this._emit(event, this._getDomainData(domain, key));
-			this._emit("_change", this._state);
-		} else if (event === "reset") {
-			this._resetState();
-			this._emit("reset", this.getState());
-			this._emit("_change", this._state);
-		} else {
-			// Unmapped event — emit but don't store in state
-			this._emit(event, data);
-		}
-	}
+      this._emit(event, this._getDomainData(domain, key));
+      this._emit('_change', this._state);
+    } else if (event === 'reset') {
+      this._resetState();
+      this._emit('reset', this.getState());
+      this._emit('_change', this._state);
+    } else {
+      // Unmapped event — emit but don't store in state
+      this._emit(event, data);
+    }
+  }
 
-	/**
-	 * Subscribe to state changes for useSyncExternalStore.
-	 * Emits '_change' on every set() so React can detect updates.
-	 *
-	 * @param {() => void} callback
-	 * @returns {() => void} Unsubscribe function
-	 */
-	subscribe(callback) {
-		return this.on("_change", callback);
-	}
+  /**
+   * Subscribe to state changes for useSyncExternalStore.
+   * Emits '_change' on every set() so React can detect updates.
+   *
+   * @param {() => void} callback
+   * @returns {() => void} Unsubscribe function
+   */
+  subscribe(callback) {
+    return this.on('_change', callback);
+  }
 
-	/**
-	 * Return current state snapshot for useSyncExternalStore.
-	 * @returns {BridgeState}
-	 */
-	getSnapshot() {
-		return this._state;
-	}
+  /**
+   * Return current state snapshot for useSyncExternalStore.
+   * @returns {BridgeState}
+   */
+  getSnapshot() {
+    return this._state;
+  }
 
-	/**
-	 * Return a deep-cloned snapshot of the current state.
-	 * @returns {BridgeState}
-	 */
-	getState() {
-		return JSON.parse(JSON.stringify(this._state));
-	}
+  /**
+   * Return a deep-cloned snapshot of the current state.
+   * @returns {BridgeState}
+   */
+  getState() {
+    return JSON.parse(JSON.stringify(this._state));
+  }
 
-	/**
-	 * Reset all state to defaults and emit 'reset' event.
-	 * Also resets started/auth flags.
-	 * Listener subscriptions are preserved (only state is cleared).
-	 */
-	reset() {
-		this._resetState();
-		this._started = false;
-		this._authEnabled = false;
-		this._emit("reset", this.getState());
-		this._emit("_change", this._state);
-	}
+  /**
+   * Reset all state to defaults and emit 'reset' event.
+   * Also resets started/auth flags.
+   * Listener subscriptions are preserved (only state is cleared).
+   */
+  reset() {
+    this._resetState();
+    this._started = false;
+    this._authEnabled = false;
+    this._emit('reset', this.getState());
+    this._emit('_change', this._state);
+  }
 
-	/**
-	 * Update multiple domains in a single coalesced notification cycle.
-	 *
-	 * All state mutations are applied first, then each event is emitted exactly
-	 * once. Listeners see the final state after all updates.
-	 *
-	 * @param {Array<{event: string, data: *}>} updates - Batch of updates to apply
-	 */
-	dispatchBatch(updates) {
-		if (updates.length === 0) return;
+  /**
+   * Update multiple domains in a single coalesced notification cycle.
+   *
+   * All state mutations are applied first, then each event is emitted exactly
+   * once. Listeners see the final state after all updates.
+   *
+   * @param {Array<{event: string, data: *}>} updates - Batch of updates to apply
+   */
+  dispatchBatch(updates) {
+    if (updates.length === 0) return;
 
-		// Track unique successfully-updated events for coalesced emission
-		const eventsToEmit = [];
+    // Track unique successfully-updated events for coalesced emission
+    const eventsToEmit = [];
 
-		// Work on a shallow clone so getSnapshot() returns a new reference
-		const next = { ...this._state };
+    // Work on a shallow clone so getSnapshot() returns a new reference
+    const next = { ...this._state };
 
-		for (const { event, data } of updates) {
-			const mapping = EVENT_MAP[event];
+    for (const { event, data } of updates) {
+      const mapping = EVENT_MAP[event];
 
-			// Error events are always processed regardless of EVENT_MAP
-			if (event.startsWith("error:")) {
-				next.meta.errors.push(data);
-				if (!eventsToEmit.includes(event)) eventsToEmit.push(event);
-				continue;
-			}
+      // Error events are always processed regardless of EVENT_MAP
+      if (event.startsWith('error:')) {
+        next.meta.errors.push(data);
+        if (!eventsToEmit.includes(event)) eventsToEmit.push(event);
+        continue;
+      }
 
-			if (mapping) {
-				const { domain, key } = mapping;
+      if (mapping) {
+        const { domain, key } = mapping;
 
-				if (key === null) {
-					next[domain] = { ...next[domain], ...data };
-				} else {
-					next[domain] = { ...next[domain], [key]: data };
-				}
+        if (key === null) {
+          next[domain] = { ...next[domain], ...data };
+        } else {
+          next[domain] = { ...next[domain], [key]: data };
+        }
 
-				// If writing to authed domain but auth not yet enabled, update state but skip emit
-				if (domain === "authed" && !this._authEnabled && this._started) {
-					continue;
-				}
+        // If writing to authed domain but auth not yet enabled, update state but skip emit
+        if (domain === 'authed' && !this._authEnabled && this._started) {
+          continue;
+        }
 
-				// Track for emission deduplication
-				if (!eventsToEmit.includes(event)) {
-					eventsToEmit.push(event);
-				}
-			}
-		}
+        // Track for emission deduplication
+        if (!eventsToEmit.includes(event)) {
+          eventsToEmit.push(event);
+        }
+      }
+    }
 
-		next.meta.dataVersion++;
+    next.meta.dataVersion++;
 
-		// LRU eviction: trim oldest errors when cap is exceeded
-		if (next.meta.errors.length > this._maxErrors) {
-			next.meta.errors = next.meta.errors.slice(-this._maxErrors);
-		}
+    // LRU eviction: trim oldest errors when cap is exceeded
+    if (next.meta.errors.length > this._maxErrors) {
+      next.meta.errors = next.meta.errors.slice(-this._maxErrors);
+    }
 
-		// Replace state atomically so getSnapshot() returns a new reference
-		this._state = next;
+    // Replace state atomically so getSnapshot() returns a new reference
+    this._state = next;
 
-		// Emit all events once, after all state changes are applied
-		for (const event of eventsToEmit) {
-			const mapping = EVENT_MAP[event];
-			if (mapping) {
-				const { domain, key } = mapping;
-				this._emit(event, this._getDomainData(domain, key));
-			}
-		}
+    // Emit all events once, after all state changes are applied
+    for (const event of eventsToEmit) {
+      const mapping = EVENT_MAP[event];
+      if (mapping) {
+        const { domain, key } = mapping;
+        this._emit(event, this._getDomainData(domain, key));
+      }
+    }
 
-		this._emit("_change", this._state);
-	}
+    this._emit('_change', this._state);
+  }
 
-	/**
-	 * Start BridgeBus in public-only mode.
-	 *
-	 * Begins accepting writes to the public domain (ticker, markets, activities).
-	 * Authenticated domain writes are deferred until enableAuthenticated() is called
-	 * (typically after wallet connect).
-	 *
-	 * Safe to call multiple times — idempotent.
-	 * Emits 'started' event with { mode: 'public' } on first call.
-	 */
-	start() {
-		if (this._started) return;
-		this._started = true;
-		this._authEnabled = false;
-		this._emit("started", { mode: "public" });
-	}
+  /**
+   * Start BridgeBus in public-only mode.
+   *
+   * Begins accepting writes to the public domain (ticker, markets, activities).
+   * Authenticated domain writes are deferred until enableAuthenticated() is called
+   * (typically after wallet connect).
+   *
+   * Safe to call multiple times — idempotent.
+   * Emits 'started' event with { mode: 'public' } on first call.
+   */
+  start() {
+    if (this._started) return;
+    this._started = true;
+    this._authEnabled = false;
+    this._emit('started', { mode: 'public' });
+  }
 
-	/**
-	 * Enable authenticated data writes.
-	 *
-	 * Called after wallet connect + JWT login + permit grant.
-	 * From this point, writes to the authed domain are accepted and emitted.
-	 * Emits 'authenticated' event with `true`.
-	 */
-	enableAuthenticated() {
-		this._authEnabled = true;
-		// Replay deferred authed data that was silently dropped before auth
-		for (const [key, mapping] of Object.entries(EVENT_MAP)) {
-			if (mapping.domain === "authed" && this._state.authed[mapping.key] != null) {
-				this._emit(key, this._state.authed[mapping.key]);
-			}
-		}
-		this._emit("authenticated", true);
-	}
+  /**
+   * Enable authenticated data writes.
+   *
+   * Called after wallet connect + JWT login + permit grant.
+   * From this point, writes to the authed domain are accepted and emitted.
+   * Emits 'authenticated' event with `true`.
+   */
+  enableAuthenticated() {
+    this._authEnabled = true;
+    // Replay deferred authed data that was silently dropped before auth
+    for (const [key, mapping] of Object.entries(EVENT_MAP)) {
+      if (mapping.domain === 'authed' && this._state.authed[mapping.key] != null) {
+        this._emit(key, this._state.authed[mapping.key]);
+      }
+    }
+    this._emit('authenticated', true);
+  }
 
-	/**
-	 * Disable authenticated data writes (on wallet disconnect).
-	 *
-	 * Clears authed domain data back to defaults (preserves public domain data).
-	 * Emits 'authenticated' event with `false`.
-	 */
-	disableAuthenticated() {
-		this._authEnabled = false;
-		this._state.authed = JSON.parse(JSON.stringify(DEFAULT_STATE.authed));
-		this._emit("authenticated", false);
-	}
+  /**
+   * Disable authenticated data writes (on wallet disconnect).
+   *
+   * Clears authed domain data back to defaults (preserves public domain data).
+   * Emits 'authenticated' event with `false`.
+   */
+  disableAuthenticated() {
+    this._authEnabled = false;
+    this._state.authed = JSON.parse(JSON.stringify(DEFAULT_STATE.authed));
+    this._emit('authenticated', false);
+  }
 
-	/**
-	 * Check if public-only mode is active.
-	 * @returns {boolean}
-	 */
-	isPublicOnly() {
-		return this._started && !this._authEnabled;
-	}
+  /**
+   * Check if public-only mode is active.
+   * @returns {boolean}
+   */
+  isPublicOnly() {
+    return this._started && !this._authEnabled;
+  }
 
-	/**
-	 * Check if authenticated mode is active.
-	 * @returns {boolean}
-	 */
-	isAuthenticated() {
-		return this._started && this._authEnabled;
-	}
+  /**
+   * Check if authenticated mode is active.
+   * @returns {boolean}
+   */
+  isAuthenticated() {
+    return this._started && this._authEnabled;
+  }
 
-	// ── Internal ────────────────────────────────────────────────────────────
+  // ── Internal ────────────────────────────────────────────────────────────
 
-	/**
-	 * Emit an event to all registered listeners, including wildcard listeners.
-	 *
-	 * If a listener throws, the error is caught and logged to prevent one
-	 * listener's failure from breaking others.
-	 *
-	 * @param {string} event - Event name
-	 * @param {*} data - Event payload
-	 */
-	_emit(event, data) {
-		// Exact-match listeners
-		const listeners = this._listeners.get(event);
-		if (listeners) {
-			for (const cb of listeners) {
-				try {
-					cb(data, event);
-				} catch (err) {
-					console.error(`[BridgeBus] Listener error for "${event}":`, err);
-				}
-			}
-		}
+  /**
+   * Emit an event to all registered listeners, including wildcard listeners.
+   *
+   * If a listener throws, the error is caught and logged to prevent one
+   * listener's failure from breaking others.
+   *
+   * @param {string} event - Event name
+   * @param {*} data - Event payload
+   */
+  _emit(event, data) {
+    // Exact-match listeners
+    const listeners = this._listeners.get(event);
+    if (listeners) {
+      for (const cb of listeners) {
+        try {
+          cb(data, event);
+        } catch (err) {
+          console.error(`[BridgeBus] Listener error for "${event}":`, err);
+        }
+      }
+    }
 
-		// Wildcard listeners (error:* catches all error:xxx events)
-		if (event.startsWith("error:")) {
-			const wildcardListeners = this._listeners.get("error:*");
-			if (wildcardListeners) {
-				for (const cb of wildcardListeners) {
-					try {
-						cb(data, event);
-					} catch (err) {
-						console.error(`[BridgeBus] Wildcard listener error for "${event}":`, err);
-					}
-				}
-			}
-		}
-	}
+    // Wildcard listeners (error:* catches all error:xxx events)
+    if (event.startsWith('error:')) {
+      const wildcardListeners = this._listeners.get('error:*');
+      if (wildcardListeners) {
+        for (const cb of wildcardListeners) {
+          try {
+            cb(data, event);
+          } catch (err) {
+            console.error(`[BridgeBus] Wildcard listener error for "${event}":`, err);
+          }
+        }
+      }
+    }
+  }
 
-	/**
-	 * Get domain data for event emission.
-	 * For sub-key events, returns the value at that key.
-	 * For domain events, returns the entire domain object.
-	 *
-	 * @param {string} domain - Domain name
-	 * @param {string|null} key - Sub-key or null for whole domain
-	 * @returns {*}
-	 */
-	_getDomainData(domain, key) {
-		if (key === null) {
-			return this._state[domain];
-		}
-		return this._state[domain][key];
-	}
+  /**
+   * Get domain data for event emission.
+   * For sub-key events, returns the value at that key.
+   * For domain events, returns the entire domain object.
+   *
+   * @param {string} domain - Domain name
+   * @param {string|null} key - Sub-key or null for whole domain
+   * @returns {*}
+   */
+  _getDomainData(domain, key) {
+    if (key === null) {
+      return this._state[domain];
+    }
+    return this._state[domain][key];
+  }
 }
 
 // ─── Singleton Export ────────────────────────────────────────────────────────

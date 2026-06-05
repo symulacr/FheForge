@@ -25,6 +25,11 @@
 		"enabled": true
 	},
 	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"indentStyle": "space",
+			"indentWidth": 2
+		},
 		"parser": {
 			"unsafeParameterDecoratorsEnabled": true
 		}

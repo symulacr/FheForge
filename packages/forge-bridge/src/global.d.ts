@@ -3,6 +3,6 @@
  */
 
 interface Window {
-	/** Runtime configuration overrides for the bridge layer */
-	__FHEFORGE_CONFIG__?: Record<string, unknown>;
+  /** Runtime configuration overrides for the bridge layer */
+  __FHEFORGE_CONFIG__?: Record<string, unknown>;
 }
