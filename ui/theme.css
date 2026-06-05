@@ -822,3 +822,10 @@ html, body { min-height: 100dvh; }
   .btn.sm { padding: 10px 14px; min-height: 44px; }
   .pct-btn { padding: 8px 12px; min-height: 44px; }
 }
+
+/* ─── Zoom-dependent detail hiding ─── */
+.zoom-distant .nbody { display: none; }
+.zoom-distant .nhead { border-bottom: none; padding: 4px 6px; }
+.zoom-distant .node { min-height: auto; }
+.zoom-mid .nbody .nrow { font-size: 9px; }
+.zoom-mid .nbody { padding: 3px 5px; }

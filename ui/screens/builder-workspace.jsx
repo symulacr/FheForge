@@ -36,6 +36,7 @@ const NODE_TYPES = {
   swap:   { label: "Swap",    kicker: "dex",   swatch: "var(--accent)",   desc: "Intent or Uni V3" },
   repeat: { label: "Repeat",  kicker: "loop",  swatch: "var(--ink-2)",    desc: "Composer loop depth" },
   settle: { label: "Settle",  kicker: "fin",   swatch: "var(--ink)",      desc: "Grant ACL, end pipeline" },
+  vault:  { label: "Vault",   kicker: "yield", swatch: "#a855f7",        desc: "Deposit into strategy vault" },
 };
 
 const DEFAULT_CONFIG = {
@@ -44,6 +45,7 @@ const DEFAULT_CONFIG = {
   swap:   { from: "ETH", to: "USDC", slip: 0.5, amount: "≈10,200" },
   repeat: { loops: 3 },
   settle: {},
+  vault:  { asset: "USDC", amount: "5,000", strategyId: 0 },
 };
 
 const TEMPLATES = {
@@ -101,6 +103,7 @@ const NEXT_STEP_RULES = {
   borrow: "swap",
   swap:   "settle",
   repeat: "settle",
+  vault:  "settle",
 };
 
 function nextSuggestionFor(node) {
@@ -242,8 +245,8 @@ function organizeLayout(nodes, edges, canvasWidth = 800, canvasHeight = 500) {
   // Reserve some padding around the layout
   const PAD_X = 32;
   const PAD_Y = 36;
-  const NODE_W = 156;
-  const NODE_H = 72;
+  const NODE_W = 124;
+  const NODE_H = 56;
 
   // Available width for nodes (excluding padding)
   const availW = Math.max(400, canvasWidth - PAD_X * 2);
@@ -319,7 +322,6 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
   const [deploying, setDeploying] = useStateB(false);
   const [deployResult, setDeployResult] = useStateB(null);
   const [deployStep, setDeployStep] = useStateB(null); // null | "signing" | "committing" | "decrypting"
-  const [inspectorTab, setInspectorTab] = useStateB("config");
 
   // Multi-selection (Set of node ids)
   const [multiSelected, setMultiSelected] = useStateB(() => new Set());
@@ -368,6 +370,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
       return;
     }
     if (!runOrder.length) return;
+    if (nodes.length > 10) return;
     let i = 0;
     const tick = () => {
       setIdlePulse(i);
@@ -375,7 +378,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
     };
     const id = setInterval(tick, 1400);
     return () => clearInterval(id);
-  }, [runOrder, running, pending]);
+  }, [runOrder, running, pending, nodes.length]);
 
   const runOrder = useMemoB(() => walkOrder(nodes, edges), [nodes, edges]);
   const detection = useMemoB(() => detectIssues(nodes, edges), [nodes, edges]);
@@ -900,6 +903,30 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
     }
   };
 
+  function groupSubgraphs(nodes, edges) {
+    const adj = {};
+    nodes.forEach(n => { adj[n.id] = new Set(); });
+    edges.forEach(e => { adj[e.from]?.add(e.to); adj[e.to]?.add(e.from); });
+    const visited = new Set();
+    const groups = [];
+    for (const n of nodes) {
+      if (visited.has(n.id)) continue;
+      const group = [];
+      const stack = [n.id];
+      while (stack.length) {
+        const id = stack.pop();
+        if (visited.has(id)) continue;
+        visited.add(id);
+        group.push(id);
+        for (const neighbor of adj[id]) {
+          if (!visited.has(neighbor)) stack.push(neighbor);
+        }
+      }
+      groups.push(group);
+    }
+    return groups.map(g => nodes.filter(n => g.includes(n.id)));
+  }
+
   const selNode = nodes.find(n => n.id === selected);
   const activeIdx = runStep;
 
@@ -965,35 +992,6 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
 
                 if (actionableNodes.length >= 2 && bridge.contract.write.composerOpenPosition) {
                   // Multi-node: use Composer for atomic strategy execution
-                  const supplyNode = nodes.find(n => n.type === "supply");
-                  const borrowNode = nodes.find(n => n.type === "borrow");
-                  const swapNode = nodes.find(n => n.type === "swap");
-                  const repeatNode = nodes.find(n => n.type === "repeat");
-
-                  const supplyCfg = supplyNode?.config || {};
-                  const borrowCfg = borrowNode?.config || {};
-                  const swapCfg = swapNode?.config || {};
-
-                  const collateralToken = tokenMap[supplyCfg.asset] || Object.values(tokenMap)[0];
-                  const collateralAmount = parseAmountBW(supplyCfg.amount || "0");
-                  const borrowToken = tokenMap[borrowCfg.asset] || collateralToken;
-                  const borrowAmount = parseAmountBW(borrowCfg.amount || "0");
-                  const ltv = borrowCfg.ltv || 50;
-                  const swapTokenOut = tokenMap[swapCfg.to] || "0x0000000000000000000000000000000000000000";
-                  const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
-                  const loopCount = repeatNode?.config?.loops || 1;
-
-                  // ERC20 approval: ensure Composer can pull collateral tokens
-                  const COMPOSER_ADDRESS = "0xEab68D8Ee6DC5Ddc10293fF3B1bb21679d81dC8b";
-                  if (collateralAmount > 0n) {
-                    const allowance = await bridge.contract.read.erc20Allowance(collateralToken, ctx.address, COMPOSER_ADDRESS);
-                    if (BigInt(allowance) < collateralAmount) {
-                      setDeployStep("signing");
-                      const approvalRes = await bridge.contract.write.erc20Approve(collateralToken, COMPOSER_ADDRESS, ctx.address);
-                      if (approvalRes.status === "reverted") { setDeployResult({ ok: false, error: "ERC20 approval reverted" }); return; }
-                    }
-                  }
-
                   // Real workflowHash: keccak256 of the strategy graph structure
                   const { keccak256: bwKeccak, toHex: bwToHex } = await import("viem");
                   const graphPayload = JSON.stringify({
@@ -1002,26 +1000,63 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                   });
                   const workflowHash = bwKeccak(bwToHex(graphPayload));
 
-                  setDeployStep("committing");
-                  await bridge.contract.write.composerOpenPosition({
-                    strategyName: workflow.name || "Untitled",
-                    workflowHash,
-                    collateralAmount,
-                    poolSupplyAmount: 0n,
-                    poolBorrowAmount: borrowAmount,
-                    swapDeadlineOffset: 300n,
-                    strategyId: 0n,
-                    swapAmountIn: borrowAmount,
-                    swapMinOut,
-                    collateralToken,
-                    borrowToken,
-                    swapTokenOut,
-                    ltvNum: BigInt(ltv),
-                    ltvDen: 100n,
-                    useOracleBorrow: false,
-                    apyTarget: 0,
-                    loopCount: loopCount,
-                  }, ctx.address);
+                  const COMPOSER_ADDRESS = "0xEab68D8Ee6DC5Ddc10293fF3B1bb21679d81dC8b";
+
+                  const subgraphs = groupSubgraphs(nodes, edges);
+                  let strategyId = 0n;
+                  for (const sg of subgraphs) {
+                    const supplyNode = sg.find(n => n.type === "supply");
+                    const borrowNode = sg.find(n => n.type === "borrow");
+                    const swapNode = sg.find(n => n.type === "swap");
+                    const repeatNode = sg.find(n => n.type === "repeat");
+
+                    const supplyCfg = supplyNode?.config || {};
+                    const borrowCfg = borrowNode?.config || {};
+                    const swapCfg = swapNode?.config || {};
+
+                    const collateralToken = tokenMap[supplyCfg.asset] || Object.values(tokenMap)[0];
+                    const collateralAmount = parseAmountBW(supplyCfg.amount || "0");
+                    const borrowToken = tokenMap[borrowCfg.asset] || collateralToken;
+                    const borrowAmount = parseAmountBW(borrowCfg.amount || "0");
+                    const ltv = borrowCfg.ltv || 50;
+                    const swapTokenOut = tokenMap[swapCfg.to] || "0x0000000000000000000000000000000000000000";
+                    const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
+                    const loopCount = repeatNode?.config?.loops || 1;
+
+                    // ERC20 approval: ensure Composer can pull collateral tokens
+                    if (collateralAmount > 0n) {
+                      const allowance = await bridge.contract.read.erc20Allowance(collateralToken, ctx.address, COMPOSER_ADDRESS);
+                      if (BigInt(allowance) < collateralAmount) {
+                        setDeployStep("signing");
+                        const approvalRes = await bridge.contract.write.erc20Approve(collateralToken, COMPOSER_ADDRESS, ctx.address);
+                        if (approvalRes.status === "reverted") { setDeployResult({ ok: false, error: "ERC20 approval reverted" }); return; }
+                      }
+                    }
+
+                    setDeployStep("committing");
+                    const result = await bridge.contract.write.composerOpenPosition({
+                      strategyName: workflow.name || "Untitled",
+                      workflowHash,
+                      collateralAmount,
+                      poolSupplyAmount: 0n,
+                      poolBorrowAmount: borrowAmount,
+                      swapDeadlineOffset: 300n,
+                      strategyId: strategyId,
+                      swapAmountIn: borrowAmount,
+                      swapMinOut,
+                      collateralToken,
+                      borrowToken,
+                      swapTokenOut,
+                      ltvNum: BigInt(ltv),
+                      ltvDen: 100n,
+                      useOracleBorrow: false,
+                      apyTarget: 0,
+                      loopCount: loopCount,
+                    }, ctx.address);
+                    if (strategyId === 0n && result?.strategyId) {
+                      strategyId = BigInt(result.strategyId);
+                    }
+                  }
                 } else {
                   // Single node: use commit-reveal for supply/borrow, direct for swap
                   for (const nodeId of order) {
@@ -1060,6 +1095,17 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                         const settleTx = await bridge.contract.write.settlePosition(account);
                         if (settleTx.status === "reverted") { setDeployResult({ ok: false, error: "Settle reverted" }); setDeploying(false); setDeployStep(null); return; }
                         result = { txHash: settleTx.txHash, block: settleTx.block };
+                      } else {
+                        result = { txHash: "skipped", block: 0 };
+                      }
+                      setDeployStep(null);
+                    } else if (node.type === "vault" && amount > 0n) {
+                      const stratId = cfg.strategyId || 0;
+                      setDeployStep("committing");
+                      if (bridge.contract.write.depositVault) {
+                        const tx = await bridge.contract.write.depositVault(tokenAddr, amount, BigInt(stratId), account);
+                        if (tx.status === "reverted") { setDeployResult({ ok: false, error: "Vault deposit reverted" }); setDeploying(false); setDeployStep(null); return; }
+                        result = { txHash: tx.txHash, block: tx.block };
                       } else {
                         result = { txHash: "skipped", block: 0 };
                       }
@@ -1166,7 +1212,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
           {!nodes.length && <CanvasEmpty />}
 
           {/* Zoom + pan layer wraps both edges and nodes */}
-          <div className="canvas-zoom-layer" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}>
+          <div className={"canvas-zoom-layer" + (scale < 0.6 ? " zoom-distant" : scale < 0.85 ? " zoom-mid" : "")} style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}>
           {/* Edges layer */}
           <svg className="canvas-edges">
             <defs>
@@ -1477,7 +1523,7 @@ function CanvasEmpty() {
 
 /* ─── Node palette (left) ─── */
 function NodePalette({ className, nodeTypes, onAddNode }) {
-  const entries = nodeTypes ? Object.entries(nodeTypes) : [];
+  const entries = nodeTypes ? Object.entries(nodeTypes) : Object.entries(NODE_TYPES);
   return (
     <aside className={className} style={{ background: "var(--paper)", padding: "14px 12px", overflowY: "auto" }}>
       <div className="eyebrow" style={{ marginBottom: 10 }}>nodes</div>
@@ -1572,6 +1618,13 @@ function BuilderNode({ n, t, selected, active, past, pendingFrom, isCycle, isDra
         {n.type === "repeat" && (
           <div className="nrow">×{n.config.loops}</div>
         )}
+        {n.type === "vault" && (
+          <div className="nrow" style={{ minWidth: 0 }}>
+            <AssetGlyph sym={n.config.asset} size={14} />
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.config.asset}</span>
+            <span className="mono" style={{ fontSize: 9, color: "var(--muted)" }}>#{n.config.strategyId || 0}</span>
+          </div>
+        )}
         {n.type === "settle" && (
           <div className="nrow" style={{ fontSize: 10, color: "var(--muted)" }}>decrypt</div>
         )}
@@ -1588,36 +1641,6 @@ function BuilderNode({ n, t, selected, active, past, pendingFrom, isCycle, isDra
   );
 }
 
-/* ─── Inspector ─── */
-function Inspector({ node, setNodes, tab, setTab, issues, applyAction, nodes, edges, runOrder, locked, className }) {
-  return (
-    <aside className={className} style={{ background: "var(--paper)", display: "flex", flexDirection: "column", minHeight: 0 }}>
-      <div className="tabstrip" style={{ background: "var(--paper)", padding: "0 4px" }}>
-        {["config", "issues", "code"].map(k => (
-          <button key={k} onClick={() => setTab(k)} className={"tab" + (tab === k ? " active" : "")}>
-            {k}
-            {k === "issues" && issues.length > 0 && (
-              <span style={{
-                marginLeft: 6,
-                background: issues.some(i => i.severity === "error") ? "var(--danger)" : "var(--accent)",
-                color: "var(--paper)",
-                padding: "1px 5px", fontSize: 9, borderRadius: 50,
-              }}>{issues.length}</span>
-            )}
-          </button>
-        ))}
-      </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-        {tab === "config" && (node
-          ? <NodeConfig node={node} setNodes={setNodes} locked={locked} />
-          : <EmptyState text="Select a node to configure it." />
-        )}
-        {tab === "issues" && <IssuesPanel issues={issues} applyAction={applyAction} />}
-        {tab === "code"   && <PlainSummary nodes={nodes} runOrder={runOrder} />}
-      </div>
-    </aside>
-  );
-}
 
 function NodeConfig({ node, setNodes, locked, nodeTypes }) {
   const t = nodeTypes?.[node.type] || NODE_TYPES[node.type] || { label: node.type, swatch: "var(--muted)", desc: "Module unavailable" };
@@ -1670,6 +1693,18 @@ function NodeConfig({ node, setNodes, locked, nodeTypes }) {
         </Field>
       </>}
 
+      {node.type === "vault" && <>
+        <Field label="Asset">
+          <Select value={node.config.asset || "USDC"} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("asset", v)} aria-label="Vault asset" />
+        </Field>
+        <Field label="Amount">
+          <TextInput value={node.config.amount || ""} suffix={node.config.asset || "USDC"} onChange={v => update("amount", v)} />
+        </Field>
+        <Field label="Strategy ID">
+          <TextInput value={String(node.config.strategyId || 0)} onChange={v => update("strategyId", parseInt(v) || 0)} />
+        </Field>
+      </>}
+
       {node.type === "repeat" && <>
         <Field label="Loop depth" hint="capped by strategy.loopCount">
           <Slider value={node.config.loops} min={1} max={8} onChange={v => update("loops", v)} />
@@ -1688,64 +1723,6 @@ function NodeConfig({ node, setNodes, locked, nodeTypes }) {
   );
 }
 
-function IssuesPanel({ issues, applyAction }) {
-  if (!issues.length) {
-    return <EmptyState text="No issues. Looks good." />;
-  }
-  return (
-    <div className="stack-3">
-      {issues.map((iss, i) => (
-        <div key={i} style={{
-          padding: "10px 12px",
-          background: iss.severity === "error" ? "var(--danger-soft)" : iss.severity === "warn" ? "var(--accent-soft)" : "var(--paper-2)",
-          border: "1px solid " + (iss.severity === "error" ? "var(--danger)" : iss.severity === "warn" ? "var(--accent)" : "var(--hairline)"),
-        }}>
-          <div className="mono" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: 0.1, color: iss.severity === "error" ? "var(--danger)" : iss.severity === "warn" ? "var(--accent-ink)" : "var(--muted)", marginBottom: 6 }}>
-            {iss.severity === "error" ? "error" : iss.severity === "warn" ? "warning" : "tip"}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>{iss.msg}</div>
-          {iss.action && (
-            <button className="btn ghost sm" style={{ marginTop: 8, fontSize: 11 }} onClick={() => applyAction(iss)}>Apply <span className="ar">→</span></button>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PlainSummary({ nodes, runOrder }) {
-  if (!nodes.length) return <EmptyState text="Empty pipeline." />;
-  const phrasing = {
-    supply:  (c) => <>Shield <strong>{c.amount} {c.asset}</strong> as collateral, encrypted client-side.</>,
-    borrow:  (c) => <>Borrow <strong>{c.amount} {c.asset}</strong> at <strong>{c.ltv}%</strong> LTV. Ratio checked on ciphertext.</>,
-    swap:    (c) => <>Swap encrypted <strong>{c.from}</strong> for <strong>{c.to}</strong> with {c.slip}% slippage.</>,
-    repeat:  (c) => <>Repeat previous steps <strong>{c.loops}×</strong>, compounding the position.</>,
-    settle:  ()  => <>Grant your wallet permission to decrypt every touched balance. Pipeline ends.</>,
-  };
-  return (
-    <ol style={{ listStyle: "none", padding: 0, margin: 0 }}>
-      {runOrder.map((id, i) => {
-        const n = nodes.find(n => n.id === id);
-        if (!n) return null;
-        const t = NODE_TYPES[n.type];
-        return (
-          <li key={id} style={{
-            display: "grid", gridTemplateColumns: "20px auto 1fr", gap: 10, alignItems: "baseline",
-            padding: "10px 0", borderTop: i === 0 ? "0" : "1px dashed var(--hairline-2)",
-          }}>
-            <span className="mono" style={{ fontSize: 10, color: "var(--muted)" }}>{String(i+1).padStart(2,"0")}</span>
-            <span style={{ width: 8, height: 8, background: t.swatch, display: "inline-block", marginTop: 4 }} />
-            <span style={{ fontSize: 13, lineHeight: 1.55, color: "var(--ink-2)" }}>{phrasing[n.type]?.(n.config) || t.label}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function EmptyState({ text }) {
-  return <div className="mono" style={{ fontSize: 12, color: "var(--muted)", padding: 12, textAlign: "center" }}>{text}</div>;
-}
 
 function Field({ label, hint, children }) {
   return (
@@ -1945,80 +1922,9 @@ function KeyboardCheatsheet({ onClose }) {
   );
 }
 
-window.KeyboardCheatsheet = KeyboardCheatsheet;
 
-/* ─── IssueToast: transient ─── */
-function IssueToast({ text }) {
-  return (
-    <div style={{
-      position: "absolute", left: "50%", top: 76, transform: "translateX(-50%)",
-      zIndex: 7,
-      padding: "8px 14px",
-      background: "var(--ink)",
-      color: "var(--paper)",
-      fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 0.06,
-      textTransform: "uppercase",
-      boxShadow: "3px 3px 0 0 var(--accent-ink)",
-      animation: "issueToastIn 240ms cubic-bezier(0.22, 1, 0.36, 1) forwards",
-    }}>
-      <style>{`
-        @keyframes issueToastIn {
-          from { transform: translateX(-50%) translateY(-8px); opacity: 0; }
-          to   { transform: translateX(-50%) translateY(0); opacity: 1; }
-        }
-      `}</style>
-      {text}
-    </div>
-  );
-}
 
-/* ─── AutoFixModal: backdrop blur + before/after ─── */
-function AutoFixModal({ issue, onConfirm, onCancel }) {
-  const explain = {
-    "merge-swaps": {
-      what: "Combine consecutive Swap intents into one router call.",
-      why: "Each Swap calls submitSwapIntent(). Two in a row pay the call cost twice.",
-      saves: `≈${(issue.action.pairs.length * 196).toLocaleString()}k gas`,
-      tradeoff: "A single fill failure now fails both swaps atomically. The original tolerates partial fills.",
-    },
-  };
-  const info = explain[issue.action?.kind] || { what: issue.msg, why: "", saves: "", tradeoff: "" };
-  return (
-    <div onClick={onCancel} style={{
-      position: "absolute", inset: 0, zIndex: 8,
-      backdropFilter: "blur(8px)",
-      background: "color-mix(in oklch, var(--ink) 30%, transparent)",
-      display: "grid", placeItems: "center",
-      animation: "fadeIn 200ms var(--ease) forwards",
-    }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        background: "var(--paper)",
-        border: "1px solid var(--ink)",
-        boxShadow: "6px 6px 0 0 var(--ink)",
-        padding: 24,
-        width: "min(520px, 90%)",
-      }}>
-        <div className="spread" style={{ marginBottom: 16 }}>
-          <Tag tone="accent">auto-fix</Tag>
-          <button onClick={onCancel} style={{ border: 0, background: "transparent", color: "var(--muted)", cursor: "pointer" }}>✕</button>
-        </div>
-        <h3 className="serif" style={{ fontSize: 20, fontWeight: 500, margin: "0 0 8px 0" }}>{info.what}</h3>
-        {info.why && <p style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5, margin: "0 0 14px 0" }}>{info.why}</p>}
-        <div style={{ background: "var(--paper-2)", border: "1px solid var(--hairline)", padding: 14, marginBottom: 14 }}>
-          {info.saves && <div className="kv"><span className="k">saves</span><span className="v" style={{ color: "var(--positive)" }}>{info.saves}</span></div>}
-          {info.tradeoff && <div className="kv"><span className="k">tradeoff</span><span className="v" style={{ whiteSpace: "normal", fontSize: 12, color: "var(--muted)", textAlign: "right" }}>{info.tradeoff}</span></div>}
-        </div>
-        <div className="row" style={{ gap: 8 }}>
-          <button className="btn ghost sm" onClick={onCancel} style={{ flex: 1 }}>Keep original</button>
-          <button className="btn sm" onClick={onConfirm} style={{ flex: 1 }}>Apply fix <span className="ar">→</span></button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-window.IssueToast = IssueToast;
-window.AutoFixModal = AutoFixModal;
 
 /* ─── ToolbarOverflow: a compact ⋯ menu ─── */
 function ToolbarOverflow({ fullscreen, setFullscreen, showInspector, setShowInspector, onShowCheat }) {
@@ -2063,7 +1969,7 @@ function ToolbarOverflow({ fullscreen, setFullscreen, showInspector, setShowInsp
     </span>
   );
 }
-window.ToolbarOverflow = ToolbarOverflow;
+
 
 /* ─── SuggestionPill: ghosted "+ [next-type]" near an orphan node ─── */
 function SuggestionPill({ x, y, label, onAccept }) {
@@ -2107,7 +2013,7 @@ function SuggestionPill({ x, y, label, onAccept }) {
     </button>
   );
 }
-window.SuggestionPill = SuggestionPill;
+
 
 /* ─── EdgePopover: shown when a line is selected ─── */
 function EdgePopover({ x, y, from, to, onDelete, onClose }) {
@@ -2154,7 +2060,7 @@ function EdgePopover({ x, y, from, to, onDelete, onClose }) {
     </div>
   );
 }
-window.EdgePopover = EdgePopover;
+
 
 function IssuePin({ x, y, severity, msg, onApply }) {
   const [open, setOpen] = useStateB(false);
@@ -2210,4 +2116,4 @@ function IssuePin({ x, y, severity, msg, onApply }) {
     </span>
   );
 }
-window.IssuePin = IssuePin;
+
