@@ -1,12 +1,14 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Public } from '../../auth/public.decorator';
 import { GeminiAiService } from '../application/gemini-ai.service';
 import type { AnalyzeRiskDto } from './dtos/analyze-risk.dto';
 import type { OptimizeStrategyDto } from './dtos/optimize-strategy.dto';
 
 @ApiTags('AI Strategy Builder - Advanced')
 @Controller('ai-strategy-builder/advanced')
+@Public()
 @Throttle({ default: { ttl: 60000, limit: 5 } })
 export class AiStrategyBuilderAdvancedController {
   constructor(private readonly geminiAi: GeminiAiService) {}
