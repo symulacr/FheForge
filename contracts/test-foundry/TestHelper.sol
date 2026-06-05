@@ -3,7 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {TASK_MANAGER_ADDRESS} from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import {ITaskManager} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
+
 import {MockACL} from "@cofhe/mock-contracts/contracts/MockACL.sol";
 import {MockTaskManager} from "@cofhe/mock-contracts/contracts/MockTaskManager.sol";
 import {TokenRegistry} from "../contracts/TokenRegistry.sol";

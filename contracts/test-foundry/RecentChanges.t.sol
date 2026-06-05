@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import {TestHelper} from "./TestHelper.sol";
 import {TokenRegistry} from "../contracts/TokenRegistry.sol";
-import {StrategyRegistry} from "../contracts/StrategyRegistry.sol";
 import {SwapRouter} from "../contracts/SwapRouter.sol";
 
 contract RecentChangesTest is TestHelper {
