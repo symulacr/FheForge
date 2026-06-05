@@ -204,9 +204,9 @@ function startConnectFlow(connectorId) {
       checkAndSwitchNetwork(result.chainId)
         .then(() => result)
         .catch((networkErr) => {
-          console.warn('[ConnectInterceptor] Network mismatch, user may need to switch manually');
+          console.warn('[ConnectInterceptor] Network switch failed — aborting connect flow');
           emitError('network', networkErr);
-          return result;
+          throw networkErr;
         }),
     )
     .then((result) => {

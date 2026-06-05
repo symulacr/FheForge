@@ -25,6 +25,9 @@ export class AuthService {
   async generateNonce(
     walletAddress: string,
   ): Promise<{ nonce: string; message: string }> {
+    if (!walletAddress) {
+      throw new UnauthorizedException('walletAddress is required');
+    }
     const nonce = uuidv4();
     const normalizedAddress = walletAddress.toLowerCase();
 
@@ -64,6 +67,9 @@ export class AuthService {
     nonce: string,
     chainId?: number,
   ): Promise<{ accessToken: string; userId: string; walletAddress: string }> {
+    if (!walletAddress) {
+      throw new UnauthorizedException('walletAddress is required');
+    }
     const normalizedAddress = walletAddress.toLowerCase();
 
     // Retrieve and validate nonce from database

@@ -684,7 +684,7 @@ export function useBuilderAI() {
 	/** @type {(prompt: string) => Promise<any>} */
 	const build = useCallback(
 		async (prompt) => {
-			return bridge.api.aiBuilder.buildStrategy({ prompt });
+			return bridge.api.aiBuilder.buildStrategy({ userIntent: prompt });
 		},
 		[bridge],
 	);

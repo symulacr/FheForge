@@ -295,6 +295,37 @@ function organizeLayout(nodes, edges, canvasWidth = 800, canvasHeight = 500) {
   });
 }
 
+/* ─── AI → Canvas transformer ─── */
+function aiStepsToCanvas(aiResponse) {
+  const steps = (aiResponse && aiResponse.steps) || [];
+  const nodes = [];
+  const edges = [];
+  const idPrefix = "ai" + Date.now().toString(36);
+  steps.forEach((step, i) => {
+    const type = String(step.type || "").toLowerCase();
+    if (type === "claim_rewards" || !NODE_TYPES[type]) return;
+    const id = idPrefix + i;
+    let config = {};
+    if (type === "supply") {
+      config = { asset: step.tokenIn?.symbol || "USDC", amount: String(step.tokenIn?.amount || 0) };
+    } else if (type === "borrow") {
+      config = { asset: step.tokenOut?.symbol || "USDC", ltv: 50, amount: String(step.tokenOut?.amount || 0) };
+    } else if (type === "swap") {
+      config = { from: step.tokenIn?.symbol || "USDC", to: step.tokenOut?.symbol || "WETH", slip: 0.5, amount: "≈" + (step.tokenOut?.amount || 0) };
+    } else {
+      config = DEFAULT_CONFIG[type] || {};
+    }
+    nodes.push({ id, type, x: 0, y: 0, config });
+  });
+  for (let i = 0; i < nodes.length - 1; i++) edges.push({ from: nodes[i].id, to: nodes[i + 1].id });
+  if (nodes.length && nodes[nodes.length - 1].type !== "settle") {
+    const sid = idPrefix + "settle";
+    nodes.push({ id: sid, type: "settle", x: 0, y: 0, config: {} });
+    edges.push({ from: nodes[nodes.length - 2].id, to: sid });
+  }
+  return { nodes, edges };
+}
+
 /* ─── BuilderWorkspace · canvas + inspector ─── */
 function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, openConnect, nodeTypes }) {
   const bridge = useOptionalBridgeBW();
@@ -345,6 +376,38 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
 
   // Inspector visibility
   const [showInspector, setShowInspector] = useStateB(true);
+
+  // AI generation state
+  const [aiPrompt, setAiPrompt] = useStateB("");
+  const [aiLoading, setAiLoading] = useStateB(false);
+  const [aiError, setAiError] = useStateB(null);
+  const [aiMeta, setAiMeta] = useStateB(null);
+
+  const handleAIGenerate = useCallbackB(async () => {
+    const prompt = aiPrompt.trim();
+    if (!prompt || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiMeta(null);
+    try {
+      const result = await bridge.api.aiBuilder.buildStrategy({ userIntent: prompt });
+      const data = result && result.steps ? result : (result && result.data ? result.data : result);
+      const { nodes: aiNodes, edges: aiEdges } = aiStepsToCanvas(data);
+      if (!aiNodes.length) { setAiError("No strategy generated — try a different prompt"); return; }
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      const cw = canvasRect ? canvasRect.width / scale : 800;
+      const ch = canvasRect ? canvasRect.height / scale : 500;
+      const laid = organizeLayout(aiNodes, aiEdges, cw, ch);
+      setNodes(laid);
+      setEdges(aiEdges);
+      setName("AI: " + prompt.slice(0, 40));
+      setAiMeta(data.metadata || null);
+    } catch (err) {
+      setAiError(err?.message || "AI generation failed");
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiPrompt, aiLoading, bridge, scale, setNodes, setEdges, setName]);
 
   // Undo / redo history
   const historyRef = useRefB({ past: [], future: [] });
@@ -954,6 +1017,30 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
           />
           <Tag tone="default">draft</Tag>
         </div>
+        {/* AI prompt */}
+        <div className="row" style={{ gap: 6, alignItems: "center", flex: 1, minWidth: 200, maxWidth: 420 }}>
+          <input
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAIGenerate(); }}
+            placeholder="Describe your strategy…"
+            disabled={aiLoading}
+            style={{
+              flex: 1, border: "1px solid var(--hairline)", background: "var(--paper)",
+              padding: "5px 10px", fontSize: 13, color: "var(--ink)",
+              outline: "none", fontFamily: "var(--mono, monospace)",
+            }}
+          />
+          <button
+            className={"btn primary sm" + (aiLoading ? " loading" : "")}
+            onClick={handleAIGenerate}
+            disabled={aiLoading || !aiPrompt.trim()}
+          >
+            {aiLoading ? "Generating…" : "Generate"}
+          </button>
+        </div>
+        {aiError && <span style={{ color: "var(--red, #ef4444)", fontSize: 12, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={aiError}>{aiError}</span>}
+        {aiMeta && <Tag tone={aiMeta.riskLevel === "HIGH" ? "danger" : aiMeta.riskLevel === "LOW" ? "positive" : "default"}>{"Risk: " + (aiMeta.riskLevel || "?")}</Tag>}
         <div className="row toolbar-group" style={{ gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <TimeAgo savedAt={savedAt} />
           <button className="btn ghost sm" onClick={undo} disabled={historyRef.current.past.length < 2} title="Undo · ⌘Z">↶</button>
