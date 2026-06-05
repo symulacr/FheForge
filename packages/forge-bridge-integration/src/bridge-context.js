@@ -230,7 +230,7 @@ function ForgeProvider({ children }) {
 		}
 
 		return function cleanup() {
-			unsubFns.forEach(function (fn) {
+			unsubFns.forEach((fn) => {
 				fn();
 			});
 		};

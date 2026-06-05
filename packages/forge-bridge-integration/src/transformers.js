@@ -4,7 +4,7 @@
    All functions are side-effect-free and browser-compatible.
    ────────────────────────────────────────────── */
 
-(function () {
+(() => {
 	"use strict";
 
 	var transformers = {};
@@ -38,7 +38,7 @@
      ────────────────────────────────────────────── */
 	function transformMarkets(apiMarkets) {
 		if (!Array.isArray(apiMarkets)) return [];
-		return apiMarkets.map(function (m) {
+		return apiMarkets.map((m) => {
 			var utilization = m.util ?? m.utilization;
 			var liq = m.liq ?? m.liquidationThreshold;
 			return {
@@ -76,7 +76,7 @@
 	function transformPositions(supplies, borrows, markets) {
 		var positions = [];
 		if (Array.isArray(supplies)) {
-			supplies.forEach(function (s) {
+			supplies.forEach((s) => {
 				positions.push({
 					id: s.id || "sup-" + (s.asset || Math.random().toString(36).slice(2, 8)),
 					venue: "Lending Pool",
@@ -92,7 +92,7 @@
 			});
 		}
 		if (Array.isArray(borrows)) {
-			borrows.forEach(function (b) {
+			borrows.forEach((b) => {
 				positions.push({
 					id: b.id || "bor-" + (b.asset || Math.random().toString(36).slice(2, 8)),
 					venue: "Lending Pool",
@@ -116,20 +116,18 @@
      ────────────────────────────────────────────── */
 	function transformVaultPositions(apiVaultPositions) {
 		if (!Array.isArray(apiVaultPositions)) return [];
-		return apiVaultPositions.map(function (v) {
-			return {
-				id: v.id || v.vaultId || "vault-" + Math.random().toString(36).slice(2, 8),
-				vaultAddress: v.vaultAddress || v.address || null,
-				name: v.name || v.vaultName || "Vault",
-				asset: v.asset || v.depositAsset || "UNKNOWN",
-				depositedAmount: v.depositedAmount || v.amount || "0",
-				depositedUsd: v.depositedUsd || v.amountUsd || "0",
-				shares: v.shares || v.shareBalance || "0",
-				apy: v.apy || 0,
-				strategy: v.strategy || v.strategyName || "",
-				pendingRewards: v.pendingRewards || "0",
-			};
-		});
+		return apiVaultPositions.map((v) => ({
+			id: v.id || v.vaultId || "vault-" + Math.random().toString(36).slice(2, 8),
+			vaultAddress: v.vaultAddress || v.address || null,
+			name: v.name || v.vaultName || "Vault",
+			asset: v.asset || v.depositAsset || "UNKNOWN",
+			depositedAmount: v.depositedAmount || v.amount || "0",
+			depositedUsd: v.depositedUsd || v.amountUsd || "0",
+			shares: v.shares || v.shareBalance || "0",
+			apy: v.apy || 0,
+			strategy: v.strategy || v.strategyName || "",
+			pendingRewards: v.pendingRewards || "0",
+		}));
 	}
 
 	/* ──────────────────────────────────────────────
@@ -138,17 +136,15 @@
      ────────────────────────────────────────────── */
 	function transformActivities(apiActivities) {
 		if (!Array.isArray(apiActivities)) return [];
-		return apiActivities.map(function (a) {
-			return {
-				id: a.id || a.txHash || "act-" + Math.random().toString(36).slice(2, 8),
-				block: a.blockNumber != null ? String(a.blockNumber) : "",
-				age: relativeTime(a.timestamp || a.createdAt),
-				what: a.description || a.type || "Transaction",
-				kind: a.kind || a.action || "swapped",
-				asset: a.asset || a.token || "",
-				delta: formatDelta(a.amount, a.side),
-			};
-		});
+		return apiActivities.map((a) => ({
+			id: a.id || a.txHash || "act-" + Math.random().toString(36).slice(2, 8),
+			block: a.blockNumber != null ? String(a.blockNumber) : "",
+			age: relativeTime(a.timestamp || a.createdAt),
+			what: a.description || a.type || "Transaction",
+			kind: a.kind || a.action || "swapped",
+			asset: a.asset || a.token || "",
+			delta: formatDelta(a.amount, a.side),
+		}));
 	}
 
 	/* ──────────────────────────────────────────────
@@ -177,16 +173,14 @@
      ────────────────────────────────────────────── */
 	function transformStrategies(apiStrategies) {
 		if (!Array.isArray(apiStrategies)) return [];
-		return apiStrategies.map(function (s) {
-			return {
-				id: s.id || s.strategyId || "strat-" + Math.random().toString(36).slice(2, 8),
-				name: s.name || "Strategy",
-				apy: formatApy(s.apy || s.estimatedApy),
-				staked: s.totalStakedUsd || s.staked || "0",
-				loops: s.loopCount || s.loops || 0,
-				last: relativeTime(s.lastUpdated || s.updatedAt || s.createdAt),
-			};
-		});
+		return apiStrategies.map((s) => ({
+			id: s.id || s.strategyId || "strat-" + Math.random().toString(36).slice(2, 8),
+			name: s.name || "Strategy",
+			apy: formatApy(s.apy || s.estimatedApy),
+			staked: s.totalStakedUsd || s.staked || "0",
+			loops: s.loopCount || s.loops || 0,
+			last: relativeTime(s.lastUpdated || s.updatedAt || s.createdAt),
+		}));
 	}
 
 	/* ──────────────────────────────────────────────
@@ -195,26 +189,24 @@
      ────────────────────────────────────────────── */
 	function transformProposals(apiProposals) {
 		if (!Array.isArray(apiProposals)) return [];
-		return apiProposals.map(function (p) {
-			return {
-				id: p.id || p.proposalId || "prop-" + Math.random().toString(36).slice(2, 8),
-				title: p.title || "Proposal",
-				status: (p.status || "pending").toLowerCase(),
-				body: p.description || p.body || "",
-				forVotes:
-					p.forVotes != null ? String(p.forVotes) : p.votesFor != null ? String(p.votesFor) : "0",
-				againstVotes:
-					p.againstVotes != null
-						? String(p.againstVotes)
-						: p.votesAgainst != null
-							? String(p.votesAgainst)
-							: "0",
-				abstain: p.abstainVotes != null ? String(p.abstainVotes) : "0",
-				quorum: p.quorum ? String(p.quorum) : "0",
-				timeLeft: p.deadline ? relativeTime(p.deadline) : p.endsAt ? relativeTime(p.endsAt) : "—",
-				proposer: p.proposer || p.creator || "0x0000",
-			};
-		});
+		return apiProposals.map((p) => ({
+			id: p.id || p.proposalId || "prop-" + Math.random().toString(36).slice(2, 8),
+			title: p.title || "Proposal",
+			status: (p.status || "pending").toLowerCase(),
+			body: p.description || p.body || "",
+			forVotes:
+				p.forVotes != null ? String(p.forVotes) : p.votesFor != null ? String(p.votesFor) : "0",
+			againstVotes:
+				p.againstVotes != null
+					? String(p.againstVotes)
+					: p.votesAgainst != null
+						? String(p.votesAgainst)
+						: "0",
+			abstain: p.abstainVotes != null ? String(p.abstainVotes) : "0",
+			quorum: p.quorum ? String(p.quorum) : "0",
+			timeLeft: p.deadline ? relativeTime(p.deadline) : p.endsAt ? relativeTime(p.endsAt) : "—",
+			proposer: p.proposer || p.creator || "0x0000",
+		}));
 	}
 
 	/* ──────────────────────────────────────────────
@@ -223,19 +215,17 @@
      ────────────────────────────────────────────── */
 	function transformCommunity(apiCommunity) {
 		if (!Array.isArray(apiCommunity)) return [];
-		return apiCommunity.map(function (item) {
-			return {
-				id: item.id || item.strategyId || "comm-" + Math.random().toString(36).slice(2, 8),
-				name: item.name || item.strategistName || "Strategy",
-				author: item.author || item.strategistHandle || item.strategistName || "anonymous",
-				risk: (item.risk || "medium").toLowerCase(),
-				apy: item.apy || item.estimatedApy || 0,
-				tvl: item.tvl || item.totalStakedUsd || "0",
-				asset: item.asset || item.token || "UNKNOWN",
-				deployers: item.deployers || item.deployerCount || 0,
-				template: item.template || item.templateId || "",
-			};
-		});
+		return apiCommunity.map((item) => ({
+			id: item.id || item.strategyId || "comm-" + Math.random().toString(36).slice(2, 8),
+			name: item.name || item.strategistName || "Strategy",
+			author: item.author || item.strategistHandle || item.strategistName || "anonymous",
+			risk: (item.risk || "medium").toLowerCase(),
+			apy: item.apy || item.estimatedApy || 0,
+			tvl: item.tvl || item.totalStakedUsd || "0",
+			asset: item.asset || item.token || "UNKNOWN",
+			deployers: item.deployers || item.deployerCount || 0,
+			template: item.template || item.templateId || "",
+		}));
 	}
 
 	/* ──────────────────────────────────────────────
@@ -247,7 +237,7 @@
 			return defaultNodeTypes();
 		}
 		var nodeTypes = {};
-		modules.forEach(function (m) {
+		modules.forEach((m) => {
 			var action = (m.action || m.type || "").toLowerCase();
 			if (ACTION_MAP[action]) {
 				// Use object spread to avoid Object.assign intermediate allocation
@@ -261,11 +251,7 @@
 		var keys = Object.keys(ACTION_MAP);
 		for (var i = 0; i < keys.length; i++) {
 			var k = keys[i];
-			if (
-				!Object.values(nodeTypes).some(function (n) {
-					return n.kicker === ACTION_MAP[k].kicker;
-				})
-			) {
+			if (!Object.values(nodeTypes).some((n) => n.kicker === ACTION_MAP[k].kicker)) {
 				// Use object spread instead of Object.assign({}, ...) to avoid
 				// creating both an empty object and a copy
 				nodeTypes[k] = { ...ACTION_MAP[k] };

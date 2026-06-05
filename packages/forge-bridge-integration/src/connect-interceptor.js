@@ -310,7 +310,7 @@ function init() {
 	if (bus && !listenersRegistered) {
 		listenersRegistered = true;
 		bus.on("wallet:disconnected", onWalletDisconnected);
-		bus.on("error:auth", function () {
+		bus.on("error:auth", () => {
 			console.warn("[ConnectInterceptor] Auth failure — auto-disconnecting");
 			handleDisconnect();
 		});

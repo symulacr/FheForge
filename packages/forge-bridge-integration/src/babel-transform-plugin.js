@@ -1,4 +1,4 @@
-(function () {
+(() => {
 	"use strict";
 
 	if (typeof Babel === "undefined") return;
@@ -13,7 +13,7 @@
 		window.__BRIDGE__ = {
 			setMockData(key, value) {
 				window.__MOCK__[key] = value;
-				this._listeners.forEach(function (fn) {
+				this._listeners.forEach((fn) => {
 					fn(key, value);
 				});
 			},
@@ -23,7 +23,7 @@
 			onDataUpdate(fn) {
 				this._listeners.add(fn);
 				const self = this;
-				return function () {
+				return () => {
 					self._listeners.delete(fn);
 				};
 			},
@@ -98,7 +98,7 @@
      Plugin: mockDataPlugin — 4 visitors
      ────────────────────────────────────────────── */
 
-	const mockDataPlugin = function (api) {
+	const mockDataPlugin = (api) => {
 		const t = api.types;
 		const renderCallPaths = [];
 
@@ -110,13 +110,11 @@
               const X = val  →  var X = window.__MOCK__.Y != null ? window.__MOCK__.Y : val
               where Y = VARIABLE_TO_MOCK_KEY[X] || X
            ------------------------------------------------------ */
-				VariableDeclarator: function (path) {
+				VariableDeclarator: (path) => {
 					const varName = path.node.id && path.node.id.name;
 					if (!varName || !MOCK_CONSTANTS.has(varName)) return;
 
-					const parentDecl = path.findParent(function (p) {
-						return p.isVariableDeclaration();
-					});
+					const parentDecl = path.findParent((p) => p.isVariableDeclaration());
 					if (!parentDecl) return;
 
 					// Change declaration kind to "var" (hoisted, re-assignable)
@@ -139,7 +137,7 @@
               <Cipher value="68,412.07" locked={locked} />
               → <Cipher value={window.__MOCK__.PORTFOLIO_NET_VALUE != null ? window.__MOCK__.PORTFOLIO_NET_VALUE : "68,412.07"} locked={locked} />
            ------------------------------------------------------ */
-				JSXAttribute: function (path) {
+				JSXAttribute: (path) => {
 					const attrName = path.node.name && path.node.name.name;
 					if (attrName !== "value") return;
 
@@ -172,7 +170,7 @@
               ReactDOM.createRoot(...).render(<App />) — collected
               for processing in Program.exit.
            ------------------------------------------------------ */
-				CallExpression: function (path) {
+				CallExpression: (path) => {
 					const callee = path.node.callee;
 
 					// Must be xxx.render(...)
@@ -203,7 +201,7 @@
               Processes accumulated CallExpression paths.
            ------------------------------------------------------ */
 				Program: {
-					exit: function (path) {
+					exit: (path) => {
 						for (let i = 0; i < renderCallPaths.length; i++) {
 							const nodePath = renderCallPaths[i];
 							const renderArg = nodePath.node.arguments[0];
@@ -254,7 +252,7 @@
      the mockDataPlugin.
      ────────────────────────────────────────────── */
 
-	(function () {
+	(() => {
 		if (typeof Babel.transformScriptTags !== "function") return;
 
 		const SCRIPT_TYPES = new Set(["text/jsx", "text/babel"]);
@@ -326,7 +324,7 @@
 						const xhr = new XMLHttpRequest();
 						xhr.open("GET", src, true);
 						if ("overrideMimeType" in xhr) xhr.overrideMimeType("text/plain");
-						xhr.onreadystatechange = function () {
+						xhr.onreadystatechange = () => {
 							if (xhr.readyState === 4) {
 								if (xhr.status === 0 || xhr.status === 200) {
 									contents[idx] = xhr.responseText;
