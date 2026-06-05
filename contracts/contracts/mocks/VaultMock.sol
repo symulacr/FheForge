@@ -40,21 +40,21 @@ contract VaultMock is IStrategyVault {
         return;
     }
 
-    function getCollateral(bytes32) external pure returns (euint128 coll) {
+    function getCollateral(bytes32) external pure returns (euint128) {
         revert NotMocked();
     }
 
-    function getUserPositions(address) external pure returns (bytes32[] memory ids) {
+    function getUserPositions(address) external pure returns (bytes32[] memory) {
         revert NotMocked();
     }
 
     function getPositionMeta(
         bytes32
-    ) external pure returns (uint256 strategyId, uint256 createdAt) {
+    ) external pure returns (uint256, uint256) {
         revert NotMocked();
     }
 
-    function getDepositedAmount(bytes32) external pure returns (uint256 amount) {
+    function getDepositedAmount(bytes32) external pure returns (uint256) {
         revert NotMocked();
     }
 }

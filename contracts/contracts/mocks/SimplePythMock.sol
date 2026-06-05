@@ -68,7 +68,7 @@ contract SimplePythMock is IPyth {
         bytes32[] calldata,
         uint64,
         uint64
-    ) external payable returns (PythStructs.PriceFeed[] memory feeds) {
+    ) external payable returns (PythStructs.PriceFeed[] memory) {
         revert NotImplemented();
     }
 
@@ -80,7 +80,7 @@ contract SimplePythMock is IPyth {
         bool,
         bool,
         bool
-    ) external payable returns (PythStructs.PriceFeed[] memory feeds, uint64[] memory timestamps) {
+    ) external payable returns (PythStructs.PriceFeed[] memory, uint64[] memory) {
         revert NotImplemented();
     }
 
@@ -89,14 +89,14 @@ contract SimplePythMock is IPyth {
         bytes32[] calldata,
         uint64,
         uint64
-    ) external payable returns (PythStructs.PriceFeed[] memory feeds) {
+    ) external payable returns (PythStructs.PriceFeed[] memory) {
         revert NotImplemented();
     }
 
     function parseTwapPriceFeedUpdates(
         bytes[] calldata,
         bytes32[] calldata
-    ) external payable returns (PythStructs.TwapPriceFeed[] memory feeds) {
+    ) external payable returns (PythStructs.TwapPriceFeed[] memory) {
         revert NotImplemented();
     }
 
@@ -105,7 +105,7 @@ contract SimplePythMock is IPyth {
         return true;
     }
 
-    function queryPriceFeed(bytes32) external pure returns (PythStructs.PriceFeed memory feed) {
+    function queryPriceFeed(bytes32) external pure returns (PythStructs.PriceFeed memory) {
         revert NotImplemented();
     }
 

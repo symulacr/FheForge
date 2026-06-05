@@ -36,11 +36,11 @@ contract PoolMock is ILendingPool {
         revert NotMocked();
     }
 
-    function getSupplyBalance(address) external pure returns (euint128 bal) {
+    function getSupplyBalance(address) external pure returns (euint128) {
         revert NotMocked();
     }
 
-    function getBorrowBalance(address) external pure returns (euint128 bal) {
+    function getBorrowBalance(address) external pure returns (euint128) {
         revert NotMocked();
     }
 
@@ -63,7 +63,7 @@ contract PoolMock is ILendingPool {
         InEuint128 calldata,
         uint128,
         uint128
-    ) external pure returns (euint128 actual) {
+    ) external pure returns (euint128) {
         revert NotMocked();
     }
 
@@ -73,7 +73,7 @@ contract PoolMock is ILendingPool {
         uint256,
         uint256,
         InEuint128 calldata
-    ) external pure returns (euint128 actual) {
+    ) external pure returns (euint128) {
         revert NotMocked();
     }
 

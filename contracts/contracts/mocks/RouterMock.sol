@@ -37,7 +37,7 @@ contract RouterMock is ISwapRouter {
         uint24,
         uint256,
         uint256
-    ) external pure returns (uint256 amountOut) {
+    ) external pure returns (uint256) {
         revert NotMocked();
     }
 
@@ -45,7 +45,7 @@ contract RouterMock is ISwapRouter {
         bytes calldata,
         uint256,
         uint256
-    ) external pure returns (uint256 amountOut) {
+    ) external pure returns (uint256) {
         revert NotMocked();
     }
 }
