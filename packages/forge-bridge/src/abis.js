@@ -330,19 +330,6 @@ export const CONTRACT_ABIS = {
   },
   {
     "type": "function",
-    "name": "composer",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "depositFor",
     "inputs": [
       {
@@ -637,6 +624,25 @@ export const CONTRACT_ABIS = {
       }
     ],
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "isComposer",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1097,6 +1103,11 @@ export const CONTRACT_ABIS = {
         "name": "c",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "enabled",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "outputs": [],
@@ -7492,13 +7503,13 @@ export const CONTRACT_ABIS = {
 };
 
 export const CONTRACT_ADDRESSES = {
-	LendingPool: "0xff687831dfD3657D6C6879403cE56f53518b378C",
-	StrategyVault: "0xfCb89417e0a21813c84647614764e920bBdFEb94",
-	Composer: "0xEab68D8Ee6DC5Ddc10293fF3B1bb21679d81dC8b",
-	SwapRouter: "0x9C9bEb3d95184BbA11AfE1D973927562C8eb0409",
-	PriceOracle: "0x46ef25fDd66Ce1A331942064Ef6879848621fBd9",
-	StrategyRegistry: "0xB39E9B573b8f39fBc407f8F7d9F621481d3E12C8",
-	StrategyExecutor: "0x03De449445c1c11d190b49bf9dBf98FCfC6b58D8",
-	TokenRegistry: "0x68c6A763e85367c4964b36e207DaFfe745B1B980",
-	ExecutorContract: "0x1bF7eb45695A4d9b83F5392F16DC262840B4A7d1",
+	LendingPool: "0x2e04961e0d4448FeeeA5b23593eC81C1C9A2cD2a",
+	StrategyVault: "0xe9486B12261D02BeB236355934981d49c5697fb3",
+	Composer: "0xBcaEF72afA1f207F44C5aa11E48a7bea4b71632C",
+	SwapRouter: "0x5218486A8831b53b509CDF2390b3b6333B4d0bf7",
+	PriceOracle: "0x8E41d720173c347740C05011FadD3a3B015ae18c",
+	StrategyRegistry: "0xEbBD1aFDCC888116a4c3800ec856c8c3b1535374",
+	StrategyExecutor: "0x157DE38216598dA56eEA78452329075cD511374B",
+	TokenRegistry: "0xA2E36B9953518d4Cd2E9c7e3b5345f8E8B8Bb19B",
+	ExecutorContract: "0x270F526b27cf7bf810a61e5f14f904C51CdC3deA",
 };

@@ -446,22 +446,22 @@ Run full suite: `node contracts/scripts/test-hardened.js` · `node contracts/scr
 
 ## Contracts — Arbitrum Sepolia (421614)
 
-All contracts verified on [Arbiscan](https://sepolia.arbiscan.io). Deployed `2026-05-29` via `forge-deploy.ts`:
+All contracts deployed on [Arbiscan](https://sepolia.arbiscan.io). Redeployed `2026-06-05` via `forge-deploy.ts`:
 
 | Contract | Address | Verified |
 |----------|---------|----------|
-| LendingPool | `0xff687831dfD3657D6C6879403cE56f53518b378C` | ✅ |
-| StrategyVault | `0xfCb89417e0a21813c84647614764e920bBdFEb94` | ✅ |
-| FheForgeComposer | `0xEab68D8Ee6DC5Ddc10293fF3B1bb21679d81dC8b` | ✅ |
-| SwapRouter | `0x9C9bEb3d95184BbA11AfE1D973927562C8eb0409` | ✅ |
-| PriceOracle | `0x46ef25fDd66Ce1A331942064Ef6879848621fBd9` | ✅ |
-| StrategyRegistry | `0xB39E9B573b8f39fBc407f8F7d9F621481d3E12C8` | ✅ |
-| StrategyExecutor | `0x03De449445c1c11d190b49bf9dBf98FCfC6b58D8` | ✅ |
-| TokenRegistry | `0x68c6A763e85367c4964b36e207DaFfe745B1B980` | ✅ |
-| ExecutorContract | `0x1bF7eb45695A4d9b83F5392F16DC262840B4A7d1` | ❌ (rate-limited — retried later) |
-| FheForgeToken | `0x4c348a75B24490F36B14E1f602c6b22AB7Df1cD0` | ✅ |
-| FheForgeTimelock | `0x1BCF1631249aB36Ef7C2E2fC910E2D2c7F30E479` | ✅ |
-| FheForgeGovernor | `0x667F08348509F0499797C51f892d09770Cf1A0C0` | ✅ |
+| LendingPool | `0x2e04961e0d4448FeeeA5b23593eC81C1C9A2cD2a` | ✅ |
+| StrategyVault | `0xe9486B12261D02BeB236355934981d49c5697fb3` | ✅ |
+| FheForgeComposer | `0xBcaEF72afA1f207F44C5aa11E48a7bea4b71632C` | ✅ |
+| SwapRouter | `0x5218486A8831b53b509CDF2390b3b6333B4d0bf7` | ✅ |
+| PriceOracle | `0x8E41d720173c347740C05011FadD3a3B015ae18c` | ✅ |
+| StrategyRegistry | `0xEbBD1aFDCC888116a4c3800ec856c8c3b1535374` | ✅ |
+| StrategyExecutor | `0x157DE38216598dA56eEA78452329075cD511374B` | ✅ |
+| TokenRegistry | `0xA2E36B9953518d4Cd2E9c7e3b5345f8E8B8Bb19B` | ✅ |
+| ExecutorContract | `0x270F526b27cf7bf810a61e5f14f904C51CdC3deA` | ✅ |
+| FheForgeToken | `0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6` | ✅ |
+| FheForgeTimelock | `0x784376df1E39E91b3E65b1B8271B79ef5f36F890` | ✅ |
+| FheForgeGovernor | `0x194a4C1B3BEb986f82f829f487dccd46a3c71F30` | ✅ |
 
 ---
 

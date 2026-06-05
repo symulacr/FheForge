@@ -1000,7 +1000,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                   });
                   const workflowHash = bwKeccak(bwToHex(graphPayload));
 
-                  const COMPOSER_ADDRESS = "0xEab68D8Ee6DC5Ddc10293fF3B1bb21679d81dC8b";
+                  const COMPOSER_ADDRESS = "0xBcaEF72afA1f207F44C5aa11E48a7bea4b71632C";
 
                   const subgraphs = groupSubgraphs(nodes, edges);
                   let strategyId = 0n;

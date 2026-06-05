@@ -299,7 +299,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
       if (!bridge?.contract) { setCrStep("failed"); setCrError("bridge unavailable"); return; }
 
       // Approval check
-      const LENDING_POOL = "0xff687831dfD3657D6C6879403cE56f53518b378C";
+      const LENDING_POOL = "0x2e04961e0d4448FeeeA5b23593eC81C1C9A2cD2a";
       const allowance = await bridge.contract.read.erc20Allowance(market.assetAddress, ctx.address, LENDING_POOL);
       if (BigInt(allowance) < wei) {
         const approvalRes = await bridge.contract.write.erc20Approve(market.assetAddress, LENDING_POOL, ctx.address);
