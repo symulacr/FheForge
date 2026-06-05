@@ -68,12 +68,5 @@ import { DefiStrategySimulationSnapshotsController } from './interfaces/defi_str
       useClass: DefiExecutionStepResultRepositoryImpl,
     },
   ],
-  exports: [
-    DefiStrategiesService,
-    DefiStrategyVersionService,
-    DefiStrategySimulationSnapshotService,
-    DefiExecutionStepResultService,
-    DefiSimulationEngine,
-  ],
 })
 export class DefiStrategiesModule {}

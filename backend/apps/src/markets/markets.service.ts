@@ -431,7 +431,8 @@ export class MarketsService implements OnModuleInit, OnModuleDestroy {
         10_000,
         '',
       );
-    } catch {
+    } catch (e) {
+      console.warn('[MarketsService]', e?.message || e);
       return tokenAddress;
     }
   }

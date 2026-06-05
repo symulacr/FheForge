@@ -3,13 +3,11 @@ import { FhenixStrategyService } from '../../shared/infrastructure/fhenix-strate
 import { Strategy } from '../domain/strategies.entity';
 import { StrategiesRepository } from '../domain/strategies.repository';
 import { StrategyMapper } from './mappers/strategy.mapper';
-import { RewardsService } from './rewards.service';
 
 @Injectable()
 export class StrategyService {
   constructor(
     private readonly strategiesRepo: StrategiesRepository,
-    readonly _rewards: RewardsService,
     readonly _fhenixStrategy: FhenixStrategyService,
   ) {}
 

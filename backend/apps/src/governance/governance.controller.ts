@@ -73,23 +73,22 @@ export class GovernanceController {
 
   @Post('vote')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cast a vote on an active proposal' })
-  @ApiResponse({ status: 201, description: 'Vote recorded', type: VoteDto })
-  @ApiResponse({ status: 404, description: 'Proposal not found' })
+  @ApiOperation({
+    summary: 'Cast a vote on an active proposal (on-chain coming soon)',
+  })
   @ApiResponse({
-    status: 400,
-    description: 'Invalid vote (expired, duplicate, or not active)',
+    status: 200,
+    description: 'Vote not yet available on-chain',
   })
   async castVote(
-    @Body() dto: CastVoteDto,
-    @Req() req: Request,
-  ): Promise<VoteDto> {
-    const voter = (req as unknown as { user?: { address?: string } }).user
-      ?.address;
-    if (!voter) {
-      throw new NotFoundException('Authenticated voter address not found');
-    }
-    return this.governanceService.castVote(dto, voter);
+    @Body() _dto: CastVoteDto,
+    @Req() _req: Request,
+  ): Promise<{ success: boolean; message: string }> {
+    return {
+      success: false,
+      message:
+        'On-chain governance voting coming soon. Votes require FFG token and on-chain interaction.',
+    };
   }
 
   @Patch('proposals/:id/execute')

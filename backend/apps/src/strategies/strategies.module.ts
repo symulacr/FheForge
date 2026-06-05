@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { SupabaseModule } from '../shared/supabase.module';
-import { RewardsService } from './application/rewards.service';
 import { StrategyService } from './application/strategy.service';
 import { StrategiesRepository } from './domain/strategies.repository';
 import { StrategiesRepositoryImplement } from './infrastructure/strategies.repository.impl';
@@ -11,9 +10,8 @@ import { StrategiesController } from './interfaces/stategies.controller';
   controllers: [StrategiesController],
   providers: [
     StrategyService,
-    RewardsService,
     { provide: StrategiesRepository, useClass: StrategiesRepositoryImplement },
   ],
-  exports: [StrategyService, RewardsService],
+  exports: [StrategyService],
 })
 export class StrategiesModule {}

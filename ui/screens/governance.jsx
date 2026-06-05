@@ -215,16 +215,15 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
                 {["for", "against", "abstain"].map(v => (
                   <button
                     key={v}
-                    onClick={() => { setVote(v); setVoteResult(null); }}
-                    disabled={voting || !ctx?.connected}
+                    disabled={true}
                     style={{
                       flex: 1, padding: "11px 14px",
-                      border: "1px solid " + (vote === v ? "var(--ink)" : "var(--hairline)"),
-                      background: vote === v ? "var(--paper-2)" : "var(--paper)",
+                      border: "1px solid var(--hairline)",
+                      background: "var(--paper)",
                       color: "var(--ink)",
                       fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.06,
-                      cursor: (!voting && ctx?.connected) ? "pointer" : "not-allowed",
-                      opacity: (!voting && ctx?.connected) ? 1 : 0.5,
+                      cursor: "not-allowed",
+                      opacity: 0.5,
                     }}
                   >● {v}</button>
                 ))}
@@ -232,27 +231,13 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
               <button
                 className="btn"
                 style={{ width: "100%", marginTop: 14 }}
-                disabled={!vote || voting || !ctx?.connected}
-                onClick={async () => {
-                  if (!vote || !bridge?.api?.governance?.castVote) return;
-                  setVoting(true);
-                  setVoteResult(null);
-                  try {
-                    await bridge.api.governance.castVote({
-                      proposalId: p.id,
-                      support: vote === "for" ? 1 : vote === "against" ? 0 : 2,
-                      votes: 1,
-                    });
-                    setVoteResult("success");
-                  } catch (err) {
-                    setVoteResult(err?.message || "transaction failed");
-                  } finally {
-                    setVoting(false);
-                  }
-                }}
+                disabled={true}
               >
-                {voting ? "Casting vote…" : vote ? "Cast " + vote + " vote" : "Select a position"} <span className="ar">→</span>
+                On-chain voting coming soon <span className="ar">→</span>
               </button>
+              <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 10, textAlign: "center" }}>
+                On-chain governance voting coming soon
+              </div>
             </>
           )}
         </div>

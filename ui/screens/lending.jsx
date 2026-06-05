@@ -236,6 +236,7 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
                 <button key={s} className={"tab" + (side === s ? " active" : "")}
                   role="tab"
                   aria-selected={side === s}
+                  aria-controls={`panel-${s}`}
                   onClick={() => setSide(s)}
                   data-testid={`tab-${s}`}>{s}</button>
               ))}
@@ -247,13 +248,15 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
       }
       detailBody={
         market ? (
-          <LendAction
-            market={market} side={side} amount={amount} setAmount={setAmount}
-            ltv={ltv} setLtv={setLtv}
-            locked={locked} grantPermit={grantPermit} ctx={ctx} openConnect={openConnect}
-            bridgeData={bridgeData} positionSummary={positionSummary}
-            markets={markets}
-          />
+          <div role="tabpanel" id={`panel-${side}`}>
+            <LendAction
+              market={market} side={side} amount={amount} setAmount={setAmount}
+              ltv={ltv} setLtv={setLtv}
+              locked={locked} grantPermit={grantPermit} ctx={ctx} openConnect={openConnect}
+              bridgeData={bridgeData} positionSummary={positionSummary}
+              markets={markets}
+            />
+          </div>
         ) : (
           <div className="mono" style={{ padding: 20, color: "var(--muted)", fontSize: 12 }}>
             {!markets ? marketStatus : "no markets available"}

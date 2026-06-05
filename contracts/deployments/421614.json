@@ -38,17 +38,17 @@
     "USDC": "0x150376EdEbc5AC48771655a61a795d828BeC8Df6"
   },
   "verificationStatus": {
-    "StrategyRegistry": false,
-    "LendingPool": false,
-    "PriceOracle": false,
-    "SwapRouter": false,
-    "ExecutorContract": false,
-    "StrategyVault": false,
-    "FheForgeComposer": false,
-    "TokenRegistry": false,
-    "StrategyExecutor": false,
-    "FheForgeToken": false,
-    "FheForgeTimelock": false,
-    "FheForgeGovernor": false
+    "StrategyRegistry": true,
+    "LendingPool": true,
+    "PriceOracle": true,
+    "SwapRouter": true,
+    "ExecutorContract": true,
+    "StrategyVault": true,
+    "FheForgeComposer": true,
+    "TokenRegistry": true,
+    "StrategyExecutor": true,
+    "FheForgeToken": true,
+    "FheForgeTimelock": true,
+    "FheForgeGovernor": true
   }
 }

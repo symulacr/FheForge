@@ -290,6 +290,7 @@ function MasterDetail({ listHeader, listBody, detailHeader, detailBody, detailFu
         onClick={() => setListOpen(o => !o)}
         title={listOpen ? "Hide list · ⌘B" : "Show list · ⌘B"}
         aria-label={listOpen ? "Hide list panel" : "Show list panel"}
+        aria-expanded={listOpen}
       >
         {listOpen ? "‹" : "›"}
       </button>
@@ -382,11 +383,12 @@ function TopBar({ route, setRoute, ctx, onPermitClick, onWalletClick, theme, set
         <a className="wordmark" onClick={() => setRoute("home")}>
           <span className="dot" /> FheForge
         </a>
-        <nav style={{ display: "flex", gap: 4, marginLeft: 14, flex: 1, overflowX: "auto" }}>
+        <nav aria-label="Main navigation" style={{ display: "flex", gap: 4, marginLeft: 14, flex: 1, overflowX: "auto" }}>
           {NAV.map(([k, label]) => (
             <button
               key={k}
               onClick={() => setRoute(k)}
+              aria-current={route === k ? "page" : undefined}
               style={{
                 border: 0,
                 padding: "8px 10px",
@@ -440,6 +442,7 @@ function MobileNav({ route, setRoute }) {
   ];
   return (
     <nav
+      aria-label="Mobile navigation"
       className="mobile-nav"
       style={{
         position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40,
@@ -452,6 +455,7 @@ function MobileNav({ route, setRoute }) {
           <button
             key={k}
             onClick={() => setRoute(k)}
+            aria-current={route === k ? "page" : undefined}
             style={{
               border: 0, background: "transparent",
               padding: "12px 16px",

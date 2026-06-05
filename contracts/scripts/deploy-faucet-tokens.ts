@@ -17,12 +17,12 @@ const TOKENS = [
   { name: "Dai Stablecoin",   symbol: "DAI",   decimals: 18, pythId: "0xb0948a5e5313200c632b51bb5ca32f6de0d36e9950a942d19751e833f70dabfd" },
   { name: "Arbitrum",         symbol: "ARB",   decimals: 18, pythId: "0x3fa4252848f9f0a1480be62745a4629d9eb1322aebab8a791e344b3b9c1adcf5" },
   { name: "Chainlink",        symbol: "LINK",  decimals: 18, pythId: "0x8ac0c70fff57e9aefdf5edf44b51d62c2d433653cbb2cf5cc06bb115af04d221" },
-  { name: "Uniswap",          symbol: "UNI",   decimals: 18, pythId: "0x78d1807e0b7c5c8c7d67b36d606c8b34e63e63c08e1a2d0c9f8b2e1d0c9b8a7f" },
+  { name: "Uniswap",          symbol: "UNI",   decimals: 18, pythId: "0x78d185a741d07edb3412b09008b7c5cfb9bbbd7d568bf00ba737b456ba171501" },
   { name: "Aave",             symbol: "AAVE",  decimals: 18, pythId: "0x2b9ab1e972a281585084148ba1389800799bd4be63b957507db1349314e47445" },
 ];
 
 // TokenRegistry and PriceOracle addresses (Arbitrum Sepolia)
-const TOKEN_REGISTRY = "0x68c6A763e85367c4964b36e207DaFfe745B1B980";
+const TOKEN_REGISTRY = "0xa731167FcB35c88E7482341Ab14D6363Cb9702Ea";
 const PRICE_ORACLE = "0x8E41d720173c347740C05011FadD3a3B015ae18c";
 const DEFAULT_STALE_THRESHOLD = 86_400n; // 24 hours — matches forge-deploy.ts
 

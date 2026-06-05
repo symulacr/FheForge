@@ -115,7 +115,8 @@ export class EventIndexerService implements OnModuleInit, OnModuleDestroy {
         this.lastProcessedBlock = (data as EventIndexerState).last_block;
         this.logger.log(`Resuming from block ${this.lastProcessedBlock}`);
       }
-    } catch {
+    } catch (e) {
+      console.warn('[EventIndexerService]', e?.message || e);
       this.logger.log(
         'No previous indexer state found — starting from current block',
       );
