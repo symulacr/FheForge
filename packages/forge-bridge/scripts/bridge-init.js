@@ -18,9 +18,10 @@ import bridgeBus from "../../forge-bridge-integration/src/bridge-bus.js";
  */
 
 // Auto-detect local dev environment
-if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-  window.__FHEFORGE_CONFIG__ = window.__FHEFORGE_CONFIG__ || {};
-  window.__FHEFORGE_CONFIG__.apiBaseUrl = window.__FHEFORGE_CONFIG__.apiBaseUrl || 'http://localhost:3001';
+if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+	window.__FHEFORGE_CONFIG__ = window.__FHEFORGE_CONFIG__ || {};
+	window.__FHEFORGE_CONFIG__.apiBaseUrl =
+		window.__FHEFORGE_CONFIG__.apiBaseUrl || "http://localhost:3001";
 }
 
 const bridge = createBridge();

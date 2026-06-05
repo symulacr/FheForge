@@ -1,44 +1,44 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 class TokenInfo {
-  @ApiProperty({
-    example: '5',
-    description: 'Token address on Arbitrum',
-  })
-  assetId: string;
+	@ApiProperty({
+		example: "5",
+		description: "Token address on Arbitrum",
+	})
+	assetId: string;
 
-  @ApiProperty({ example: 'DOT', description: 'Token symbol' })
-  symbol: string;
+	@ApiProperty({ example: "DOT", description: "Token symbol" })
+	symbol: string;
 
-  @ApiProperty({ example: 0.01, description: 'Token amount' })
-  amount: number;
+	@ApiProperty({ example: 0.01, description: "Token amount" })
+	amount: number;
 }
 
 export class StrategyStepResponseDto {
-  @ApiProperty({ example: 1, description: 'Step number in sequence' })
-  step: number;
+	@ApiProperty({ example: 1, description: "Step number in sequence" })
+	step: number;
 
-  @ApiProperty({
-    example: 'SWAP',
-    description: 'Operation type',
-    enum: ['SWAP', 'SUPPLY', 'BORROW', 'CLAIM_REWARDS'],
-  })
-  type: string;
+	@ApiProperty({
+		example: "SWAP",
+		description: "Operation type",
+		enum: ["SWAP", "SUPPLY", "BORROW", "CLAIM_REWARDS"],
+	})
+	type: string;
 
-  @ApiProperty({ example: 'COFHE', description: 'DeFi protocol/agent' })
-  agent: string;
+	@ApiProperty({ example: "COFHE", description: "DeFi protocol/agent" })
+	agent: string;
 
-  @ApiProperty({
-    type: TokenInfo,
-    required: false,
-    description: 'Input token details',
-  })
-  tokenIn?: TokenInfo;
+	@ApiProperty({
+		type: TokenInfo,
+		required: false,
+		description: "Input token details",
+	})
+	tokenIn?: TokenInfo;
 
-  @ApiProperty({
-    type: TokenInfo,
-    required: false,
-    description: 'Output token details',
-  })
-  tokenOut?: TokenInfo;
+	@ApiProperty({
+		type: TokenInfo,
+		required: false,
+		description: "Output token details",
+	})
+	tokenOut?: TokenInfo;
 }

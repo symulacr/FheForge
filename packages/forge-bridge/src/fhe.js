@@ -171,10 +171,7 @@ export function createFheAdapter(config) {
 				.execute();
 			return encryptedHandle;
 		} catch (error) {
-			throw new FheError(
-				"ENCRYPT_FAILED",
-				error.message || "Failed to encrypt value",
-			);
+			throw new FheError("ENCRYPT_FAILED", error.message || "Failed to encrypt value");
 		}
 	}
 
@@ -218,10 +215,7 @@ export function createFheAdapter(config) {
 		try {
 			// decryptForTx returns a builder: .withoutPermit().execute()
 			// The SDK may internally poll until the decryption is ready.
-			const result = await _cofheClient
-				.decryptForTx(ctHash)
-				.withoutPermit()
-				.execute();
+			const result = await _cofheClient.decryptForTx(ctHash).withoutPermit().execute();
 
 			return {
 				plaintext: String(result.decryptedValue),

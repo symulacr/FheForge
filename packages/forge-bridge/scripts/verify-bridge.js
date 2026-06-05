@@ -71,7 +71,9 @@ async function main() {
 	console.log(`\n${BOLD}${CYAN}═══ FheForge Bridge — E2E Verification ═══${RESET}\n`);
 
 	if (isDryRun) {
-		console.log(`  ${YELLOW}${BOLD}⚡ DRY RUN${RESET}${YELLOW}: skipping network-dependent operations.${RESET}\n`);
+		console.log(
+			`  ${YELLOW}${BOLD}⚡ DRY RUN${RESET}${YELLOW}: skipping network-dependent operations.${RESET}\n`,
+		);
 	}
 
 	// ─────────────────────────────────────────────────────────────────────
@@ -94,7 +96,10 @@ async function main() {
 		if (hubModuleOk) {
 			// Try to instantiate createBridge (should fail gracefully without proper env)
 			const { createConfig } = await import("../src/config.js");
-			const cfg = createConfig({ chainId: 421614, rpcUrl: "https://arbitrum-sepolia.publicnode.com" });
+			const cfg = createConfig({
+				chainId: 421614,
+				rpcUrl: "https://arbitrum-sepolia.publicnode.com",
+			});
 			const bridge = createBridge(cfg);
 			const hasWallet = typeof bridge.wallet !== "undefined";
 			const hasApi = typeof bridge.api !== "undefined";
@@ -115,7 +120,11 @@ async function main() {
 			);
 		}
 	} catch (err) {
-		check(false, "Bridge module loads without errors", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
+		check(
+			false,
+			"Bridge module loads without errors",
+			`${RED}${/** @type {Error} */ (err).message}${RESET}`,
+		);
 	}
 
 	// ─────────────────────────────────────────────────────────────────────
@@ -147,11 +156,19 @@ async function main() {
 					);
 				} catch {
 					// Not all health endpoints return JSON; still OK if status was 2xx
-					report("Health response body is parseable JSON", false, "Body is not JSON (non-critical)");
+					report(
+						"Health response body is parseable JSON",
+						false,
+						"Body is not JSON (non-critical)",
+					);
 				}
 			}
 		} catch (err) {
-			check(false, "API health endpoint reachable", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
+			check(
+				false,
+				"API health endpoint reachable",
+				`${RED}${/** @type {Error} */ (err).message}${RESET}`,
+			);
 		}
 	}
 
@@ -210,11 +227,19 @@ async function main() {
 						`Body keys: ${Object.keys(errBody).join(", ")}`,
 					);
 				} catch {
-					report("Error response body is parseable JSON", false, "Could not parse error body (non-critical)");
+					report(
+						"Error response body is parseable JSON",
+						false,
+						"Could not parse error body (non-critical)",
+					);
 				}
 			}
 		} catch (err) {
-			check(false, "JWT nonce endpoint reachable", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
+			check(
+				false,
+				"JWT nonce endpoint reachable",
+				`${RED}${/** @type {Error} */ (err).message}${RESET}`,
+			);
 		}
 	}
 
@@ -229,8 +254,14 @@ async function main() {
 		{ name: "Composer", path: "../../../contracts/out/FheForgeComposer.sol/FheForgeComposer.json" },
 		{ name: "SwapRouter", path: "../../../contracts/out/SwapRouter.sol/SwapRouter.json" },
 		{ name: "PriceOracle", path: "../../../contracts/out/PriceOracle.sol/PriceOracle.json" },
-		{ name: "StrategyRegistry", path: "../../../contracts/out/StrategyRegistry.sol/StrategyRegistry.json" },
-		{ name: "StrategyExecutor", path: "../../../contracts/out/StrategyExecutor.sol/StrategyExecutor.json" },
+		{
+			name: "StrategyRegistry",
+			path: "../../../contracts/out/StrategyRegistry.sol/StrategyRegistry.json",
+		},
+		{
+			name: "StrategyExecutor",
+			path: "../../../contracts/out/StrategyExecutor.sol/StrategyExecutor.json",
+		},
 	];
 
 	let allAbisOk = true;
@@ -240,7 +271,9 @@ async function main() {
 			const mod = await import(path);
 			const abi = /** @type {any} */ (mod.abi || mod);
 			const ok = Array.isArray(abi) && abi.length > 0;
-			if (!check(ok, `ABI import: ${name}`, ok ? `${abi.length} entries` : "Not a valid ABI array")) {
+			if (
+				!check(ok, `ABI import: ${name}`, ok ? `${abi.length} entries` : "Not a valid ABI array")
+			) {
 				allAbisOk = false;
 			}
 		} catch (err) {
@@ -259,7 +292,11 @@ async function main() {
 	console.log(`\n${BOLD}[5/6] viem Chain Connection${RESET}`);
 
 	if (isDryRun) {
-		report("viem publicClient connects to Arb Sepolia", true, `${YELLOW}[SKIPPED — dry run]${RESET}`);
+		report(
+			"viem publicClient connects to Arb Sepolia",
+			true,
+			`${YELLOW}[SKIPPED — dry run]${RESET}`,
+		);
 	} else {
 		try {
 			const { createPublicClient, http } = await import("viem");
@@ -297,7 +334,11 @@ async function main() {
 				);
 			}
 		} catch (err) {
-			check(false, "viem publicClient connects to Arb Sepolia", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
+			check(
+				false,
+				"viem publicClient connects to Arb Sepolia",
+				`${RED}${/** @type {Error} */ (err).message}${RESET}`,
+			);
 		}
 	}
 
@@ -349,7 +390,11 @@ async function main() {
 				`PermitUtils: ${typeof permits.PermitUtils}`,
 			);
 		} catch (err) {
-			check(false, "@cofhe/sdk mock mode can be initialized", `${RED}${/** @type {Error} */ (err).message}${RESET}`);
+			check(
+				false,
+				"@cofhe/sdk mock mode can be initialized",
+				`${RED}${/** @type {Error} */ (err).message}${RESET}`,
+			);
 		}
 	}
 

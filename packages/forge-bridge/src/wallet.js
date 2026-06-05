@@ -326,7 +326,9 @@ export function createWalletAdapter(config) {
 
 			try {
 				// 1. Fetch nonce
-				const nonceRes = await fetch(`${baseUrl}/auth/nonce/${account}`, { credentials: 'include' });
+				const nonceRes = await fetch(`${baseUrl}/auth/nonce/${account}`, {
+					credentials: "include",
+				});
 				if (!nonceRes.ok) {
 					throw new WalletError("NONCE_FAILED", `Failed to get nonce: ${nonceRes.status}`);
 				}
@@ -344,7 +346,7 @@ export function createWalletAdapter(config) {
 				const loginRes = await fetch(`${baseUrl}/auth/wallet-login`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					credentials: 'include',
+					credentials: "include",
 					body: JSON.stringify({
 						walletAddress: account,
 						signature,
@@ -377,8 +379,10 @@ export function createWalletAdapter(config) {
 		 */
 		async logout() {
 			try {
-				await fetch(`${config.apiBaseUrl}/auth/logout`, { method: 'POST', credentials: 'include' });
-			} catch { /* silent */ }
+				await fetch(`${config.apiBaseUrl}/auth/logout`, { method: "POST", credentials: "include" });
+			} catch {
+				/* silent */
+			}
 		},
 
 		/**

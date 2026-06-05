@@ -217,7 +217,10 @@ export function createBridge(config = {}) {
 
 	// 6. Create contract adapter — wired to API adapter for simulation and FHE adapter for encryption
 	try {
-		adapters.contract = createContractAdapter(mergedConfig, { apiAdapter: adapters.api, fheAdapter: adapters.fhe });
+		adapters.contract = createContractAdapter(mergedConfig, {
+			apiAdapter: adapters.api,
+			fheAdapter: adapters.fhe,
+		});
 	} catch (err) {
 		initErrors.contract =
 			err instanceof BridgeError

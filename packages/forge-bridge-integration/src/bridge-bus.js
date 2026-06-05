@@ -186,7 +186,7 @@ export class BridgeBus {
 				},
 			};
 			this._emit(event, data);
-			this._emit('_change', this._state);
+			this._emit("_change", this._state);
 			return;
 		}
 
@@ -216,11 +216,11 @@ export class BridgeBus {
 			this._state = next;
 
 			this._emit(event, this._getDomainData(domain, key));
-			this._emit('_change', this._state);
+			this._emit("_change", this._state);
 		} else if (event === "reset") {
 			this._resetState();
 			this._emit("reset", this.getState());
-			this._emit('_change', this._state);
+			this._emit("_change", this._state);
 		} else {
 			// Unmapped event — emit but don't store in state
 			this._emit(event, data);
@@ -235,7 +235,7 @@ export class BridgeBus {
 	 * @returns {() => void} Unsubscribe function
 	 */
 	subscribe(callback) {
-		return this.on('_change', callback);
+		return this.on("_change", callback);
 	}
 
 	/**
@@ -264,7 +264,7 @@ export class BridgeBus {
 		this._started = false;
 		this._authEnabled = false;
 		this._emit("reset", this.getState());
-		this._emit('_change', this._state);
+		this._emit("_change", this._state);
 	}
 
 	/**
@@ -334,7 +334,7 @@ export class BridgeBus {
 			}
 		}
 
-		this._emit('_change', this._state);
+		this._emit("_change", this._state);
 	}
 
 	/**

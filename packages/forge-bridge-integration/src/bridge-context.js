@@ -22,7 +22,7 @@
  *   const data = useBridgeData();  // all data arrays
  */
 
-import bridgeBus from './bridge-bus.js';
+import bridgeBus from "./bridge-bus.js";
 
 // ─── Default Context Value ──────────────────────────────────────────────────
 
@@ -92,9 +92,9 @@ class ForgeErrorBoundary extends React.Component {
 	 * @param {Object} errorInfo - React error info (component stack)
 	 */
 	componentDidCatch(error, errorInfo) {
-		console.error('[ForgeErrorBoundary] Caught render error:', error.message || error);
+		console.error("[ForgeErrorBoundary] Caught render error:", error.message || error);
 		if (errorInfo && errorInfo.componentStack) {
-			console.warn('[ForgeErrorBoundary] Component stack:', errorInfo.componentStack);
+			console.warn("[ForgeErrorBoundary] Component stack:", errorInfo.componentStack);
 		}
 	}
 
@@ -104,29 +104,29 @@ class ForgeErrorBoundary extends React.Component {
 			// Shows a minimal error message so the user knows something went wrong,
 			// while keeping the page functional (navigation, sidebar, etc.)
 			return React.createElement(
-				'div',
+				"div",
 				{
 					style: {
-						padding: '24px',
-						margin: '16px',
-						border: '1px solid var(--destructive, #ef4444)',
-						background: 'var(--card, #111111)',
-						color: 'var(--destructive, #ef4444)',
-						fontFamily: 'JetBrains Mono, monospace',
-						fontSize: '0.875rem',
+						padding: "24px",
+						margin: "16px",
+						border: "1px solid var(--destructive, #ef4444)",
+						background: "var(--card, #111111)",
+						color: "var(--destructive, #ef4444)",
+						fontFamily: "JetBrains Mono, monospace",
+						fontSize: "0.875rem",
 					},
 				},
 				React.createElement(
-					'div',
-					{ style: { fontWeight: 500, marginBottom: '8px' } },
-					'[forge] render error',
+					"div",
+					{ style: { fontWeight: 500, marginBottom: "8px" } },
+					"[forge] render error",
 				),
 				React.createElement(
-					'div',
-					{ style: { color: 'var(--muted, #888)', fontSize: '0.75rem' } },
+					"div",
+					{ style: { color: "var(--muted, #888)", fontSize: "0.75rem" } },
 					this.state.error && this.state.error.message
 						? String(this.state.error.message)
-						: 'An unexpected error occurred in the UI.',
+						: "An unexpected error occurred in the UI.",
 				),
 			);
 		}
@@ -175,16 +175,19 @@ function ForgeProvider({ children }) {
 	);
 
 	// Derive context value from snapshot
-	const contextValue = React.useMemo(() => ({
-		wallet: state.wallet,
-		permit: state.permit,
-		data: {
-			...state.public,
-			...state.authed,
-		},
-		ready: state.meta.dataVersion > 0,
-		meta: state.meta,
-	}), [state]);
+	const contextValue = React.useMemo(
+		() => ({
+			wallet: state.wallet,
+			permit: state.permit,
+			data: {
+				...state.public,
+				...state.authed,
+			},
+			ready: state.meta.dataVersion > 0,
+			meta: state.meta,
+		}),
+		[state],
+	);
 
 	// ── Side effects: polling + transaction listeners ───────────────
 	React.useEffect(() => {
@@ -192,7 +195,11 @@ function ForgeProvider({ children }) {
 
 		unsubFns.push(
 			bridgeBus.on("transaction:confirmed", () => {
-				if (typeof window !== "undefined" && window.__dataFetcherV2 && typeof window.__dataFetcherV2.refreshAfterTransaction === "function") {
+				if (
+					typeof window !== "undefined" &&
+					window.__dataFetcherV2 &&
+					typeof window.__dataFetcherV2.refreshAfterTransaction === "function"
+				) {
 					window.__dataFetcherV2.refreshAfterTransaction();
 				}
 			}),
@@ -209,9 +216,11 @@ function ForgeProvider({ children }) {
 			if (!window.__forgeProvider__pollingStarted) {
 				window.__forgeProvider__pollingStarted = true;
 				try {
-					const fetcher = window.__dataFetcherV2 || new window.DataFetcherV2({
-						bus: bridgeBus,
-					});
+					const fetcher =
+						window.__dataFetcherV2 ||
+						new window.DataFetcherV2({
+							bus: bridgeBus,
+						});
 					window.__dataFetcherV2 = fetcher;
 					fetcher.startPublicPolling();
 				} catch (err) {
@@ -221,18 +230,16 @@ function ForgeProvider({ children }) {
 		}
 
 		return function cleanup() {
-			unsubFns.forEach(function (fn) { fn(); });
+			unsubFns.forEach(function (fn) {
+				fn();
+			});
 		};
 	}, []);
 
 	return React.createElement(
 		ForgeErrorBoundary,
 		null,
-		React.createElement(
-			BridgeContext.Provider,
-			{ value: contextValue },
-			children,
-		),
+		React.createElement(BridgeContext.Provider, { value: contextValue }, children),
 	);
 }
 
@@ -300,7 +307,7 @@ function useBridgeData() {
 // ─── Expose ForgeProvider globally ───────────────────────────────────────────
 // The Babel plugin v2 references ForgeProvider as a bare global identifier
 // (React.createElement(ForgeProvider, ...)), so it must be available on window.
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
 	window.ForgeProvider = ForgeProvider;
 	window.BridgeContext = BridgeContext;
 	window.useBridge = useBridge;

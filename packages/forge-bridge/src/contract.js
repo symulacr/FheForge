@@ -192,7 +192,8 @@ async function estimateSendAndWait(
 			account,
 			chain: arbitrumSepolia,
 		});
-		const bridgeBus = typeof window !== "undefined" ? /** @type {any} */ (window).__bridgeBus : null;
+		const bridgeBus =
+			typeof window !== "undefined" ? /** @type {any} */ (window).__bridgeBus : null;
 		if (bridgeBus) {
 			bridgeBus.set("transaction:submitted", { hash, functionName });
 		}
@@ -204,13 +205,19 @@ async function estimateSendAndWait(
 	try {
 		receipt = await publicClient.waitForTransactionReceipt({ hash });
 	} catch (_error) {
-		throw new Error(`Transaction ${hash} submitted but confirmation timed out. Check block explorer.`);
+		throw new Error(
+			`Transaction ${hash} submitted but confirmation timed out. Check block explorer.`,
+		);
 	}
 
 	const status = receipt.status === "success" ? "confirmed" : "reverted";
 	const bridgeBus = typeof window !== "undefined" ? /** @type {any} */ (window).__bridgeBus : null;
 	if (bridgeBus) {
-		bridgeBus.set(status === "confirmed" ? "transaction:confirmed" : "transaction:failed", { hash, functionName, status });
+		bridgeBus.set(status === "confirmed" ? "transaction:confirmed" : "transaction:failed", {
+			hash,
+			functionName,
+			status,
+		});
 	}
 
 	return {
@@ -417,11 +424,14 @@ export function createContractAdapter(config, options = {}) {
 		 * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
 		 */
 		shieldCommit: async (token, amount, account) => {
-			if (!amount || amount <= 0n) throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
-			if (!token || token === "0x0000000000000000000000000000000000000000") throw new ContractError("INVALID_TOKEN", "Invalid token address");
-			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
-				? await _fheAdapter.encrypt(String(amount), token)
-				: undefined;
+			if (!amount || amount <= 0n)
+				throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
+			if (!token || token === "0x0000000000000000000000000000000000000000")
+				throw new ContractError("INVALID_TOKEN", "Invalid token address");
+			const encAmount =
+				_fheAdapter && typeof _fheAdapter.encrypt === "function"
+					? await _fheAdapter.encrypt(String(amount), token)
+					: undefined;
 			const wc = getWc();
 			const result = await estimateSendAndWait(
 				publicClient,
@@ -435,7 +445,12 @@ export function createContractAdapter(config, options = {}) {
 			let commitId = "";
 			if (result.receipt?.logs) {
 				for (const log of result.receipt.logs) {
-					if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
+					if (
+						log.topics?.[0] &&
+						log.data &&
+						log.data !== "0x" &&
+						log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
+					) {
 						commitId = log.topics[1] ?? log.data.slice(0, 66);
 						break;
 					}
@@ -468,11 +483,14 @@ export function createContractAdapter(config, options = {}) {
 		 * @type {(collateralToken: `0x${string}`, borrowToken: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
 		 */
 		borrowCommit: async (collateralToken, borrowToken, amount, ltvNum, ltvDen, account) => {
-			if (!amount || amount <= 0n) throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
-			if (!collateralToken || collateralToken === "0x0000000000000000000000000000000000000000") throw new ContractError("INVALID_TOKEN", "Invalid token address");
-			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
-				? await _fheAdapter.encrypt(String(amount), borrowToken)
-				: undefined;
+			if (!amount || amount <= 0n)
+				throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
+			if (!collateralToken || collateralToken === "0x0000000000000000000000000000000000000000")
+				throw new ContractError("INVALID_TOKEN", "Invalid token address");
+			const encAmount =
+				_fheAdapter && typeof _fheAdapter.encrypt === "function"
+					? await _fheAdapter.encrypt(String(amount), borrowToken)
+					: undefined;
 			const wc = getWc();
 			const result = await estimateSendAndWait(
 				publicClient,
@@ -486,7 +504,12 @@ export function createContractAdapter(config, options = {}) {
 			let commitId = "";
 			if (result.receipt?.logs) {
 				for (const log of result.receipt.logs) {
-					if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
+					if (
+						log.topics?.[0] &&
+						log.data &&
+						log.data !== "0x" &&
+						log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
+					) {
 						commitId = log.topics[1] ?? log.data.slice(0, 66);
 						break;
 					}
@@ -519,11 +542,14 @@ export function createContractAdapter(config, options = {}) {
 		 * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
 		 */
 		repayCommit: async (token, amount, account) => {
-			if (!amount || amount <= 0n) throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
-			if (!token || token === "0x0000000000000000000000000000000000000000") throw new ContractError("INVALID_TOKEN", "Invalid token address");
-			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
-				? await _fheAdapter.encrypt(String(amount), token)
-				: undefined;
+			if (!amount || amount <= 0n)
+				throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
+			if (!token || token === "0x0000000000000000000000000000000000000000")
+				throw new ContractError("INVALID_TOKEN", "Invalid token address");
+			const encAmount =
+				_fheAdapter && typeof _fheAdapter.encrypt === "function"
+					? await _fheAdapter.encrypt(String(amount), token)
+					: undefined;
 			const wc = getWc();
 			const result = await estimateSendAndWait(
 				publicClient,
@@ -537,7 +563,12 @@ export function createContractAdapter(config, options = {}) {
 			let commitId = "";
 			if (result.receipt?.logs) {
 				for (const log of result.receipt.logs) {
-					if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
+					if (
+						log.topics?.[0] &&
+						log.data &&
+						log.data !== "0x" &&
+						log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
+					) {
 						commitId = log.topics[1] ?? log.data.slice(0, 66);
 						break;
 					}
@@ -570,11 +601,14 @@ export function createContractAdapter(config, options = {}) {
 		 * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
 		 */
 		withdrawCommit: async (token, amount, account) => {
-			if (!amount || amount <= 0n) throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
-			if (!token || token === "0x0000000000000000000000000000000000000000") throw new ContractError("INVALID_TOKEN", "Invalid token address");
-			const encAmount = _fheAdapter && typeof _fheAdapter.encrypt === "function"
-				? await _fheAdapter.encrypt(String(amount), token)
-				: undefined;
+			if (!amount || amount <= 0n)
+				throw new ContractError("INVALID_AMOUNT", "Amount must be greater than zero");
+			if (!token || token === "0x0000000000000000000000000000000000000000")
+				throw new ContractError("INVALID_TOKEN", "Invalid token address");
+			const encAmount =
+				_fheAdapter && typeof _fheAdapter.encrypt === "function"
+					? await _fheAdapter.encrypt(String(amount), token)
+					: undefined;
 			const wc = getWc();
 			const result = await estimateSendAndWait(
 				publicClient,
@@ -588,7 +622,12 @@ export function createContractAdapter(config, options = {}) {
 			let commitId = "";
 			if (result.receipt?.logs) {
 				for (const log of result.receipt.logs) {
-					if (log.topics?.[0] && log.data && log.data !== "0x" && log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()) {
+					if (
+						log.topics?.[0] &&
+						log.data &&
+						log.data !== "0x" &&
+						log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
+					) {
 						commitId = log.topics[1] ?? log.data.slice(0, 66);
 						break;
 					}
@@ -634,20 +673,27 @@ export function createContractAdapter(config, options = {}) {
 				const encPromises = [];
 				if (params.collateralAmount > 0n) {
 					encPromises.push(
-						_fheAdapter.encrypt(String(params.collateralAmount), params.collateralToken)
-							.then(h => { collateralEnc = h; }),
+						_fheAdapter
+							.encrypt(String(params.collateralAmount), params.collateralToken)
+							.then((h) => {
+								collateralEnc = h;
+							}),
 					);
 				}
 				if (params.poolSupplyAmount > 0n) {
 					encPromises.push(
-						_fheAdapter.encrypt(String(params.poolSupplyAmount), params.collateralToken)
-							.then(h => { supplyEnc = h; }),
+						_fheAdapter
+							.encrypt(String(params.poolSupplyAmount), params.collateralToken)
+							.then((h) => {
+								supplyEnc = h;
+							}),
 					);
 				}
 				if (params.poolBorrowAmount > 0n) {
 					encPromises.push(
-						_fheAdapter.encrypt(String(params.poolBorrowAmount), params.borrowToken)
-							.then(h => { borrowEnc = h; }),
+						_fheAdapter.encrypt(String(params.poolBorrowAmount), params.borrowToken).then((h) => {
+							borrowEnc = h;
+						}),
 					);
 				}
 				await Promise.all(encPromises);
@@ -709,7 +755,6 @@ export function createContractAdapter(config, options = {}) {
 				account,
 			);
 		},
-
 	};
 
 	// ── Simulation methods ────────────────────────────────────────────────
@@ -767,7 +812,7 @@ export function createContractAdapter(config, options = {}) {
 	 */
 	const multicallRead = async (calls) => {
 		const results = await publicClient.multicall({
-			contracts: calls.map(c => ({
+			contracts: calls.map((c) => ({
 				address: c.address,
 				abi: c.abi,
 				functionName: c.functionName,
@@ -776,9 +821,9 @@ export function createContractAdapter(config, options = {}) {
 			allowFailure: true,
 		});
 		return results.map((r) => ({
-			success: r.status === 'success',
-			result: r.status === 'success' ? r.result : null,
-			error: r.status === 'failure' ? r.error : null,
+			success: r.status === "success",
+			result: r.status === "success" ? r.result : null,
+			error: r.status === "failure" ? r.error : null,
 		}));
 	};
 
@@ -791,9 +836,9 @@ export function createContractAdapter(config, options = {}) {
 	const getAllBalances = async (tokens) => {
 		const lp = CONTRACT_ADDRESSES.LendingPool;
 		const lpAbi = CONTRACT_ABIS.LendingPool;
-		const calls = tokens.flatMap(t => [
-			{ address: lp, abi: lpAbi, functionName: 'getSupplyBalance', args: [t] },
-			{ address: lp, abi: lpAbi, functionName: 'getBorrowBalance', args: [t] },
+		const calls = tokens.flatMap((t) => [
+			{ address: lp, abi: lpAbi, functionName: "getSupplyBalance", args: [t] },
+			{ address: lp, abi: lpAbi, functionName: "getBorrowBalance", args: [t] },
 		]);
 		return multicallRead(calls);
 	};
@@ -807,9 +852,9 @@ export function createContractAdapter(config, options = {}) {
 	const getAllPositionData = async (positionIds) => {
 		const sv = CONTRACT_ADDRESSES.StrategyVault;
 		const svAbi = CONTRACT_ABIS.StrategyVault;
-		const calls = positionIds.flatMap(pid => [
-			{ address: sv, abi: svAbi, functionName: 'getPositionMeta', args: [pid] },
-			{ address: sv, abi: svAbi, functionName: 'getCollateral', args: [pid] },
+		const calls = positionIds.flatMap((pid) => [
+			{ address: sv, abi: svAbi, functionName: "getPositionMeta", args: [pid] },
+			{ address: sv, abi: svAbi, functionName: "getCollateral", args: [pid] },
 		]);
 		return multicallRead(calls);
 	};

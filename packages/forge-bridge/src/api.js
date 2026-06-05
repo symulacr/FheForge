@@ -221,11 +221,16 @@ export function createApiAdapter(config, walletAdapter) {
 				} catch (refreshError) {
 					processQueue(/** @type {Error} */ (refreshError));
 					try {
-						var g = typeof window !== 'undefined' ? window : globalThis;
+						var g = typeof window !== "undefined" ? window : globalThis;
 						if (g.__bridgeBus) {
-							g.__bridgeBus.set('error:auth', { message: 'JWT refresh failed — session expired', timestamp: new Date().toISOString() });
+							g.__bridgeBus.set("error:auth", {
+								message: "JWT refresh failed — session expired",
+								timestamp: new Date().toISOString(),
+							});
 						}
-					} catch (_) { /* non-critical */ }
+					} catch (_) {
+						/* non-critical */
+					}
 					return Promise.reject(refreshError);
 				} finally {
 					isRefreshing = false;
@@ -440,7 +445,6 @@ export function createApiAdapter(config, walletAdapter) {
 			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
 			 */
 			listStrategies: (params) => cachedGet("strategies-list", "/strategies", params),
-
 		},
 
 		/** Governance — proposals and voting */
@@ -519,9 +523,7 @@ export function createApiAdapter(config, walletAdapter) {
 			 * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
 			 */
 			buildStrategy: (data) => post("/ai-strategy-builder/build", data),
-
 		},
-
 	};
 }
 
