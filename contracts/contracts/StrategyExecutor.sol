@@ -26,6 +26,7 @@ contract StrategyExecutor is FheForgeBase {
     bytes4 public constant SWAP_UNISWAP_V3 = 0x00000008;
 
     error UnknownActionType(bytes4 actionType);
+    error EmptyPipeline();
 
     struct Action {
         bytes4 actionType;
@@ -65,7 +66,7 @@ contract StrategyExecutor is FheForgeBase {
         bytes32 strategyId,
         Action[] calldata actions
     ) external nonReentrant whenNotPaused returns (bool completed) {
-        require(actions.length > 0);
+        if (actions.length == 0) revert EmptyPipeline();
         Checkpoint storage cp = checkpoints[strategyId][msg.sender];
         uint256 startIdx = cp.completed ? 0 : cp.actionIndex;
 

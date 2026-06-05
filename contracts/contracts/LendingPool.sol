@@ -65,6 +65,7 @@ contract LendingPool is FheForgeBase {
     error CommitmentNotFound();
     error CommitmentExpired();
     error ValueMismatch();
+    error VerificationFailed();
 
     event Supplied(address indexed user, address indexed token);
     event Borrowed(
@@ -146,10 +147,7 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        require(
-            euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO),
-            "FHE: verification failed"
-        );
+        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO)) revert VerificationFailed();
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         liquidReserve[token] += amount;
         euint128 stored = supplyBalances[token][msg.sender];
@@ -175,10 +173,7 @@ contract LendingPool is FheForgeBase {
         euint128 borrowBal = _ensureInitialized(borrowBalances[borrowToken][msg.sender]);
         euint128 requested = FHE.asEuint128(encBorrowAmount);
         euint128 verifiedBorrow = _verifyEquality(requested, borrowAmount);
-        require(
-            euint128.unwrap(verifiedBorrow) != euint128.unwrap(_ZERO),
-            "FHE: verification failed"
-        );
+        if (euint128.unwrap(verifiedBorrow) == euint128.unwrap(_ZERO)) revert VerificationFailed();
 
         euint128 newBorrow = FHE.add(borrowBal, verifiedBorrow);
         euint128 lhs = FHE.mul(newBorrow, FHE.asEuint128(uint256(ltvDen)));
@@ -211,10 +206,7 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        require(
-            euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO),
-            "FHE: verification failed"
-        );
+        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO)) revert VerificationFailed();
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         totalPlainBorrow[token] -= amount;
         liquidReserve[token] += amount;
@@ -242,10 +234,7 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        require(
-            euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO),
-            "FHE: verification failed"
-        );
+        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO)) revert VerificationFailed();
         uint256 reserve = liquidReserve[token];
         if (reserve < amount) revert InsufficientReserve();
         unchecked {
@@ -377,10 +366,7 @@ contract LendingPool is FheForgeBase {
         liquidReserve[tokenAddr] += msg.value;
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, msg.value);
-        require(
-            euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO),
-            "FHE: verification failed"
-        );
+        if (euint128.unwrap(verifiedIncoming) == euint128.unwrap(_ZERO)) revert VerificationFailed();
         euint128 stored = supplyBalances[tokenAddr][msg.sender];
         supplyBalances[tokenAddr][msg.sender] = _safeIncrease(stored, verifiedIncoming, msg.sender);
         weth.deposit{ value: msg.value }();
@@ -632,10 +618,7 @@ contract LendingPool is FheForgeBase {
 
         euint128 requested = FHE.asEuint128(encBorrowAmount);
         euint128 verifiedRequested = _verifyEquality(requested, borrowAmount);
-        require(
-            euint128.unwrap(verifiedRequested) != euint128.unwrap(_ZERO),
-            "FHE: verification failed"
-        );
+        if (euint128.unwrap(verifiedRequested) == euint128.unwrap(_ZERO)) revert VerificationFailed();
 
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
         unchecked {

@@ -9,6 +9,9 @@ import { MockERC20 } from "./MockERC20.sol";
 ///         ERC20 functionality (transfer, approve, transferFrom, balanceOf, etc.)
 ///         is fully inherited from OpenZeppelin ERC20 via MockERC20.
 contract FaucetMockERC20 is MockERC20 {
+    error FaucetCooldown();
+    error ZeroAddress();
+
     /// @notice Maximum tokens dispensed per faucet drip (10,000 tokens).
     uint256 public constant FAUCET_AMOUNT = 10_000 * 1e18;
 
@@ -30,7 +33,7 @@ contract FaucetMockERC20 is MockERC20 {
     /// @notice Mint test tokens to the caller. One drip per address per cooldown window.
     ///         Amount is 10,000 tokens adjusted for the token's decimals.
     function faucetMint() external {
-        require(block.timestamp >= lastFaucet[msg.sender] + FAUCET_COOLDOWN, "Faucet: cooldown");
+        if (block.timestamp < lastFaucet[msg.sender] + FAUCET_COOLDOWN) revert FaucetCooldown();
         lastFaucet[msg.sender] = block.timestamp;
         uint256 amount = decimals() == 6 ? 10_000 * 1e6 : FAUCET_AMOUNT;
         _mint(msg.sender, amount);
@@ -39,8 +42,8 @@ contract FaucetMockERC20 is MockERC20 {
     /// @notice Mint test tokens to a specific address. One drip per recipient per cooldown window.
     /// @param to Recipient address
     function faucetMintTo(address to) external {
-        require(to != address(0), "Faucet: zero address");
-        require(block.timestamp >= lastFaucet[to] + FAUCET_COOLDOWN, "Faucet: cooldown");
+        if (to == address(0)) revert ZeroAddress();
+        if (block.timestamp < lastFaucet[to] + FAUCET_COOLDOWN) revert FaucetCooldown();
         lastFaucet[to] = block.timestamp;
         uint256 amount = decimals() == 6 ? 10_000 * 1e6 : FAUCET_AMOUNT;
         _mint(to, amount);
