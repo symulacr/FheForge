@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { DefiTokenService } from 'src/defi_token/application/defi_token.service';
-import type { FhenixStrategyService } from 'src/shared/infrastructure/fhenix-strategy.service';
+import { DefiTokenService } from 'src/defi_token/application/defi_token.service';
+import { FhenixStrategyService } from 'src/shared/infrastructure/fhenix-strategy.service';
 import type { DefiPair } from '../domain/defi_pairs.entity';
 import type { DefiPairsRepository } from '../domain/defi_pairs.repository';
 import { OperationType } from '../domain/operation-type.enum';

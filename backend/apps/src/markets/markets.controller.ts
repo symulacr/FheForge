@@ -3,7 +3,7 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { MarketResponseDto } from './dtos/market-response.dto';
 import { PriceResponseDto } from './dtos/price-response.dto';
-import type { MarketsService } from './markets.service';
+import { MarketsService } from './markets.service';
 
 @ApiTags('Markets')
 @Controller('markets')

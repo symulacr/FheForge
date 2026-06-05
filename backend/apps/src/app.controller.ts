@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { JsonRpcProvider } from 'ethers';
 import { Public } from './auth/public.decorator';
 

@@ -5,7 +5,7 @@ import {
   type OnModuleInit,
   Optional,
 } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { Contract, formatUnits, JsonRpcProvider } from 'ethers';
 import type { MarketResponseDto } from './dtos/market-response.dto';
 import type { PriceResponseDto } from './dtos/price-response.dto';

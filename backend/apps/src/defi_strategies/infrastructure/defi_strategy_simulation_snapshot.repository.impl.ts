@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { DefiStrategySimulationSnapshotRow } from 'src/shared/infrastructure/database.types';
-import type { SupabaseService } from '../../shared/infrastructure/supabase.service';
+import { SupabaseService } from '../../shared/infrastructure/supabase.service';
 import { DefiStrategySimulationSnapshot } from '../domain/defi_strategy_simulation_snapshot.entity';
 import type { DefiStrategySimulationSnapshotRepository } from '../domain/defi_strategy_simulation_snapshot.repository';
 

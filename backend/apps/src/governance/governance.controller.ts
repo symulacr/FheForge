@@ -14,7 +14,7 @@ import { Public } from '../auth/public.decorator';
 import type { CastVoteDto } from './dtos/cast-vote.dto';
 import type { CreateProposalDto } from './dtos/create-proposal.dto';
 import { ProposalResponseDto } from './dtos/proposal-response.dto';
-import type { GovernanceService } from './governance.service';
+import { GovernanceService } from './governance.service';
 
 @ApiTags('Governance')
 @Controller('governance')

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { DefiTokenRow } from 'src/shared/infrastructure/database.types';
-import type { SupabaseService } from '../../shared/infrastructure/supabase.service';
+import { SupabaseService } from '../../shared/infrastructure/supabase.service';
 import { DefiToken } from '../domain/defi_token.entity';
 import type { DefiTokenRepository } from '../domain/defi_token.repository';
 

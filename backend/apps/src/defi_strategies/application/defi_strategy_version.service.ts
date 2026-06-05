@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { SupabaseService } from 'src/shared/infrastructure/supabase.service';
+import { SupabaseService } from 'src/shared/infrastructure/supabase.service';
 import { v4 as uuidv4 } from 'uuid';
 import { DefiStrategyVersion } from '../domain/defi_strategy_version.entity';
 import type { DefiStrategyVersionRepository } from '../domain/defi_strategy_version.repository';

@@ -2,7 +2,7 @@ import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../auth/public.decorator';
-import type { GeminiAiService } from '../application/gemini-ai.service';
+import { GeminiAiService } from '../application/gemini-ai.service';
 import type { AnalyzeRiskDto } from './dtos/analyze-risk.dto';
 import type { OptimizeStrategyDto } from './dtos/optimize-strategy.dto';
 

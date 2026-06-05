@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiOperation, ApiParam } from '@nestjs/swagger';
-import type { DefiTokenService } from '../application/defi_token.service';
+import { DefiTokenService } from '../application/defi_token.service';
 import type { CreateDefiTokenDto } from './dto/create_defi_token.dto';
 
 @Controller('defi-token')

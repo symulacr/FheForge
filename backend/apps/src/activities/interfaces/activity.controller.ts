@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { ActivityService } from '../application/activity.service';
+import { ActivityService } from '../application/activity.service';
 import { toActivityResponse, toActivityResponseList } from '../application/mappers/activity.mapper';
 import { ActivityResponseDto } from './dtos/activity-response.dto';
 import type { CreateActivityDto } from './dtos/create-activity.dto';

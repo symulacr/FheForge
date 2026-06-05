@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../auth/public.decorator';
-import type { AiStrategyBuilderService } from '../application/ai-strategy-builder.service';
+import { AiStrategyBuilderService } from '../application/ai-strategy-builder.service';
 import type { BuildStrategyDto } from './dtos/build-strategy.dto';
 import { BuildStrategyResponseDto } from './dtos/build-strategy-response.dto';
 

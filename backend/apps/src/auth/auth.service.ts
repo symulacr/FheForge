@@ -1,11 +1,11 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
-import type { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { verifyMessage } from 'ethers';
 import { v4 as uuidv4 } from 'uuid';
 import type { AuthNonceRow } from '../shared/infrastructure/database.types';
-import type { SupabaseService } from '../shared/infrastructure/supabase.service';
-import type { UserService } from '../users/application/user.service';
+import { SupabaseService } from '../shared/infrastructure/supabase.service';
+import { UserService } from '../users/application/user.service';
 
 @Injectable()
 export class AuthService {

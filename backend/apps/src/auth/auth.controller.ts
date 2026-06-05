@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Res } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
-import type { AuthService } from './auth.service';
+import { AuthService } from './auth.service';
 import {
   NonceResponseDto,
   type WalletLoginDto,

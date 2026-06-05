@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { StatsResponseDto } from './dtos/stats-response.dto';
-import type { StatsService } from './stats.service';
+import { StatsService } from './stats.service';
 
 @ApiTags('Stats')
 @Controller('stats')

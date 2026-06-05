@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { DefiExecutionStepResultRow } from 'src/shared/infrastructure/database.types';
-import type { SupabaseService } from '../../shared/infrastructure/supabase.service';
+import { SupabaseService } from '../../shared/infrastructure/supabase.service';
 import { DefiExecutionStepResult } from '../domain/defi_execution_step_result.entity';
 import type { DefiExecutionStepResultRepository } from '../domain/defi_execution_step_result.repository';
 

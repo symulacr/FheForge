@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DefiStrategySimulationSnapshot } from '../domain/defi_strategy_simulation_snapshot.entity';
 import type { DefiStrategySimulationSnapshotRepository } from '../domain/defi_strategy_simulation_snapshot.repository';
 import type { CreateDefiStrategySimulationSnapshotDto } from '../interfaces/dto/create_defi_strategy_simulation_snapshot.dto';
-import type { DefiStrategyVersionService } from './defi_strategy_version.service';
+import { DefiStrategyVersionService } from './defi_strategy_version.service';
 
 export interface SnapshotResponse {
   id: string;

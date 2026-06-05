@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { MarketsService } from '../markets/markets.service';
-import type { SupabaseService } from '../shared/infrastructure/supabase.service';
+import { MarketsService } from '../markets/markets.service';
+import { SupabaseService } from '../shared/infrastructure/supabase.service';
 import type { StatsResponseDto } from './dtos/stats-response.dto';
 
 @Injectable()

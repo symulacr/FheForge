@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { BuildStrategyDto } from '../interfaces/dtos/build-strategy.dto';
-import type { GeminiAiService } from './gemini-ai.service';
+import { GeminiAiService } from './gemini-ai.service';
 
 @Injectable()
 export class AiStrategyBuilderService {

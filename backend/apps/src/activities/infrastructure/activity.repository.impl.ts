@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { SupabaseService } from 'src/shared/infrastructure/supabase.service';
+import { SupabaseService } from 'src/shared/infrastructure/supabase.service';
 import { Activity, type ActivityStatus } from '../domain/activity.entity';
 import type { ActivityRepository } from '../domain/activity.repository';
 
