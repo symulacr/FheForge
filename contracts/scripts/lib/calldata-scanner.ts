@@ -111,7 +111,7 @@ export class CalldataScanner {
 		txHash: string,
 		contract: ethers.Contract,
 		getterName: string,
-		args: any[],
+		args: (string | bigint | number | boolean)[],
 		expectedValue: bigint,
 	): Promise<void> {
 		try {

@@ -12,7 +12,8 @@ async function setupFhePermissions(
 	userAddress: string,
 ): Promise<void> {
 	try {
-		const taskManager = await hre.cofhe.mocks.getMockTaskManager();
+		const cofheHre = hre.cofhe as { mocks: { getMockTaskManager(): Promise<unknown> } };
+		const taskManager = (await cofheHre.mocks.getMockTaskManager()) as { acl(): Promise<string> };
 		const aclAddress = await taskManager.acl();
 		const acl = await ethers.getContractAt("MockACL", aclAddress);
 
@@ -104,8 +105,17 @@ const KNOWN_SELECTORS: Record<string, string> = {
 	"0x1bb0ddfb": "VaultAlreadySet",
 };
 
+interface ErrorLike {
+	data?: string;
+	info?: { error?: { data?: string } };
+	error?: { data?: string };
+	cause?: unknown;
+	shortMessage?: string;
+	message?: string;
+}
+
 function decodeRevert(e: unknown): string {
-	let cur: any = e;
+	let cur: ErrorLike | undefined = e as ErrorLike;
 	let data: string | undefined;
 	for (let i = 0; cur && i < 8; i++) {
 		if (
@@ -125,10 +135,11 @@ function decodeRevert(e: unknown): string {
 			data = cur.error.data;
 			break;
 		}
-		cur = cur.cause;
+		cur = cur.cause as ErrorLike | undefined;
 	}
 	if (!data) {
-		const msg = (e as any).shortMessage ?? (e as any).message ?? String(e);
+		const err = e as ErrorLike;
+		const msg = err.shortMessage ?? err.message ?? String(e);
 		return msg.slice(0, 100);
 	}
 	if (data.startsWith("0x08c379a0")) {
@@ -180,7 +191,7 @@ async function main() {
 
 	const scanner = new CalldataScanner(provider);
 
-	async function auditTx(scenario: string, tx: any, expectedAmount?: bigint) {
+	async function auditTx(scenario: string, tx: { hash?: string }, expectedAmount?: bigint) {
 		if (!tx?.hash) return;
 		await scanner.scanTransactionInput(scenario, tx.hash, [2_000_000n, 1_000_000n, 500_000n]);
 		if (expectedAmount) {
@@ -241,7 +252,7 @@ async function main() {
 		usdc.allowance(tester.address, dep.contracts.FheForgeComposer),
 	]);
 
-	const approveTxs: Promise<any>[] = [];
+	const approveTxs: Promise<ethers.ContractTransactionReceipt | null>[] = [];
 	const limit = ethers.MaxUint256 / 2n;
 	if (allowVault < limit) {
 		approveTxs.push(
@@ -266,7 +277,12 @@ async function main() {
 		const c = createCofheClient(
 			createCofheConfig({ environment: "node", supportedChains: [arbSepolia] }),
 		);
-		const { publicClient, walletClient } = await hre.cofhe.hardhatSignerAdapter(tester);
+		const cofheRuntime = hre.cofhe as {
+			hardhatSignerAdapter(
+				signer: unknown,
+			): Promise<{ publicClient: unknown; walletClient: unknown }>;
+		};
+		const { publicClient, walletClient } = await cofheRuntime.hardhatSignerAdapter(tester);
 		await c.connect(publicClient, walletClient);
 		await c.permits.createSelf({ issuer: tester.address });
 		return c;
@@ -438,7 +454,8 @@ async function main() {
 			await setupFhePermissions(enc[0].ctHash, await vault.getAddress(), tester.address);
 			const tx = await vault.openPosition(USDC, collateral, hCol, 1n, tester.address);
 			const r = await tx.wait();
-			positionId = r.logs.find((log: any) => log.fragment?.name === "PositionOpened")?.args[0];
+			positionId = r.logs.find((log: ethers.Log) => log.fragment?.name === "PositionOpened")
+				?.args[0];
 			record(
 				"A.3-setup",
 				"PASS",
@@ -488,8 +505,9 @@ async function main() {
 			await setupFhePermissions(enc[0].ctHash, await vault.getAddress(), tester.address);
 			const txOpen = await vault.openPosition(USDC, 1_000_000n, hCol, 1n, tester.address);
 			const rOpen = await txOpen.wait();
-			const newPosId = rOpen?.logs.find((log: any) => log.fragment?.name === "PositionOpened")
-				?.args[0];
+			const newPosId = rOpen?.logs.find(
+				(log: ethers.Log) => log.fragment?.name === "PositionOpened",
+			)?.args[0];
 			try {
 				const wrongEnc = await cofhe.encryptInputs([Encryptable.uint128(1n)]).execute();
 				const hWrong = ethers.zeroPadValue(ethers.toBeHex(wrongEnc[0].ctHash), 32);
@@ -717,28 +735,37 @@ async function main() {
 
 	console.log("\n── Pause / unpause ──");
 
+	interface Pausable {
+		pause(overrides?: Record<string, unknown>): Promise<{ hash: string; wait(): Promise<unknown> }>;
+		unpause(
+			overrides?: Record<string, unknown>,
+		): Promise<{ hash: string; wait(): Promise<unknown> }>;
+	}
+
 	try {
-		const contracts = [
-			["Vault", vault],
-			["Pool", pool],
-			["Router", router],
-			["Registry", registry],
-		] as const;
+		const contractEntries: [string, Pausable][] = [
+			["Vault", vault as unknown as Pausable],
+			["Pool", pool as unknown as Pausable],
+			["Router", router as unknown as Pausable],
+			["Registry", registry as unknown as Pausable],
+		];
 
 		const startNonce = await provider.getTransactionCount(deployer.address);
 
 		const pauseTxs = await Promise.all(
-			contracts.map(async ([name, contract], index) => {
-				const tx = await (contract.connect(deployer) as any).pause({ nonce: startNonce + index });
+			contractEntries.map(async ([name, contract], index) => {
+				const connected = contract.connect(deployer) as unknown as Pausable;
+				const tx = await connected.pause({ nonce: startNonce + index });
 				return { name, tx };
 			}),
 		);
 		await Promise.all(pauseTxs.map((x) => x.tx.wait()));
 
-		const nextNonce = startNonce + contracts.length;
+		const nextNonce = startNonce + contractEntries.length;
 		const unpauseTxs = await Promise.all(
-			contracts.map(async ([name, contract], index) => {
-				const tx = await (contract.connect(deployer) as any).unpause({ nonce: nextNonce + index });
+			contractEntries.map(async ([name, contract], index) => {
+				const connected = contract.connect(deployer) as unknown as Pausable;
+				const tx = await connected.unpause({ nonce: nextNonce + index });
 				return { name, tx };
 			}),
 		);
@@ -859,7 +886,7 @@ async function main() {
 	writeReport(startedAt, scanner);
 }
 
-function writeReport(startedAt: number, scanner: any) {
+function writeReport(startedAt: number, scanner: CalldataScanner) {
 	const endedAt = Date.now();
 	const summary = {
 		pass: findings.filter((f) => f.severity === "PASS").length,

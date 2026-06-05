@@ -83,11 +83,12 @@ export async function withRetry<T>(fn: () => Promise<T>, label: string, retries 
 	for (let i = 0; i < retries; i++) {
 		try {
 			return await fn();
-		} catch (e: any) {
+		} catch (e: unknown) {
 			if (i === retries - 1) throw e;
 			const delay = 1000 * 2 ** i + Math.random() * 500;
+			const msg = e instanceof Error ? e.message : String(e);
 			console.log(
-				`  ! ${label} failed (${(e.message ?? e).slice(0, 80)}), retry ${i + 1}/${retries} in ${delay | 0}ms`,
+				`  ! ${label} failed (${msg.slice(0, 80)}), retry ${i + 1}/${retries} in ${delay | 0}ms`,
 			);
 			await sleep(delay);
 		}
@@ -199,19 +200,23 @@ export class FastVerifier {
 			constructorArguements: encodedArgs,
 		});
 		const submitUrl = `${this.apiUrl}&apikey=${this.apiKey}`;
-		const subResp: any = await (
+		const subResp: unknown = await (
 			await fetch(submitUrl, {
 				method: "POST",
 				body,
 				headers: { "Content-Type": "application/x-www-form-urlencoded" },
 			})
 		).json();
-		const guid = subResp.result;
-		if (!guid || subResp.status !== "1") {
+		const sub = subResp as Record<string, unknown>;
+		const guid = typeof sub.result === "string" ? sub.result : undefined;
+		if (!guid || sub.status !== "1") {
 			if ((guid ?? "").includes("Already Verified")) {
 				return { success: true, message: "Already Verified" };
 			}
-			return { success: false, message: guid ?? subResp.message ?? "unknown" };
+			return {
+				success: false,
+				message: guid ?? (typeof sub.message === "string" ? sub.message : "unknown"),
+			};
 		}
 
 		const start = Date.now();
@@ -220,10 +225,14 @@ export class FastVerifier {
 		while (Date.now() - start < timeoutMs) {
 			await sleep(interval);
 			const pollUrl = `${this.apiUrl}&module=contract&action=checkverifystatus&guid=${guid}&apikey=${this.apiKey}`;
-			const p: any = await (await fetch(pollUrl)).json();
-			if (p?.result === "Pass - Verified") return { success: true, message: "Pass - Verified" };
-			if ((p?.result ?? "").startsWith("Fail")) return { success: false, message: p.result };
-			if (p?.result === "Already Verified") return { success: true, message: "Already Verified" };
+			const p: unknown = await (await fetch(pollUrl)).json();
+			const pResult =
+				typeof (p as Record<string, unknown>).result === "string"
+					? ((p as Record<string, unknown>).result as string)
+					: undefined;
+			if (pResult === "Pass - Verified") return { success: true, message: "Pass - Verified" };
+			if ((pResult ?? "").startsWith("Fail")) return { success: false, message: pResult };
+			if (pResult === "Already Verified") return { success: true, message: "Already Verified" };
 			const e = Date.now() - start;
 			interval = e > 30_000 ? 3_000 : e > 10_000 ? 2_000 : 1_000;
 		}
@@ -260,7 +269,7 @@ export class FastVerifier {
 		// Fetch built artifacts and encode deploy args
 		const buildInfos: {
 			fqn: string;
-			input: any;
+			input: unknown;
 			solcLongVersion: string;
 			encodedArgs: string;
 		}[] = [];

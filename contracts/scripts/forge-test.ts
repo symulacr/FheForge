@@ -130,8 +130,21 @@ const KNOWN_SELECTORS: Record<string, string> = {
 	"0xd323f2a3": "FlashLoanUnsupportedToken",
 };
 
+interface ErrorLike {
+	data?: string;
+	info?: { error?: { data?: string } };
+	error?: { data?: string };
+	cause?: unknown;
+	shortMessage?: string;
+	message?: string;
+}
+
+function isErrorLike(value: unknown): value is ErrorLike {
+	return typeof value === "object" && value !== null;
+}
+
 function decodeRevert(e: unknown): string {
-	let cur: any = e;
+	let cur: ErrorLike | undefined = isErrorLike(e) ? (e as ErrorLike) : undefined;
 	let data: string | undefined;
 	for (let i = 0; cur && i < 8; i++) {
 		if (
@@ -151,10 +164,11 @@ function decodeRevert(e: unknown): string {
 			data = cur.error.data;
 			break;
 		}
-		cur = cur.cause;
+		cur = isErrorLike(cur.cause) ? (cur.cause as ErrorLike) : undefined;
 	}
 	if (!data) {
-		const msg = (e as any).shortMessage ?? (e as any).message ?? String(e);
+		const eObj = isErrorLike(e) ? (e as ErrorLike) : undefined;
+		const msg = eObj?.shortMessage ?? eObj?.message ?? String(e);
 		return msg.slice(0, 100);
 	}
 	if (data.startsWith("0x08c379a0")) {
@@ -175,9 +189,9 @@ function decodeRevert(e: unknown): string {
 // ─── Multi-Signer Context Caching Singleton ───────────────
 class TestingContext {
 	private static instance: TestingContext;
-	public provider: any;
-	public signers: any[] = [];
-	private factories: Map<string, any> = new Map();
+	public provider: ethers.Provider;
+	public signers: ethers.Signer[] = [];
+	private factories: Map<string, ethers.Contract> = new Map();
 	public deployment!: DeployRecord;
 
 	private constructor() {
@@ -204,28 +218,28 @@ class TestingContext {
 		return this.signers;
 	}
 
-	public async getContractAt(name: string, address: string, signer: any) {
+	public async getContractAt(name: string, address: string, signer: ethers.Signer): Promise<ethers.Contract> {
 		const key = `${name}:${address}:${signer.address}`;
 		if (!this.factories.has(key)) {
 			const contract = await ethers.getContractAt(name, address, signer);
 			this.factories.set(key, contract);
 		}
-		return this.factories.get(key);
+		return this.factories.get(key)!;
 	}
 }
 
 let lastRevertError = "";
 
 async function staticCallRevert(
-	contract: any,
+	contract: ethers.Contract,
 	method: string,
-	args: any[],
+	args: unknown[],
 	expectedErr: string,
 ): Promise<boolean> {
 	try {
-		await contract[method].staticCall(...args);
+		await (contract as Record<string, (...callArgs: unknown[]) => Promise<unknown>>)[method].staticCall(...args);
 		return false;
-	} catch (e: any) {
+	} catch (e: unknown) {
 		lastRevertError = decodeRevert(e);
 		return lastRevertError.includes(expectedErr);
 	}
@@ -416,7 +430,7 @@ async function main() {
 		testStrategyId = (await registry.strategyCount()) as bigint;
 		record("1.4-setup", "INFO", `Registered test strategy`, `id=${testStrategyId}`);
 		markCoverage("StrategyRegistry", "registerStrategy", "covered", "1.4-setup");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("1.4-setup", "WARN", "Register strategy", decodeRevert(e));
 	}
 
@@ -462,7 +476,7 @@ async function main() {
 				`active=${meta2[4]}`,
 				{ tx: txOn.hash },
 			);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("1.5", "WARN", "setActive", decodeRevert(e));
 		}
 	}
@@ -483,7 +497,7 @@ async function main() {
 			{ tx: txProp.hash },
 		);
 		markCoverage("StrategyRegistry", "proposeVault", "covered", "1.6a");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("1.6a", "WARN", "proposeVault", decodeRevert(e));
 	}
 
@@ -565,14 +579,14 @@ async function main() {
 		const rOpen = await txOpen.wait();
 		const vaultAddress = await vault.getAddress();
 		const vLog = rOpen?.logs.find(
-			(log: any) =>
+			(log: ethers.EventLog) =>
 				log.address?.toLowerCase() === vaultAddress.toLowerCase() &&
 				log.fragment?.name === "PositionOpened",
 		);
 		positionId = vLog?.args?.[0];
 		record("2.1", "PASS", "Position opened", `Id=${positionId}`, { tx: txOpen.hash });
 		markCoverage("StrategyVault", "openPosition", "covered", "2.1");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("2.1", "WARN", "openPosition failed", decodeRevert(e));
 	}
 
@@ -600,7 +614,7 @@ async function main() {
 			const [_eAdd] = await cofhe.encryptInputs([Encryptable.uint128(1n)]).execute();
 			await vault.addCollateral.staticCall(positionId, WETH, 1n, ethers.ZeroHash, tester.address);
 			record("2.3", "FAIL", "addCollateral wrong-token accepted", "expected TokenMismatch");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			const msg = decodeRevert(e);
 			const ok = msg.includes("TokenMismatch");
 			record("2.3", ok ? "PASS" : "WARN", "addCollateral wrong-token reverts", msg);
@@ -629,7 +643,7 @@ async function main() {
 				{ tx: txClose.hash },
 			);
 			markCoverage("StrategyVault", "closePosition", "covered", "2.4");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("2.4", "WARN", "Partial close failed", decodeRevert(e));
 		}
 	}
@@ -650,7 +664,7 @@ async function main() {
 			record("2.5", has ? "FAIL" : "PASS", "Full close clears state", `hasPosition=${has}`, {
 				tx: txFull.hash,
 			});
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("2.5", "WARN", "Full close failed", decodeRevert(e));
 		}
 	}
@@ -669,7 +683,7 @@ async function main() {
 		const r = await tx.wait();
 		const vaultAddress = await vault.getAddress();
 		const vLog = r?.logs.find(
-			(log: any) =>
+			(log: ethers.EventLog) =>
 				log.address?.toLowerCase() === vaultAddress.toLowerCase() &&
 				log.fragment?.name === "PositionOpened",
 		);
@@ -687,7 +701,7 @@ async function main() {
 		try {
 			await vault.getPositionOwner.staticCall(testPositionId);
 			record("2.7", "FAIL", "getPositionOwner fake positionId", "expected NoPosition revert");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			const msg = decodeRevert(e);
 			const ok = msg.includes("NoPosition");
 			record("2.7", ok ? "PASS" : "WARN", "getPositionOwner fake positionId", msg);
@@ -700,7 +714,7 @@ async function main() {
 		const sid = await vault.positionStrategyIds(tester.address, 0n);
 		record("2.8", "PASS", "positionStrategyIds view", `strategyId=${sid}`);
 		markCoverage("StrategyVault", "positionStrategyIds", "covered", "2.8");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("2.8", "INFO", "positionStrategyIds view", `reverted: ${decodeRevert(e)}`);
 	}
 
@@ -710,7 +724,7 @@ async function main() {
 		try {
 			await vault.getPositionToken.staticCall(testPosId2);
 			record("2.9", "FAIL", "getPositionToken fake positionId", "expected NoPosition revert");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			const msg = decodeRevert(e);
 			const ok = msg.includes("NoPosition");
 			record("2.9", ok ? "PASS" : "WARN", "getPositionToken fake positionId", msg);
@@ -733,7 +747,7 @@ async function main() {
 		const r10 = await tx10.wait();
 		const vAddr = await vault.getAddress();
 		const posLog10 = r10?.logs.find(
-			(log: any) =>
+			(log: ethers.EventLog) =>
 				log.address?.toLowerCase() === vAddr.toLowerCase() &&
 				log.fragment?.name === "PositionOpened",
 		);
@@ -754,7 +768,7 @@ async function main() {
 		if (newPosId) {
 			positionId = newPosId;
 		}
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("2.10", "WARN", "PositionOpened encoding roundtrip", decodeRevert(e));
 	}
 
@@ -772,7 +786,7 @@ async function main() {
 		await txShield.wait();
 		record("3.1", "PASS", "shield collateral", `${ethers.formatUnits(supplyAmt, 6)} USDC`);
 		markCoverage("LendingPool", "shield", "covered", "3.1");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.1", "WARN", "shield failed", decodeRevert(e));
 	}
 
@@ -789,7 +803,7 @@ async function main() {
 			`borrow=${ethers.formatUnits(plainBorrow, 6)} USDC`,
 		);
 		markCoverage("LendingPool", "borrowWithLtvCheck", "covered", "3.2");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.2", "WARN", "borrowWithLtvCheck failed", decodeRevert(e));
 	}
 
@@ -821,7 +835,7 @@ async function main() {
 			record("3.4", "PASS", "repayDebt", "ok");
 			markCoverage("LendingPool", "repayDebt", "covered", "3.4");
 		}
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.4", "WARN", "repayDebt failed", decodeRevert(e));
 	}
 
@@ -832,7 +846,7 @@ async function main() {
 		await txWd.wait();
 		record("3.5", "PASS", "partialUnshield", `${ethers.formatUnits(supplyAmt, 6)} USDC`);
 		markCoverage("LendingPool", "partialUnshield", "covered", "3.5");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.5", "WARN", "partialUnshield failed", decodeRevert(e));
 	}
 
@@ -862,7 +876,7 @@ async function main() {
 			const [eW] = await cofhe.encryptInputs([Encryptable.uint128(supAmt2)]).execute();
 			await (await pool.partialUnshield(USDC, supAmt2, eW)).wait();
 			record("3.6c", "PASS", "oracle path cleanup", "ok");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("3.6", "WARN", "oracle borrow path", decodeRevert(e));
 		}
 	}
@@ -882,7 +896,7 @@ async function main() {
 			await txW.wait();
 			record("3.7b", "PASS", "partialUnshieldEth unwraps WETH", `${ethAmt} wei`);
 			markCoverage("LendingPool", "partialUnshieldEth", "covered", "3.7b");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("3.7", "WARN", "Native ETH flow", decodeRevert(e));
 		}
 	}
@@ -899,7 +913,7 @@ async function main() {
 				"healthy position not liquidatable",
 				`isLiquidatable=${healthy}`,
 			);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("3.8a", "WARN", "isLiquidatable healthy failed", decodeRevert(e));
 		}
 		// Unhealthy position (massive debt far beyond LTV)
@@ -917,7 +931,7 @@ async function main() {
 				"unhealthy position liquidatable",
 				`isLiquidatable=${unhealthy}`,
 			);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("3.8b", "WARN", "isLiquidatable unhealthy failed", decodeRevert(e));
 		}
 	}
@@ -927,7 +941,7 @@ async function main() {
 	try {
 		await pool.liquidateWithProof.staticCall(USDC, tester.address, "0x", []);
 		record("3.9", "FAIL", "liquidateWithProof accepted", "expected revert");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		const msg = decodeRevert(e);
 		record("3.9", "INFO", "liquidateWithProof (needs zk-proof)", msg);
 	}
@@ -977,7 +991,7 @@ async function main() {
 		}
 		markCoverage("LendingPool", "pause", "covered", "3.10-Pool");
 		markCoverage("LendingPool", "unpause", "covered", "3.10-Pool");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.10", "WARN", "Pause/unpause parallel", decodeRevert(e));
 	}
 
@@ -992,7 +1006,7 @@ async function main() {
 			"0x",
 		);
 		record("3.11", "FAIL", "liquidateWithProof accepted unexpectedly", "expected revert");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.11", "INFO", "liquidateWithProof (healthy position)", decodeRevert(e));
 	}
 	markCoverage("LendingPool", "liquidateWithProof", "static_call", "3.11");
@@ -1006,7 +1020,7 @@ async function main() {
 			"isLiquidatable no borrow",
 			!liq ? "false" : "unexpected true",
 		);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.12", "WARN", "isLiquidatable view", decodeRevert(e));
 	}
 	markCoverage("LendingPool", "isLiquidatable", "covered", "3.12");
@@ -1032,7 +1046,7 @@ async function main() {
 	try {
 		await pool.computeLiquidation(USDC, tester.address);
 		record("3.14", "FAIL", "computeLiquidation succeeded unexpectedly", "expected revert");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.14", "INFO", "computeLiquidation (no borrow)", decodeRevert(e));
 	}
 	markCoverage("LendingPool", "computeLiquidation", "static_call", "3.14");
@@ -1065,7 +1079,7 @@ async function main() {
 	try {
 		const fee = await pool.flashFee(USDC, 1n);
 		record("3.16", "PASS", "flashFee view", `${fee}`);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("3.16", "INFO", "flashFee view (not available)", decodeRevert(e));
 	}
 	markCoverage("LendingPool", "flashFee", "covered", "3.16");
@@ -1143,15 +1157,15 @@ async function main() {
 	}
 
 	// 4.3 submitSwapIntent — valid (with non-zero deadline)
-	let intentId: any;
+	let intentId: string | undefined;
 	try {
 		const okDeadline = await router.MAX_DEADLINE_OFFSET(); // must be <= MAX to avoid DeadlineTooLong
 		const tx = await router.submitSwapIntent(USDC, WETH, 1n, 1n, okDeadline);
 		const r = await tx.wait();
-		intentId = r?.logs.find((log: any) => log.fragment?.name === "SwapIntentSubmitted")?.args?.[0];
+		intentId = r?.logs.find((log: ethers.EventLog) => log.fragment?.name === "SwapIntentSubmitted")?.args?.[0];
 		record("4.3", "PASS", "submitSwapIntent valid", `id=${intentId}`, { tx: tx.hash });
 		markCoverage("SwapRouter", "submitSwapIntent", "covered", "4.3");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("4.3", "WARN", "submitSwapIntent valid", decodeRevert(e));
 	}
 
@@ -1162,7 +1176,7 @@ async function main() {
 			await tx.wait();
 			record("4.4", "PASS", "cancelIntent", `id=${intentId}`, { tx: tx.hash });
 			markCoverage("SwapRouter", "cancelIntent", "covered", "4.4");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("4.4", "WARN", "cancelIntent", decodeRevert(e));
 		}
 	}
@@ -1184,7 +1198,7 @@ async function main() {
 			{ tx: txP.hash },
 		);
 		markCoverage("SwapRouter", "proposeExecutor", "covered", "4.5");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("4.5", "WARN", "proposeExecutor", decodeRevert(e));
 	}
 	// acceptExecutor before timelock
@@ -1230,7 +1244,7 @@ async function main() {
 		const submit48 = await router.submitSwapIntent(USDC, WETH, 1n, 1n, deadline48);
 		const submitR48 = await submit48.wait();
 		const intentId48 = submitR48?.logs.find(
-			(log: any) => log.fragment?.name === "SwapIntentSubmitted",
+			(log: ethers.EventLog) => log.fragment?.name === "SwapIntentSubmitted",
 		)?.args?.[0];
 		const cancel48 = await router.cancelIntent(intentId48);
 		await cancel48.wait();
@@ -1238,7 +1252,7 @@ async function main() {
 			tx: submit48.hash,
 		});
 		markCoverage("SwapRouter", "submitSwapIntent+cancelIntent", "covered", "4.8");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("4.8", "WARN", "submitSwapIntent + cancelIntent", decodeRevert(e));
 	}
 
@@ -1250,7 +1264,7 @@ async function main() {
 		const submit49 = await router.submitSwapIntent(USDC, WETH, 1n, 1n, deadline49);
 		const submitR49 = await submit49.wait();
 		const intentId49 = submitR49?.logs.find(
-			(log: any) => log.fragment?.name === "SwapIntentSubmitted",
+			(log: ethers.EventLog) => log.fragment?.name === "SwapIntentSubmitted",
 		)?.args?.[0];
 		const execAsOwner = executor.connect(deployer);
 		const execTx49 = await execAsOwner.executeIntent(D.SwapRouter, intentId49, 0n);
@@ -1259,7 +1273,7 @@ async function main() {
 			tx: execTx49.hash,
 		});
 		markCoverage("SwapRouter", "executeIntent", "covered", "4.9");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("4.9", "WARN", "executeIntent via ExecutorContract", decodeRevert(e));
 	}
 
@@ -1268,13 +1282,13 @@ async function main() {
 		const deadline410 = await router.MAX_DEADLINE_OFFSET();
 		const tx410 = await router.submitSwapIntent(USDC, WETH, 1n, 1n, deadline410);
 		const r410 = await tx410.wait();
-		const intentId410 = r410?.logs.find((log: any) => log.fragment?.name === "SwapIntentSubmitted")
+		const intentId410 = r410?.logs.find((log: ethers.EventLog) => log.fragment?.name === "SwapIntentSubmitted")
 			?.args?.[0];
 		record("4.10", "PASS", "submitSwapIntent MAX_DEADLINE_OFFSET", `id=${intentId410}`, {
 			tx: tx410.hash,
 		});
 		markCoverage("SwapRouter", "submitSwapIntent_maxDeadline", "covered", "4.10");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("4.10", "WARN", "submitSwapIntent MAX_DEADLINE_OFFSET", decodeRevert(e));
 	}
 
@@ -1321,7 +1335,7 @@ async function main() {
 		record("5.1a", wethPrice > 0n ? "PASS" : "FAIL", "getPriceUsd(WETH)", `price=${wethPrice}`);
 		record("5.1b", usdcPrice > 0n ? "PASS" : "FAIL", "getPriceUsd(USDC)", `price=${usdcPrice}`);
 		markCoverage("PriceOracle", "getPriceUsd", "covered", "5.1");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("5.1", "WARN", "getPriceUsd", decodeRevert(e));
 	}
 
@@ -1331,7 +1345,7 @@ async function main() {
 		const usdVal = (await oracle.convertToUsd(WETH, oneEth)) as bigint;
 		record("5.2", usdVal > 0n ? "PASS" : "FAIL", "convertToUsd(1 WETH)", `usd=${usdVal}`);
 		markCoverage("PriceOracle", "convertToUsd", "covered", "5.2");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("5.2", "WARN", "convertToUsd", decodeRevert(e));
 	}
 
@@ -1340,7 +1354,7 @@ async function main() {
 		const fb = (await oracle.getPriceWithFallback(WETH)) as bigint;
 		record("5.3", fb > 0n ? "PASS" : "FAIL", "getPriceWithFallback(WETH)", `price=${fb}`);
 		markCoverage("PriceOracle", "getPriceWithFallback", "covered", "5.3");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("5.3", "WARN", "getPriceWithFallback", decodeRevert(e));
 	}
 
@@ -1351,7 +1365,7 @@ async function main() {
 		record("5.4a", !staleWeth ? "PASS" : "WARN", "isStale(WETH) fresh", `stale=${staleWeth}`);
 		record("5.4b", !staleUsdc ? "PASS" : "WARN", "isStale(USDC) fresh", `stale=${staleUsdc}`);
 		markCoverage("PriceOracle", "isStale", "covered", "5.4");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("5.4", "WARN", "isStale", decodeRevert(e));
 	}
 
@@ -1361,7 +1375,7 @@ async function main() {
 		record("5.4c", supWeth ? "PASS" : "FAIL", "isSupported(WETH)", `supported=${supWeth}`);
 		record("5.4d", supUsdc ? "PASS" : "FAIL", "isSupported(USDC)", `supported=${supUsdc}`);
 		markCoverage("PriceOracle", "isSupported", "covered", "5.4");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("5.4d", "WARN", "isSupported", decodeRevert(e));
 	}
 
@@ -1427,7 +1441,7 @@ async function main() {
 			`price=${price59}, updatedAt=${updatedAt59}`,
 		);
 		markCoverage("PriceOracle", "getPriceUsd", "covered", "5.9");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("5.9", "WARN", "getPriceUsd(USDC)", decodeRevert(e));
 	}
 
@@ -1442,7 +1456,7 @@ async function main() {
 			`price=${price510}, cf=${cf510}`,
 		);
 		markCoverage("PriceOracle", "collateralFactorBps+getPriceUsd", "covered", "5.10");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("5.10", "WARN", "getPriceUsd + collateralFactorBps", decodeRevert(e));
 	}
 
@@ -1483,7 +1497,7 @@ async function main() {
 			tx: tx.hash,
 		});
 		markCoverage("FheForgeComposer", "openPosition", "covered", "6.1");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("6.1", "WARN", "Composer openPosition", decodeRevert(e));
 	}
 
@@ -1573,7 +1587,7 @@ async function main() {
 		const count = (await tokenReg.getTokenCount()) as bigint;
 		record("8.1", count >= 2n ? "PASS" : "FAIL", "getTokenCount >= 2", `count=${count}`);
 		markCoverage("TokenRegistry", "getTokenCount", "covered", "8.1");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("8.1", "WARN", "getTokenCount", decodeRevert(e));
 	}
 
@@ -1587,7 +1601,7 @@ async function main() {
 			`count=${lendable.length}`,
 		);
 		markCoverage("TokenRegistry", "getLendableTokens", "covered", "8.2");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("8.2", "WARN", "getLendableTokens", decodeRevert(e));
 	}
 
@@ -1601,7 +1615,7 @@ async function main() {
 			`count=${borrowable.length}`,
 		);
 		markCoverage("TokenRegistry", "getBorrowableTokens", "covered", "8.3");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("8.3", "WARN", "getBorrowableTokens", decodeRevert(e));
 	}
 
@@ -1615,7 +1629,7 @@ async function main() {
 			`count=${collat.length}`,
 		);
 		markCoverage("TokenRegistry", "getCollateralTokens", "covered", "8.4");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("8.4", "WARN", "getCollateralTokens", decodeRevert(e));
 	}
 
@@ -1626,7 +1640,7 @@ async function main() {
 		record("8.5a", enWeth ? "PASS" : "FAIL", "isTokenEnabled(WETH)", `enabled=${enWeth}`);
 		record("8.5b", enUsdc ? "PASS" : "FAIL", "isTokenEnabled(USDC)", `enabled=${enUsdc}`);
 		markCoverage("TokenRegistry", "isTokenEnabled", "covered", "8.5");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("8.5", "WARN", "isTokenEnabled", decodeRevert(e));
 	}
 
@@ -1786,7 +1800,7 @@ async function main() {
 			? `${state[0]}, ${state[1]}, ${Array.isArray(state[2]) ? state[2].length : 0} actions`
 			: String(state);
 		record("9.6", "INFO", "getPipelineState", `returns ${stateStr}`);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("9.6", "INFO", "getPipelineState", `reverts: ${decodeRevert(e)}`);
 	}
 	markCoverage("StrategyExecutor", "getPipelineState", "static_call", "9.6");
@@ -1796,7 +1810,7 @@ async function main() {
 		const cp = await stratExec.getCheckpoint(mockStratId);
 		const cpStr = Array.isArray(cp) ? `${cp[0]}, ${cp[1]}` : String(cp);
 		record("9.7", "INFO", "getCheckpoint", `returns ${cpStr}`);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("9.7", "INFO", "getCheckpoint", `reverts: ${decodeRevert(e)}`);
 	}
 	markCoverage("StrategyExecutor", "getCheckpoint", "static_call", "9.7");
@@ -1826,7 +1840,7 @@ async function main() {
 				"name() returns 'FheForge Governor'",
 				name,
 			);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("10.1", "WARN", "name()", decodeRevert(e));
 		}
 
@@ -1835,7 +1849,7 @@ async function main() {
 			const pt = await gov.proposalThreshold();
 			const expected = 100n * 10n ** 18n;
 			record("10.2", pt === expected ? "PASS" : "FAIL", "proposalThreshold() == 100e18", `${pt}`);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("10.2", "WARN", "proposalThreshold()", decodeRevert(e));
 		}
 
@@ -1849,7 +1863,7 @@ async function main() {
 				"votingDelay/votingPeriod > 0",
 				`delay=${vd} period=${vp}`,
 			);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("10.3", "WARN", "votingDelay/votingPeriod", decodeRevert(e));
 		}
 
@@ -1870,7 +1884,7 @@ async function main() {
 				"proposalNeedsQueuing() returns true",
 				`=${needs}`,
 			);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("10.5", "WARN", "proposalNeedsQueuing()", decodeRevert(e));
 		}
 
@@ -1903,7 +1917,7 @@ async function main() {
 				"getMinDelay() == 2 days",
 				`delay=${delay}s`,
 			);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("11.1", "WARN", "getMinDelay()", decodeRevert(e));
 		}
 
@@ -1912,7 +1926,7 @@ async function main() {
 			const ADMIN_ROLE = ethers.id("TIMELOCK_ADMIN_ROLE");
 			const has = await timelock.hasRole(ADMIN_ROLE, deployer.address);
 			record("11.2", has ? "PASS" : "WARN", "deployer has TIMELOCK_ADMIN_ROLE", `hasRole=${has}`);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("11.2", "WARN", "TIMELOCK_ADMIN_ROLE check", decodeRevert(e));
 		}
 
@@ -1923,7 +1937,7 @@ async function main() {
 			const hasGov = await timelock.hasRole(PROP_ROLE, govAddr);
 			const hasDep = await timelock.hasRole(PROP_ROLE, deployer.address);
 			record("11.3", "INFO", "PROPOSER_ROLE holders", `governor=${hasGov} deployer=${hasDep}`);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("11.3", "WARN", "PROPOSER_ROLE", decodeRevert(e));
 		}
 
@@ -1932,7 +1946,7 @@ async function main() {
 			const EXEC_ROLE = ethers.id("EXECUTOR_ROLE");
 			const hasAny = await timelock.hasRole(EXEC_ROLE, tester.address);
 			record("11.4", "INFO", "EXECUTOR_ROLE (anyone by default)", `tester=${hasAny}`);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("11.4", "WARN", "EXECUTOR_ROLE", decodeRevert(e));
 		}
 
@@ -1969,7 +1983,7 @@ async function main() {
 			const role = ethers.id("PROPOSER_ROLE");
 			const has = await timelock.hasRole(role, tester.address);
 			record("12.1", "INFO", "PROPOSER_ROLE for tester", `hasRole=${has}`);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("12.1", "WARN", "PROPOSER_ROLE", decodeRevert(e));
 		}
 
@@ -1978,7 +1992,7 @@ async function main() {
 			const role = ethers.id("EXECUTOR_ROLE");
 			const has = await timelock.hasRole(role, tester.address);
 			record("12.2", "INFO", "EXECUTOR_ROLE for tester", `hasRole=${has}`);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("12.2", "WARN", "EXECUTOR_ROLE", decodeRevert(e));
 		}
 
@@ -1987,7 +2001,7 @@ async function main() {
 			const role = ethers.id("CANCELLER_ROLE");
 			const has = await timelock.hasRole(role, tester.address);
 			record("12.3", "INFO", "CANCELLER_ROLE for tester", `hasRole=${has}`);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("12.3", "WARN", "CANCELLER_ROLE", decodeRevert(e));
 		}
 
@@ -1996,7 +2010,7 @@ async function main() {
 			const role = ethers.id("CANCELLER_ROLE");
 			const has = await timelock.hasRole(role, deployer.address);
 			record("12.4", "INFO", "CANCELLER_ROLE for deployer", `hasRole=${has}`);
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("12.4", "WARN", "CANCELLER_ROLE deployer", decodeRevert(e));
 		}
 	}
@@ -2054,12 +2068,12 @@ async function main() {
 		wethPrice = p2;
 		record("14.1b", wethPrice > 0n ? "PASS" : "FAIL", "WETH oracle price", `price=${p2}`);
 		markCoverage("PriceOracle", "getPriceUsd", "covered", "14.1");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("14.1", "WARN", "Get oracle prices", decodeRevert(e));
 	}
 
 	// 14.2 — Deploy SimplePythMock for price feed simulation
-	let pythMock: any;
+	let pythMock: ethers.Contract | undefined;
 	try {
 		const SimplePythFactory = await ethers.getContractFactory("SimplePythMock");
 		pythMock = await SimplePythFactory.connect(deployer).deploy(1n);
@@ -2067,7 +2081,7 @@ async function main() {
 		const mockAddr = await pythMock.getAddress();
 		record("14.2", "PASS", "Deploy SimplePythMock", `addr=${mockAddr}`);
 		markCoverage("SimplePythMock", "constructor", "covered", "14.2");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("14.2", "WARN", "Deploy SimplePythMock", decodeRevert(e));
 	}
 
@@ -2109,7 +2123,7 @@ async function main() {
 			);
 
 			markCoverage("SimplePythMock", "setPrice+getPriceUnsafe", "covered", "14.3");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("14.3", "WARN", "Set Pyth prices on mock", decodeRevert(e));
 		}
 	}
@@ -2126,7 +2140,7 @@ async function main() {
 				`price=${fresh.price}, expo=${fresh.expo}, ~$${usdVal.toFixed(2)}`,
 			);
 			markCoverage("SimplePythMock", "getPriceNoOlderThan", "covered", "14.4");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			record("14.4", "WARN", "Pyth price readback", decodeRevert(e));
 		}
 	}
@@ -2144,7 +2158,7 @@ async function main() {
 		const rB = await txB.wait();
 		record("14.5b", "PASS", "Borrow $1000 USDC via oracle check", `gas=${rB?.gasUsed}`);
 		markCoverage("LendingPool", "borrowWithOracle", "covered", "14.5b");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("14.5", "WARN", "Open supply+borrow position", decodeRevert(e));
 	}
 
@@ -2163,7 +2177,7 @@ async function main() {
 			"Position healthy at current prices",
 			!healthy ? "isLiquidatable=false" : "unexpected isLiquidatable=true",
 		);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("14.6", "WARN", "isLiquidatable healthy check", decodeRevert(e));
 	}
 	markCoverage("LendingPool", "isLiquidatable", "covered", "14.6");
@@ -2184,7 +2198,7 @@ async function main() {
 			"Position underwater with 50% price drop",
 			unhealthy ? "isLiquidatable=true" : "still healthy (unexpected)",
 		);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("14.7", "WARN", "Simulated crash isLiquidatable", decodeRevert(e));
 	}
 	markCoverage("LendingPool", "isLiquidatable", "covered", "14.7");
@@ -2202,7 +2216,7 @@ async function main() {
 				"0x",
 			);
 		record("14.8", "FAIL", "liquidateWithProof same-token accepted", "expected revert");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		const msg = decodeRevert(e);
 		const ok = msg.includes("TokenMismatch");
 		record(
@@ -2229,7 +2243,7 @@ async function main() {
 				"0x", // mock supply proof
 			);
 			record("14.9", "FAIL", "liquidateWithProof cross-token accepted", "expected revert");
-		} catch (e: any) {
+		} catch (e: unknown) {
 			const msg = decodeRevert(e);
 			const ok = msg.includes("InvalidProof") || msg.includes("NoPosition");
 			record("14.9", ok ? "PASS" : "INFO", "liquidateWithProof (no proofs → reverts)", msg);
@@ -2253,7 +2267,7 @@ async function main() {
 			"liquidateWithProof self-call accepted",
 			"expected CannotSelfLiquidate",
 		);
-	} catch (e: any) {
+	} catch (e: unknown) {
 		const msg = decodeRevert(e);
 		const ok = msg.includes("CannotSelfLiquidate");
 		record(
@@ -2282,7 +2296,7 @@ async function main() {
 			`${ethers.formatUnits(liqSupplyAmt, 6)} USDC`,
 		);
 		markCoverage("LendingPool", "repayDebt+partialUnshield", "covered", "14.11");
-	} catch (e: any) {
+	} catch (e: unknown) {
 		record("14.11", "WARN", "Liquidation test cleanup", decodeRevert(e));
 	}
 

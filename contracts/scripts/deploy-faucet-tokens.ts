@@ -119,8 +119,9 @@ async function main() {
 			});
 			await tx.wait();
 			console.log(`  Registered ${token.symbol} ✓`);
-		} catch (e: any) {
-			console.log(`  ${token.symbol} already registered or error: ${e.message?.slice(0, 80)}`);
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			console.log(`  ${token.symbol} already registered or error: ${msg.slice(0, 80)}`);
 		}
 	}
 
@@ -139,8 +140,9 @@ async function main() {
 			);
 			await tx.wait();
 			console.log(`  Oracle set for ${token.symbol} ✓`);
-		} catch (e: any) {
-			console.log(`  ${token.symbol} oracle error: ${e.message?.slice(0, 80)}`);
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			console.log(`  ${token.symbol} oracle error: ${msg.slice(0, 80)}`);
 		}
 	}
 

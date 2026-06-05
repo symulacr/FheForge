@@ -130,7 +130,7 @@ function computeAppendedHash(ctHash: bigint, utype: number, securityZone: number
 /// Call MOCK_setInEuintKey on the deployed MockTaskManager so that the
 /// mock precompile can look up the plaintext value for a ctHash.
 async function registerMockValue(
-	taskManager: any,
+	taskManager: ethers.Contract,
 	ctHash: bigint,
 	value: bigint,
 	utype: number = 5, // EUINT128_TFHE
@@ -154,7 +154,7 @@ async function registerMockValue(
 async function measureGas(
 	label: string,
 	inputLabel: string,
-	fn: () => Promise<{ tx: any; receipt: any }>,
+	fn: () => Promise<{ tx: ethers.TransactionResponse; receipt: ethers.TransactionReceipt }>,
 	gasPrice: bigint,
 ): Promise<GasBenchmarkEntry> {
 	const { receipt } = await fn();
@@ -169,10 +169,10 @@ async function measureGas(
 }
 
 async function runBatch(
-	helper: any,
-	taskManager: any,
-	cofhe: any,
-	_deployer: any,
+	helper: ethers.Contract,
+	taskManager: ethers.Contract,
+	cofhe: ReturnType<typeof createCofheClient>,
+	_deployer: ethers.Signer,
 	gasPrice: bigint,
 ): Promise<GasBenchmarkEntry[]> {
 	const results: GasBenchmarkEntry[] = [];
@@ -209,9 +209,10 @@ async function runBatch(
 			);
 			results.push(entry);
 			console.log(`  ✓ _verifyEquality dual(${size.label}): ${entry.gasUsed} gas`);
-		} catch (e: any) {
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
 			console.log(
-				`  ✗ _verifyEquality dual(${size.label}) failed: ${(e.message ?? e).slice(0, 100)}`,
+				`  ✗ _verifyEquality dual(${size.label}) failed: ${msg.slice(0, 100)}`,
 			);
 		}
 	}
@@ -234,8 +235,9 @@ async function runBatch(
 			);
 			results.push(entry);
 			console.log(`  ✓ asEuint128(${size.label}): ${entry.gasUsed} gas`);
-		} catch (e: any) {
-			console.log(`  ✗ asEuint128(${size.label}) failed: ${(e.message ?? e).slice(0, 100)}`);
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			console.log(`  ✗ asEuint128(${size.label}) failed: ${msg.slice(0, 100)}`);
 		}
 	}
 
@@ -260,8 +262,9 @@ async function runBatch(
 			);
 			results.push(entry);
 			console.log(`  ✓ eq+select(${size.label}): ${entry.gasUsed} gas`);
-		} catch (e: any) {
-			console.log(`  ✗ eq+select(${size.label}) failed: ${(e.message ?? e).slice(0, 100)}`);
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			console.log(`  ✗ eq+select(${size.label}) failed: ${msg.slice(0, 100)}`);
 		}
 	}
 
@@ -286,8 +289,9 @@ async function runBatch(
 			);
 			results.push(entry);
 			console.log(`  ✓ Rebase step(${size.label}): ${entry.gasUsed} gas`);
-		} catch (e: any) {
-			console.log(`  ✗ Rebase step(${size.label}) failed: ${(e.message ?? e).slice(0, 100)}`);
+		} catch (e: unknown) {
+			const msg = e instanceof Error ? e.message : String(e);
+			console.log(`  ✗ Rebase step(${size.label}) failed: ${msg.slice(0, 100)}`);
 		}
 	}
 
@@ -317,8 +321,9 @@ async function main() {
 	try {
 		await hre.run(TASK_COFHE_MOCKS_DEPLOY);
 		console.log("  ✓ CoFHE mocks deployed");
-	} catch (e: any) {
-		console.error("  ✗ Mock deployment failed:", (e.message ?? e).slice(0, 120));
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : String(e);
+		console.error("  ✗ Mock deployment failed:", msg.slice(0, 120));
 		process.exit(1);
 	}
 
@@ -332,7 +337,7 @@ async function main() {
 
 	// ── CoFHE Client Initialization ──
 	console.log("\n▸ Initializing CoFHE client (mock mode for hardhat)...");
-	let cofhe: any;
+	let cofhe: ReturnType<typeof createCofheClient> | undefined;
 	try {
 		const client = createCofheClient(
 			createCofheConfig({
@@ -345,8 +350,9 @@ async function main() {
 		await client.permits.createSelf({ issuer: deployer.address });
 		cofhe = client;
 		console.log("  ✓ CoFHE client ready (mock mode)");
-	} catch (e: any) {
-		console.error("  ✗ CoFHE initialization failed:", (e.message ?? e).slice(0, 120));
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : String(e);
+		console.error("  ✗ CoFHE initialization failed:", msg.slice(0, 120));
 		console.log("  Falling back to gas estimation...");
 	}
 

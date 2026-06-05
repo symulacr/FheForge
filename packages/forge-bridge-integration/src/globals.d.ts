@@ -6,51 +6,51 @@
 /* eslint-disable no-var */
 
 interface Window {
-	__MOCK__: Record<string, any>;
+	__MOCK__: Record<string, unknown>;
 	__BRIDGE__: BridgeAPI;
-	__bridgeBus: any;
+	__bridgeBus: unknown;
 	__transformers: TransformersAPI;
-	DataFetcherV2: any;
-	bridge: any;
-	Landing: any;
-	Dashboard: any;
-	Lending: any;
-	Market: any;
-	Governance: any;
-	ConnectModal: any;
+	DataFetcherV2: unknown;
+	bridge: BridgeAPI;
+	Landing: unknown;
+	Dashboard: unknown;
+	Lending: unknown;
+	Market: unknown;
+	Governance: unknown;
+	ConnectModal: unknown;
 	React: typeof React;
-	ethereum: any;
+	ethereum: unknown;
 }
 
 interface BridgeAPI {
-	setMockData(key: string, value: any): void;
-	getMockData(key: string): any;
-	onDataUpdate(fn: (data: any) => void): () => void;
+	setMockData(key: string, value: unknown): void;
+	getMockData(key: string): unknown;
+	onDataUpdate(fn: (data: unknown) => void): () => void;
 	notify(): void;
 	_listeners: Set<Function>;
 	_dataVersion: number;
 }
 
 interface TransformersAPI {
-	transformMarkets(apiMarkets: any[]): any[];
-	transformPositions(supplies: any[], borrows: any[], markets: any[]): any[];
-	transformActivities(apiActivities: any[]): any[];
-	formatTicker(stats: Record<string, any>): string[];
-	transformStrategies(apiStrategies: any[]): any[];
-	transformProposals(apiProposals: any[]): any[];
-	transformNodeTypes(modules: any[]): Record<string, any>;
-	calculateNetValue(positions: any[]): string;
-	calculateLTV(positions: any[]): { ratio: string; gaugeValue: number };
+	transformMarkets(apiMarkets: unknown[]): unknown[];
+	transformPositions(supplies: unknown[], borrows: unknown[], markets: unknown[]): unknown[];
+	transformActivities(apiActivities: unknown[]): unknown[];
+	formatTicker(stats: Record<string, unknown>): string[];
+	transformStrategies(apiStrategies: unknown[]): unknown[];
+	transformProposals(apiProposals: unknown[]): unknown[];
+	transformNodeTypes(modules: unknown[]): Record<string, unknown>;
+	calculateNetValue(positions: unknown[]): string;
+	calculateLTV(positions: unknown[]): { ratio: string; gaugeValue: number };
 }
 
 declare var Babel: {
-	transform: (code: string, options?: any) => { code: string; map?: any; ast?: any };
+	transform: (code: string, options?: unknown) => { code: string; map?: unknown; ast?: unknown };
 	packages: {
 		types: {
-			identifier(name: string): any;
-			stringLiteral(value: string): any;
-			jsxExpressionContainer(expression: any): any;
-			memberExpression(object: any, property: any, computed?: boolean): any;
+			identifier(name: string): unknown;
+			stringLiteral(value: string): unknown;
+			jsxExpressionContainer(expression: unknown): unknown;
+			memberExpression(object: unknown, property: unknown, computed?: boolean): unknown;
 		};
 	};
 };
@@ -58,7 +58,7 @@ declare var Babel: {
 declare module "bun:test" {
 	export const describe: (name: string, fn: () => void) => void;
 	export const it: (name: string, fn: () => void) => void;
-	export const expect: (value: any) => any;
+	export const expect: (value: unknown) => unknown;
 	export const beforeAll: (fn: () => void) => void;
 	export const afterAll: (fn: () => void) => void;
 }

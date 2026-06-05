@@ -35,13 +35,16 @@ export class ComposerFlowTester {
 				observation: "Completed successfully on-chain.",
 			});
 			return tx.hash;
-		} catch (e: any) {
+		} catch (e: unknown) {
 			const elapsed = Date.now() - start;
-			const revertReason = e.message ?? String(e);
+			const revertReason = e instanceof Error ? e.message : String(e);
+			const txHash = (e && typeof e === "object" && "transactionHash" in e)
+				? String((e as Record<string, unknown>).transactionHash)
+				: "";
 			this.results.push({
 				flowName,
 				status: "WARN",
-				txHash: e.transactionHash ?? "",
+				txHash,
 				gasUsed: "0",
 				wallClockTimeMs: elapsed,
 				observation: `Flow bypassed/reverted safely: ${revertReason.slice(0, 120)}`,
