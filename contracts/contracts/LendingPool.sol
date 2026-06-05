@@ -82,7 +82,12 @@ contract LendingPool is FheForgeBase {
     event ComposerSet(address indexed composer);
     event ShieldCommitted(address indexed user, address indexed token, bytes32 indexed commitId);
     event ShieldEthCommitted(address indexed user, bytes32 indexed commitId);
-    event BorrowCommitted(address indexed user, address indexed collateralToken, address borrowToken, bytes32 indexed commitId);
+    event BorrowCommitted(
+        address indexed user,
+        address indexed collateralToken,
+        address borrowToken,
+        bytes32 indexed commitId
+    );
     event RepayCommitted(address indexed user, address indexed token, bytes32 indexed commitId);
     event WithdrawCommitted(address indexed user, address indexed token, bytes32 indexed commitId);
     event WithdrawEthCommitted(address indexed user, bytes32 indexed commitId);
@@ -117,7 +122,11 @@ contract LendingPool is FheForgeBase {
         FHE.allowPublic(encAmount);
     }
 
-    function _reveal(bytes32 commitId, uint128 proof, bytes calldata sig) internal returns (uint256 amount, euint128 handle) {
+    function _reveal(
+        bytes32 commitId,
+        uint128 proof,
+        bytes calldata sig
+    ) internal returns (uint256 amount, euint128 handle) {
         Commitment storage c = _commits[commitId];
         if (!c.exists) revert CommitmentNotFound();
         if (block.timestamp > c.timestamp + COMMIT_DEADLINE) revert CommitmentExpired();
@@ -137,7 +146,10 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        require(euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO), "FHE: verification failed");
+        require(
+            euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO),
+            "FHE: verification failed"
+        );
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         liquidReserve[token] += amount;
         euint128 stored = supplyBalances[token][msg.sender];
@@ -163,7 +175,10 @@ contract LendingPool is FheForgeBase {
         euint128 borrowBal = _ensureInitialized(borrowBalances[borrowToken][msg.sender]);
         euint128 requested = FHE.asEuint128(encBorrowAmount);
         euint128 verifiedBorrow = _verifyEquality(requested, borrowAmount);
-        require(euint128.unwrap(verifiedBorrow) != euint128.unwrap(_ZERO), "FHE: verification failed");
+        require(
+            euint128.unwrap(verifiedBorrow) != euint128.unwrap(_ZERO),
+            "FHE: verification failed"
+        );
 
         euint128 newBorrow = FHE.add(borrowBal, verifiedBorrow);
         euint128 lhs = FHE.mul(newBorrow, FHE.asEuint128(uint256(ltvDen)));
@@ -196,7 +211,10 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        require(euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO), "FHE: verification failed");
+        require(
+            euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO),
+            "FHE: verification failed"
+        );
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         totalPlainBorrow[token] -= amount;
         liquidReserve[token] += amount;
@@ -224,7 +242,10 @@ contract LendingPool is FheForgeBase {
         if (amount == 0) revert ZeroAmount();
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, amount);
-        require(euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO), "FHE: verification failed");
+        require(
+            euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO),
+            "FHE: verification failed"
+        );
         uint256 reserve = liquidReserve[token];
         if (reserve < amount) revert InsufficientReserve();
         unchecked {
@@ -356,7 +377,10 @@ contract LendingPool is FheForgeBase {
         liquidReserve[tokenAddr] += msg.value;
         euint128 incoming = FHE.asEuint128(encAmount);
         euint128 verifiedIncoming = _verifyEquality(incoming, msg.value);
-        require(euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO), "FHE: verification failed");
+        require(
+            euint128.unwrap(verifiedIncoming) != euint128.unwrap(_ZERO),
+            "FHE: verification failed"
+        );
         euint128 stored = supplyBalances[tokenAddr][msg.sender];
         supplyBalances[tokenAddr][msg.sender] = _safeIncrease(stored, verifiedIncoming, msg.sender);
         weth.deposit{ value: msg.value }();
@@ -377,14 +401,22 @@ contract LendingPool is FheForgeBase {
     }
 
     // ── Commit-Reveal: Shield ──────────────────────────────
-    function shield(address token, InEuint128 calldata encAmount) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
+    function shield(
+        address token,
+        InEuint128 calldata encAmount
+    ) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
         if (token == address(0)) revert ZeroAddress();
         euint128 incoming = FHE.asEuint128(encAmount);
         commitId = _commit(incoming);
         emit ShieldCommitted(msg.sender, token, commitId);
     }
 
-    function executeShield(address token, bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable nonReentrant whenNotPaused {
+    function executeShield(
+        address token,
+        bytes32 commitId,
+        uint128 balanceProof,
+        bytes calldata balanceSig
+    ) external payable nonReentrant whenNotPaused {
         if (token == address(0)) revert ZeroAddress();
         (uint256 amount, euint128 handle) = _reveal(commitId, balanceProof, balanceSig);
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -395,7 +427,13 @@ contract LendingPool is FheForgeBase {
     }
 
     // ── Commit-Reveal: Borrow ──────────────────────────────
-    function commitBorrow(address collateralToken, address borrowToken, InEuint128 calldata encBorrowAmount, uint128 ltvNum, uint128 ltvDen) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
+    function commitBorrow(
+        address collateralToken,
+        address borrowToken,
+        InEuint128 calldata encBorrowAmount,
+        uint128 ltvNum,
+        uint128 ltvDen
+    ) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
         if (collateralToken == address(0) || borrowToken == address(0)) revert ZeroAddress();
         if (ltvDen == 0) revert LtvDenominatorZero();
         if (ltvNum == 0) revert LtvNumeratorZero();
@@ -411,8 +449,16 @@ contract LendingPool is FheForgeBase {
         emit BorrowCommitted(msg.sender, collateralToken, borrowToken, commitId);
     }
 
-    function executeBorrow(bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable nonReentrant whenNotPaused returns (euint128 actual) {
-        (uint256 borrowAmount, euint128 verifiedBorrow) = _reveal(commitId, balanceProof, balanceSig);
+    function executeBorrow(
+        bytes32 commitId,
+        uint128 balanceProof,
+        bytes calldata balanceSig
+    ) external payable nonReentrant whenNotPaused returns (euint128 actual) {
+        (uint256 borrowAmount, euint128 verifiedBorrow) = _reveal(
+            commitId,
+            balanceProof,
+            balanceSig
+        );
         BorrowCommitParams memory p = _borrowParams[commitId];
         delete _borrowParams[commitId];
 
@@ -438,33 +484,53 @@ contract LendingPool is FheForgeBase {
     }
 
     // ── Commit-Reveal: Repay ───────────────────────────────
-    function repay(address token, InEuint128 calldata encAmount) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
+    function repay(
+        address token,
+        InEuint128 calldata encAmount
+    ) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
         if (token == address(0)) revert ZeroAddress();
         euint128 incoming = FHE.asEuint128(encAmount);
         commitId = _commit(incoming);
         emit RepayCommitted(msg.sender, token, commitId);
     }
 
-    function executeRepay(address token, bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable nonReentrant whenNotPaused {
+    function executeRepay(
+        address token,
+        bytes32 commitId,
+        uint128 balanceProof,
+        bytes calldata balanceSig
+    ) external payable nonReentrant whenNotPaused {
         if (token == address(0)) revert ZeroAddress();
         (uint256 amount, euint128 verifiedIncoming) = _reveal(commitId, balanceProof, balanceSig);
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         totalPlainBorrow[token] -= amount;
         liquidReserve[token] += amount;
         euint128 currentBalance = borrowBalances[token][msg.sender];
-        borrowBalances[token][msg.sender] = _safeDecrease(currentBalance, verifiedIncoming, msg.sender);
+        borrowBalances[token][msg.sender] = _safeDecrease(
+            currentBalance,
+            verifiedIncoming,
+            msg.sender
+        );
         emit Repaid(msg.sender, token);
     }
 
     // ── Commit-Reveal: Withdraw ────────────────────────────
-    function withdraw(address token, InEuint128 calldata encAmount) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
+    function withdraw(
+        address token,
+        InEuint128 calldata encAmount
+    ) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
         if (token == address(0)) revert ZeroAddress();
         euint128 incoming = FHE.asEuint128(encAmount);
         commitId = _commit(incoming);
         emit WithdrawCommitted(msg.sender, token, commitId);
     }
 
-    function executeWithdraw(address token, bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable nonReentrant whenNotPaused {
+    function executeWithdraw(
+        address token,
+        bytes32 commitId,
+        uint128 balanceProof,
+        bytes calldata balanceSig
+    ) external payable nonReentrant whenNotPaused {
         if (token == address(0)) revert ZeroAddress();
         (uint256 amount, euint128 verifiedIncoming) = _reveal(commitId, balanceProof, balanceSig);
         uint256 reserve = liquidReserve[token];
@@ -474,20 +540,31 @@ contract LendingPool is FheForgeBase {
             liquidReserve[token] = reserve - amount;
         }
         euint128 currentBalance = supplyBalances[token][msg.sender];
-        supplyBalances[token][msg.sender] = _safeDecrease(currentBalance, verifiedIncoming, msg.sender);
+        supplyBalances[token][msg.sender] = _safeDecrease(
+            currentBalance,
+            verifiedIncoming,
+            msg.sender
+        );
         IERC20(token).safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, token);
     }
 
     // ── Commit-Reveal: Shield ETH ──────────────────────────
-    function shieldEth(InEuint128 calldata encAmount, bool) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
+    function shieldEth(
+        InEuint128 calldata encAmount,
+        bool
+    ) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
         if (address(weth) == address(0)) revert WethNotSet();
         euint128 incoming = FHE.asEuint128(encAmount);
         commitId = _commit(incoming);
         emit ShieldEthCommitted(msg.sender, commitId);
     }
 
-    function executeShieldEth(bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable nonReentrant whenNotPaused {
+    function executeShieldEth(
+        bytes32 commitId,
+        uint128 balanceProof,
+        bytes calldata balanceSig
+    ) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         if (msg.value == 0) revert ZeroAmount();
         (uint256 amount, euint128 verifiedIncoming) = _reveal(commitId, balanceProof, balanceSig);
@@ -501,14 +578,21 @@ contract LendingPool is FheForgeBase {
     }
 
     // ── Commit-Reveal: Withdraw ETH ────────────────────────
-    function withdrawEth(InEuint128 calldata encAmount, bool) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
+    function withdrawEth(
+        InEuint128 calldata encAmount,
+        bool
+    ) external payable nonReentrant whenNotPaused returns (bytes32 commitId) {
         if (address(weth) == address(0)) revert WethNotSet();
         euint128 incoming = FHE.asEuint128(encAmount);
         commitId = _commit(incoming);
         emit WithdrawEthCommitted(msg.sender, commitId);
     }
 
-    function executeWithdrawEth(bytes32 commitId, uint128 balanceProof, bytes calldata balanceSig) external payable nonReentrant whenNotPaused {
+    function executeWithdrawEth(
+        bytes32 commitId,
+        uint128 balanceProof,
+        bytes calldata balanceSig
+    ) external payable nonReentrant whenNotPaused {
         if (address(weth) == address(0)) revert WethNotSet();
         (uint256 amount, euint128 verifiedIncoming) = _reveal(commitId, balanceProof, balanceSig);
         address tokenAddr = address(weth);
@@ -519,7 +603,11 @@ contract LendingPool is FheForgeBase {
             liquidReserve[tokenAddr] = reserve - amount;
         }
         euint128 currentBalance = supplyBalances[tokenAddr][msg.sender];
-        supplyBalances[tokenAddr][msg.sender] = _safeDecrease(currentBalance, verifiedIncoming, msg.sender);
+        supplyBalances[tokenAddr][msg.sender] = _safeDecrease(
+            currentBalance,
+            verifiedIncoming,
+            msg.sender
+        );
         weth.withdraw(amount);
         (bool ok, ) = msg.sender.call{ value: amount }("");
         if (!ok) revert EthTransferFailed();
@@ -544,7 +632,10 @@ contract LendingPool is FheForgeBase {
 
         euint128 requested = FHE.asEuint128(encBorrowAmount);
         euint128 verifiedRequested = _verifyEquality(requested, borrowAmount);
-        require(euint128.unwrap(verifiedRequested) != euint128.unwrap(_ZERO), "FHE: verification failed");
+        require(
+            euint128.unwrap(verifiedRequested) != euint128.unwrap(_ZERO),
+            "FHE: verification failed"
+        );
 
         if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
         unchecked {
@@ -760,12 +851,7 @@ contract LendingPool is FheForgeBase {
 
     uint256 public constant FLASH_FEE_BPS = 5;
 
-    event FlashLoan(
-        address indexed receiver,
-        address indexed token,
-        uint256 amount,
-        uint256 fee
-    );
+    event FlashLoan(address indexed receiver, address indexed token, uint256 amount, uint256 fee);
 
     function maxFlashLoan(address token) external view returns (uint256 maxLoan) {
         uint256 reserve = liquidReserve[token];

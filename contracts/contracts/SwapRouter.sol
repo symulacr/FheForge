@@ -72,11 +72,7 @@ contract SwapRouter is FheForgeBase, TimelockedRotation {
         address tokenOut,
         uint256 deadline
     );
-    event IntentExecuted(
-        bytes32 indexed intentId,
-        address indexed user,
-        uint256 outputAmount
-    );
+    event IntentExecuted(bytes32 indexed intentId, address indexed user, uint256 outputAmount);
     event IntentCancelled(bytes32 indexed intentId, address indexed user);
     event ExecutorProposed(address indexed newExecutor, uint256 indexed earliest);
     event ExecutorRotated(address indexed previousExecutor, address indexed newExecutor);

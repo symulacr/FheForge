@@ -189,7 +189,11 @@ contract FheForgeComposer is FheForgeBase {
         }
         if (p.addCollateralAmount > 0) {
             _ensureApproval(p.collateralToken, address(VAULT), p.addCollateralAmount);
-            euint128 verifiedAddColl = _verifyAndAllow(e.addCollateralEnc, p.addCollateralAmount, address(VAULT));
+            euint128 verifiedAddColl = _verifyAndAllow(
+                e.addCollateralEnc,
+                p.addCollateralAmount,
+                address(VAULT)
+            );
             VAULT.addCollateral(
                 p.positionId,
                 p.collateralToken,
@@ -206,7 +210,11 @@ contract FheForgeComposer is FheForgeBase {
         }
 
         if (p.newBorrowAmount > 0) {
-            euint128 verifiedNewBorrow = _verifyAndAllow(e.newBorrowEnc, p.newBorrowAmount, address(POOL));
+            euint128 verifiedNewBorrow = _verifyAndAllow(
+                e.newBorrowEnc,
+                p.newBorrowAmount,
+                address(POOL)
+            );
             POOL.borrowFor(p.borrowToken, p.newBorrowAmount, verifiedNewBorrow, _msgSender());
         }
 
@@ -224,7 +232,11 @@ contract FheForgeComposer is FheForgeBase {
         }
     }
 
-    function _verifyAndAllow(InEuint128 calldata enc, uint256 amount, address target) internal returns (euint128) {
+    function _verifyAndAllow(
+        InEuint128 calldata enc,
+        uint256 amount,
+        address target
+    ) internal returns (euint128) {
         euint128 cast = FHE.asEuint128(enc);
         euint128 verified = _verifyEquality(cast, amount);
         FHE.allowTransient(verified, target);

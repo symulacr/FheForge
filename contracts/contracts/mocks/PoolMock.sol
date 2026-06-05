@@ -130,7 +130,13 @@ contract PoolMock is ILendingPool {
         revert NotMocked();
     }
 
-    function commitBorrow(address, address, InEuint128 calldata, uint128, uint128) external payable returns (bytes32) {
+    function commitBorrow(
+        address,
+        address,
+        InEuint128 calldata,
+        uint128,
+        uint128
+    ) external payable returns (bytes32) {
         revert NotMocked();
     }
 

@@ -37,14 +37,22 @@ library FheACL {
         FHE.allowSender(handle);
     }
 
-    function safeIncrease(euint128 stored, euint128 delta, address user) internal returns (euint128 newBalance) {
+    function safeIncrease(
+        euint128 stored,
+        euint128 delta,
+        address user
+    ) internal returns (euint128 newBalance) {
         FHE.allowThis(delta);
         (, newBalance) = FHESafeMath128.tryIncrease(stored, delta);
         FHE.allowThis(newBalance);
         FHE.allow(newBalance, user);
     }
 
-    function safeDecrease(euint128 stored, euint128 delta, address user) internal returns (euint128 newBalance) {
+    function safeDecrease(
+        euint128 stored,
+        euint128 delta,
+        address user
+    ) internal returns (euint128 newBalance) {
         FHE.allowThis(delta);
         (, newBalance) = FHESafeMath128.tryDecrease(stored, delta);
         FHE.allowThis(newBalance);

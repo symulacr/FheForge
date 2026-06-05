@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import { FHE, euint128, ebool } from "@fhenixprotocol/cofhe-contracts/FHE.sol";
-import { FHESafeMath128 } from "./libraries/FHESafeMath128.sol";
 import { FheACL } from "./libraries/FheACL.sol";
 
 /// @notice Abstract base contract for all FheForge contracts.
