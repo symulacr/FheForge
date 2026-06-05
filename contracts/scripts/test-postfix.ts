@@ -252,25 +252,15 @@ async function main() {
     usdc.allowance(tester.address, dep.contracts.FheForgeComposer),
   ]);
 
-  const approveTxs: Promise<ethers.ContractTransactionReceipt | null>[] = [];
   const limit = ethers.MaxUint256 / 2n;
   if (allowVault < limit) {
-    approveTxs.push(
-      usdc.approve(dep.contracts.StrategyVault, ethers.MaxUint256).then((tx) => tx.wait()),
-    );
+    await (await usdc.approve(dep.contracts.StrategyVault, ethers.MaxUint256)).wait();
   }
   if (allowPool < limit) {
-    approveTxs.push(
-      usdc.approve(dep.contracts.LendingPool, ethers.MaxUint256).then((tx) => tx.wait()),
-    );
+    await (await usdc.approve(dep.contracts.LendingPool, ethers.MaxUint256)).wait();
   }
   if (allowComposer < limit) {
-    approveTxs.push(
-      usdc.approve(dep.contracts.FheForgeComposer, ethers.MaxUint256).then((tx) => tx.wait()),
-    );
-  }
-  if (approveTxs.length > 0) {
-    await Promise.all(approveTxs);
+    await (await usdc.approve(dep.contracts.FheForgeComposer, ethers.MaxUint256)).wait();
   }
 
   const cofhe = await (async () => {
@@ -772,7 +762,7 @@ async function main() {
     );
     await Promise.all(unpauseTxs.map((x) => x.tx.wait()));
 
-    contracts.forEach(([name]) => {
+    contractEntries.forEach(([name]) => {
       record(
         `X.${name}`,
         'PASS',
