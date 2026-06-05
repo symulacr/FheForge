@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SupabaseService } from 'src/shared/infrastructure/supabase.service';
 import { v4 as uuidv4 } from 'uuid';
 import { DefiStrategyVersion } from '../domain/defi_strategy_version.entity';
-import type { DefiStrategyVersionRepository } from '../domain/defi_strategy_version.repository';
+import { DefiStrategyVersionRepository } from '../domain/defi_strategy_version.repository';
 import type { CreateDefiStrategyVersionDto } from '../interfaces/dto/create_defi_strategy_version.dto';
 import type { UpdateDefiStrategyVersionDto } from '../interfaces/dto/update_defi_strategy_version.dto';
 

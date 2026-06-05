@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { DefiStrategyExecution } from '../domain/defi_strategy_execution.entity';
-import type { DefiStrategyExecutionRepository } from '../domain/defi_strategy_execution.repository';
+import { DefiStrategyExecutionRepository } from '../domain/defi_strategy_execution.repository';
 import { DefiStrategyVersionService } from './defi_strategy_version.service';
 
 @Injectable()

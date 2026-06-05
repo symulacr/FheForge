@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from 'src/shared/infrastructure/supabase.service';
 import { Activity, type ActivityStatus } from '../domain/activity.entity';
-import type { ActivityRepository } from '../domain/activity.repository';
+import { ActivityRepository } from '../domain/activity.repository';
 
 /** Shape of a row stored in the on_chain_events table by EventIndexerService */
 interface OnChainEventRow {

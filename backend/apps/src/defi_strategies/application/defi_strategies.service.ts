@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { UserService } from '../../users/application/user.service';
 import { DefiStrategy } from '../domain/defi_strategies.entity';
-import type { DefiStrategiesRepository } from '../domain/defi_strategies.repository';
+import { DefiStrategiesRepository } from '../domain/defi_strategies.repository';
 import type { CreateDefiStrategyDto } from '../interfaces/dto/create_defi_strategy.dto';
 import type { UpdateDefiStrategyDto } from '../interfaces/dto/update_defi_strategy.dto';
 import { DefiStrategyVersionService } from './defi_strategy_version.service';

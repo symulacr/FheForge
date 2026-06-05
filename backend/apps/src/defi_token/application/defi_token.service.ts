@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { DefiToken } from '../domain/defi_token.entity';
-import type { DefiTokenRepository } from '../domain/defi_token.repository';
+import { DefiTokenRepository } from '../domain/defi_token.repository';
 import type { CreateDefiTokenDto } from '../interfaces/dto/create_defi_token.dto';
 
 @Injectable()

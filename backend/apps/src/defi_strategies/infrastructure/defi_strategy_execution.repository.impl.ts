@@ -3,7 +3,7 @@ import type { DefiStrategyExecutionRow } from 'src/shared/infrastructure/databas
 import { SupabaseService } from '../../shared/infrastructure/supabase.service';
 import type { DefiExecutionStepResult } from '../domain/defi_execution_step_result.entity';
 import { DefiStrategyExecution } from '../domain/defi_strategy_execution.entity';
-import type { DefiStrategyExecutionRepository } from '../domain/defi_strategy_execution.repository';
+import { DefiStrategyExecutionRepository } from '../domain/defi_strategy_execution.repository';
 
 @Injectable()
 export class DefiStrategyExecutionRepositoryImpl implements DefiStrategyExecutionRepository {

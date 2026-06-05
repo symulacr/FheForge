@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { DefiActionRequiredRow } from 'src/shared/infrastructure/database.types';
 import { SupabaseService } from '../../shared/infrastructure/supabase.service';
 import { DefiActionRequired } from '../domain/defi_action_required.entity';
-import type { DefiActionRequiredRepository } from '../domain/defi_action_required.repository';
+import { DefiActionRequiredRepository } from '../domain/defi_action_required.repository';
 import type { DefiModuleAction } from '../domain/defi_module_actions.entity';
 
 @Injectable()

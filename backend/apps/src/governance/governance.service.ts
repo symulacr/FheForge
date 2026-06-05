@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import type { CastVoteDto } from './dtos/cast-vote.dto';
 import type { CreateProposalDto } from './dtos/create-proposal.dto';
 import type { ProposalResponseDto, VoteDto } from './dtos/proposal-response.dto';
-import type { GovernanceRepository } from './governance.repository';
+import { GovernanceRepository } from './governance.repository';
 
 @Injectable()
 export class GovernanceService {

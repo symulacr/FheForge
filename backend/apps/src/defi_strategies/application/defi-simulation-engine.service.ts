@@ -6,10 +6,10 @@ import {
   type SimulationStepResult,
   type WorkflowJson,
 } from '../domain/simulation-engine.interface';
-import type { BorrowSimulator } from './simulators/borrow-simulator';
-import type { JoinStrategySimulator } from './simulators/join-strategy-simulator';
-import type { SupplySimulator } from './simulators/supply-simulator';
-import type { SwapSimulator } from './simulators/swap-simulator';
+import { BorrowSimulator } from './simulators/borrow-simulator';
+import { JoinStrategySimulator } from './simulators/join-strategy-simulator';
+import { SupplySimulator } from './simulators/supply-simulator';
+import { SwapSimulator } from './simulators/swap-simulator';
 
 @Injectable()
 export class DefiSimulationEngine extends SimulationEngine {

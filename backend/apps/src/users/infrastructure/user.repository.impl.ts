@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { UserRow } from 'src/shared/infrastructure/database.types';
 import { SupabaseService } from 'src/shared/infrastructure/supabase.service';
 import { User } from '../domain/user.entity';
-import type { UserRepository } from '../domain/user.repository';
+import { UserRepository } from '../domain/user.repository';
 
 @Injectable()
 export class UserRepositoryImplement implements UserRepository {

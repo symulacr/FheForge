@@ -15,7 +15,7 @@ import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../auth/public.decorator';
 import { DefiStrategiesService } from '../application/defi_strategies.service';
 import { DefiStrategyVersionService } from '../application/defi_strategy_version.service';
-import type { DefiSimulationEngine } from '../application/defi-simulation-engine.service';
+import { DefiSimulationEngine } from '../application/defi-simulation-engine.service';
 import type { CreateDefiStrategyDto } from './dto/create_defi_strategy.dto';
 import type { CreateDefiStrategyVersionDto } from './dto/create_defi_strategy_version.dto';
 import type { UpdateDefiStrategyDto } from './dto/update_defi_strategy.dto';
