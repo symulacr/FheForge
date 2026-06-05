@@ -202,6 +202,12 @@ contract StrategyVault is FheForgeBase {
                 // ─── P-CRIT-1 FIX: Safe decrease ───
                 pos.collateral = _safeDecrease(currentCollateral, verifiedClosed, beneficiary);
             }
+        } else {
+            // Non-strategy path: verify encrypted matches plaintext
+            euint128 verifiedClosed = _verifyEquality(encCollateralAmount, collateralAmount);
+            if (!fullClose) {
+                pos.collateral = _safeDecrease(currentCollateral, verifiedClosed, beneficiary);
+            }
         }
 
         IERC20(token).safeTransfer(owner, collateralAmount);

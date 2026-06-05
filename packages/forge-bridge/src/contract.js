@@ -204,7 +204,7 @@ async function estimateSendAndWait(
 	try {
 		receipt = await publicClient.waitForTransactionReceipt({ hash });
 	} catch (_error) {
-		return { hash, status: "pending", receipt: undefined };
+		throw new Error(`Transaction ${hash} submitted but confirmation timed out. Check block explorer.`);
 	}
 
 	const status = receipt.status === "success" ? "confirmed" : "reverted";

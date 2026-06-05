@@ -38,7 +38,7 @@ contract LendingPool is FheForgeBase {
     mapping(bytes32 => BorrowCommitParams) private _borrowParams;
     mapping(address => uint256) private _nonces;
 
-    address public composer;
+    mapping(address => bool) public isComposer;
 
     uint16 public constant LIQUIDATION_BONUS_BPS = 500;
     uint16 public constant LIQUIDATION_CLOSE_FACTOR_BPS = 5000;
@@ -101,7 +101,7 @@ contract LendingPool is FheForgeBase {
     }
 
     function _onlyComposer() private view {
-        if (msg.sender != composer) revert NotComposer();
+        if (!isComposer[msg.sender]) revert NotComposer();
     }
 
     constructor() FheForgeBase() {}
@@ -176,12 +176,14 @@ contract LendingPool is FheForgeBase {
         borrowBalances[borrowToken][msg.sender] = _safeIncrease(borrowBal, actual, msg.sender);
         _grantAcl(actual, msg.sender);
 
-        if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
-        unchecked {
-            totalPlainBorrow[borrowToken] += borrowAmount;
-            liquidReserve[borrowToken] -= borrowAmount;
+        if (euint128.unwrap(actual) != euint128.unwrap(_ZERO)) {
+            if (liquidReserve[borrowToken] < borrowAmount) revert InsufficientReserve();
+            unchecked {
+                totalPlainBorrow[borrowToken] += borrowAmount;
+                liquidReserve[borrowToken] -= borrowAmount;
+            }
+            IERC20(borrowToken).safeTransfer(msg.sender, borrowAmount);
         }
-        IERC20(borrowToken).safeTransfer(msg.sender, borrowAmount);
         emit Borrowed(msg.sender, collateralToken, borrowToken);
     }
 
@@ -341,9 +343,9 @@ contract LendingPool is FheForgeBase {
         emit WethDisabled();
     }
 
-    function setComposer(address c) external payable onlyOwner {
+    function setComposer(address c, bool enabled) external payable onlyOwner {
         if (c == address(0)) revert ZeroAddress();
-        composer = c;
+        isComposer[c] = enabled;
         emit ComposerSet(c);
     }
 
@@ -424,12 +426,14 @@ contract LendingPool is FheForgeBase {
         FHE.allowThis(actual);
         borrowBalances[p.borrowToken][msg.sender] = _safeIncrease(borrowBal, actual, msg.sender);
         _grantAcl(actual, msg.sender);
-        if (liquidReserve[p.borrowToken] < borrowAmount) revert InsufficientReserve();
-        unchecked {
-            totalPlainBorrow[p.borrowToken] += borrowAmount;
-            liquidReserve[p.borrowToken] -= borrowAmount;
+        if (euint128.unwrap(actual) != euint128.unwrap(_ZERO)) {
+            if (liquidReserve[p.borrowToken] < borrowAmount) revert InsufficientReserve();
+            unchecked {
+                totalPlainBorrow[p.borrowToken] += borrowAmount;
+                liquidReserve[p.borrowToken] -= borrowAmount;
+            }
+            IERC20(p.borrowToken).safeTransfer(msg.sender, borrowAmount);
         }
-        IERC20(p.borrowToken).safeTransfer(msg.sender, borrowAmount);
         emit Borrowed(msg.sender, p.collateralToken, p.borrowToken);
     }
 

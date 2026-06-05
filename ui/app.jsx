@@ -122,18 +122,30 @@ function App() {
       if (!accts.length) {
         window.__bridgeBus?.set("wallet:disconnected", { connected: false, address: null });
         setCtx(prev => ({ ...prev, connected: false, address: null, permitUnlocked: false, permitSeconds: 0 }));
+        if (window.__ConnectInterceptor) {
+          window.__ConnectInterceptor.handleDisconnect();
+        }
       } else if (ctx.connected && accts[0] !== ctx.address) {
         window.__bridgeBus?.set("wallet:connected", { connected: true, address: accts[0] });
         setCtx(prev => ({ ...prev, address: accts[0] }));
       }
     };
     const onChain = (chainId) => {
-      window.__bridgeBus?.set("network:changed", { chainId: typeof chainId === "string" ? parseInt(chainId, 16) : chainId });
+      window.__bridgeBus?.set("wallet:networkChanged", { chainId: typeof chainId === "string" ? parseInt(chainId, 16) : chainId });
     };
     window.ethereum.on("accountsChanged", onAccounts);
     window.ethereum.on("chainChanged", onChain);
     return () => { window.ethereum.removeListener("accountsChanged", onAccounts); window.ethereum.removeListener("chainChanged", onChain); };
   }, [ctx.connected, ctx.address]);
+
+  useEffectA(() => {
+    if (!window.__bridgeBus) return;
+    const onDisconnect = () => {
+      setCtx(prev => ({ ...prev, connected: false, address: null, permitUnlocked: false, permitSeconds: 0 }));
+    };
+    window.__bridgeBus.on('wallet:disconnected', onDisconnect);
+    return () => window.__bridgeBus.off('wallet:disconnected', onDisconnect);
+  }, []);
 
   // Wallet chip clicked
   const onWalletClick = useCallbackA(() => {
@@ -199,6 +211,14 @@ window.addEventListener("error", (e) => {
   const root = document.getElementById("root");
   if (root && !root.children.length) {
     root.innerHTML = `<pre style="padding:24px;font-family:monospace;color:#cc4444;white-space:pre-wrap">ERROR: ${e.message}\n${e.filename}:${e.lineno}\n\n${e.error?.stack || ""}</pre>`;
+  }
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  const root = document.getElementById("root");
+  if (root && !root.children.length) {
+    const reason = e.reason || {};
+    root.innerHTML = `<pre style="padding:24px;font-family:monospace;color:#cc4444;white-space:pre-wrap">UNHANDLED REJECTION: ${reason.message || String(reason)}\n\n${reason.stack || ""}</pre>`;
   }
 });
 

@@ -156,6 +156,12 @@ function createApiAdapter(config, walletAdapter) {
         return client(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
+        try {
+          var g = typeof window !== "undefined" ? window : globalThis;
+          if (g.__bridgeBus) {
+            g.__bridgeBus.set("error:auth", { message: "JWT refresh failed — session expired", timestamp: new Date().toISOString() });
+          }
+        } catch (_) {}
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -7883,7 +7889,7 @@ async function estimateSendAndWait(publicClient, walletClient, address, abi, fun
   try {
     receipt = await publicClient.waitForTransactionReceipt({ hash });
   } catch (_error) {
-    return { hash, status: "pending", receipt: undefined };
+    throw new Error(`Transaction ${hash} submitted but confirmation timed out. Check block explorer.`);
   }
   const status = receipt.status === "success" ? "confirmed" : "reverted";
   const bridgeBus = typeof window !== "undefined" ? window.__bridgeBus : null;

@@ -220,6 +220,12 @@ export function createApiAdapter(config, walletAdapter) {
 					return client(originalRequest);
 				} catch (refreshError) {
 					processQueue(/** @type {Error} */ (refreshError));
+					try {
+						var g = typeof window !== 'undefined' ? window : globalThis;
+						if (g.__bridgeBus) {
+							g.__bridgeBus.set('error:auth', { message: 'JWT refresh failed — session expired', timestamp: new Date().toISOString() });
+						}
+					} catch (_) { /* non-critical */ }
 					return Promise.reject(refreshError);
 				} finally {
 					isRefreshing = false;

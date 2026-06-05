@@ -35,9 +35,6 @@ let listenersRegistered = false;
 /** @type {Object|null} DataFetcherV2 instance for authenticated polling lifecycle */
 let _dataFetcherV2Instance = null;
 
-/** @type {number|null} Interval ID for permit countdown ticker */
-let _permitTickInterval = null;
-
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
@@ -221,12 +218,6 @@ function startConnectFlow(connectorId) {
       return executeJwtLogin().then(() => result);
     })
     .then((result) => {
-      // Persist auth token if returned
-      try {
-        const ls = getGlobal().localStorage;
-        if (ls && result.accessToken) ls.setItem('auth_token', result.accessToken);
-      } catch { /* non-critical */ }
-
       bus?.set('wallet:authenticated', { address: result.address });
       bus?.set('connect:phase', { phase: 'authenticated' });
 
@@ -239,19 +230,6 @@ function startConnectFlow(connectorId) {
       emitPermitGranted(permitResult.unlocked, permitResult.secondsLeft);
       bus?.set('connect:phase', { phase: 'done' });
       bus?.enableAuthenticated?.();
-
-      // Start permit countdown ticker
-      if (_permitTickInterval) clearInterval(_permitTickInterval);
-      _permitTickInterval = setInterval(() => {
-        const state = window.bridge?.fhe?.getPermitState?.();
-        if (state) {
-          bus.set("permit:tick", { unlocked: state.unlocked, secondsLeft: state.secondsLeft });
-          if (!state.unlocked) {
-            clearInterval(_permitTickInterval);
-            _permitTickInterval = null;
-          }
-        }
-      }, 30000);
 
       // Start authenticated polling
       const fetcher = getDataFetcherV2();
@@ -278,11 +256,6 @@ function handleDisconnect() {
     try { ss.removeItem(SESSION_STORAGE_CONNECTOR_KEY); } catch {
       console.warn('[ConnectInterceptor] Failed to clear sessionStorage on disconnect');
     }
-  }
-
-  if (_permitTickInterval) {
-    clearInterval(_permitTickInterval);
-    _permitTickInterval = null;
   }
 
   const fetcher = getDataFetcherV2();
@@ -320,6 +293,10 @@ function init() {
   if (bus && !listenersRegistered) {
     listenersRegistered = true;
     bus.on('wallet:disconnected', onWalletDisconnected);
+    bus.on('error:auth', function() {
+      console.warn('[ConnectInterceptor] Auth failure — auto-disconnecting');
+      handleDisconnect();
+    });
   }
 }
 

@@ -226,8 +226,11 @@ async function main() {
 	if ((await pool.oracle()) === ethers.ZeroAddress) {
 		await send("pool.setOracle", () => pool.setOracle(addrs0.oracle));
 	}
-	if ((await pool.composer()) === ethers.ZeroAddress) {
-		await send("pool.setComposer", () => pool.setComposer(composerAddr));
+	if (!(await pool.isComposer(composerAddr))) {
+		await send("pool.setComposer", () => pool.setComposer(composerAddr, true));
+	}
+	if (!(await pool.isComposer(stratExecAddr))) {
+		await send("pool.setComposer StrategyExecutor", () => pool.setComposer(stratExecAddr, true));
 	}
 
 	if ((await oracle.priceId(wethAddr)) !== WETH_PYTH_ID) {

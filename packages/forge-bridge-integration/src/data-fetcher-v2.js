@@ -90,6 +90,35 @@
       if (typeof window !== 'undefined') {
         window.addEventListener('beforeunload', this._beforeUnloadHandler);
       }
+
+      // Tab visibility handler — pauses polling when tab is hidden to
+      // reduce unnecessary API calls and battery/network usage, resumes
+      // when tab becomes visible again.
+      this._hiddenPaused = false;
+      this._visibilityHandler = function () {
+        if (typeof document === 'undefined') return;
+        if (document.hidden) {
+          if (this._publicStarted || this._authStarted) {
+            this._hiddenPaused = true;
+            this._clearIntervalGroup('public');
+            this._clearIntervalGroup('authed');
+          }
+        } else if (this._hiddenPaused) {
+          this._hiddenPaused = false;
+          if (this._publicStarted) {
+            this._startInterval('public', 'ticker', this._fetchTicker.bind(this), this._pollIntervals.ticker);
+            this._startInterval('public', 'markets', this._fetchMarkets.bind(this), this._pollIntervals.markets);
+          }
+          if (this._authStarted) {
+            this._startInterval('authed', 'activities', this._fetchActivities.bind(this), this._pollIntervals.activities);
+            this._startInterval('authed', 'positions', this._fetchPositions.bind(this), this._pollIntervals.positions);
+            this._startInterval('authed', 'walletBalance', this._fetchWalletBalance.bind(this), this._pollIntervals.walletBalance);
+          }
+        }
+      }.bind(this);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+      }
     }
 
     /* ── Public API ──────────────────────────────────────── */
@@ -232,6 +261,13 @@
         window.removeEventListener('beforeunload', this._beforeUnloadHandler);
         this._beforeUnloadHandler = null;
       }
+
+      // Remove visibility change listener
+      if (this._visibilityHandler && typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', this._visibilityHandler);
+        this._visibilityHandler = null;
+      }
+      this._hiddenPaused = false;
     };
 
     /* ── Demo Mode ──────────────────────────────────────── */
@@ -862,7 +898,9 @@
                         .then(function (plaintext) {
                           return { token: tkn, plaintext: plaintext };
                         })
-                        .catch(function () {
+                        .catch(function (err) {
+                          console.warn('[DataFetcherV2] Decrypt failed for ' + tkn + ':', err && err.message || err);
+                          if (self._bus) self._bus.set('error:decrypt', { token: tkn, message: err && err.message || 'Decrypt failed' });
                           return { token: tkn, plaintext: null };
                         })
                     );
@@ -876,7 +914,9 @@
                         .then(function (plaintext) {
                           return { token: tkn, plaintext: plaintext };
                         })
-                        .catch(function () {
+                        .catch(function (err) {
+                          console.warn('[DataFetcherV2] Decrypt failed for ' + tkn + ':', err && err.message || err);
+                          if (self._bus) self._bus.set('error:decrypt', { token: tkn, message: err && err.message || 'Decrypt failed' });
                           return { token: tkn, plaintext: null };
                         })
                     );
@@ -922,7 +962,11 @@
                           var collateral = collResult && collResult.success ? collResult.result : null;
                           if (permitUnlocked && collateral) {
                             rawVault.push(
-                              b.fhe.decrypt(collateral).catch(function () { return null; }).then(function (plain) {
+                              b.fhe.decrypt(collateral).catch(function (err) {
+                                console.warn('[DataFetcherV2] Decrypt failed for vault collateral ' + pid + ':', err && err.message || err);
+                                if (self._bus) self._bus.set('error:decrypt', { token: 'vault:' + pid, message: err && err.message || 'Decrypt failed' });
+                                return null;
+                              }).then(function (plain) {
                                 return { id: pid, strategyId: meta && meta.strategyId || 0, createdAt: meta && meta.createdAt || 0, collateral: plain, collateralEncrypted: collateral, venue: 'Vault', side: 'vault' };
                               })
                             );
@@ -946,7 +990,11 @@
                             Promise.all([getPosMeta(pid), getCollateral(pid)]).then(function (res) {
                               var meta = res[0], collateral = res[1];
                               if (permitUnlocked && collateral) {
-                                return b.fhe.decrypt(collateral).catch(function () { return null; }).then(function (plain) {
+                                return b.fhe.decrypt(collateral).catch(function (err) {
+                                  console.warn('[DataFetcherV2] Decrypt failed for vault collateral ' + pid + ':', err && err.message || err);
+                                  if (self._bus) self._bus.set('error:decrypt', { token: 'vault:' + pid, message: err && err.message || 'Decrypt failed' });
+                                  return null;
+                                }).then(function (plain) {
                                   return { id: pid, strategyId: meta && meta.strategyId || 0, createdAt: meta && meta.createdAt || 0, collateral: plain, collateralEncrypted: collateral, venue: 'Vault', side: 'vault' };
                                 });
                               }
@@ -990,7 +1038,13 @@
             };
           }
           if (!self._xf) return raw;
-          var result = self._xf.transformPositions(raw.supplies, raw.borrows, raw.markets);
+          var shapedSupplies = (raw.supplies || []).map(function (s) {
+            return { asset: s.token, amount: s.plaintext, tokenAddress: s.token };
+          });
+          var shapedBorrows = (raw.borrows || []).map(function (b) {
+            return { asset: b.token, amount: b.plaintext, tokenAddress: b.token };
+          });
+          var result = self._xf.transformPositions(shapedSupplies, shapedBorrows, raw.markets);
           if (result && typeof result === 'object' && raw.vaultPositions) {
             result.vaultPositions = raw.vaultPositions;
           }
@@ -1011,7 +1065,7 @@
         }
         self._bus.set('data:walletBalance', {
           balance: previousWalletBalance && previousWalletBalance.balance != null ? previousWalletBalance.balance : null,
-          nativeBalanceWei: previousWalletBalance && previousWalletBalance.nativeBalanceWei,
+          nativeBalanceWei: previousWalletBalance && previousWalletBalance.nativeBalanceWei || null,
           asset: previousWalletBalance && previousWalletBalance.asset,
           netValue: netValue,
           portfolioLTV: ltv.ratio,
@@ -1055,7 +1109,7 @@
             throw new Error('Community strategies endpoint not available');
           });
         },
-        transform: function (raw) { return raw; },
+        transform: function (raw) { return self._xf ? self._xf.transformCommunity(raw) : raw; },
         event: 'data:community',
         name: 'community',
       });
@@ -1115,8 +1169,8 @@
             balance: typeof raw === 'bigint' ? (Number(raw) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 6 }) : String(raw),
             nativeBalanceWei: String(raw),
             asset: 'ETH',
-            netValue: previousWalletBalance && previousWalletBalance.netValue,
-            portfolioLTV: previousWalletBalance && previousWalletBalance.portfolioLTV,
+            netValue: previousWalletBalance.netValue || null,
+            portfolioLTV: previousWalletBalance.portfolioLTV || null,
             ltvGaugeValue: previousWalletBalance && previousWalletBalance.ltvGaugeValue,
           };
         },
