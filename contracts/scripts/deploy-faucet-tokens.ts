@@ -72,8 +72,8 @@ const TOKENS = [
 ];
 
 // TokenRegistry and PriceOracle addresses (Arbitrum Sepolia)
-const TOKEN_REGISTRY = '0xa731167FcB35c88E7482341Ab14D6363Cb9702Ea';
-const PRICE_ORACLE = '0x8E41d720173c347740C05011FadD3a3B015ae18c';
+const TOKEN_REGISTRY = '0x5Bf5aBB0517502C91099477C306a649fda78B370';
+const PRICE_ORACLE = '0xB7E11a3B46406218C221CA0A86e58a84C38C2988';
 const DEFAULT_STALE_THRESHOLD = 86_400n; // 24 hours — matches forge-deploy.ts
 
 async function main() {
