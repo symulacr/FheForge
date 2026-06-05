@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../auth/public.decorator';
 import { AiStrategyBuilderService } from '../application/ai-strategy-builder.service';
@@ -11,6 +11,12 @@ export class AiStrategyBuilderController {
   constructor(
     private readonly aiStrategyBuilderService: AiStrategyBuilderService,
   ) {}
+
+  @Public()
+  @Get('health')
+  health() {
+    return { status: 'ok', service: 'ai-strategy-builder' };
+  }
 
   @Public()
   @Post('build')
