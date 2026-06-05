@@ -51,6 +51,10 @@ export class StrategyParserService {
     additionalContext?: string,
     tokenAmount?: number,
   ): Promise<StrategyStepResponseDto[]> {
+    if (!userIntent) {
+      throw new Error('userIntent is required');
+    }
+
     this.logger.log('Parsing natural language input', {
       userIntent: `${userIntent.substring(0, 100)}...`,
       hasAdditionalContext: !!additionalContext,
