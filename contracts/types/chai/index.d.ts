@@ -3,9 +3,7 @@ declare module "chai" {
 }
 
 declare namespace Chai {
-	interface ExpectStatic {
-		(...args: unknown[]): Assertion;
-	}
+	type ExpectStatic = (...args: unknown[]) => Assertion;
 	interface Assertion {
 		to: Assertion;
 		be: Assertion;

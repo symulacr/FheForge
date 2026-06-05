@@ -468,7 +468,10 @@ async function main() {
 		console.log("  Using hardhat verify (no API key for direct)");
 		for (const c of allContracts) {
 			try {
-				await run("verify:verify", { address: c.address, constructorArguments: c.args as unknown[] });
+				await run("verify:verify", {
+					address: c.address,
+					constructorArguments: c.args as unknown[],
+				});
 				verified.add(c.address);
 				prog.item(true, `${c.contractName}: verified`);
 			} catch (e: unknown) {

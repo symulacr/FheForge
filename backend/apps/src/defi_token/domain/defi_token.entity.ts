@@ -1,7 +1,7 @@
 export class DefiToken {
-  constructor(
-    public readonly id: string,
-    public readonly name: string,
-    public readonly asset_id: string,
-  ) {}
+	constructor(
+		public readonly id: string,
+		public readonly name: string,
+		public readonly asset_id: string,
+	) {}
 }

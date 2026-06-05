@@ -5,9 +5,9 @@ var __require = /* @__PURE__ */ ((x) =>
 			? new Proxy(x, {
 					get: (a, b) => (typeof require !== "undefined" ? require : a)[b],
 				})
-			: x)(function (x) {
-	if (typeof require !== "undefined") return require.apply(this, arguments);
-	throw Error('Dynamic require of "' + x + '" is not supported');
+			: x)(function (x, ...rest) {
+	if (typeof require !== "undefined") return require.call(this, x, ...rest);
+	throw Error(`Dynamic require of "${x}" is not supported`);
 });
 
 // src/config.js
@@ -26,6 +26,7 @@ var DEFAULT_CONFIG = (() => {
 function createConfig(overrides = {}) {
 	return { ...DEFAULT_CONFIG, ...overrides };
 }
+
 // src/api.js
 import axios from "axios";
 
@@ -156,20 +157,20 @@ function createApiAdapter(config, walletAdapter) {
 				if (isRefreshing) {
 					return new Promise((resolve, reject) => {
 						failedQueue.push({ resolve, reject });
-					}).then((token) => {
+					}).then((_token) => {
 						return client(originalRequest);
 					});
 				}
 				originalRequest._retry = true;
 				isRefreshing = true;
 				try {
-					const result = await walletAdapter.refreshJwt();
+					const _result = await walletAdapter.refreshJwt();
 					processQueue(null, null);
 					return client(originalRequest);
 				} catch (refreshError) {
 					processQueue(refreshError);
 					try {
-						var g = typeof window !== "undefined" ? window : globalThis;
+						const g = typeof window !== "undefined" ? window : globalThis;
 						if (g.__bridgeBus) {
 							g.__bridgeBus.set("error:auth", {
 								message: "JWT refresh failed — session expired",
@@ -7996,7 +7997,7 @@ function createContractAdapter(config, options = {}) {
 		transport: http(rpcUrl),
 	});
 	let _walletClient = null;
-	let _walletProvider = null;
+	const _walletProvider = null;
 	const read = {
 		getSupplyBalance: (token) =>
 			publicClient.readContract({
@@ -8392,7 +8393,7 @@ function createContractAdapter(config, options = {}) {
 
 // src/fhe.js
 var PERMIT_DURATION_MS = 900000;
-function createFheAdapter(config) {
+function createFheAdapter(_config) {
 	let _grantedAt = 0;
 	let _unlocked = false;
 	let _cofheClient = null;
@@ -8455,7 +8456,7 @@ function createFheAdapter(config) {
 	function permitCheck() {
 		return computePermitState();
 	}
-	async function encrypt(plaintext, tokenAddress) {
+	async function encrypt(plaintext, _tokenAddress) {
 		try {
 			if (!_cofheClient) {
 				throw new FheError("NO_PERMIT", "Grant an FHE permit before encrypting");
@@ -8485,7 +8486,7 @@ function createFheAdapter(config) {
 			throw new FheError("NO_PERMIT", "Grant an FHE permit before decrypting for tx");
 		}
 		const timeout = opts.timeout ?? 60000;
-		const pollInterval = opts.pollInterval ?? 2000;
+		const _pollInterval = opts.pollInterval ?? 2000;
 		const start = Date.now();
 		try {
 			const result = await _cofheClient.decryptForTx(ctHash).withoutPermit().execute();
@@ -8501,7 +8502,7 @@ function createFheAdapter(config) {
 					`Decryption for tx timed out after ${Math.round(elapsed / 1000)}s for handle ${ctHash}`,
 				);
 			}
-			if (error.message && error.message.includes("not ready")) {
+			if (error.message?.includes("not ready")) {
 				throw new FheError(
 					"DECRYPT_NOT_READY",
 					`Ciphertext ${ctHash} is not yet ready for decryption: ${error.message}`,
@@ -8555,6 +8556,7 @@ import {
 } from "@wagmi/core";
 import { createPublicClient as createPublicClient2, http as viemHttp } from "viem";
 import { arbitrumSepolia as arbitrumSepolia2 } from "viem/chains";
+
 var _publicClient = null;
 var ARB_SEPOLIA_CHAIN_PARAMS = {
 	chainId: "0x66eee",
@@ -8958,13 +8960,14 @@ function createBridge(config = {}) {
 		},
 	};
 }
+
 export {
-	createConfig,
-	createBridge,
-	WalletError,
-	FheError,
-	DEFAULT_CONFIG,
-	ContractError,
-	BridgeError,
 	ApiError,
+	BridgeError,
+	ContractError,
+	createBridge,
+	createConfig,
+	DEFAULT_CONFIG,
+	FheError,
+	WalletError,
 };

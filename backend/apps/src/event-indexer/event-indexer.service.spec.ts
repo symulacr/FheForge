@@ -31,15 +31,9 @@ describe("MC-55: Event Indexer Service", () => {
 	let mockConfigService: Partial<ConfigService>;
 	let mockSupabaseService: Partial<SupabaseService>;
 
-	beforeEach(() => {
-		jest.useFakeTimers();
-	});
-
-	afterEach(() => {
-		jest.useRealTimers();
-	});
-
 	beforeEach(async () => {
+		jest.useFakeTimers();
+
 		mockConfigService = {
 			get: jest.fn((key: string) => {
 				const config = {
@@ -79,6 +73,7 @@ describe("MC-55: Event Indexer Service", () => {
 
 	afterEach(async () => {
 		await service.onModuleDestroy();
+		jest.useRealTimers();
 	});
 
 	it("should be defined", () => {

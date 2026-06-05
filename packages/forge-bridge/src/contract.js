@@ -312,7 +312,7 @@ export function createContractAdapter(config, options = {}) {
 	let _walletClient = null;
 
 	/** @type {any | null} */
-	let _walletProvider = null;
+	const _walletProvider = null;
 
 	// ── Read methods ──────────────────────────────────────────────────────
 

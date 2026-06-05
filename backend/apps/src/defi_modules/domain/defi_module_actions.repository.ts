@@ -1,5 +1,5 @@
-import type { DefiModuleAction } from './defi_module_actions.entity';
+import type { DefiModuleAction } from "./defi_module_actions.entity";
 
 export abstract class DefiModuleActionsRepository {
-  abstract save(defiModuleAction: DefiModuleAction): Promise<DefiModuleAction>;
+	abstract save(defiModuleAction: DefiModuleAction): Promise<DefiModuleAction>;
 }

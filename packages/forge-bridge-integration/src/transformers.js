@@ -5,8 +5,6 @@
    ────────────────────────────────────────────── */
 
 (() => {
-	"use strict";
-
 	var transformers = {};
 
 	/* ──────────────────────────────────────────────
@@ -78,7 +76,7 @@
 		if (Array.isArray(supplies)) {
 			supplies.forEach((s) => {
 				positions.push({
-					id: s.id || "sup-" + (s.asset || Math.random().toString(36).slice(2, 8)),
+					id: s.id || `sup-${s.asset || Math.random().toString(36).slice(2, 8)}`,
 					venue: "Lending Pool",
 					asset: s.asset || "UNKNOWN",
 					tokenAddress: s.tokenAddress || s.token || s.assetAddress || null,
@@ -94,7 +92,7 @@
 		if (Array.isArray(borrows)) {
 			borrows.forEach((b) => {
 				positions.push({
-					id: b.id || "bor-" + (b.asset || Math.random().toString(36).slice(2, 8)),
+					id: b.id || `bor-${b.asset || Math.random().toString(36).slice(2, 8)}`,
 					venue: "Lending Pool",
 					asset: b.asset || "UNKNOWN",
 					tokenAddress: b.tokenAddress || b.token || b.assetAddress || null,
@@ -117,7 +115,7 @@
 	function transformVaultPositions(apiVaultPositions) {
 		if (!Array.isArray(apiVaultPositions)) return [];
 		return apiVaultPositions.map((v) => ({
-			id: v.id || v.vaultId || "vault-" + Math.random().toString(36).slice(2, 8),
+			id: v.id || v.vaultId || `vault-${Math.random().toString(36).slice(2, 8)}`,
 			vaultAddress: v.vaultAddress || v.address || null,
 			name: v.name || v.vaultName || "Vault",
 			asset: v.asset || v.depositAsset || "UNKNOWN",
@@ -137,7 +135,7 @@
 	function transformActivities(apiActivities) {
 		if (!Array.isArray(apiActivities)) return [];
 		return apiActivities.map((a) => ({
-			id: a.id || a.txHash || "act-" + Math.random().toString(36).slice(2, 8),
+			id: a.id || a.txHash || `act-${Math.random().toString(36).slice(2, 8)}`,
 			block: a.blockNumber != null ? String(a.blockNumber) : "",
 			age: relativeTime(a.timestamp || a.createdAt),
 			what: a.description || a.type || "Transaction",
@@ -155,15 +153,15 @@
 		var s = stats || {};
 		var poolTvls = s.poolTvls || {};
 		return [
-			"TVL: " + formatUsdDisplay(s.tvlUsd),
-			"MARKETS: " + (s.activeMarkets != null ? s.activeMarkets : "—"),
-			"STRATS: " + (s.activeStrategies != null ? s.activeStrategies : "—"),
-			"DEPLOYS: " + (s.totalDeployments != null ? s.totalDeployments : "—"),
-			"ENCRYPTED: " + (s.encryptedOps != null ? s.encryptedOps : "—"),
-			"PERMITS: " + (s.permitDecryptsDay != null ? s.permitDecryptsDay : "—"),
-			"USDC TVL: " + formatUsdDisplay(poolTvls.USDC),
-			"ETH TVL: " + formatUsdDisplay(poolTvls.ETH),
-			"STATUS: " + (s.status || "unavailable"),
+			`TVL: ${formatUsdDisplay(s.tvlUsd)}`,
+			`MARKETS: ${s.activeMarkets != null ? s.activeMarkets : "—"}`,
+			`STRATS: ${s.activeStrategies != null ? s.activeStrategies : "—"}`,
+			`DEPLOYS: ${s.totalDeployments != null ? s.totalDeployments : "—"}`,
+			`ENCRYPTED: ${s.encryptedOps != null ? s.encryptedOps : "—"}`,
+			`PERMITS: ${s.permitDecryptsDay != null ? s.permitDecryptsDay : "—"}`,
+			`USDC TVL: ${formatUsdDisplay(poolTvls.USDC)}`,
+			`ETH TVL: ${formatUsdDisplay(poolTvls.ETH)}`,
+			`STATUS: ${s.status || "unavailable"}`,
 		];
 	}
 
@@ -174,7 +172,7 @@
 	function transformStrategies(apiStrategies) {
 		if (!Array.isArray(apiStrategies)) return [];
 		return apiStrategies.map((s) => ({
-			id: s.id || s.strategyId || "strat-" + Math.random().toString(36).slice(2, 8),
+			id: s.id || s.strategyId || `strat-${Math.random().toString(36).slice(2, 8)}`,
 			name: s.name || "Strategy",
 			apy: formatApy(s.apy || s.estimatedApy),
 			staked: s.totalStakedUsd || s.staked || "0",
@@ -190,7 +188,7 @@
 	function transformProposals(apiProposals) {
 		if (!Array.isArray(apiProposals)) return [];
 		return apiProposals.map((p) => ({
-			id: p.id || p.proposalId || "prop-" + Math.random().toString(36).slice(2, 8),
+			id: p.id || p.proposalId || `prop-${Math.random().toString(36).slice(2, 8)}`,
 			title: p.title || "Proposal",
 			status: (p.status || "pending").toLowerCase(),
 			body: p.description || p.body || "",
@@ -216,7 +214,7 @@
 	function transformCommunity(apiCommunity) {
 		if (!Array.isArray(apiCommunity)) return [];
 		return apiCommunity.map((item) => ({
-			id: item.id || item.strategyId || "comm-" + Math.random().toString(36).slice(2, 8),
+			id: item.id || item.strategyId || `comm-${Math.random().toString(36).slice(2, 8)}`,
 			name: item.name || item.strategistName || "Strategy",
 			author: item.author || item.strategistHandle || item.strategistName || "anonymous",
 			risk: (item.risk || "medium").toLowerCase(),
@@ -248,9 +246,9 @@
 			}
 		});
 		// Ensure defaults exist
-		var keys = Object.keys(ACTION_MAP);
-		for (var i = 0; i < keys.length; i++) {
-			var k = keys[i];
+		const keys = Object.keys(ACTION_MAP);
+		for (let i = 0; i < keys.length; i++) {
+			const k = keys[i];
 			if (!Object.values(nodeTypes).some((n) => n.kicker === ACTION_MAP[k].kicker)) {
 				// Use object spread instead of Object.assign({}, ...) to avoid
 				// creating both an empty object and a copy
@@ -266,8 +264,8 @@
 	function calculateNetValue(positions) {
 		if (!Array.isArray(positions) || positions.length === 0) return "0.00";
 		var total = 0;
-		for (var i = 0; i < positions.length; i++) {
-			var amt = parseUsd(positions[i].amount);
+		for (let i = 0; i < positions.length; i++) {
+			const amt = parseUsd(positions[i].amount);
 			if (positions[i].side === "borrow") {
 				total -= amt;
 			} else {
@@ -282,8 +280,8 @@
 			return { ratio: "0.00", gaugeValue: 0 };
 		var totalSupply = 0;
 		var totalBorrow = 0;
-		for (var i = 0; i < positions.length; i++) {
-			var amt = parseUsd(positions[i].amount);
+		for (let i = 0; i < positions.length; i++) {
+			const amt = parseUsd(positions[i].amount);
 			if (positions[i].side === "borrow") {
 				totalBorrow += amt;
 			} else {
@@ -305,7 +303,7 @@
 	function formatApy(val) {
 		if (val == null) return "—";
 		var num = typeof val === "string" ? parseFloat(val) : val;
-		if (isNaN(num)) return "—";
+		if (Number.isNaN(num)) return "—";
 		// Backend returns decimal (0.065 = 6.5%). Multiply if ≤ 1, pass through if already > 1.
 		return (num <= 1 ? num * 100 : num).toFixed(2);
 	}
@@ -313,15 +311,15 @@
 	function formatPercentValue(val) {
 		if (val == null) return 0;
 		var num = typeof val === "string" ? parseFloat(val) : val;
-		if (isNaN(num)) return 0;
+		if (Number.isNaN(num)) return 0;
 		return Math.round(num > 0 && num <= 1 ? num * 100 : num);
 	}
 
 	function formatUsdDisplay(val) {
 		if (val == null) return "unavailable";
 		var num = typeof val === "string" ? parseFloat(String(val).replace(/[$,]/g, "")) : val;
-		if (isNaN(num)) return String(val);
-		return "$" + num.toLocaleString("en-US", { maximumFractionDigits: 2 });
+		if (Number.isNaN(num)) return String(val);
+		return `$${num.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 	}
 
 	function parseUsd(val) {
@@ -329,24 +327,24 @@
 		if (typeof val === "number") return val;
 		var cleaned = String(val).replace(/[$,]/g, "");
 		var num = parseFloat(cleaned);
-		return isNaN(num) ? 0 : num;
+		return Number.isNaN(num) ? 0 : num;
 	}
 
 	function relativeTime(timestamp) {
 		if (!timestamp) return "—";
 		var now = Date.now();
 		var then = new Date(timestamp).getTime();
-		if (isNaN(then)) return String(timestamp);
+		if (Number.isNaN(then)) return String(timestamp);
 		var diff = now - then;
 		var seconds = Math.floor(diff / 1000);
 		if (seconds < 0) return "0s";
-		if (seconds < 60) return seconds + "s";
+		if (seconds < 60) return `${seconds}s`;
 		var minutes = Math.floor(seconds / 60);
-		if (minutes < 60) return minutes + "m";
+		if (minutes < 60) return `${minutes}m`;
 		var hours = Math.floor(minutes / 60);
-		if (hours < 24) return hours + "h";
+		if (hours < 24) return `${hours}h`;
 		var days = Math.floor(hours / 24);
-		return days + "d";
+		return `${days}d`;
 	}
 
 	function formatDelta(amount, side) {
@@ -363,10 +361,10 @@
 
 	function lookupApy(markets, asset, side) {
 		if (!Array.isArray(markets) || !asset) return "—";
-		for (var i = 0; i < markets.length; i++) {
-			var m = markets[i];
+		for (let i = 0; i < markets.length; i++) {
+			const m = markets[i];
 			if ((m.asset || m.symbol) === asset) {
-				var raw =
+				const raw =
 					side === "supply"
 						? m.supplyAPY != null
 							? m.supplyAPY

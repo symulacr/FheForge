@@ -38,9 +38,10 @@ export class ComposerFlowTester {
 		} catch (e: unknown) {
 			const elapsed = Date.now() - start;
 			const revertReason = e instanceof Error ? e.message : String(e);
-			const txHash = (e && typeof e === "object" && "transactionHash" in e)
-				? String((e as Record<string, unknown>).transactionHash)
-				: "";
+			const txHash =
+				e && typeof e === "object" && "transactionHash" in e
+					? String((e as Record<string, unknown>).transactionHash)
+					: "";
 			this.results.push({
 				flowName,
 				status: "WARN",

@@ -218,13 +218,17 @@ class TestingContext {
 		return this.signers;
 	}
 
-	public async getContractAt(name: string, address: string, signer: ethers.Signer): Promise<ethers.Contract> {
+	public async getContractAt(
+		name: string,
+		address: string,
+		signer: ethers.Signer,
+	): Promise<ethers.Contract> {
 		const key = `${name}:${address}:${signer.address}`;
-		if (!this.factories.has(key)) {
-			const contract = await ethers.getContractAt(name, address, signer);
-			this.factories.set(key, contract);
-		}
-		return this.factories.get(key)!;
+		const cached = this.factories.get(key);
+		if (cached) return cached;
+		const contract = await ethers.getContractAt(name, address, signer);
+		this.factories.set(key, contract);
+		return contract;
 	}
 }
 
@@ -237,7 +241,9 @@ async function staticCallRevert(
 	expectedErr: string,
 ): Promise<boolean> {
 	try {
-		await (contract as Record<string, (...callArgs: unknown[]) => Promise<unknown>>)[method].staticCall(...args);
+		await (contract as Record<string, (...callArgs: unknown[]) => Promise<unknown>>)[
+			method
+		].staticCall(...args);
 		return false;
 	} catch (e: unknown) {
 		lastRevertError = decodeRevert(e);
@@ -1162,7 +1168,8 @@ async function main() {
 		const okDeadline = await router.MAX_DEADLINE_OFFSET(); // must be <= MAX to avoid DeadlineTooLong
 		const tx = await router.submitSwapIntent(USDC, WETH, 1n, 1n, okDeadline);
 		const r = await tx.wait();
-		intentId = r?.logs.find((log: ethers.EventLog) => log.fragment?.name === "SwapIntentSubmitted")?.args?.[0];
+		intentId = r?.logs.find((log: ethers.EventLog) => log.fragment?.name === "SwapIntentSubmitted")
+			?.args?.[0];
 		record("4.3", "PASS", "submitSwapIntent valid", `id=${intentId}`, { tx: tx.hash });
 		markCoverage("SwapRouter", "submitSwapIntent", "covered", "4.3");
 	} catch (e: unknown) {
@@ -1282,8 +1289,9 @@ async function main() {
 		const deadline410 = await router.MAX_DEADLINE_OFFSET();
 		const tx410 = await router.submitSwapIntent(USDC, WETH, 1n, 1n, deadline410);
 		const r410 = await tx410.wait();
-		const intentId410 = r410?.logs.find((log: ethers.EventLog) => log.fragment?.name === "SwapIntentSubmitted")
-			?.args?.[0];
+		const intentId410 = r410?.logs.find(
+			(log: ethers.EventLog) => log.fragment?.name === "SwapIntentSubmitted",
+		)?.args?.[0];
 		record("4.10", "PASS", "submitSwapIntent MAX_DEADLINE_OFFSET", `id=${intentId410}`, {
 			tx: tx410.hash,
 		});

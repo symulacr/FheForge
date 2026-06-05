@@ -115,7 +115,7 @@ function StatusBadge(_ref) {
 			padding: cfg.px,
 			background: tones.bg,
 			color: tones.text,
-			border: "1px solid " + tones.border,
+			border: `1px solid ${tones.border}`,
 			borderRadius: pill ? 9999 : 0,
 			lineHeight: 1.4,
 		},
@@ -125,7 +125,7 @@ function StatusBadge(_ref) {
 	return React.createElement(
 		"span",
 		{
-			className: "status-badge status-" + normalizedStatus,
+			className: `status-badge status-${normalizedStatus}`,
 			style: badgeStyle,
 		},
 		label,

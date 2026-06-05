@@ -66,10 +66,8 @@ function CipherValue(_ref) {
 			fontFamily: '"JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace',
 			fontVariantNumeric: "tabular-nums",
 			whiteSpace: "nowrap",
-			fontSize: isLarge
-				? "min(" + s.fs + "px, " + (size === "xxl" ? "14cqi" : "11cqi") + ")"
-				: s.fs + "px",
-			gap: s.gap + "px",
+			fontSize: isLarge ? `min(${s.fs}px, ${size === "xxl" ? "14cqi" : "11cqi"})` : `${s.fs}px`,
+			gap: `${s.gap}px`,
 			opacity: dim ? 0.55 : 1,
 			position: "relative",
 		},
@@ -102,7 +100,7 @@ function CipherValue(_ref) {
 	return React.createElement(
 		"span",
 		{
-			className: "cipher" + (locked ? " locked" : " unlocked") + (isLarge ? " cipher-fit" : ""),
+			className: `cipher${locked ? " locked" : " unlocked"}${isLarge ? " cipher-fit" : ""}`,
 			style: containerStyle,
 			title: locked
 				? "Encrypted on-chain. Grant a permit so your wallet can decrypt this value."

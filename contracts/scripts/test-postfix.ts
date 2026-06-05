@@ -456,6 +456,7 @@ async function main() {
 			const r = await tx.wait();
 			positionId = r.logs.find((log: ethers.Log) => log.fragment?.name === "PositionOpened")
 				?.args[0];
+			if (!positionId) throw new Error("positionId not found in PositionOpened event");
 			record(
 				"A.3-setup",
 				"PASS",
@@ -470,11 +471,11 @@ async function main() {
 			const enc = await cofhe.encryptInputs([Encryptable.uint128(closeAmt)]).execute();
 			const hClose = ethers.zeroPadValue(ethers.toBeHex(enc[0].ctHash), 32);
 			await setupFhePermissions(enc[0].ctHash, await vault.getAddress(), tester.address);
-			const tx = await vault.closePosition(positionId!, closeAmt, hClose);
+			const tx = await vault.closePosition(positionId, closeAmt, hClose);
 			const r = await tx.wait();
-			const remaining = (await vault.getDepositedAmount(positionId!)) as bigint;
+			const remaining = (await vault.getDepositedAmount(positionId)) as bigint;
 			const positions = await vault.getUserPositions(tester.address);
-			const stillOpen = positions.includes(positionId!);
+			const stillOpen = positions.includes(positionId);
 			const okRemaining = remaining === collateral - closeAmt;
 			record(
 				"A.3",
@@ -486,14 +487,14 @@ async function main() {
 		}
 
 		{
-			const remaining = (await vault.getDepositedAmount(positionId!)) as bigint;
+			const remaining = (await vault.getDepositedAmount(positionId)) as bigint;
 			const enc = await cofhe.encryptInputs([Encryptable.uint128(remaining)]).execute();
 			const hClose = ethers.zeroPadValue(ethers.toBeHex(enc[0].ctHash), 32);
 			await setupFhePermissions(enc[0].ctHash, await vault.getAddress(), tester.address);
-			const tx = await vault.closePosition(positionId!, remaining, hClose);
+			const tx = await vault.closePosition(positionId, remaining, hClose);
 			await tx.wait();
 			const positions = await vault.getUserPositions(tester.address);
-			const has = positions.includes(positionId!);
+			const has = positions.includes(positionId);
 			record("A.3-full", has ? "FAIL" : "PASS", "full close clears state", `hasPosition=${has}`, {
 				tx: tx.hash,
 			});

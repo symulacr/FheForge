@@ -211,9 +211,7 @@ async function runBatch(
 			console.log(`  ✓ _verifyEquality dual(${size.label}): ${entry.gasUsed} gas`);
 		} catch (e: unknown) {
 			const msg = e instanceof Error ? e.message : String(e);
-			console.log(
-				`  ✗ _verifyEquality dual(${size.label}) failed: ${msg.slice(0, 100)}`,
-			);
+			console.log(`  ✗ _verifyEquality dual(${size.label}) failed: ${msg.slice(0, 100)}`);
 		}
 	}
 

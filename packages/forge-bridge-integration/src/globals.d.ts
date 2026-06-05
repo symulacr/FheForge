@@ -27,7 +27,7 @@ interface BridgeAPI {
 	getMockData(key: string): unknown;
 	onDataUpdate(fn: (data: unknown) => void): () => void;
 	notify(): void;
-	_listeners: Set<Function>;
+	_listeners: Set<(...args: never) => unknown>;
 	_dataVersion: number;
 }
 

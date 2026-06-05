@@ -25,20 +25,20 @@ import "./encrypted-display.js";
 
 // Re-export for ESM consumers
 export { default as CipherValue } from "./cipher-value.js";
-export { default as StatusBadge } from "./status-badge.js";
 export { default as EncryptedDisplay } from "./encrypted-display.js";
+export { default as StatusBadge } from "./status-badge.js";
 
 // ─── Registration Verification ─────────────────────────────────────────
 
 if (typeof window !== "undefined") {
 	window.__BRIDGE_COMPONENTS = window.__BRIDGE_COMPONENTS || {};
 
-	var EXPECTED = ["CipherValue", "StatusBadge", "EncryptedDisplay"];
-	for (var i = 0; i < EXPECTED.length; i++) {
-		var name = EXPECTED[i];
+	const EXPECTED = ["CipherValue", "StatusBadge", "EncryptedDisplay"];
+	for (let i = 0; i < EXPECTED.length; i++) {
+		const name = EXPECTED[i];
 		if (!window.__BRIDGE_COMPONENTS[name]) {
 			if (typeof console !== "undefined" && console.warn) {
-				console.warn("[bridge-components] Missing component: " + name);
+				console.warn(`[bridge-components] Missing component: ${name}`);
 			}
 		}
 	}

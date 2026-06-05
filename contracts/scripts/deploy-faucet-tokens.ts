@@ -6,7 +6,7 @@
  *   npx hardhat run scripts/deploy-faucet-tokens.ts --network arb-sepolia
  */
 
-import hre, { ethers, network } from "hardhat";
+import { ethers, network } from "hardhat";
 
 const TOKENS = [
 	{
@@ -102,7 +102,11 @@ async function main() {
 	const registry = await ethers.getContractAt("TokenRegistry", TOKEN_REGISTRY);
 
 	for (const token of deployedTokens) {
-		const tokenInfo = TOKENS.find((t) => t.symbol === token.symbol)!;
+		const tokenInfo = TOKENS.find((t) => t.symbol === token.symbol);
+		if (!tokenInfo) {
+			console.log(`  ${token.symbol}: unknown token, skipping registration`);
+			continue;
+		}
 		try {
 			const tx = await registry.registerToken({
 				token: token.address,
@@ -130,7 +134,11 @@ async function main() {
 	const oracle = await ethers.getContractAt("PriceOracle", PRICE_ORACLE);
 
 	for (const token of deployedTokens) {
-		const tokenInfo = TOKENS.find((t) => t.symbol === token.symbol)!;
+		const tokenInfo = TOKENS.find((t) => t.symbol === token.symbol);
+		if (!tokenInfo) {
+			console.log(`  ${token.symbol}: unknown token, skipping oracle setup`);
+			continue;
+		}
 		try {
 			const tx = await oracle.setSource(
 				token.address,

@@ -206,7 +206,7 @@ export function createApiAdapter(config, walletAdapter) {
 					// Queue while refresh is in progress
 					return new Promise((resolve, reject) => {
 						failedQueue.push({ resolve, reject });
-					}).then((token) => {
+					}).then((_token) => {
 						return client(originalRequest);
 					});
 				}
@@ -215,13 +215,13 @@ export function createApiAdapter(config, walletAdapter) {
 				isRefreshing = true;
 
 				try {
-					const result = await walletAdapter.refreshJwt();
+					const _result = await walletAdapter.refreshJwt();
 					processQueue(null, null);
 					return client(originalRequest);
 				} catch (refreshError) {
 					processQueue(/** @type {Error} */ (refreshError));
 					try {
-						var g = typeof window !== "undefined" ? window : globalThis;
+						const g = typeof window !== "undefined" ? window : globalThis;
 						if (g.__bridgeBus) {
 							g.__bridgeBus.set("error:auth", {
 								message: "JWT refresh failed — session expired",

@@ -14,8 +14,6 @@
    ────────────────────────────────────────────── */
 
 (() => {
-	"use strict";
-
 	/* ──────────────────────────────────────────────
      DataFetcherV2
      ────────────────────────────────────────────── */
@@ -65,7 +63,7 @@
 			var custom = options.intervals || {};
 			this._pollIntervals = {};
 			for (var k in DEFAULT_INTERVALS) {
-				if (DEFAULT_INTERVALS.hasOwnProperty(k)) {
+				if (Object.hasOwn(DEFAULT_INTERVALS, k)) {
 					this._pollIntervals[k] = custom[k] != null ? custom[k] : DEFAULT_INTERVALS[k];
 				}
 			}
@@ -930,19 +928,17 @@
 				result &&
 				typeof result === "object" &&
 				result.status === "success" &&
-				Object.prototype.hasOwnProperty.call(result, "data")
+				Object.hasOwn(result, "data")
 			) {
 				return result.data;
 			}
 			if (result && typeof result === "object" && result.status === "error") {
-				throw result.error || new Error(source + " request failed");
+				throw result.error || new Error(`${source} request failed`);
 			}
 			return result;
 		};
 
 		DataFetcherV2.prototype._fetchAndTransform = function (spec) {
-			var self = this;
-
 			// Skip real API calls when demo mode is active to prevent
 			// async responses from overwriting the demo data.
 			if (this._demoStarted) {
@@ -952,17 +948,17 @@
 			return spec
 				.fetch()
 				.then((raw) => {
-					var payload = self._unwrapApiResult(raw, spec.name);
+					var payload = this._unwrapApiResult(raw, spec.name);
 					var transformed = spec.transform ? spec.transform(payload) : payload;
-					if (self._bus) {
-						self._bus.set(spec.event, transformed);
+					if (this._bus) {
+						this._bus.set(spec.event, transformed);
 					}
 					// Live fetches write only to BridgeBus. __MOCK__ remains a demo-mode
 					// compatibility surface and must not be mutated by real data polling.
 					return transformed;
 				})
 				.catch((err) => {
-					self._onError(spec.name, err);
+					this._onError(spec.name, err);
 				});
 		};
 
@@ -974,8 +970,8 @@
 		 * @param {Error}  err    - The error
 		 */
 		DataFetcherV2.prototype._onError = function (source, err) {
-			var message = err && err.message ? err.message : String(err);
-			console.warn('[DataFetcherV2] Fetch failed for "' + source + '": ' + message);
+			var message = err?.message ? err.message : String(err);
+			console.warn(`[DataFetcherV2] Fetch failed for "${source}": ${message}`);
 
 			if (this._bus) {
 				this._bus.set("error:fetch", {
@@ -1011,9 +1007,8 @@
 				return Promise.reject(new Error("Shared getBridge utility not available"));
 			}
 
-			var self = this;
 			return sharedGetBridge(10000, 100).then((bridge) => {
-				self._bridge = bridge;
+				this._bridge = bridge;
 				return bridge;
 			});
 		};
@@ -1028,7 +1023,7 @@
 		 * @returns {Function|null}
 		 */
 		DataFetcherV2.prototype._getContractReadHelper = (bridge, helper) => {
-			if (!bridge || !bridge.contract) return null;
+			if (!bridge?.contract) return null;
 			if (bridge.contract.read && typeof bridge.contract.read[helper] === "function") {
 				return bridge.contract.read[helper].bind(bridge.contract.read);
 			}
@@ -1073,7 +1068,7 @@
 				result &&
 				typeof result === "object" &&
 				result.status === "success" &&
-				Object.prototype.hasOwnProperty.call(result, "data")
+				Object.hasOwn(result, "data")
 			) {
 				return { status: "success", data: result.data, error: null };
 			}
@@ -1081,18 +1076,15 @@
 				return {
 					status: "error",
 					data: null,
-					error:
-						result.error && result.error.message
-							? result.error.message
-							: String(result.error || source + " request failed"),
+					error: result.error?.message
+						? result.error.message
+						: String(result.error || `${source} request failed`),
 				};
 			}
 			return { status: "success", data: result, error: null };
 		};
 
 		DataFetcherV2.prototype._fetchReadiness = function () {
-			var self = this;
-
 			if (this._isFetchingReadiness) {
 				return Promise.resolve();
 			}
@@ -1100,10 +1092,9 @@
 			this._isFetchingReadiness = true;
 			return this._fetchAndTransform({
 				fetch: () =>
-					self._getBridge().then((b) => {
-						var systemReady =
-							b.api && b.api.system && (b.api.system.getReady || b.api.system.getReadiness);
-						var marketsStatus = b.api && b.api.markets && b.api.markets.getStatus;
+					this._getBridge().then((b) => {
+						var systemReady = b.api?.system && (b.api.system.getReady || b.api.system.getReadiness);
+						var marketsStatus = b.api?.markets?.getStatus;
 						return Promise.all([
 							systemReady
 								? systemReady.call(b.api.system)
@@ -1112,8 +1103,8 @@
 								? marketsStatus.call(b.api.markets)
 								: Promise.resolve({ status: "unavailable", data: null, error: null }),
 						]).then((results) => ({
-							ready: self._normalizeReadinessResult(results[0], "backend readiness"),
-							markets: self._normalizeReadinessResult(results[1], "markets status"),
+							ready: this._normalizeReadinessResult(results[0], "backend readiness"),
+							markets: this._normalizeReadinessResult(results[1], "markets status"),
 							checkedAt: new Date().toISOString(),
 						}));
 					}),
@@ -1121,60 +1112,56 @@
 				event: "data:readiness",
 				name: "readiness",
 			}).finally(() => {
-				self._isFetchingReadiness = false;
+				this._isFetchingReadiness = false;
 			});
 		};
 
 		DataFetcherV2.prototype._fetchTicker = function () {
-			var self = this;
 			return this._fetchAndTransform({
-				fetch: () => self._getBridge().then((b) => b.api.stats.getStats()),
-				transform: (raw) => (self._xf ? self._xf.formatTicker(raw) : raw),
+				fetch: () => this._getBridge().then((b) => b.api.stats.getStats()),
+				transform: (raw) => (this._xf ? this._xf.formatTicker(raw) : raw),
 				event: "data:ticker",
 				name: "ticker",
 			});
 		};
 
 		DataFetcherV2.prototype._fetchMarkets = function () {
-			var self = this;
 			return this._fetchAndTransform({
-				fetch: () => self._getBridge().then((b) => b.api.markets.getMarkets()),
-				transform: (raw) => (self._xf ? self._xf.transformMarkets(raw) : raw),
+				fetch: () => this._getBridge().then((b) => b.api.markets.getMarkets()),
+				transform: (raw) => (this._xf ? this._xf.transformMarkets(raw) : raw),
 				event: "data:markets",
 				name: "markets",
 			});
 		};
 
 		DataFetcherV2.prototype._fetchActivities = function () {
-			var self = this;
 			return this._fetchAndTransform({
-				fetch: () => self._getBridge().then((b) => b.api.activities.getActivities()),
-				transform: (raw) => (self._xf ? self._xf.transformActivities(raw) : raw),
+				fetch: () => this._getBridge().then((b) => b.api.activities.getActivities()),
+				transform: (raw) => (this._xf ? this._xf.transformActivities(raw) : raw),
 				event: "data:activities",
 				name: "activities",
 			});
 		};
 
 		DataFetcherV2.prototype._fetchPositions = function () {
-			var self = this;
 			return this._fetchAndTransform({
 				fetch: () =>
-					self._getBridge().then((b) => {
+					this._getBridge().then((b) => {
 						var addr =
 							b.wallet && typeof b.wallet.getAccount === "function" ? b.wallet.getAccount() : null;
 						if (!addr) {
-							return self._emptyPositionsPayload("locked", "No wallet connected", []);
+							return this._emptyPositionsPayload("locked", "No wallet connected", []);
 						}
 
 						// Check if getLendableTokens is available — needed to enumerate positions
-						var getLendableTokens = self._getContractReadHelper(b, "getLendableTokens");
+						var getLendableTokens = this._getContractReadHelper(b, "getLendableTokens");
 						if (!getLendableTokens) {
 							return (
-								b.api && b.api.markets && typeof b.api.markets.getMarkets === "function"
+								b.api?.markets && typeof b.api.markets.getMarkets === "function"
 									? b.api.markets.getMarkets().catch(() => [])
 									: Promise.resolve([])
 							).then((markets) =>
-								self._emptyPositionsPayload(
+								this._emptyPositionsPayload(
 									"unavailable",
 									"No getLendableTokens helper available on bridge contract adapter",
 									markets,
@@ -1182,10 +1169,10 @@
 							);
 						}
 
-						var getSupplyBalance = self._getContractReadHelper(b, "getSupplyBalance");
-						var getBorrowBalance = self._getContractReadHelper(b, "getBorrowBalance");
+						var getSupplyBalance = this._getContractReadHelper(b, "getSupplyBalance");
+						var getBorrowBalance = this._getContractReadHelper(b, "getBorrowBalance");
 						if (!getSupplyBalance || !getBorrowBalance) {
-							return self._emptyPositionsPayload(
+							return this._emptyPositionsPayload(
 								"unavailable",
 								"Balance read helpers not available on bridge contract adapter",
 								[],
@@ -1199,7 +1186,7 @@
 						return Promise.all([
 							Promise.all([
 								getLendableTokens().catch(() => []),
-								b.api && b.api.markets && typeof b.api.markets.getMarkets === "function"
+								b.api?.markets && typeof b.api.markets.getMarkets === "function"
 									? b.api.markets.getMarkets().catch(() => [])
 									: Promise.resolve([]),
 							]),
@@ -1213,7 +1200,7 @@
 									: [];
 
 							if (tokenList.length === 0) {
-								return self._emptyPositionsPayload(
+								return this._emptyPositionsPayload(
 									"empty",
 									"No lendable tokens registered",
 									markets,
@@ -1224,14 +1211,14 @@
 							var getAllBalances =
 								b.contract && typeof b.contract.getAllBalances === "function"
 									? b.contract.getAllBalances.bind(b.contract)
-									: self._getContractReadHelper(b, "getAllBalances");
+									: this._getContractReadHelper(b, "getAllBalances");
 							var balancePromise;
 							if (getAllBalances) {
 								balancePromise = getAllBalances(tokenList).then((mcResults) => mcResults);
 							} else {
 								// Fallback to per-token reads
-								var balancePromises = [];
-								for (var i = 0; i < tokenList.length; i++) {
+								const balancePromises = [];
+								for (let i = 0; i < tokenList.length; i++) {
 									balancePromises.push(
 										Promise.allSettled([
 											getSupplyBalance(tokenList[i]),
@@ -1243,22 +1230,22 @@
 							}
 
 							return balancePromise.then((results) => {
-								var supplies = [];
-								var borrows = [];
+								const supplies = [];
+								const borrows = [];
 
-								for (var j = 0; j < tokenList.length; j++) {
-									var tkn = tokenList[j];
-									var supplyHandle, borrowHandle;
+								for (let j = 0; j < tokenList.length; j++) {
+									const tkn = tokenList[j];
+									let supplyHandle, borrowHandle;
 
 									if (getAllBalances) {
 										// Multicall: results are [supply0, borrow0, supply1, borrow1, ...]
-										var sResult = results[j * 2];
-										var bResult = results[j * 2 + 1];
-										supplyHandle = sResult && sResult.success ? sResult.result : null;
-										borrowHandle = bResult && bResult.success ? bResult.result : null;
+										const sResult = results[j * 2];
+										const bResult = results[j * 2 + 1];
+										supplyHandle = sResult?.success ? sResult.result : null;
+										borrowHandle = bResult?.success ? bResult.result : null;
 									} else {
 										// Per-token: results[j].settled is [supplySettled, borrowSettled]
-										var settled = results[j].settled;
+										const settled = results[j].settled;
 										supplyHandle = settled[0].status === "fulfilled" ? settled[0].value : null;
 										borrowHandle = settled[1].status === "fulfilled" ? settled[1].value : null;
 									}
@@ -1270,13 +1257,13 @@
 												.then((plaintext) => ({ token: tkn, plaintext: plaintext }))
 												.catch((err) => {
 													console.warn(
-														"[DataFetcherV2] Decrypt failed for " + tkn + ":",
-														(err && err.message) || err,
+														`[DataFetcherV2] Decrypt failed for ${tkn}:`,
+														err?.message || err,
 													);
-													if (self._bus)
-														self._bus.set("error:decrypt", {
+													if (this._bus)
+														this._bus.set("error:decrypt", {
 															token: tkn,
-															message: (err && err.message) || "Decrypt failed",
+															message: err?.message || "Decrypt failed",
 														});
 													return { token: tkn, plaintext: null };
 												}),
@@ -1292,13 +1279,13 @@
 												.then((plaintext) => ({ token: tkn, plaintext: plaintext }))
 												.catch((err) => {
 													console.warn(
-														"[DataFetcherV2] Decrypt failed for " + tkn + ":",
-														(err && err.message) || err,
+														`[DataFetcherV2] Decrypt failed for ${tkn}:`,
+														err?.message || err,
 													);
-													if (self._bus)
-														self._bus.set("error:decrypt", {
+													if (this._bus)
+														this._bus.set("error:decrypt", {
 															token: tkn,
-															message: (err && err.message) || "Decrypt failed",
+															message: err?.message || "Decrypt failed",
 														});
 													return { token: tkn, plaintext: null };
 												}),
@@ -1322,13 +1309,13 @@
 										);
 
 										// Fetch vault positions via multicall (single RPC batch)
-										var getUserPositions = self._getContractReadHelper(b, "getUserPositions");
+										var getUserPositions = this._getContractReadHelper(b, "getUserPositions");
 										var getAllPositionData =
 											b.contract && typeof b.contract.getAllPositionData === "function"
 												? b.contract.getAllPositionData.bind(b.contract)
-												: self._getContractReadHelper(b, "getAllPositionData");
-										var getPosMeta = self._getContractReadHelper(b, "getPositionMeta");
-										var getCollateral = self._getContractReadHelper(b, "getCollateral");
+												: this._getContractReadHelper(b, "getAllPositionData");
+										var getPosMeta = this._getContractReadHelper(b, "getPositionMeta");
+										var getCollateral = this._getContractReadHelper(b, "getCollateral");
 
 										var vaultPromise;
 										if (getUserPositions && getAllPositionData) {
@@ -1337,15 +1324,13 @@
 												.then((positionIds) => {
 													if (!positionIds || positionIds.length === 0) return [];
 													return getAllPositionData(positionIds).then((mcResults) => {
-														var rawVault = [];
-														for (var pi = 0; pi < positionIds.length; pi++) {
-															var pid = positionIds[pi];
-															var metaResult = mcResults[pi * 2];
-															var collResult = mcResults[pi * 2 + 1];
-															var meta =
-																metaResult && metaResult.success ? metaResult.result : null;
-															var collateral =
-																collResult && collResult.success ? collResult.result : null;
+														const rawVault = [];
+														for (let pi = 0; pi < positionIds.length; pi++) {
+															const pid = positionIds[pi];
+															const metaResult = mcResults[pi * 2];
+															const collResult = mcResults[pi * 2 + 1];
+															const meta = metaResult?.success ? metaResult.result : null;
+															const collateral = collResult?.success ? collResult.result : null;
 															if (permitUnlocked && collateral) {
 																rawVault.push(
 																	b.fhe
@@ -1355,19 +1340,19 @@
 																				"[DataFetcherV2] Decrypt failed for vault collateral " +
 																					pid +
 																					":",
-																				(err && err.message) || err,
+																				err?.message || err,
 																			);
-																			if (self._bus)
-																				self._bus.set("error:decrypt", {
-																					token: "vault:" + pid,
-																					message: (err && err.message) || "Decrypt failed",
+																			if (this._bus)
+																				this._bus.set("error:decrypt", {
+																					token: `vault:${pid}`,
+																					message: err?.message || "Decrypt failed",
 																				});
 																			return null;
 																		})
 																		.then((plain) => ({
 																			id: pid,
-																			strategyId: (meta && meta.strategyId) || 0,
-																			createdAt: (meta && meta.createdAt) || 0,
+																			strategyId: meta?.strategyId || 0,
+																			createdAt: meta?.createdAt || 0,
 																			collateral: plain,
 																			collateralEncrypted: collateral,
 																			venue: "Vault",
@@ -1378,8 +1363,8 @@
 																rawVault.push(
 																	Promise.resolve({
 																		id: pid,
-																		strategyId: (meta && meta.strategyId) || 0,
-																		createdAt: (meta && meta.createdAt) || 0,
+																		strategyId: meta?.strategyId || 0,
+																		createdAt: meta?.createdAt || 0,
 																		collateral: null,
 																		collateralEncrypted: collateral,
 																		venue: "Vault",
@@ -1398,13 +1383,13 @@
 												.catch(() => [])
 												.then((positionIds) => {
 													if (!positionIds || positionIds.length === 0) return [];
-													var posPromises = [];
-													for (var pi = 0; pi < positionIds.length; pi++) {
+													const posPromises = [];
+													for (let pi = 0; pi < positionIds.length; pi++) {
 														((pid) => {
 															posPromises.push(
 																Promise.all([getPosMeta(pid), getCollateral(pid)])
 																	.then((res) => {
-																		var meta = res[0],
+																		const meta = res[0],
 																			collateral = res[1];
 																		if (permitUnlocked && collateral) {
 																			return b.fhe
@@ -1414,19 +1399,19 @@
 																						"[DataFetcherV2] Decrypt failed for vault collateral " +
 																							pid +
 																							":",
-																						(err && err.message) || err,
+																						err?.message || err,
 																					);
-																					if (self._bus)
-																						self._bus.set("error:decrypt", {
-																							token: "vault:" + pid,
-																							message: (err && err.message) || "Decrypt failed",
+																					if (this._bus)
+																						this._bus.set("error:decrypt", {
+																							token: `vault:${pid}`,
+																							message: err?.message || "Decrypt failed",
 																						});
 																					return null;
 																				})
 																				.then((plain) => ({
 																					id: pid,
-																					strategyId: (meta && meta.strategyId) || 0,
-																					createdAt: (meta && meta.createdAt) || 0,
+																					strategyId: meta?.strategyId || 0,
+																					createdAt: meta?.createdAt || 0,
 																					collateral: plain,
 																					collateralEncrypted: collateral,
 																					venue: "Vault",
@@ -1435,8 +1420,8 @@
 																		}
 																		return {
 																			id: pid,
-																			strategyId: (meta && meta.strategyId) || 0,
-																			createdAt: (meta && meta.createdAt) || 0,
+																			strategyId: meta?.strategyId || 0,
+																			createdAt: meta?.createdAt || 0,
 																			collateral: null,
 																			collateralEncrypted: collateral,
 																			venue: "Vault",
@@ -1460,7 +1445,7 @@
 												filteredBorrows.length === 0 &&
 												vaultPositions.length === 0
 											) {
-												return self._emptyPositionsPayload(
+												return this._emptyPositionsPayload(
 													"empty",
 													"No non-zero positions found",
 													markets,
@@ -1494,7 +1479,7 @@
 							vaultPositions: raw.vaultPositions || [],
 						};
 					}
-					if (!self._xf) return raw;
+					if (!this._xf) return raw;
 					var shapedSupplies = (raw.supplies || []).map((s) => ({
 						asset: s.token,
 						amount: s.plaintext,
@@ -1505,7 +1490,7 @@
 						amount: b.plaintext,
 						tokenAddress: b.token,
 					}));
-					var result = self._xf.transformPositions(shapedSupplies, shapedBorrows, raw.markets);
+					var result = this._xf.transformPositions(shapedSupplies, shapedBorrows, raw.markets);
 					if (result && typeof result === "object" && raw.vaultPositions) {
 						result.vaultPositions = raw.vaultPositions;
 					}
@@ -1516,22 +1501,21 @@
 			}).then((positions) => {
 				// Compute portfolio metrics and write walletBalance as a separate side effect.
 				// Intentionally outside the transform function to keep it pure.
-				if (!self._xf || !self._bus || !positions) return;
+				if (!this._xf || !this._bus || !positions) return;
 				var positionItems = Array.isArray(positions) ? positions : positions.items;
-				var netValue = self._xf.calculateNetValue(positionItems);
-				var ltv = self._xf.calculateLTV(positionItems);
+				var netValue = this._xf.calculateNetValue(positionItems);
+				var ltv = this._xf.calculateLTV(positionItems);
 				var previousWalletBalance = null;
-				if (self._bus && typeof self._bus.getState === "function") {
-					previousWalletBalance = self._bus.getState().authed.walletBalance;
+				if (this._bus && typeof this._bus.getState === "function") {
+					previousWalletBalance = this._bus.getState().authed.walletBalance;
 				}
-				self._bus.set("data:walletBalance", {
+				this._bus.set("data:walletBalance", {
 					balance:
 						previousWalletBalance && previousWalletBalance.balance != null
 							? previousWalletBalance.balance
 							: null,
-					nativeBalanceWei:
-						(previousWalletBalance && previousWalletBalance.nativeBalanceWei) || null,
-					asset: previousWalletBalance && previousWalletBalance.asset,
+					nativeBalanceWei: previousWalletBalance?.nativeBalanceWei || null,
+					asset: previousWalletBalance?.asset,
 					netValue: netValue,
 					portfolioLTV: ltv.ratio,
 					ltvGaugeValue: ltv.gaugeValue,
@@ -1540,62 +1524,46 @@
 		};
 
 		DataFetcherV2.prototype._fetchStrategies = function () {
-			var self = this;
 			return this._fetchAndTransform({
-				fetch: () => self._getBridge().then((b) => b.api.defiStrategies.getDefiStrategies({})),
-				transform: (raw) => (self._xf ? self._xf.transformStrategies(raw) : raw),
+				fetch: () => this._getBridge().then((b) => b.api.defiStrategies.getDefiStrategies({})),
+				transform: (raw) => (this._xf ? this._xf.transformStrategies(raw) : raw),
 				event: "data:strategies",
 				name: "strategies",
 			});
 		};
 
 		DataFetcherV2.prototype._fetchProposals = function () {
-			var self = this;
 			return this._fetchAndTransform({
-				fetch: () => self._getBridge().then((b) => b.api.governance.listProposals()),
-				transform: (raw) => (self._xf ? self._xf.transformProposals(raw) : raw),
+				fetch: () => this._getBridge().then((b) => b.api.governance.listProposals()),
+				transform: (raw) => (this._xf ? this._xf.transformProposals(raw) : raw),
 				event: "data:proposals",
 				name: "proposals",
 			});
 		};
 
 		DataFetcherV2.prototype._fetchCommunity = function () {
-			var self = this;
 			return this._fetchAndTransform({
 				fetch: () =>
-					self._getBridge().then((b) => {
-						if (
-							b.api &&
-							b.api.strategies &&
-							typeof b.api.strategies.listStrategies === "function"
-						) {
+					this._getBridge().then((b) => {
+						if (b.api?.strategies && typeof b.api.strategies.listStrategies === "function") {
 							return b.api.strategies.listStrategies({});
 						}
 						throw new Error("Community strategies endpoint not available");
 					}),
-				transform: (raw) => (self._xf ? self._xf.transformCommunity(raw) : raw),
+				transform: (raw) => (this._xf ? this._xf.transformCommunity(raw) : raw),
 				event: "data:community",
 				name: "community",
 			});
 		};
 
 		DataFetcherV2.prototype._fetchTemplates = function () {
-			var self = this;
 			return this._fetchAndTransform({
 				fetch: () =>
-					self._getBridge().then((b) => {
-						if (
-							b.api &&
-							b.api.defiTemplates &&
-							typeof b.api.defiTemplates.getTemplates === "function"
-						) {
+					this._getBridge().then((b) => {
+						if (b.api?.defiTemplates && typeof b.api.defiTemplates.getTemplates === "function") {
 							return b.api.defiTemplates.getTemplates();
 						}
-						if (
-							b.api &&
-							b.api.defiStrategies &&
-							typeof b.api.defiStrategies.getTemplates === "function"
-						) {
+						if (b.api?.defiStrategies && typeof b.api.defiStrategies.getTemplates === "function") {
 							return b.api.defiStrategies.getTemplates();
 						}
 						return null;
@@ -1607,20 +1575,18 @@
 		};
 
 		DataFetcherV2.prototype._fetchNodeTypes = function () {
-			var self = this;
 			return this._fetchAndTransform({
-				fetch: () => self._getBridge().then((b) => b.api.defiModules.getDefiModules()),
-				transform: (raw) => (self._xf ? self._xf.transformNodeTypes(raw) : raw),
+				fetch: () => this._getBridge().then((b) => b.api.defiModules.getDefiModules()),
+				transform: (raw) => (this._xf ? this._xf.transformNodeTypes(raw) : raw),
 				event: "data:nodeTypes",
 				name: "nodeTypes",
 			});
 		};
 
 		DataFetcherV2.prototype._fetchWalletBalance = function () {
-			var self = this;
 			return this._fetchAndTransform({
 				fetch: () =>
-					self._getBridge().then((b) => {
+					this._getBridge().then((b) => {
 						var addr =
 							b.wallet && typeof b.wallet.getAccount === "function" ? b.wallet.getAccount() : null;
 						if (!addr) throw new Error("No wallet connected");
@@ -1631,8 +1597,8 @@
 					}),
 				transform: (raw) => {
 					var previousWalletBalance = null;
-					if (self._bus && typeof self._bus.getState === "function") {
-						previousWalletBalance = self._bus.getState().authed.walletBalance;
+					if (this._bus && typeof this._bus.getState === "function") {
+						previousWalletBalance = this._bus.getState().authed.walletBalance;
 					}
 					return {
 						balance:
@@ -1643,7 +1609,7 @@
 						asset: "ETH",
 						netValue: previousWalletBalance.netValue || null,
 						portfolioLTV: previousWalletBalance.portfolioLTV || null,
-						ltvGaugeValue: previousWalletBalance && previousWalletBalance.ltvGaugeValue,
+						ltvGaugeValue: previousWalletBalance?.ltvGaugeValue,
 					};
 				},
 				event: "data:walletBalance",
@@ -1698,8 +1664,8 @@
 
 			// Start regular interval if ms > 0
 			if (ms > 0) {
-				var id = setInterval(safeFetch, jitter(ms));
-				var entry = { name: name, id: id };
+				const id = setInterval(safeFetch, jitter(ms));
+				const entry = { name: name, id: id };
 				if (group === "public") {
 					this._publicIntervalIds.push(entry);
 				} else {
@@ -1713,7 +1679,7 @@
 		 * @param {'public'|'authed'} group
 		 */
 		DataFetcherV2.prototype._clearIntervalGroup = function (group) {
-			var entries;
+			let entries;
 			if (group === "public") {
 				entries = this._publicIntervalIds;
 				this._publicIntervalIds = [];
@@ -1721,7 +1687,7 @@
 				entries = this._authIntervalIds;
 				this._authIntervalIds = [];
 			}
-			for (var i = 0; i < entries.length; i++) {
+			for (let i = 0; i < entries.length; i++) {
 				clearInterval(entries[i].id);
 			}
 		};

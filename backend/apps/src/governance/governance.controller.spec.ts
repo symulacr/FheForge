@@ -1,8 +1,8 @@
-import { Test, TestingModule } from "@nestjs/testing";
 import { NotFoundException } from "@nestjs/common";
+import { Test, type TestingModule } from "@nestjs/testing";
 import { GovernanceController } from "./governance.controller";
-import { GovernanceService } from "./governance.service";
 import { GovernanceRepository } from "./governance.repository";
+import { GovernanceService } from "./governance.service";
 
 describe("GovernanceController", () => {
 	let controller: GovernanceController;

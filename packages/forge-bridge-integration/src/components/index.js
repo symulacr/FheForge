@@ -12,5 +12,5 @@
  */
 
 export { default as CipherValue } from "./cipher-value.js";
-export { default as StatusBadge } from "./status-badge.js";
 export { default as EncryptedDisplay } from "./encrypted-display.js";
+export { default as StatusBadge } from "./status-badge.js";

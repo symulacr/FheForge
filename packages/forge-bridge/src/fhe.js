@@ -35,7 +35,7 @@ const PERMIT_DURATION_MS = 900_000;
  * @param {BridgeConfig} config - Bridge configuration
  * @returns {FheAdapter} FHE adapter
  */
-export function createFheAdapter(config) {
+export function createFheAdapter(_config) {
 	// -----------------------------------------------------------------------
 	// Internal state
 	// -----------------------------------------------------------------------
@@ -160,7 +160,7 @@ export function createFheAdapter(config) {
 	 * @param {string} [tokenAddress] - Optional token address for context
 	 * @returns {Promise<InEuint128>}
 	 */
-	async function encrypt(plaintext, tokenAddress) {
+	async function encrypt(plaintext, _tokenAddress) {
 		try {
 			if (!_cofheClient) {
 				throw new FheError("NO_PERMIT", "Grant an FHE permit before encrypting");
@@ -209,7 +209,7 @@ export function createFheAdapter(config) {
 		}
 
 		const timeout = opts.timeout ?? 60_000;
-		const pollInterval = opts.pollInterval ?? 2_000;
+		const _pollInterval = opts.pollInterval ?? 2_000;
 		const start = Date.now();
 
 		try {
@@ -231,7 +231,7 @@ export function createFheAdapter(config) {
 				);
 			}
 
-			if (error.message && error.message.includes("not ready")) {
+			if (error.message?.includes("not ready")) {
 				throw new FheError(
 					"DECRYPT_NOT_READY",
 					`Ciphertext ${ctHash} is not yet ready for decryption: ${error.message}`,

@@ -134,7 +134,7 @@ function emitPermitGranted(unlocked, secondsLeft) {
  */
 function emitError(step, err) {
 	if (!bus) return;
-	const message = err && err.message ? err.message : String(err);
+	const message = err?.message ? err.message : String(err);
 	bus.set("error:connect", { step, message, timestamp: new Date().toISOString() });
 }
 
@@ -335,7 +335,7 @@ function _setBridgeBus(bridgeBus) {
 	bus = bridgeBus;
 }
 
-export { init, startConnectFlow, handleDisconnect, checkAndSwitchNetwork, getState };
+export { checkAndSwitchNetwork, getState, handleDisconnect, init, startConnectFlow };
 
 // ─── Self-Initialize ────────────────────────────────────────────────────────
 

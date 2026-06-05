@@ -1,6 +1,4 @@
 (() => {
-	"use strict";
-
 	if (typeof Babel === "undefined") return;
 
 	/* ──────────────────────────────────────────────
@@ -22,9 +20,9 @@
 			},
 			onDataUpdate(fn) {
 				this._listeners.add(fn);
-				const self = this;
+
 				return () => {
-					self._listeners.delete(fn);
+					this._listeners.delete(fn);
 				};
 			},
 			notify() {
@@ -111,7 +109,7 @@
               where Y = VARIABLE_TO_MOCK_KEY[X] || X
            ------------------------------------------------------ */
 				VariableDeclarator: (path) => {
-					const varName = path.node.id && path.node.id.name;
+					const varName = path.node.id?.name;
 					if (!varName || !MOCK_CONSTANTS.has(varName)) return;
 
 					const parentDecl = path.findParent((p) => p.isVariableDeclaration());
@@ -138,18 +136,17 @@
               → <Cipher value={window.__MOCK__.PORTFOLIO_NET_VALUE != null ? window.__MOCK__.PORTFOLIO_NET_VALUE : "68,412.07"} locked={locked} />
            ------------------------------------------------------ */
 				JSXAttribute: (path) => {
-					const attrName = path.node.name && path.node.name.name;
+					const attrName = path.node.name?.name;
 					if (attrName !== "value") return;
 
 					// Check parent element is <Cipher>
-					const openingElement =
-						path.parentPath && path.parentPath.parent && path.parentPath.parent.openingElement;
+					const openingElement = path.parentPath?.parent?.openingElement;
 					if (!openingElement) return;
-					const tagName = openingElement.name && openingElement.name.name;
+					const tagName = openingElement.name?.name;
 					if (tagName !== "Cipher") return;
 
 					const attrValue = path.node.value;
-					if (!attrValue || attrValue.type !== "StringLiteral") return;
+					if (attrValue?.type !== "StringLiteral") return;
 
 					const mockKey = VALUE_TO_MOCK_KEY[attrValue.value];
 					if (!mockKey) return;
@@ -201,7 +198,7 @@
               Processes accumulated CallExpression paths.
            ------------------------------------------------------ */
 				Program: {
-					exit: (path) => {
+					exit: (_path) => {
 						for (let i = 0; i < renderCallPaths.length; i++) {
 							const nodePath = renderCallPaths[i];
 							const renderArg = nodePath.node.arguments[0];
@@ -261,7 +258,7 @@
 		 * Build Babel options compatible with what the internal
 		 * buildBabelOptions produces for plain scripts.
 		 */
-		function buildOptions(scriptEl, filename) {
+		function buildOptions(_scriptEl, filename) {
 			return {
 				filename: filename,
 				presets: ["react", ["env", { targets: { esmodules: true } }]],
@@ -307,7 +304,7 @@
 
 			// ── Load scripts sequentially ──────────────────────
 			const contents = [];
-			const loaded = 0;
+			const _loaded = 0;
 
 			function loadNext(idx) {
 				if (idx >= jsxScripts.length) {

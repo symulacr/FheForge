@@ -91,7 +91,7 @@ function EncryptedDisplay(_ref) {
 			className:
 				"encrypted-display" +
 				(locked ? " locked" : " unlocked") +
-				(className ? " " + className : ""),
+				(className ? ` ${className}` : ""),
 			style: wrapperStyle,
 			title: locked
 				? "Encrypted on-chain. Grant a permit to view this data."

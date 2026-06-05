@@ -1,4 +1,4 @@
-import { Test, TestingModule } from "@nestjs/testing";
+import { Test, type TestingModule } from "@nestjs/testing";
 import { MarketsService } from "../markets/markets.service";
 import { SupabaseService } from "../shared/infrastructure/supabase.service";
 import { StatsController } from "./stats.controller";
@@ -9,14 +9,17 @@ const marketsServiceMock = {
 };
 
 function createSupabaseCountMock(counts: Record<string, number | null>) {
+	const makeResult = (table: string) => ({ count: counts[table] ?? null, error: null });
 	return {
 		getClient: jest.fn(() => ({
 			from: jest.fn((table: string) => ({
-				select: jest.fn(() => ({
-					eq: jest.fn(() => Promise.resolve({ count: counts[table] ?? null, error: null })),
-					then: (resolve: (value: { count: number | null; error: null }) => unknown) =>
-						resolve({ count: counts[table] ?? null, error: null }),
-				})),
+				select: jest.fn(() => {
+					const result = makeResult(table);
+					const chainable = {
+						eq: jest.fn(() => Promise.resolve(makeResult(table))),
+					};
+					return Object.assign(Promise.resolve(result), chainable);
+				}),
 			})),
 		})),
 	};

@@ -93,7 +93,7 @@ class ForgeErrorBoundary extends React.Component {
 	 */
 	componentDidCatch(error, errorInfo) {
 		console.error("[ForgeErrorBoundary] Caught render error:", error.message || error);
-		if (errorInfo && errorInfo.componentStack) {
+		if (errorInfo?.componentStack) {
 			console.warn("[ForgeErrorBoundary] Component stack:", errorInfo.componentStack);
 		}
 	}
@@ -124,7 +124,7 @@ class ForgeErrorBoundary extends React.Component {
 				React.createElement(
 					"div",
 					{ style: { color: "var(--muted, #888)", fontSize: "0.75rem" } },
-					this.state.error && this.state.error.message
+					this.state.error?.message
 						? String(this.state.error.message)
 						: "An unexpected error occurred in the UI.",
 				),
@@ -318,4 +318,4 @@ if (typeof window !== "undefined") {
 
 // ─── Exports ─────────────────────────────────────────────────────────────────
 
-export { BridgeContext, ForgeProvider, useBridge, useWallet, usePermit, useBridgeData };
+export { BridgeContext, ForgeProvider, useBridge, useBridgeData, usePermit, useWallet };
