@@ -457,9 +457,9 @@ All contracts deployed on [Arbiscan](https://sepolia.arbiscan.io). Redeployed `2
 | PriceOracle | `0x8E41d720173c347740C05011FadD3a3B015ae18c` | ✅ |
 | StrategyRegistry | `0xEbBD1aFDCC888116a4c3800ec856c8c3b1535374` | ✅ |
 | StrategyExecutor | `0x157DE38216598dA56eEA78452329075cD511374B` | ✅ |
-| TokenRegistry | `0xA2E36B9953518d4Cd2E9c7e3b5345f8E8B8Bb19B` | ✅ |
+| TokenRegistry | `0xa731167FcB35c88E7482341Ab14D6363Cb9702Ea` | ✅ |
 | ExecutorContract | `0x270F526b27cf7bf810a61e5f14f904C51CdC3deA` | ✅ |
-| FheForgeToken | `0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6` | ✅ |
+| FheForgeToken | `0x8D5c6E4205E5FB32D58FFD7C0F527be35727E973` | ✅ |
 | FheForgeTimelock | `0x784376df1E39E91b3E65b1B8271B79ef5f36F890` | ✅ |
 | FheForgeGovernor | `0x194a4C1B3BEb986f82f829f487dccd46a3c71F30` | ✅ |
 
