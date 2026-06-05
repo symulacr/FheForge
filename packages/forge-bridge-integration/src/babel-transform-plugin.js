@@ -22,7 +22,7 @@
 			},
 			onDataUpdate(fn) {
 				this._listeners.add(fn);
-				var self = this;
+				const self = this;
 				return function () {
 					self._listeners.delete(fn);
 				};
@@ -44,7 +44,7 @@
      MOCK_CONSTANTS — 13 module/function-scoped constants
      ────────────────────────────────────────────── */
 
-	var MOCK_CONSTANTS = new Set([
+	const MOCK_CONSTANTS = new Set([
 		"D_POSITIONS",
 		"D_STRATS",
 		"D_ACTIVITY",
@@ -68,7 +68,7 @@
      the mock key (e.g. 'items' → 'TICKER_ITEMS').
      ────────────────────────────────────────────── */
 
-	var VARIABLE_TO_MOCK_KEY = {
+	const VARIABLE_TO_MOCK_KEY = {
 		items: "TICKER_ITEMS",
 		rows: "DEMO_ROWS",
 	};
@@ -77,7 +77,7 @@
      VALUE_TO_MOCK_KEY — Cipher value → mock key
      ────────────────────────────────────────────── */
 
-	var VALUE_TO_MOCK_KEY = {
+	const VALUE_TO_MOCK_KEY = {
 		"68,412.07": "PORTFOLIO_NET_VALUE",
 	};
 
@@ -98,9 +98,9 @@
      Plugin: mockDataPlugin — 4 visitors
      ────────────────────────────────────────────── */
 
-	var mockDataPlugin = function (api) {
-		var t = api.types;
-		var renderCallPaths = [];
+	const mockDataPlugin = function (api) {
+		const t = api.types;
+		const renderCallPaths = [];
 
 		return {
 			name: "mock-data",
@@ -111,10 +111,10 @@
               where Y = VARIABLE_TO_MOCK_KEY[X] || X
            ------------------------------------------------------ */
 				VariableDeclarator: function (path) {
-					var varName = path.node.id && path.node.id.name;
+					const varName = path.node.id && path.node.id.name;
 					if (!varName || !MOCK_CONSTANTS.has(varName)) return;
 
-					var parentDecl = path.findParent(function (p) {
+					const parentDecl = path.findParent(function (p) {
 						return p.isVariableDeclaration();
 					});
 					if (!parentDecl) return;
@@ -123,10 +123,10 @@
 					parentDecl.node.kind = "var";
 
 					// Resolve mock key: use mapping when varName differs from __MOCK__ key
-					var mockKey = VARIABLE_TO_MOCK_KEY[varName] || varName;
+					const mockKey = VARIABLE_TO_MOCK_KEY[varName] || varName;
 
 					// Wrap init: window.__MOCK__.Y != null ? window.__MOCK__.Y : originalValue
-					var mockRef = buildMockRef(t, mockKey);
+					const mockRef = buildMockRef(t, mockKey);
 					path.node.init = t.conditionalExpression(
 						t.binaryExpression("!=", mockRef, t.nullLiteral()),
 						mockRef,
@@ -140,24 +140,24 @@
               → <Cipher value={window.__MOCK__.PORTFOLIO_NET_VALUE != null ? window.__MOCK__.PORTFOLIO_NET_VALUE : "68,412.07"} locked={locked} />
            ------------------------------------------------------ */
 				JSXAttribute: function (path) {
-					var attrName = path.node.name && path.node.name.name;
+					const attrName = path.node.name && path.node.name.name;
 					if (attrName !== "value") return;
 
 					// Check parent element is <Cipher>
-					var openingElement =
+					const openingElement =
 						path.parentPath && path.parentPath.parent && path.parentPath.parent.openingElement;
 					if (!openingElement) return;
-					var tagName = openingElement.name && openingElement.name.name;
+					const tagName = openingElement.name && openingElement.name.name;
 					if (tagName !== "Cipher") return;
 
-					var attrValue = path.node.value;
+					const attrValue = path.node.value;
 					if (!attrValue || attrValue.type !== "StringLiteral") return;
 
-					var mockKey = VALUE_TO_MOCK_KEY[attrValue.value];
+					const mockKey = VALUE_TO_MOCK_KEY[attrValue.value];
 					if (!mockKey) return;
 
 					// Replace string literal with JSX expression container
-					var mockRef = buildMockRef(t, mockKey);
+					const mockRef = buildMockRef(t, mockKey);
 					path.node.value = t.jsxExpressionContainer(
 						t.conditionalExpression(
 							t.binaryExpression("!=", mockRef, t.nullLiteral()),
@@ -173,17 +173,17 @@
               for processing in Program.exit.
            ------------------------------------------------------ */
 				CallExpression: function (path) {
-					var callee = path.node.callee;
+					const callee = path.node.callee;
 
 					// Must be xxx.render(...)
 					if (!t.isMemberExpression(callee)) return;
 					if (!t.isIdentifier(callee.property) || callee.property.name !== "render") return;
 
 					// The object must be ReactDOM.createRoot(...)
-					var object = callee.object;
+					const object = callee.object;
 					if (!t.isCallExpression(object)) return;
 
-					var objectCallee = object.callee;
+					const objectCallee = object.callee;
 					if (!t.isMemberExpression(objectCallee)) return;
 					if (!t.isIdentifier(objectCallee.object) || objectCallee.object.name !== "ReactDOM")
 						return;
@@ -204,9 +204,9 @@
            ------------------------------------------------------ */
 				Program: {
 					exit: function (path) {
-						for (var i = 0; i < renderCallPaths.length; i++) {
-							var nodePath = renderCallPaths[i];
-							var renderArg = nodePath.node.arguments[0];
+						for (let i = 0; i < renderCallPaths.length; i++) {
+							const nodePath = renderCallPaths[i];
+							const renderArg = nodePath.node.arguments[0];
 							if (!renderArg) continue;
 
 							// Wrap with ForgeProvider:
@@ -227,7 +227,7 @@
      Save original, inject plugin before all calls
      ────────────────────────────────────────────── */
 
-	var origTransform = Babel.transform;
+	const origTransform = Babel.transform;
 
 	Babel.transform = function (code, options) {
 		options = options || {};
@@ -257,7 +257,7 @@
 	(function () {
 		if (typeof Babel.transformScriptTags !== "function") return;
 
-		var SCRIPT_TYPES = new Set(["text/jsx", "text/babel"]);
+		const SCRIPT_TYPES = new Set(["text/jsx", "text/babel"]);
 
 		/**
 		 * Build Babel options compatible with what the internal
@@ -277,7 +277,7 @@
 		 * Mirrors the original runScripts + loadScripts + run pipeline.
 		 */
 		function runScriptsWithPatchedTransform(scripts) {
-			var headEl = document.getElementsByTagName("head")[0];
+			let headEl = document.getElementsByTagName("head")[0];
 			if (!headEl) headEl = document.head || document.documentElement;
 
 			if (!scripts) {
@@ -285,10 +285,10 @@
 			}
 
 			// Collect text/babel scripts in document order
-			var jsxScripts = [];
-			for (var i = 0; i < scripts.length; i++) {
-				var s = scripts.item ? scripts.item(i) : scripts[i];
-				var type = (s.type || "").split(";")[0];
+			const jsxScripts = [];
+			for (let i = 0; i < scripts.length; i++) {
+				const s = scripts.item ? scripts.item(i) : scripts[i];
+				const type = (s.type || "").split(";")[0];
 				if (SCRIPT_TYPES.has(type)) {
 					jsxScripts.push(s);
 				}
@@ -308,8 +308,8 @@
 			}
 
 			// ── Load scripts sequentially ──────────────────────
-			var contents = [];
-			var loaded = 0;
+			const contents = [];
+			const loaded = 0;
 
 			function loadNext(idx) {
 				if (idx >= jsxScripts.length) {
@@ -319,11 +319,11 @@
 				}
 
 				try {
-					var script = jsxScripts[idx];
-					var src = script.getAttribute("src");
+					const script = jsxScripts[idx];
+					const src = script.getAttribute("src");
 
 					if (src) {
-						var xhr = new XMLHttpRequest();
+						const xhr = new XMLHttpRequest();
 						xhr.open("GET", src, true);
 						if ("overrideMimeType" in xhr) xhr.overrideMimeType("text/plain");
 						xhr.onreadystatechange = function () {
@@ -354,16 +354,16 @@
 			}
 
 			function flushAll() {
-				for (var j = 0; j < jsxScripts.length; j++) {
-					var content = contents[j];
+				for (let j = 0; j < jsxScripts.length; j++) {
+					const content = contents[j];
 					if (content === null || content === undefined) continue;
 
-					var scriptEl = jsxScripts[j];
-					var filename = scriptEl.getAttribute("src") || "Inline Babel script";
+					const scriptEl = jsxScripts[j];
+					const filename = scriptEl.getAttribute("src") || "Inline Babel script";
 
 					try {
-						var result = Babel.transform(content, buildOptions(scriptEl, filename));
-						var out = document.createElement("script");
+						const result = Babel.transform(content, buildOptions(scriptEl, filename));
+						const out = document.createElement("script");
 						out.text = result.code;
 						headEl.appendChild(out);
 					} catch (err) {
