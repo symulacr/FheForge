@@ -27,11 +27,11 @@ contract FheForgeGovernor is
         IVotes token,
         TimelockController timelock,
         uint48 votingDelay_,
-        uint48 votingPeriod_,
+        uint32 votingPeriod_,
         uint256 quorumBps
     )
         Governor("FheForge Governor")
-        GovernorSettings(uint48(votingDelay_), uint32(votingPeriod_), PROPOSAL_THRESHOLD)
+        GovernorSettings(uint48(votingDelay_), votingPeriod_, PROPOSAL_THRESHOLD)
         GovernorVotes(token)
         GovernorVotesQuorumFraction(quorumBps)
         GovernorTimelockControl(timelock)
