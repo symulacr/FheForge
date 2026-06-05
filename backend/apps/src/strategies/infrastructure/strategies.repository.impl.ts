@@ -1,112 +1,122 @@
-import type { UUID } from "node:crypto";
-import { Injectable } from "@nestjs/common";
-import type { StrategyRow } from "src/shared/infrastructure/database.types";
-import { SupabaseService } from "src/shared/infrastructure/supabase.service";
-import { Strategy } from "../domain/strategies.entity";
-import { StrategiesRepository } from "../domain/strategies.repository";
+import type { UUID } from 'node:crypto';
+import { Injectable } from '@nestjs/common';
+import type { StrategyRow } from 'src/shared/infrastructure/database.types';
+import { SupabaseService } from 'src/shared/infrastructure/supabase.service';
+import { Strategy } from '../domain/strategies.entity';
+import { StrategiesRepository } from '../domain/strategies.repository';
 
 @Injectable()
 export class StrategiesRepositoryImplement implements StrategiesRepository {
-	constructor(private readonly supabase: SupabaseService) {}
+  constructor(private readonly supabase: SupabaseService) {}
 
-	async findById(id: UUID): Promise<Strategy | null> {
-		const { data, error } = await this.supabase
-			.getClient()
-			.from("strategies")
-			.select("*")
-			.eq("id", id)
-			.single();
+  async findById(id: UUID): Promise<Strategy | null> {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('strategies')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-		if (error || !data) return null;
+    if (error || !data) return null;
 
-		return this.mapRowToEntity(data as StrategyRow);
-	}
+    return this.mapRowToEntity(data as StrategyRow);
+  }
 
-	async findAll(
-		sortBy?: string,
-		order: "asc" | "desc" = "desc",
-		limit?: number,
-	): Promise<Strategy[]> {
-		let query = this.supabase.getClient().from("strategies").select("*");
+  async findAll(
+    sortBy?: string,
+    order: 'asc' | 'desc' = 'desc',
+    limit?: number,
+  ): Promise<Strategy[]> {
+    let query = this.supabase.getClient().from('strategies').select('*');
 
-		if (sortBy) {
-			query = query.order(sortBy, { ascending: order === "asc" });
-		}
+    if (sortBy) {
+      query = query.order(sortBy, { ascending: order === 'asc' });
+    }
 
-		if (limit) {
-			query = query.limit(limit);
-		}
+    if (limit) {
+      query = query.limit(limit);
+    }
 
-		const { data, error } = await query;
-		if (error) throw new Error(`Failed to fetch strategies: ${error.message}`);
+    const { data, error } = await query;
+    if (error) throw new Error(`Failed to fetch strategies: ${error.message}`);
 
-		return (data ?? []).map((r: StrategyRow) => this.mapRowToEntity(r));
-	}
+    return (data ?? []).map((r: StrategyRow) => this.mapRowToEntity(r));
+  }
 
-	async findAllWithFilters(params: {
-		keyword?: string;
-		tags?: string[];
-		sortBy?: string;
-		order?: "asc" | "desc";
-		limit?: number;
-	}): Promise<{ data: Strategy[]; total: number }> {
-		const { keyword, tags, sortBy, order = "desc", limit } = params;
+  async findAllWithFilters(params: {
+    keyword?: string;
+    tags?: string[];
+    sortBy?: string;
+    order?: 'asc' | 'desc';
+    limit?: number;
+  }): Promise<{ data: Strategy[]; total: number }> {
+    const { keyword, tags, sortBy, order = 'desc', limit } = params;
 
-		let query = this.supabase.getClient().from("strategies").select("*", { count: "exact" });
-		if (keyword) {
-			query = query.ilike("strategist_name", `%${keyword}%`);
-		}
-		if (tags && tags.length > 0) {
-			tags.forEach((tag) => {
-				query = query.contains("tags", [tag]);
-			});
-		}
-		if (sortBy) {
-			query = query.order(sortBy, { ascending: order === "asc" });
-		}
-		if (limit) {
-			query = query.limit(limit);
-		}
-		const { data, count, error } = await query;
-		if (error) {
-			throw new Error(`Failed to fetch with filters: ${error.message}`);
-		}
-		return {
-			data: (data ?? []).map((r: StrategyRow) => this.mapRowToEntity(r)),
-			total: count ?? 0,
-		};
-	}
+    let query = this.supabase
+      .getClient()
+      .from('strategies')
+      .select('*', { count: 'exact' });
+    if (keyword) {
+      query = query.ilike('strategist_name', `%${keyword}%`);
+    }
+    if (tags && tags.length > 0) {
+      tags.forEach((tag) => {
+        query = query.contains('tags', [tag]);
+      });
+    }
+    if (sortBy) {
+      query = query.order(sortBy, { ascending: order === 'asc' });
+    }
+    if (limit) {
+      query = query.limit(limit);
+    }
+    const { data, count, error } = await query;
+    if (error) {
+      throw new Error(`Failed to fetch with filters: ${error.message}`);
+    }
+    return {
+      data: (data ?? []).map((r: StrategyRow) => this.mapRowToEntity(r)),
+      total: count ?? 0,
+    };
+  }
 
-	async save(strategy: Strategy): Promise<void> {
-		const { error } = await this.supabase.getClient().from("strategies").upsert({
-			id: strategy.id,
-			strategist_name: strategy.strategistName,
-			strategist_handle: strategy.strategistHandle,
-			apy: strategy.apy,
-			tags: strategy.tags,
-			assets: strategy.assets,
-			agents: strategy.agents,
-			chains: strategy.chains,
-		});
+  async save(strategy: Strategy): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('strategies')
+      .upsert({
+        id: strategy.id,
+        strategist_name: strategy.strategistName,
+        strategist_handle: strategy.strategistHandle,
+        apy: strategy.apy,
+        tags: strategy.tags,
+        assets: strategy.assets,
+        agents: strategy.agents,
+        chains: strategy.chains,
+      });
 
-		if (error) throw new Error(`Failed to save strategy: ${error.message}`);
-	}
+    if (error) throw new Error(`Failed to save strategy: ${error.message}`);
+  }
 
-	async deleteById(id: string): Promise<void> {
-		const { error } = await this.supabase.getClient().from("strategies").delete().eq("id", id);
-		if (error) throw new Error(`Failed to delete strategy: ${error.message}`);
-	}
+  async deleteById(id: string): Promise<void> {
+    const { error } = await this.supabase
+      .getClient()
+      .from('strategies')
+      .delete()
+      .eq('id', id);
+    if (error) throw new Error(`Failed to delete strategy: ${error.message}`);
+  }
 
-	private mapRowToEntity(row: StrategyRow): Strategy {
-		return new Strategy(
-			row.id,
-			row.strategist_name,
-			row.apy,
-			row.tags ?? [],
-			row.strategist_handle ?? undefined,
-			row.assets ?? [],
-			row.agents ?? [],
-			row.chains ?? [],
-		);
-	}
+  private mapRowToEntity(row: StrategyRow): Strategy {
+    return new Strategy(
+      row.id,
+      row.strategist_name,
+      row.apy,
+      row.tags ?? [],
+      row.strategist_handle ?? undefined,
+      row.assets ?? [],
+      row.agents ?? [],
+      row.chains ?? [],
+    );
+  }
 }

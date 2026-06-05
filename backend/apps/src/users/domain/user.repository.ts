@@ -1,8 +1,8 @@
-import type { User } from "./user.entity";
+import type { User } from './user.entity';
 
 export abstract class UserRepository {
-	abstract findById(id: string): Promise<User | null>;
-	abstract findByWalletAddress(walletAddress: string): Promise<User | null>;
-	abstract save(user: User): Promise<void>;
-	abstract findAll(): Promise<User[]>;
+  abstract findById(id: string): Promise<User | null>;
+  abstract findByWalletAddress(walletAddress: string): Promise<User | null>;
+  abstract save(user: User): Promise<void>;
+  abstract findAll(): Promise<User[]>;
 }
