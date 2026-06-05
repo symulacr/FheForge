@@ -6,8 +6,10 @@ import {
   HttpStatus,
   Param,
   Post,
+  Res,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import {
   NonceResponseDto,
@@ -48,12 +50,34 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid signature or nonce' })
   async walletLogin(
     @Body() dto: WalletLoginDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<WalletLoginResponseDto> {
-    return this.authService.login(
+    const result = await this.authService.login(
       dto.walletAddress,
       dto.signature,
       dto.nonce,
       dto.chainId,
     );
+    res.cookie('auth_token', result.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+      path: '/',
+    });
+    return { userId: result.userId, walletAddress: result.walletAddress };
+  }
+
+  @Public()
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('auth_token', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/',
+    });
+    return { message: 'Logged out' };
   }
 }

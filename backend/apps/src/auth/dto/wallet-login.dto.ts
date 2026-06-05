@@ -39,8 +39,8 @@ export class WalletLoginDto {
 }
 
 export class WalletLoginResponseDto {
-  @ApiProperty({ description: 'JWT access token' })
-  accessToken!: string;
+  @ApiPropertyOptional({ description: 'JWT access token (now sent via httpOnly cookie)' })
+  accessToken?: string;
 
   @ApiProperty({ description: 'User ID' })
   userId!: string;

@@ -1,6 +1,6 @@
 /**
  * @file Wallet adapter — wagmi v2 with EIP-6963 auto-discovery and WalletConnect
- * JWT lifecycle with localStorage persistence and auto-refresh.
+ * JWT lifecycle with httpOnly cookie authentication.
  *
  * @typedef {import('./config.js').BridgeConfig} BridgeConfig
  * @typedef {import('@wagmi/core').ConnectReturnType} ConnectReturnType
@@ -29,9 +29,6 @@ import { createPublicClient, http as viemHttp } from "viem";
 import { arbitrumSepolia } from "viem/chains";
 
 import { WalletError } from "./types.js";
-
-/** localStorage key for the JWT token */
-const STORAGE_KEY_JWT = "auth_token";
 
 /** @type {import('viem').PublicClient | null} */
 let _publicClient = null;
@@ -98,47 +95,6 @@ function getPublicClient(config) {
 		});
 	}
 	return _publicClient;
-}
-
-/**
- * Decode a JWT's payload without verifying the signature.
- * @param {string} token - JWT string
- * @returns {Record<string, unknown> | null} Decoded payload or null
- */
-function decodeJwtPayload(token) {
-	try {
-		const parts = token.split(".");
-		if (parts.length !== 3) return null;
-		return JSON.parse(atob(parts[1]));
-	} catch {
-		return null;
-	}
-}
-
-/**
- * Check whether a JWT token has expired.
- * @param {string} token - JWT string
- * @returns {boolean} true if expired or unreadable
- */
-function isTokenExpired(token) {
-	const payload = decodeJwtPayload(token);
-	if (!payload || typeof payload.exp !== "number") return true;
-	return Date.now() >= payload.exp * 1000;
-}
-
-/**
- * Retrieve a stored JWT from localStorage, returning null if absent or expired.
- * @returns {string | null}
- */
-function getStoredJwt() {
-	if (!isBrowser()) return null;
-	const token = localStorage.getItem(STORAGE_KEY_JWT);
-	if (!token) return null;
-	if (isTokenExpired(token)) {
-		localStorage.removeItem(STORAGE_KEY_JWT);
-		return null;
-	}
-	return token;
 }
 
 /**
@@ -231,9 +187,6 @@ export function createWalletAdapter(config) {
 				await wagmiDisconnect(wagmiConfig);
 			} catch (_error) {
 				// proceed — clean up local state regardless
-			}
-			if (isBrowser()) {
-				localStorage.removeItem(STORAGE_KEY_JWT);
 			}
 		},
 
@@ -346,11 +299,12 @@ export function createWalletAdapter(config) {
 		},
 
 		/**
-		 * Get the stored JWT from localStorage. Returns null if absent or expired.
+		 * Get the JWT. Not accessible to JS — lives in httpOnly cookie.
 		 * @returns {string | null}
 		 */
 		getJwt() {
-			return getStoredJwt();
+			// JWT is in httpOnly cookie, not accessible to JS
+			return null;
 		},
 
 		/**
@@ -358,7 +312,7 @@ export function createWalletAdapter(config) {
 		 * 1. GET /auth/nonce/:address -> { nonce, message }
 		 * 2. Sign message via wagmi
 		 * 3. POST /auth/wallet-login with { walletAddress, signature, nonce }
-		 * 4. Store accessToken in localStorage
+		 * 4. Server sets httpOnly JWT cookie
 		 *
 		 * @returns {Promise<{accessToken: string, userId: string, walletAddress: string}>}
 		 */
@@ -372,7 +326,7 @@ export function createWalletAdapter(config) {
 
 			try {
 				// 1. Fetch nonce
-				const nonceRes = await fetch(`${baseUrl}/auth/nonce/${account}`);
+				const nonceRes = await fetch(`${baseUrl}/auth/nonce/${account}`, { credentials: 'include' });
 				if (!nonceRes.ok) {
 					throw new WalletError("NONCE_FAILED", `Failed to get nonce: ${nonceRes.status}`);
 				}
@@ -390,6 +344,7 @@ export function createWalletAdapter(config) {
 				const loginRes = await fetch(`${baseUrl}/auth/wallet-login`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
+					credentials: 'include',
 					body: JSON.stringify({
 						walletAddress: account,
 						signature,
@@ -401,11 +356,6 @@ export function createWalletAdapter(config) {
 					throw new WalletError("LOGIN_FAILED", `Authentication failed: ${loginRes.status}`);
 				}
 				const data = await loginRes.json();
-
-				// 4. Store JWT in localStorage
-				if (isBrowser()) {
-					localStorage.setItem(STORAGE_KEY_JWT, data.accessToken);
-				}
 
 				return {
 					accessToken: data.accessToken,
@@ -422,13 +372,13 @@ export function createWalletAdapter(config) {
 		},
 
 		/**
-		 * Clear the stored JWT from localStorage.
+		 * Logout — clears the server-side httpOnly JWT cookie.
 		 * @returns {Promise<void>}
 		 */
 		async logout() {
-			if (isBrowser()) {
-				localStorage.removeItem(STORAGE_KEY_JWT);
-			}
+			try {
+				await fetch(`${config.apiBaseUrl}/auth/logout`, { method: 'POST', credentials: 'include' });
+			} catch { /* silent */ }
 		},
 
 		/**

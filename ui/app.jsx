@@ -152,6 +152,7 @@ function App() {
 
   return (
     <>
+      <a href="#main" style={{ position: "absolute", left: "-9999px" }} onFocus={(e) => { e.target.style.position = "static"; e.target.style.left = "auto"; }} onBlur={(e) => { e.target.style.position = "absolute"; e.target.style.left = "-9999px"; }}>Skip to content</a>
       <TopBar
         route={route} setRoute={setRoute}
         ctx={ctx}
@@ -159,9 +160,9 @@ function App() {
         onWalletClick={onWalletClick}
         theme={theme} setTheme={setTheme}
       />
-      <div key={route} className="fade-enter" style={{ minHeight: "calc(100vh - 56px)" }}>
+      <main key={route} id="main" className="fade-enter" style={{ minHeight: "calc(100vh - 56px)" }}>
         {Screen}
-      </div>
+      </main>
 
       <ConnectModal
         open={showConnect}

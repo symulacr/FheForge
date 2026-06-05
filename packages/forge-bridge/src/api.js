@@ -151,19 +151,14 @@ export function createApiAdapter(config, walletAdapter) {
 		baseURL,
 		timeout: 15000,
 		headers: { "Content-Type": "application/json" },
+		withCredentials: true,
 	});
 
 	// -----------------------------------------------------------------------
-	// Request interceptor — attach JWT Bearer token
+	// Request interceptor — pass-through (JWT is in httpOnly cookie)
 	// -----------------------------------------------------------------------
 	client.interceptors.request.use(
 		(requestConfig) => {
-			if (walletAdapter && typeof walletAdapter.getJwt === "function") {
-				const token = walletAdapter.getJwt();
-				if (token) {
-					requestConfig.headers.Authorization = `Bearer ${token}`;
-				}
-			}
 			return requestConfig;
 		},
 		(error) => Promise.reject(error),
@@ -212,7 +207,6 @@ export function createApiAdapter(config, walletAdapter) {
 					return new Promise((resolve, reject) => {
 						failedQueue.push({ resolve, reject });
 					}).then((token) => {
-						originalRequest.headers.Authorization = `Bearer ${token}`;
 						return client(originalRequest);
 					});
 				}
@@ -222,9 +216,7 @@ export function createApiAdapter(config, walletAdapter) {
 
 				try {
 					const result = await walletAdapter.refreshJwt();
-					const newToken = result.accessToken;
-					processQueue(null, newToken);
-					originalRequest.headers.Authorization = `Bearer ${newToken}`;
+					processQueue(null, null);
 					return client(originalRequest);
 				} catch (refreshError) {
 					processQueue(/** @type {Error} */ (refreshError));

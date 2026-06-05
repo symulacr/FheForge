@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -32,6 +33,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
+  app.use(cookieParser());
   const port = configService.get<number>('PORT') ?? 3000;
   const nodeEnv = configService.get<string>('NODE_ENV') ?? 'development';
   const allowedOriginsRaw = configService.get<string>('ALLOWED_ORIGINS');

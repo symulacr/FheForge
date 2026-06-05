@@ -92,7 +92,7 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
         {phase !== "idle" && !error && <ProgressList phase={phase} />}
         {error && (
           <div>
-            <p style={{ color: "var(--danger)", fontSize: "0.875rem", padding: "10px 12px", border: "1px solid var(--danger)", background: "var(--danger-soft)" }}>{error}</p>
+            <p role="alert" style={{ color: "var(--danger)", fontSize: "0.875rem", padding: "10px 12px", border: "1px solid var(--danger)", background: "var(--danger-soft)" }}>{error}</p>
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}>
               <button onClick={retry} className="btn ghost sm">Retry</button>
             </div>

@@ -1099,10 +1099,20 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
 
       {/* Body: palette | canvas (full width, no inspector) */}
       <div className="builder-body" style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "180px minmax(0, 1fr)", gap: 1, background: "var(--hairline)" }}>
-        <NodePalette className="palette" nodeTypes={activeNodeTypes} />
+        <NodePalette className="palette" nodeTypes={activeNodeTypes} onAddNode={(type) => {
+          const w = canvasRef.current ? canvasRef.current.getBoundingClientRect() : { width: 800, height: 500 };
+          const id = "n" + Date.now().toString(36);
+          const x = (w.width / 2 - pan.x) / scale - NODE_W / 2;
+          const y = (w.height / 2 - pan.y) / scale - NODE_H / 2;
+          setNodes(ns => [...ns, { id, type, x, y, config: { ...(activeNodeTypes?.[type]?.defaultConfig || activeNodeTypes?.[type]?.config || {}) } }]);
+          setSelected(id);
+        }} />
 
         <div
           ref={canvasRef}
+          tabIndex={0}
+          role="application"
+          aria-label="Strategy canvas"
           className={"canvas" + (dropActive ? " drop-active" : "") + (handTool || spaceHeld ? " hand-tool" : "")}
           data-testid="builder-canvas"
           style={{ position: "relative", border: 0, minHeight: 0, overflow: "hidden" }}
@@ -1466,7 +1476,7 @@ function CanvasEmpty() {
 }
 
 /* ─── Node palette (left) ─── */
-function NodePalette({ className, nodeTypes }) {
+function NodePalette({ className, nodeTypes, onAddNode }) {
   const entries = nodeTypes ? Object.entries(nodeTypes) : [];
   return (
     <aside className={className} style={{ background: "var(--paper)", padding: "14px 12px", overflowY: "auto" }}>
@@ -1481,10 +1491,15 @@ function NodePalette({ className, nodeTypes }) {
           <div
             key={k}
             className="row palette-item"
+            tabIndex={0}
+            role="option"
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData("text/plain", k);
               e.dataTransfer.effectAllowed = "copy";
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && onAddNode) { e.preventDefault(); onAddNode(k); }
             }}
             style={{
               gap: 10, padding: "8px 10px",
@@ -1516,6 +1531,9 @@ function BuilderNode({ n, t, selected, active, past, pendingFrom, isCycle, isDra
     + (isDragging ? " dragging" : "");
   return (
     <div
+      role="button"
+      tabIndex={-1}
+      aria-label={`${t.label} node`}
       onPointerDown={(e) => onPointerDown(e, n.id)}
       onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick && onDoubleClick(n.id); }}
       className={klass}
@@ -1616,7 +1634,7 @@ function NodeConfig({ node, setNodes, locked, nodeTypes }) {
 
       {node.type === "supply" && <>
         <Field label="Asset">
-          <Select value={node.config.asset} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("asset", v)} />
+          <Select value={node.config.asset} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("asset", v)} aria-label="Supply asset" />
         </Field>
         <Field label="Amount" hint="encrypted client-side before submission">
           <TextInput value={node.config.amount} suffix={node.config.asset} onChange={v => update("amount", v)} />
@@ -1625,7 +1643,7 @@ function NodeConfig({ node, setNodes, locked, nodeTypes }) {
 
       {node.type === "borrow" && <>
         <Field label="Asset">
-          <Select value={node.config.asset} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("asset", v)} />
+          <Select value={node.config.asset} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("asset", v)} aria-label="Borrow asset" />
         </Field>
         <Field label="Target LTV" hint="ratio checked on ciphertext">
           <Slider value={node.config.ltv} min={0} max={80} liq={80} onChange={v => update("ltv", v)} />
@@ -1638,10 +1656,10 @@ function NodeConfig({ node, setNodes, locked, nodeTypes }) {
       {node.type === "swap" && <>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="From">
-            <Select value={node.config.from} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("from", v)} />
+            <Select value={node.config.from} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("from", v)} aria-label="Swap from asset" />
           </Field>
           <Field label="To">
-            <Select value={node.config.to} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("to", v)} />
+            <Select value={node.config.to} options={["USDC","ETH","WBTC","ARB","DAI"]} onChange={v => update("to", v)} aria-label="Swap to asset" />
           </Field>
         </div>
         <Field label="Slippage" hint="enforced via minAmountOut">
@@ -1752,9 +1770,10 @@ function TextInput({ value, suffix, onChange, readOnly }) {
   );
 }
 
-function Select({ value, options, onChange }) {
+function Select({ value, options, onChange, "aria-label": ariaLabel }) {
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
+      aria-label={ariaLabel}
       style={{
         padding: "7px 10px",
         border: "1px solid var(--hairline)", background: "var(--paper)", color: "var(--ink)",

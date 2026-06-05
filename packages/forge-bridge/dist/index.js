@@ -120,15 +120,10 @@ function createApiAdapter(config, walletAdapter) {
   const client = axios.create({
     baseURL,
     timeout: 15000,
-    headers: { "Content-Type": "application/json" }
+    headers: { "Content-Type": "application/json" },
+    withCredentials: true
   });
   client.interceptors.request.use((requestConfig) => {
-    if (walletAdapter && typeof walletAdapter.getJwt === "function") {
-      const token = walletAdapter.getJwt();
-      if (token) {
-        requestConfig.headers.Authorization = `Bearer ${token}`;
-      }
-    }
     return requestConfig;
   }, (error) => Promise.reject(error));
   let isRefreshing = false;
@@ -150,7 +145,6 @@ function createApiAdapter(config, walletAdapter) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         }).then((token) => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
           return client(originalRequest);
         });
       }
@@ -158,9 +152,7 @@ function createApiAdapter(config, walletAdapter) {
       isRefreshing = true;
       try {
         const result = await walletAdapter.refreshJwt();
-        const newToken = result.accessToken;
-        processQueue(null, newToken);
-        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        processQueue(null, null);
         return client(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError);
@@ -8328,7 +8320,6 @@ import {
 } from "@wagmi/core";
 import { createPublicClient as createPublicClient2, http as viemHttp } from "viem";
 import { arbitrumSepolia as arbitrumSepolia2 } from "viem/chains";
-var STORAGE_KEY_JWT = "auth_token";
 var _publicClient = null;
 var ARB_SEPOLIA_CHAIN_PARAMS = {
   chainId: "0x66eee",
@@ -8366,34 +8357,6 @@ function getPublicClient(config) {
   }
   return _publicClient;
 }
-function decodeJwtPayload(token) {
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3)
-      return null;
-    return JSON.parse(atob(parts[1]));
-  } catch {
-    return null;
-  }
-}
-function isTokenExpired(token) {
-  const payload = decodeJwtPayload(token);
-  if (!payload || typeof payload.exp !== "number")
-    return true;
-  return Date.now() >= payload.exp * 1000;
-}
-function getStoredJwt() {
-  if (!isBrowser())
-    return null;
-  const token = localStorage.getItem(STORAGE_KEY_JWT);
-  if (!token)
-    return null;
-  if (isTokenExpired(token)) {
-    localStorage.removeItem(STORAGE_KEY_JWT);
-    return null;
-  }
-  return token;
-}
 function createWalletAdapter(config) {
   const wagmiConfig = getWagmiConfig(config);
   if (isBrowser()) {
@@ -8429,9 +8392,6 @@ function createWalletAdapter(config) {
       try {
         await wagmiDisconnect(wagmiConfig);
       } catch (_error) {}
-      if (isBrowser()) {
-        localStorage.removeItem(STORAGE_KEY_JWT);
-      }
     },
     async getProvider() {
       const activeConnection = getConnections(wagmiConfig)?.[0];
@@ -8493,7 +8453,7 @@ function createWalletAdapter(config) {
       return wagmiGetAccount(wagmiConfig).status === "connected";
     },
     getJwt() {
-      return getStoredJwt();
+      return null;
     },
     async login() {
       const account = this.getAccount();
@@ -8502,7 +8462,7 @@ function createWalletAdapter(config) {
       }
       const baseUrl = config.apiBaseUrl;
       try {
-        const nonceRes = await fetch(`${baseUrl}/auth/nonce/${account}`);
+        const nonceRes = await fetch(`${baseUrl}/auth/nonce/${account}`, { credentials: "include" });
         if (!nonceRes.ok) {
           throw new WalletError("NONCE_FAILED", `Failed to get nonce: ${nonceRes.status}`);
         }
@@ -8515,6 +8475,7 @@ function createWalletAdapter(config) {
         const loginRes = await fetch(`${baseUrl}/auth/wallet-login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({
             walletAddress: account,
             signature,
@@ -8526,9 +8487,6 @@ function createWalletAdapter(config) {
           throw new WalletError("LOGIN_FAILED", `Authentication failed: ${loginRes.status}`);
         }
         const data = await loginRes.json();
-        if (isBrowser()) {
-          localStorage.setItem(STORAGE_KEY_JWT, data.accessToken);
-        }
         return {
           accessToken: data.accessToken,
           userId: data.userId,
@@ -8541,9 +8499,9 @@ function createWalletAdapter(config) {
       }
     },
     async logout() {
-      if (isBrowser()) {
-        localStorage.removeItem(STORAGE_KEY_JWT);
-      }
+      try {
+        await fetch(`${config.apiBaseUrl}/auth/logout`, { method: "POST", credentials: "include" });
+      } catch {}
     },
     onChainChange(cb) {
       if (unwatchAccountFn) {

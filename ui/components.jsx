@@ -333,11 +333,25 @@ function MDGroup({ children }) {
 
 /* ─── Modal shell ─── */
 function Modal({ open, onClose, children, width = 720 }) {
+  const shellRef = useRef(null);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "Tab" && shellRef.current) {
+        const focusable = shellRef.current.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusable.length) return;
+        const first = focusable[0], last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
+    requestAnimationFrame(() => {
+      const first = shellRef.current?.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (first) first.focus();
+    });
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
@@ -346,7 +360,7 @@ function Modal({ open, onClose, children, width = 720 }) {
   if (!open) return null;
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-shell" onClick={(e) => e.stopPropagation()} style={{ width: `min(${width}px, 100%)` }}>
+      <div ref={shellRef} className="modal-shell" onClick={(e) => e.stopPropagation()} style={{ width: `min(${width}px, 100%)` }}>
         {children}
       </div>
     </div>

@@ -476,6 +476,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
             <select
               value={borrowAssetId || (markets.find(m => m.asset !== market.asset) || {}).asset || ""}
               onChange={(e) => setBorrowAssetId(e.target.value)}
+              aria-label="Borrow asset"
               style={{ width: "100%", padding: "8px", background: "var(--input)", color: "var(--foreground)", border: "1px solid var(--border)" }}
               data-testid="borrow-asset-select"
             >
@@ -529,17 +530,17 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         </div>
 
         {crStep === "decrypting" && (
-          <div style={{ marginTop: 8, padding: "10px 12px", background: "var(--accent-soft, #0a1a2a)", border: "1px solid var(--accent)", color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
+          <div role="status" aria-live="polite" style={{ marginTop: 8, padding: "10px 12px", background: "var(--accent-soft, #0a1a2a)", border: "1px solid var(--accent)", color: "var(--accent)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
             <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Decrypting</strong> · waiting for CoFHE threshold network · est. 10-30s
           </div>
         )}
         {crStep === "done" && (
-          <div style={{ marginTop: 8, padding: "10px 12px", background: "var(--success-soft, #0a2a1a)", border: "1px solid var(--success)", color: "var(--success)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
+          <div role="status" aria-live="polite" style={{ marginTop: 8, padding: "10px 12px", background: "var(--success-soft, #0a2a1a)", border: "1px solid var(--success)", color: "var(--success)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
             <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Confirmed</strong> · {side} complete
           </div>
         )}
         {crStep === "failed" && crError && (
-          <div style={{ marginTop: 8, padding: "10px 12px", background: "var(--danger-soft, #2a0a0a)", border: "1px solid var(--destructive)", color: "var(--destructive)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
+          <div role="alert" aria-live="assertive" style={{ marginTop: 8, padding: "10px 12px", background: "var(--danger-soft, #2a0a0a)", border: "1px solid var(--destructive)", color: "var(--destructive)", fontFamily: "var(--mono)", fontSize: 11.5 }}>
             <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>Failed</strong> · {crError}
           </div>
         )}
