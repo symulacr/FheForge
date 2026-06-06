@@ -65,10 +65,7 @@ describe('GovernanceController', () => {
       const req = {
         user: { address: '0xVoterTestAddress' },
       } as unknown as Request;
-      const result = controller.castVote(
-        { proposalId: 'any-id', support: true, weight: 100 },
-        req,
-      );
+      const result = controller.castVote({ proposalId: 'any-id', support: true, weight: 100 }, req);
       expect(result.success).toBe(false);
       expect(result.message).toContain('coming soon');
     });

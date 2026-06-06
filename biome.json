@@ -36,7 +36,8 @@
 				"backend/apps/src/**/*.interceptor.ts",
 				"backend/apps/src/**/*.module.ts",
 				"backend/apps/src/**/*.repository.impl.ts",
-				"backend/apps/src/**/*.repository.ts"
+				"backend/apps/src/**/*.repository.ts",
+				"backend/apps/src/**/*-simulator.ts"
 			],
 			"linter": {
 				"rules": {
