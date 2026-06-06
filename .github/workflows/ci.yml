@@ -58,17 +58,14 @@ jobs:
         run: bunx eslint 'src/**/*.ts'
         working-directory: backend/apps
 
-  prettier:
-    name: Prettier
+  biome:
+    name: Biome
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with: { bun-version: "1.3.13" }
-      - run: bun install
-        working-directory: backend/apps
-      - run: bunx prettier --check '**/*.{ts,tsx,js,md,json,yml,yaml}' --ignore-path .gitignore
-        working-directory: backend/apps
+      - run: bunx @biomejs/biome check .
 
   # ───────────── Stage 2: Type-check ─────────────
 
