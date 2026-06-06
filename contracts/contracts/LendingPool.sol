@@ -114,7 +114,9 @@ contract LendingPool is FheForgeBase {
 
     function _commit(euint128 encAmount) internal returns (bytes32 commitId) {
         _validateCiphertext(encAmount);
-        commitId = keccak256(abi.encode(msg.sender, block.number, _nonces[msg.sender]++));
+        uint256 nonce = _nonces[msg.sender];
+        _nonces[msg.sender] = nonce + 1;
+        commitId = keccak256(abi.encode(msg.sender, block.number, nonce));
         _commits[commitId] = Commitment({
             encryptedAmount: encAmount,
             timestamp: block.timestamp,

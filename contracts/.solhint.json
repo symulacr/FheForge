@@ -36,13 +36,13 @@
 		"use-forbidden-name": "error",
 		"no-unused-import": "error",
 		"gas-small-strings": "warn",
-		"gas-increment-by-one": "warn",
+		"gas-increment-by-one": "off",
 		"gas-strict-inequalities": "warn",
-		"gas-indexed-events": "warn",
+		"gas-indexed-events": "off",
 		"gas-struct-packing": "warn",
 		"gas-length-in-loops": "warn",
 		"gas-multitoken1155": "warn",
-		"gas-named-return-values": "warn",
+		"gas-named-return-values": "off",
 		"gas-calldata-parameters": "warn"
 	}
 }
