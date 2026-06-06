@@ -26,6 +26,27 @@
 	"linter": {
 		"enabled": true
 	},
+	"overrides": [
+		{
+			"includes": [
+				"backend/apps/src/**/*.controller.ts",
+				"backend/apps/src/**/*.service.ts",
+				"backend/apps/src/**/*.guard.ts",
+				"backend/apps/src/**/*.strategy.ts",
+				"backend/apps/src/**/*.interceptor.ts",
+				"backend/apps/src/**/*.module.ts",
+				"backend/apps/src/**/*.repository.impl.ts",
+				"backend/apps/src/**/*.repository.ts"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"useImportType": "off"
+					}
+				}
+			}
+		}
+	],
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "single",
