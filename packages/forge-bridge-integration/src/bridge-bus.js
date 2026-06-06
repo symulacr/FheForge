@@ -177,16 +177,10 @@ export class BridgeBus {
     if (event.startsWith('error:')) {
       const errors = [...this._state.meta.errors, data];
       const trimmed = errors.length > this._maxErrors ? errors.slice(-this._maxErrors) : errors;
-      this._state = {
-        ...this._state,
-        meta: {
-          ...this._state.meta,
-          dataVersion: this._state.meta.dataVersion + 1,
-          errors: trimmed,
-        },
-      };
+      // Mutate errors in-place WITHOUT creating new state reference
+      this._state.meta.errors = trimmed;
+      // Emit the error event for targeted listeners, but NOT _change
       this._emit(event, data);
-      this._emit('_change', this._state);
       return;
     }
 
@@ -280,6 +274,8 @@ export class BridgeBus {
 
     // Track unique successfully-updated events for coalesced emission
     const eventsToEmit = [];
+    const errorEventsToEmit = [];
+    let hasDataUpdates = false;
 
     // Work on a shallow clone so getSnapshot() returns a new reference
     const next = { ...this._state };
@@ -287,10 +283,10 @@ export class BridgeBus {
     for (const { event, data } of updates) {
       const mapping = EVENT_MAP[event];
 
-      // Error events are always processed regardless of EVENT_MAP
+      // Error events: record but don't affect dataVersion or state reference
       if (event.startsWith('error:')) {
         next.meta.errors.push(data);
-        if (!eventsToEmit.includes(event)) eventsToEmit.push(event);
+        if (!errorEventsToEmit.includes(event)) errorEventsToEmit.push(event);
         continue;
       }
 
@@ -308,6 +304,8 @@ export class BridgeBus {
           next[domain] = { ...next[domain], [key]: data };
         }
 
+        hasDataUpdates = true;
+
         // Track for emission deduplication
         if (!eventsToEmit.includes(event)) {
           eventsToEmit.push(event);
@@ -315,17 +313,26 @@ export class BridgeBus {
       }
     }
 
-    next.meta.dataVersion++;
-
     // LRU eviction: trim oldest errors when cap is exceeded
     if (next.meta.errors.length > this._maxErrors) {
       next.meta.errors = next.meta.errors.slice(-this._maxErrors);
     }
 
-    // Replace state atomically so getSnapshot() returns a new reference
-    this._state = next;
+    // Mutate errors in-place (no new reference needed for error-only batches)
+    this._state.meta.errors = next.meta.errors;
 
-    // Emit all events once, after all state changes are applied
+    // Only bump dataVersion and create new state reference for actual data updates
+    if (hasDataUpdates) {
+      next.meta.dataVersion++;
+      this._state = next;
+    }
+
+    // Emit error events for targeted listeners (no _change)
+    for (const event of errorEventsToEmit) {
+      this._emit(event, null); // data already stored
+    }
+
+    // Emit data events once, after all state changes are applied
     for (const event of eventsToEmit) {
       const mapping = EVENT_MAP[event];
       if (mapping) {
@@ -334,7 +341,9 @@ export class BridgeBus {
       }
     }
 
-    this._emit('_change', this._state);
+    if (hasDataUpdates) {
+      this._emit('_change', this._state);
+    }
   }
 
   /**
