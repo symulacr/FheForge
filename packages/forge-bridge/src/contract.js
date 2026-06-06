@@ -274,6 +274,7 @@ const ERC20_READ_ABI = [
  * @property {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>} repayExecute
  * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} withdrawCommit
  * @property {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>} withdrawExecute
+ * @property {(account: `0x${string}`) => Promise<{txHash: null, status: 'no-op'}>} settlePosition
  */
 
 /**
@@ -585,7 +586,7 @@ export function createContractAdapter(config, options = {}) {
      * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
     repayExecute: async (token, commitId, ctHash, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash || commitId);
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash);
       const wc = getWc();
       return estimateSendAndWait(
         publicClient,
