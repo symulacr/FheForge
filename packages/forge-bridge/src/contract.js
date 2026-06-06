@@ -312,9 +312,6 @@ export function createContractAdapter(config, options = {}) {
   /** @type {import('viem').WalletClient | null} */
   let _walletClient = null;
 
-  /** @type {any | null} */
-  const _walletProvider = null;
-
   // ── Read methods ──────────────────────────────────────────────────────
 
   const read = {
@@ -831,7 +828,6 @@ export function createContractAdapter(config, options = {}) {
     if (_walletClient) return _walletClient;
 
     const provider =
-      _walletProvider ||
       (typeof window !== 'undefined' && /** @type {any} */ (window).ethereum
         ? /** @type {any} */ (window).ethereum
         : null);

@@ -381,9 +381,6 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
   // Fullscreen
   const [fullscreen, setFullscreen] = useStateB(false);
 
-  // Inspector visibility
-  const [showInspector, setShowInspector] = useStateB(true);
-
   // AI generation state
   const [aiPrompt, setAiPrompt] = useStateB("");
   const [aiLoading, setAiLoading] = useStateB(false);
@@ -575,8 +572,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
       // Fullscreen toggle
       if (e.key === "f" && !meta) { e.preventDefault(); setFullscreen(f => !f); return; }
 
-      // Inspector toggle
-      if (e.key === "i" && !meta) { e.preventDefault(); setShowInspector(s => !s); return; }
+      // Inspector removed - click node to edit inline
 
       // Quick-add node by number key (1..5)
       const types = activeNodeTypes ? Object.keys(activeNodeTypes).slice(0, 5) : [];
@@ -1055,7 +1051,6 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
           <span style={{ width: 1, alignSelf: "stretch", background: "var(--hairline)", margin: "0 2px" }} />
           <ToolbarOverflow
             fullscreen={fullscreen} setFullscreen={setFullscreen}
-            showInspector={showInspector} setShowInspector={setShowInspector}
             onShowCheat={() => setShowCheat(true)}
           />
           <span style={{ width: 1, alignSelf: "stretch", background: "var(--hairline)", margin: "0 2px" }} />
@@ -2022,7 +2017,7 @@ function KeyboardCheatsheet({ onClose }) {
 
 
 /* ─── ToolbarOverflow: a compact ⋯ menu ─── */
-function ToolbarOverflow({ fullscreen, setFullscreen, showInspector, setShowInspector, onShowCheat }) {
+function ToolbarOverflow({ fullscreen, setFullscreen, onShowCheat }) {
   const [open, setOpen] = useStateB(false);
   const ref = useRefB(null);
   useEffectB(() => {
