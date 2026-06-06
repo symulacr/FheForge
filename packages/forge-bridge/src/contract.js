@@ -266,13 +266,13 @@ const ERC20_READ_ABI = [
  * @typedef {Object} ContractWriteMethods
  * @property {(params: object, account: `0x${string}`) => Promise<TransactionResult>} composerOpenPosition
  * @property {(tokenIn: `0x${string}`, tokenOut: `0x${string}`, amountIn: bigint, minAmountOut: bigint, deadlineOffset: bigint, account: `0x${string}`) => Promise<TransactionResult>} submitSwapIntent
- * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} shieldCommit
+ * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} shieldCommit
  * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} shieldExecute
- * @property {(collateralToken: `0x${string}`, borrowToken: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} borrowCommit
+ * @property {(collateralToken: `0x${string}`, borrowToken: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} borrowCommit
  * @property {(commitId: string, account: `0x${string}`) => Promise<TransactionResult>} borrowExecute
- * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} repayCommit
+ * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} repayCommit
  * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} repayExecute
- * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>} withdrawCommit
+ * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} withdrawCommit
  * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} withdrawExecute
  */
 
@@ -432,6 +432,7 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
+      const ctHash = encAmount?.ctHash ?? undefined;
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -451,12 +452,12 @@ export function createContractAdapter(config, options = {}) {
             log.data !== '0x' &&
             log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
           ) {
-            commitId = log.topics[1] ?? log.data.slice(0, 66);
+            commitId = log.topics[3] ?? log.data.slice(0, 66);
             break;
           }
         }
       }
-      return { ...result, commitId };
+      return { ...result, commitId, ctHash };
     },
 
     /**
@@ -491,6 +492,7 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), borrowToken)
           : undefined;
+      const ctHash = encAmount?.ctHash ?? undefined;
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -510,12 +512,12 @@ export function createContractAdapter(config, options = {}) {
             log.data !== '0x' &&
             log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
           ) {
-            commitId = log.topics[1] ?? log.data.slice(0, 66);
+            commitId = log.topics[3] ?? log.data.slice(0, 66);
             break;
           }
         }
       }
-      return { ...result, commitId };
+      return { ...result, commitId, ctHash };
     },
 
     /**
@@ -550,6 +552,7 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
+      const ctHash = encAmount?.ctHash ?? undefined;
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -569,12 +572,12 @@ export function createContractAdapter(config, options = {}) {
             log.data !== '0x' &&
             log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
           ) {
-            commitId = log.topics[1] ?? log.data.slice(0, 66);
+            commitId = log.topics[3] ?? log.data.slice(0, 66);
             break;
           }
         }
       }
-      return { ...result, commitId };
+      return { ...result, commitId, ctHash };
     },
 
     /**
@@ -609,6 +612,7 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
+      const ctHash = encAmount?.ctHash ?? undefined;
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -628,12 +632,12 @@ export function createContractAdapter(config, options = {}) {
             log.data !== '0x' &&
             log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
           ) {
-            commitId = log.topics[1] ?? log.data.slice(0, 66);
+            commitId = log.topics[3] ?? log.data.slice(0, 66);
             break;
           }
         }
       }
-      return { ...result, commitId };
+      return { ...result, commitId, ctHash };
     },
 
     /**
