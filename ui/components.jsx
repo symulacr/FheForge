@@ -419,7 +419,7 @@ function TopBar({ route, setRoute, ctx, onPermitClick, onWalletClick, theme, set
                 secondsLeft={ctx.permitSeconds}
                 onClick={onPermitClick}
               />
-              <WalletChip address={ctx.address} chain="421614" onClick={onWalletClick} />
+              <WalletChip address={ctx.address} chain="Arbitrum Sepolia" onClick={onWalletClick} />
             </>
           ) : (
             <button className="btn sm" onClick={onWalletClick}>

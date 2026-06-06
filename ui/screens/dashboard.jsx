@@ -273,7 +273,8 @@ function EmptyListMessageD({ children }) {
 
 /* ─── Overview (default detail) ─── */
 function Overview({ locked, grantPermit, setRoute, bridgeData, positions, strategies, activities }) {
-  const netValue = firstD(bridgeData, ["portfolioNetValue", "netValue", "totalValue"], null);
+  const walletBalance = bridgeData.walletBalance || {};
+  const netValue = walletBalance.netValue || firstD(bridgeData, ["portfolioNetValue", "netValue", "totalValue"], null);
   const portfolioLTV = firstD(bridgeData, ["portfolioLTV", "ltv"], null);
   const ltvValue = typeof portfolioLTV === "object" && portfolioLTV ? firstD(portfolioLTV, ["value", "ltv"], null) : portfolioLTV;
   const liqAt = typeof portfolioLTV === "object" && portfolioLTV ? firstD(portfolioLTV, ["liqAt", "liquidationThreshold"], null) : null;
