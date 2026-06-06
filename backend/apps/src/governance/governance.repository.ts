@@ -87,11 +87,12 @@ export class GovernanceRepository {
     existing.push(vote);
     this.votes.set(proposalId, existing);
 
-    if (vote.support) {
+    if (vote.support === true) {
       proposal.votesFor += vote.weight;
-    } else {
+    } else if (vote.support === false) {
       proposal.votesAgainst += vote.weight;
     }
+    // abstain (null) recorded in recentVotes but does not affect tally
   }
 
   async updateStatus(

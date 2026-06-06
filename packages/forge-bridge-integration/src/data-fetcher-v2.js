@@ -176,6 +176,9 @@
         this._pollIntervals.markets,
       );
 
+      // Proposals are public data — fetch on public polling too
+      this._fetchProposals();
+
       // Community, templates, and nodeTypes are NOT fetched here —
       // those endpoints (/strategies, /defi-strategies, /defi-modules)
       // require JWT auth. They are fetched in startAuthenticatedPolling().

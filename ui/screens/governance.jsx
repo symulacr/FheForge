@@ -167,6 +167,8 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
       const res = await bridgeApi.castVote({ proposalId: p.id, support, weight: 1000 });
       if (res && res.status === "success" || res && res.data && res.data.success) {
         setVoteResult("success");
+        // Refresh proposals after successful vote
+        setTimeout(() => window.location.reload(), 800);
       } else {
         setVoteResult((res && res.data && res.data.message) || "vote rejected");
       }

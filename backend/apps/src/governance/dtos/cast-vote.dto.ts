@@ -1,14 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsNumber, IsUUID, Min } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class CastVoteDto {
   @ApiProperty({ example: '550e8400-e29b-41d4-a716-446655440000' })
   @IsUUID()
   proposalId: string;
 
-  @ApiProperty({ example: true, description: 'true = for, false = against' })
+  @ApiProperty({ example: true, description: 'true = for, false = against, null = abstain' })
+  @IsOptional()
   @IsBoolean()
-  support: boolean;
+  support: boolean | null;
 
   @ApiProperty({
     example: 1000,

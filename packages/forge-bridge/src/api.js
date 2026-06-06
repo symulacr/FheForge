@@ -460,7 +460,7 @@ export function createApiAdapter(config, walletAdapter) {
       /**
        * Cast a vote on an active proposal.
        * POST /governance/vote  (uncached, requires JWT)
-       * @param {{ proposalId: string; support: boolean; votes?: number }} data
+       * @param {{ proposalId: string; support: boolean | null, weight?: number }} data
        * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
        */
       castVote: (data) => post('/governance/vote', data),
@@ -542,7 +542,7 @@ export function createApiAdapter(config, walletAdapter) {
  * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} strategies.listStrategies
  * @property {object} governance
  * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} governance.listProposals
- * @property {(data: { proposalId: string; support: boolean; votes?: number }) => Promise<ApiResult>} governance.castVote
+ * @property {(data: { proposalId: string; support: boolean | null; weight?: number }) => Promise<ApiResult>} governance.castVote
  * @property {object} activities
  * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} activities.getActivities
  * @property {object} defiModules

@@ -628,7 +628,8 @@ export function useGovernanceVote() {
   /** @type {(proposalId: string, support: boolean, votes: bigint) => Promise<any>} */
   const castVote = useCallback(
     async (proposalId, support, votes) => {
-      return bridge.api.governance.castVote({ proposalId, support, votes });
+      const weight = typeof votes === 'bigint' ? Number(votes) : votes;
+      return bridge.api.governance.castVote({ proposalId, support, weight });
     },
     [bridge],
   );
