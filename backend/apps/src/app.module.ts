@@ -13,6 +13,7 @@ import { DefiStrategiesModule } from './defi_strategies/defi_strategies.module';
 import { DefiTokenModule } from './defi_token/defi_token.module';
 import { EventIndexerModule } from './event-indexer/event-indexer.module';
 import { GovernanceModule } from './governance/governance.module';
+import { LendingModule } from './lending/lending.module';
 import { MarketsModule } from './markets/markets.module';
 import { MetricsController } from './metrics.controller';
 import { SharedModule } from './shared/shared.module';
@@ -41,6 +42,7 @@ import { UsersModule } from './users/users.module';
     EventIndexerModule,
     StatsModule,
     MarketsModule,
+    LendingModule,
     GovernanceModule,
   ],
   controllers: [AppController, MetricsController],
