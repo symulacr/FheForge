@@ -1146,6 +1146,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                   }
                 } else {
                   // Single node: use commit-reveal for supply/borrow, direct for swap
+                  let result = null;
                   for (const nodeId of order) {
                     const node = nodes.find(n => n.id === nodeId);
                     if (!node) continue;
