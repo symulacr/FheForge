@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { DefiStrategyVersion } from '../domain/defi_strategy_version.entity';
 import { DefiStrategyVersionRepository } from '../domain/defi_strategy_version.repository';
 import type { CreateDefiStrategyVersionDto } from '../interfaces/dto/create_defi_strategy_version.dto';
-import type { UpdateDefiStrategyVersionDto } from '../interfaces/dto/update_defi_strategy_version.dto';
 
 @Injectable()
 export class DefiStrategyVersionService {
@@ -49,27 +48,5 @@ export class DefiStrategyVersionService {
         data.workflow_graph,
       ),
     );
-  }
-
-  public async update(
-    id: string,
-    data: UpdateDefiStrategyVersionDto,
-  ): Promise<DefiStrategyVersion> {
-    return this.defiStrategyVersionRepository.update(id, {
-      workflow_json: data.workflow_json,
-      workflow_graph: data.workflow_graph,
-    });
-  }
-
-  public async delete(id: string): Promise<void> {
-    await this.defiStrategyVersionRepository.delete(id);
-  }
-
-  public async getByStrategyId(strategy_id: string): Promise<DefiStrategyVersion[]> {
-    return this.defiStrategyVersionRepository.getByStrategyId(strategy_id);
-  }
-
-  public async getById(id: string): Promise<DefiStrategyVersion | null> {
-    return this.defiStrategyVersionRepository.getById(id);
   }
 }

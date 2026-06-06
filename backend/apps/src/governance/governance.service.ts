@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { CastVoteDto } from './dtos/cast-vote.dto';
-import type { CreateProposalDto } from './dtos/create-proposal.dto';
 import type { ProposalResponseDto, VoteDto } from './dtos/proposal-response.dto';
 import { GovernanceRepository } from './governance.repository';
 
@@ -10,27 +9,6 @@ export class GovernanceService {
 
   async getProposals(status?: string): Promise<ProposalResponseDto[]> {
     return this.repository.findAll(status);
-  }
-
-  async getProposal(id: string): Promise<ProposalResponseDto | undefined> {
-    return this.repository.findById(id);
-  }
-
-  async createProposal(dto: CreateProposalDto): Promise<ProposalResponseDto> {
-    return this.repository.create({
-      ...dto,
-      votesFor: 0,
-      votesAgainst: 0,
-      status: 'pending',
-      proposer: '0xAdminAddress',
-    });
-  }
-
-  async getVotePower(address: string): Promise<{ address: string; power: number }> {
-    // Mock: return a synthetic vote power based on address hash
-    const hash = [...address.toLowerCase()].reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const power = (hash % 50_000) + 1_000;
-    return { address, power };
   }
 
   async castVote(dto: CastVoteDto, voter: string): Promise<VoteDto> {
@@ -55,29 +33,11 @@ export class GovernanceService {
 
     const vote: VoteDto = {
       voter,
-      support: dto.support,
+      support: dto.support ?? false,
       weight: dto.weight,
       votedAt: new Date().toISOString(),
     };
     await this.repository.addVote(dto.proposalId, vote);
     return vote;
-  }
-
-  async executeProposal(id: string): Promise<ProposalResponseDto | undefined> {
-    const proposal = await this.repository.findById(id);
-    if (!proposal) {
-      return undefined;
-    }
-    if (proposal.status !== 'passed') {
-      throw new BadRequestException(
-        `Proposal ${id} must be passed (currently: ${proposal.status})`,
-      );
-    }
-    const majority = proposal.votesFor > proposal.votesAgainst;
-    const quorum = proposal.votesFor + proposal.votesAgainst >= 460_000;
-    if (!majority || !quorum) {
-      throw new BadRequestException(`Proposal ${id} does not meet quorum/majority requirements`);
-    }
-    return this.repository.updateStatus(id, 'executed');
   }
 }

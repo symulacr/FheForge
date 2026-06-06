@@ -11,36 +11,6 @@ export class StrategyService {
     readonly _fhenixStrategy: FhenixStrategyService,
   ) {}
 
-  async create(dto: {
-    strategistName: string;
-    apy: number;
-    tags?: string[];
-    strategistHandle?: string;
-    assets?: string[];
-    agents?: string[];
-    chains?: string[];
-  }): Promise<Strategy> {
-    const id = this.generateId();
-    const strategy = new Strategy(
-      id,
-      dto.strategistName,
-      dto.apy,
-      dto.tags ?? [],
-      dto.strategistHandle,
-      dto.assets ?? [],
-      dto.agents ?? [],
-      dto.chains ?? [],
-    );
-    await this.strategiesRepo.save(strategy);
-    return strategy;
-  }
-
-  async findById(id: string): Promise<Strategy> {
-    const found = await this.strategiesRepo.findById(id);
-    if (!found) throw new Error('Strategy not found');
-    return found;
-  }
-
   async findAll(
     sortBy?: string,
     order: 'asc' | 'desc' = 'desc',
@@ -68,31 +38,5 @@ export class StrategyService {
       data: data.map((s) => toStrategyResponse(s)),
       meta: { total, limit: params.limit },
     };
-  }
-
-  async update(
-    id: string,
-    fields: Partial<{
-      strategistName: string;
-      apy: number;
-      tags: string[];
-      strategistHandle?: string;
-      assets: string[];
-      agents: string[];
-      chains: string[];
-    }>,
-  ): Promise<Strategy> {
-    const strategy = await this.findById(id);
-    strategy.update(fields);
-    await this.strategiesRepo.save(strategy);
-    return strategy;
-  }
-
-  async deleteById(id: string): Promise<void> {
-    await this.strategiesRepo.deleteById(id);
-  }
-
-  private generateId(): string {
-    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 }

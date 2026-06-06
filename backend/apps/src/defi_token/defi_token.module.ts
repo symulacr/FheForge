@@ -3,11 +3,9 @@ import { SupabaseModule } from '../shared/supabase.module';
 import { DefiTokenService } from './application/defi_token.service';
 import { DefiTokenRepository } from './domain/defi_token.repository';
 import { DefiTokenRepositoryImpl } from './infrastructure/defi_token.repository.impl';
-import { DefiTokenController } from './interfaces/defi_token.controller';
 
 @Module({
   imports: [SupabaseModule],
-  controllers: [DefiTokenController],
   providers: [
     DefiTokenService,
     {

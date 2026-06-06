@@ -10,7 +10,6 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { DefiModulesModule } from './defi_modules/defi_modules.module';
 import { DefiStrategiesModule } from './defi_strategies/defi_strategies.module';
-import { DefiTokenModule } from './defi_token/defi_token.module';
 import { EventIndexerModule } from './event-indexer/event-indexer.module';
 import { GovernanceModule } from './governance/governance.module';
 import { LendingModule } from './lending/lending.module';
@@ -20,7 +19,6 @@ import { SharedModule } from './shared/shared.module';
 import { SupabaseModule } from './shared/supabase.module';
 import { StatsModule } from './stats/stats.module';
 import { StrategiesModule } from './strategies/strategies.module';
-import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -32,12 +30,10 @@ import { UsersModule } from './users/users.module';
     SharedModule,
     AuthModule,
     SupabaseModule,
-    UsersModule,
     StrategiesModule,
     ActivitiesModule,
     DefiModulesModule,
     DefiStrategiesModule,
-    DefiTokenModule,
     AiStrategyBuilderModule,
     EventIndexerModule,
     StatsModule,

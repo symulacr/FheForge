@@ -1,4 +1,3 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { GovernanceController } from './governance.controller';
 import { GovernanceRepository } from './governance.repository';
@@ -30,41 +29,6 @@ describe('GovernanceController', () => {
     it('should filter by status', async () => {
       const result = await controller.getProposals('active');
       expect(result.every((p) => p.status === 'active')).toBe(true);
-    });
-  });
-
-  describe('GET /governance/proposals/:id', () => {
-    it('should return a proposal by id', async () => {
-      const all = await controller.getProposals();
-      const id = all[0].id;
-      const proposal = await controller.getProposal(id);
-      expect(proposal.id).toBe(id);
-    });
-
-    it('should throw NotFoundException for unknown id', async () => {
-      await expect(controller.getProposal('unknown-id')).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('GET /governance/vote-power/:address', () => {
-    it('should return vote power for an address', async () => {
-      const result = await controller.getVotePower('0x1234567890abcdef');
-      expect(result.address).toBe('0x1234567890abcdef');
-      expect(result.power).toBeGreaterThan(0);
-    });
-  });
-
-  describe('POST /governance/proposals', () => {
-    it('should create a proposal', async () => {
-      const dto = {
-        title: 'Test proposal',
-        description: 'Description of test proposal',
-        endsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        payload: { token: 'WETH', newCollateralFactor: 0.85 },
-      };
-      const result = await controller.createProposal(dto);
-      expect(result.title).toBe(dto.title);
-      expect(result.status).toBe('pending');
     });
   });
 
@@ -110,20 +74,6 @@ describe('GovernanceController', () => {
       );
       expect(result.success).toBe(false);
       expect(result.message).toContain('already voted');
-    });
-  });
-
-  describe('PATCH /governance/proposals/:id/execute', () => {
-    it('should reject execution of non-passed proposal', async () => {
-      const all = await controller.getProposals();
-      const active = all.find((p) => p.status === 'active');
-      if (!active) return;
-
-      await expect(controller.executeProposal(active.id)).rejects.toThrow();
-    });
-
-    it('should throw NotFoundException for unknown id', async () => {
-      await expect(controller.executeProposal('unknown-id')).rejects.toThrow(NotFoundException);
     });
   });
 });

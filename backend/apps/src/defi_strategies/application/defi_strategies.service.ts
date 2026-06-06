@@ -1,10 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { UserService } from '../../users/application/user.service';
 import { DefiStrategy } from '../domain/defi_strategies.entity';
 import { DefiStrategiesRepository } from '../domain/defi_strategies.repository';
 import type { CreateDefiStrategyDto } from '../interfaces/dto/create_defi_strategy.dto';
-import type { UpdateDefiStrategyDto } from '../interfaces/dto/update_defi_strategy.dto';
 import { DefiStrategyVersionService } from './defi_strategy_version.service';
 
 @Injectable()
@@ -43,14 +42,6 @@ export class DefiStrategiesService {
     return this.defiStrategiesRepository.save(strategy);
   }
 
-  public async getById(id: string): Promise<DefiStrategy> {
-    const strategy = await this.defiStrategiesRepository.getById(id);
-    if (!strategy) {
-      throw new NotFoundException(`DefiStrategy with id ${id} not found`);
-    }
-    return strategy;
-  }
-
   public async getAll(owner_id?: string) {
     if (owner_id) {
       await this.userService.getUser(owner_id);
@@ -59,25 +50,5 @@ export class DefiStrategiesService {
     const strategies = await this.defiStrategiesRepository.getAll(owner_id);
 
     return strategies;
-  }
-
-  public async update(id: string, data: UpdateDefiStrategyDto): Promise<DefiStrategy> {
-    const updated = await this.defiStrategiesRepository.update(id, {
-      name: data.name,
-      description: data.description,
-      status: data.status,
-      is_public: data.is_public,
-      chain_context: data.chain_context,
-    });
-
-    if (!updated) {
-      throw new NotFoundException(`DefiStrategy with id ${id} not found`);
-    }
-
-    return updated;
-  }
-
-  public async delete(id: string): Promise<void> {
-    await this.defiStrategiesRepository.delete(id);
   }
 }
