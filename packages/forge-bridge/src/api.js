@@ -1,9 +1,9 @@
 /**
- * @file API adapter — axios NestJS HTTP client with JWT lifecycle, in-memory LRU cache,
- * and all endpoint methods organized by domain.
+ * @file API adapter — axios NestJS HTTP client with JWT lifecycle and LRU cache.
  *
  * @typedef {import('./config.js').BridgeConfig} BridgeConfig
  * @typedef {import('./types.js').ApiError} _ApiErrorForJSDoc
+ * @typedef {{ status: string; data: any; error: ApiError | null }} ApiResult
  */
 
 import axios from 'axios';
@@ -155,16 +155,6 @@ export function createApiAdapter(config, walletAdapter) {
   });
 
   // -----------------------------------------------------------------------
-  // Request interceptor — pass-through (JWT is in httpOnly cookie)
-  // -----------------------------------------------------------------------
-  client.interceptors.request.use(
-    (requestConfig) => {
-      return requestConfig;
-    },
-    (error) => Promise.reject(error),
-  );
-
-  // -----------------------------------------------------------------------
   // Response interceptor — 401 refresh flow
   // -----------------------------------------------------------------------
   /** @type {boolean} */
@@ -300,16 +290,10 @@ export function createApiAdapter(config, walletAdapter) {
   }
 
   /**
-   * Execute a cached GET request.
-   *
-   * - Within TTL: returns cached data (no HTTP call).
-   * - After TTL, before refresh: serves stale data and triggers background refresh.
-   * - Cache miss: fetches fresh, caches, returns.
-   *
+   * Cached GET — returns fresh or stale-while-revalidate data.
    * @param {string} cacheKey
    * @param {string} url
    * @param {Record<string, unknown>} [params]
-   * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
    */
   async function cachedGet(cacheKey, url, params = {}) {
     const cached = cache.get(cacheKey);
@@ -331,11 +315,10 @@ export function createApiAdapter(config, walletAdapter) {
   }
 
   /**
-   * Fetch data from the API, cache it, and return.
+   * Fetch, cache, and return.
    * @param {string} cacheKey
    * @param {string} url
    * @param {Record<string, unknown>} [params]
-   * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
    */
   async function fetchAndCache(cacheKey, url, params = {}) {
     try {
@@ -350,10 +333,9 @@ export function createApiAdapter(config, walletAdapter) {
   }
 
   /**
-   * Perform a non-cached GET request.
+   * Non-cached GET.
    * @param {string} url
    * @param {Record<string, unknown>} [params]
-   * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
    */
   async function get(url, params = {}) {
     try {
@@ -365,10 +347,9 @@ export function createApiAdapter(config, walletAdapter) {
   }
 
   /**
-   * Perform a POST request.
+   * POST request.
    * @param {string} url
    * @param {unknown} [body]
-   * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
    */
   async function post(url, body) {
     try {
@@ -384,177 +365,70 @@ export function createApiAdapter(config, walletAdapter) {
   // -----------------------------------------------------------------------
 
   return {
-    /** System — public backend readiness and health probes */
+    /** System — public backend readiness probes */
     system: {
-      /**
-       * Get backend readiness.
-       * GET /ready  (uncached)
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /ready */
       getReady: () => get('/ready'),
-
-      /**
-       * Get backend readiness. Alias for getReady().
-       * GET /ready  (uncached)
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
-      getReadiness: () => get('/ready'),
     },
 
     /** Markets — public lending market data */
     markets: {
-      /**
-       * Get all lending markets with APY, TVL, utilization.
-       * GET /markets  (cached, TTL 30s)
-       * @param {Record<string, unknown>} [params]
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /markets (cached 30s) */
       getMarkets: (params) => cachedGet('markets', '/markets', params),
-
-      /**
-       * Get oracle prices for all assets.
-       * GET /markets/prices  (cached, TTL 30s)
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /markets/prices (cached 30s) */
       getPrices: () => cachedGet('markets-prices', '/markets/prices'),
-
-      /**
-       * Get markets service/indexer status.
-       * GET /markets/status  (uncached)
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /markets/status */
       getStatus: () => get('/markets/status'),
     },
 
     /** Stats — protocol-wide statistics */
     stats: {
-      /**
-       * Get overall protocol statistics.
-       * GET /stats  (cached, TTL 30s)
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /stats (cached 30s) */
       getStats: () => cachedGet('stats', '/stats'),
     },
 
     /** Strategies — marketplace strategy listings */
     strategies: {
-      /**
-       * List strategies with optional filters.
-       * GET /strategies  (cached, TTL 60s)
-       * @param {Record<string, unknown>} [params] - Filter params (keyword, tags, sortBy, order, limit)
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /strategies (cached 60s) */
       listStrategies: (params) => cachedGet('strategies-list', '/strategies', params),
     },
 
     /** Governance — proposals and voting */
     governance: {
-      /**
-       * List governance proposals.
-       * GET /governance/proposals  (cached, TTL 60s)
-       * @param {Record<string, unknown>} [params] - Optional status filter
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /governance/proposals (cached 60s) */
       listProposals: (params) => cachedGet('governance-proposals', '/governance/proposals', params),
-
-      /**
-       * Cast a vote on an active proposal.
-       * POST /governance/vote  (uncached, requires JWT)
-       * @param {{ proposalId: string; support: boolean | null, weight?: number }} data
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** POST /governance/vote */
       castVote: (data) => post('/governance/vote', data),
     },
 
     /** Activities — on-chain transaction history */
     activities: {
-      /**
-       * Get paginated on-chain activities.
-       * GET /activities  (cached, TTL 15s)
-       * @param {Record<string, unknown>} [params] - Filter params (strategyId, userAddress, page, limit)
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /activities (cached 15s) */
       getActivities: (params) => cachedGet('activities', '/activities', params),
     },
 
     /** DeFi Modules — available protocol modules */
     defiModules: {
-      /**
-       * Get all available DeFi protocol modules.
-       * GET /defi-modules  (cached, TTL 60s)
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /defi-modules (cached 60s) */
       getDefiModules: () => cachedGet('defi-modules', '/defi-modules'),
     },
 
     /** DeFi Strategies — on-chain deployment strategies */
     defiStrategies: {
-      /**
-       * Get all DeFi strategies, optionally filtered by owner.
-       * GET /defi-strategies  (cached, TTL 60s)
-       * @param {Record<string, unknown>} [params] - Optional owner filter
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** GET /defi-strategies (cached 60s) */
       getDefiStrategies: (params) => cachedGet('defi-strategies', '/defi-strategies', params),
-
-      /**
-       * Create a new DeFi strategy.
-       * POST /defi-strategies  (uncached, requires JWT)
-       * @param {unknown} data
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** POST /defi-strategies */
       createDefiStrategy: (data) => post('/defi-strategies', data),
-
-      /**
-       * Simulate a DeFi strategy.
-       * POST /defi-strategies/simulate  (uncached, requires JWT)
-       * @param {unknown} data
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** POST /defi-strategies/simulate */
       simulateDefiStrategy: (data) => post('/defi-strategies/simulate', data),
     },
 
-    /** AI Builder — AI-powered strategy building, risk analysis, optimization */
+    /** AI Builder — AI-powered strategy building */
     aiBuilder: {
-      /**
-       * Build a DeFi strategy from natural language.
-       * POST /ai-strategy-builder/build  (uncached, requires JWT)
-       * @param {unknown} data
-       * @returns {Promise<{ status: string; data: any; error: ApiError | null }>}
-       */
+      /** POST /ai-strategy-builder/build */
       buildStrategy: (data) => post('/ai-strategy-builder/build', data),
     },
   };
 }
 
-/**
- * @typedef {Object} ApiAdapter
- * @property {object} system
- * @property {() => Promise<ApiResult>} system.getReady
- * @property {() => Promise<ApiResult>} system.getReadiness
- * @property {object} markets
- * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} markets.getMarkets
- * @property {() => Promise<ApiResult>} markets.getPrices
- * @property {() => Promise<ApiResult>} markets.getStatus
- * @property {object} stats
- * @property {() => Promise<ApiResult>} stats.getStats
- * @property {object} strategies
- * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} strategies.listStrategies
- * @property {object} governance
- * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} governance.listProposals
- * @property {(data: { proposalId: string; support: boolean | null; weight?: number }) => Promise<ApiResult>} governance.castVote
- * @property {object} activities
- * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} activities.getActivities
- * @property {object} defiModules
- * @property {() => Promise<ApiResult>} defiModules.getDefiModules
- * @property {object} defiStrategies
- * @property {(params?: Record<string, unknown>) => Promise<ApiResult>} defiStrategies.getDefiStrategies
- * @property {(data: unknown) => Promise<ApiResult>} defiStrategies.createDefiStrategy
- * @property {(data: unknown) => Promise<ApiResult>} defiStrategies.simulateDefiStrategy
- * @property {object} aiBuilder
- * @property {(data: unknown) => Promise<ApiResult>} aiBuilder.buildStrategy
- */
 
-/**
- * @typedef {{ status: string; data: any; error: ApiError | null }} ApiResult
- */
