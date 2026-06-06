@@ -50,6 +50,17 @@ export class GovernanceController {
     return proposal;
   }
 
+  @Public()
+  @Get('vote-power/:address')
+  @ApiOperation({ summary: 'Get vote power for an address' })
+  @ApiResponse({
+    status: 200,
+    description: 'Vote power for the address',
+  })
+  async getVotePower(@Param('address') address: string): Promise<{ address: string; power: number }> {
+    return this.governanceService.getVotePower(address);
+  }
+
   @Post('proposals')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new proposal (admin only)' })
@@ -65,18 +76,28 @@ export class GovernanceController {
   @Post('vote')
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Cast a vote on an active proposal (on-chain coming soon)',
+    summary: 'Cast a vote on an active proposal',
   })
   @ApiResponse({
     status: 200,
-    description: 'Vote not yet available on-chain',
+    description: 'Vote recorded',
   })
-  castVote(@Body() _dto: CastVoteDto, @Req() _req: Request): { success: boolean; message: string } {
-    return {
-      success: false,
-      message:
-        'On-chain governance voting coming soon. Votes require FFG token and on-chain interaction.',
-    };
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid vote (proposal not active, already voted, etc.)',
+  })
+  async castVote(
+    @Body() dto: CastVoteDto,
+    @Req() req: Request & { user?: { address?: string } },
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const voter = req.user?.address || '0xAnonymous';
+      await this.governanceService.castVote(dto, voter);
+      return { success: true, message: 'Vote recorded successfully' };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Vote failed';
+      return { success: false, message };
+    }
   }
 
   @Patch('proposals/:id/execute')

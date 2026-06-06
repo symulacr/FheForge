@@ -26,6 +26,13 @@ export class GovernanceService {
     });
   }
 
+  async getVotePower(address: string): Promise<{ address: string; power: number }> {
+    // Mock: return a synthetic vote power based on address hash
+    const hash = [...address.toLowerCase()].reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const power = (hash % 50_000) + 1_000;
+    return { address, power };
+  }
+
   async castVote(dto: CastVoteDto, voter: string): Promise<VoteDto> {
     const proposal = await this.repository.findById(dto.proposalId);
     if (!proposal) {

@@ -154,6 +154,29 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
   const pct = (n) => total ? ((n / total) * 100).toFixed(1) : "0";
   const quorumPct = p.quorum ? Math.min(100, (total / p.quorum) * 100) : 0;
 
+  async function handleCastVote() {
+    if (!vote || voting) return;
+    setVoting(true);
+    setVoteResult(null);
+    try {
+      const support = vote === "for" ? true : vote === "against" ? false : null;
+      const bridgeApi = bridge?.api?.governance || (typeof window !== "undefined" && window.bridge?.api?.governance);
+      if (!bridgeApi || typeof bridgeApi.castVote !== "function") {
+        throw new Error("governance API unavailable");
+      }
+      const res = await bridgeApi.castVote({ proposalId: p.id, support, weight: 1000 });
+      if (res && res.status === "success" || res && res.data && res.data.success) {
+        setVoteResult("success");
+      } else {
+        setVoteResult((res && res.data && res.data.message) || "vote rejected");
+      }
+    } catch (err) {
+      setVoteResult(err?.message || "vote failed");
+    } finally {
+      setVoting(false);
+    }
+  }
+
   return (
     <div className="fade-enter" style={{ display: "flex", flexDirection: "column", gap: 28, maxWidth: 820 }}>
       <div>
@@ -199,7 +222,7 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
         <div style={{ background: "var(--paper)", border: "1px solid var(--ink)", padding: 22 }}>
           <span className="eyebrow">cast vote</span>
           <div className="mono" style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-            {voting ? "submitting vote on-chain…"
+            {voting ? "submitting vote…"
               : voteResult === "success" ? "vote cast successfully"
               : voteResult && voteResult !== "success" ? ("vote failed · " + voteResult)
               : ctx.connected ? "select a position and submit"
@@ -207,7 +230,7 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
           </div>
           {!ctx.connected ? (
             <div style={{ padding: 16, textAlign: "center", color: "var(--muted)" }}>
-              Connect wallet to vote
+              <button className="btn" onClick={openConnect}>Connect to vote <span className="ar">→</span></button>
             </div>
           ) : (
             <>
@@ -215,29 +238,28 @@ function ProposalDetail({ p, ctx, openConnect, bridge }) {
                 {["for", "against", "abstain"].map(v => (
                   <button
                     key={v}
-                    disabled={true}
+                    disabled={voting}
+                    onClick={() => setVote(v)}
                     style={{
                       flex: 1, padding: "11px 14px",
-                      border: "1px solid var(--hairline)",
-                      background: "var(--paper)",
-                      color: "var(--ink)",
+                      border: vote === v ? "1px solid var(--accent)" : "1px solid var(--hairline)",
+                      background: vote === v ? "var(--accent-soft, #0a1a2a)" : "var(--paper)",
+                      color: vote === v ? "var(--accent)" : "var(--ink)",
                       fontFamily: "var(--mono)", fontSize: 12, textTransform: "uppercase", letterSpacing: 0.06,
-                      cursor: "not-allowed",
-                      opacity: 0.5,
+                      cursor: voting ? "not-allowed" : "pointer",
+                      opacity: voting ? 0.5 : 1,
                     }}
                   >● {v}</button>
                 ))}
               </div>
               <button
                 className="btn"
-                style={{ width: "100%", marginTop: 14 }}
-                disabled={true}
+                style={{ width: "100%", marginTop: 14, opacity: (!vote || voting) ? 0.5 : 1, cursor: (!vote || voting) ? "not-allowed" : "pointer" }}
+                disabled={!vote || voting}
+                onClick={handleCastVote}
               >
-                On-chain voting coming soon <span className="ar">→</span>
+                {voting ? "Submitting…" : `Submit ${vote || ""} vote`} <span className="ar">→</span>
               </button>
-              <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 10, textAlign: "center" }}>
-                On-chain governance voting coming soon
-              </div>
             </>
           )}
         </div>

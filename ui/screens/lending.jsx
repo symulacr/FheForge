@@ -110,9 +110,12 @@ function getPositionSummaryL(bridgeData) {
 
 
 function Lending({ setRoute, ctx, grantPermit, openConnect }) {
+  const [faucetResult, setFaucetResult] = useStateL(null);
+
   async function handleFaucetDrip(tokenAddress, e) {
     if (e) e.stopPropagation();
     if (!ctx.connected) { openConnect(); return; }
+    setFaucetResult(null);
     try {
       const { createWalletClient, custom } = await import("viem");
       const { arbitrumSepolia } = await import("viem/chains");
@@ -124,10 +127,11 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
         functionName: "faucetMint",
         account,
       });
-      alert("Tokens minted! tx: " + hash);
+      setFaucetResult({ type: "success", message: "Tokens minted! tx: " + hash });
     } catch (err) {
-      alert(err?.shortMessage || err?.message || "Faucet failed");
+      setFaucetResult({ type: "error", message: err?.shortMessage || err?.message || "Faucet failed" });
     }
+    setTimeout(() => setFaucetResult(null), 8000);
   }
   const bridge = useOptionalBridgeL();
   const bridgeData = bridge.data || {};
@@ -167,6 +171,26 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
               <LtvGauge ltv={positionSummary.ltvGauge} liqAt={80} labels={false} height={6} />
             </div>
           </div>
+
+          {faucetResult && (
+            <div
+              role={faucetResult.type === "error" ? "alert" : "status"}
+              aria-live="polite"
+              style={{
+                margin: "0 20px",
+                padding: "10px 12px",
+                background: faucetResult.type === "error" ? "var(--danger-soft, #2a0a0a)" : "var(--success-soft, #0a2a1a)",
+                border: "1px solid " + (faucetResult.type === "error" ? "var(--destructive)" : "var(--success)"),
+                color: faucetResult.type === "error" ? "var(--destructive)" : "var(--success)",
+                fontFamily: "var(--mono)", fontSize: 11.5, lineHeight: 1.55,
+                wordBreak: "break-all",
+              }}
+            >
+              <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>
+                {faucetResult.type === "error" ? "Faucet failed" : "Faucet"}
+              </strong> · {faucetResult.message}
+            </div>
+          )}
 
           <MDGroup>Markets · {markets ? markets.length : "loading"}</MDGroup>
           {!markets ? (
@@ -318,7 +342,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setCrStep("decrypting");
 
         // TX2: Execute (bridge internally calls decryptForExecute)
-        const tx2 = await bridge.contract.write.shieldExecute(market.assetAddress, tx1.commitId, ctx.address);
+        const tx2 = await bridge.contract.write.shieldExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
       } catch (e) {
@@ -353,7 +377,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setCrStep("decrypting");
 
         // TX2: Execute
-        const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, ctx.address);
+        const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
       } catch (e) {
@@ -384,7 +408,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setCrStep("decrypting");
 
         // TX2: Execute
-        const tx2 = await bridge.contract.write.repayExecute(market.assetAddress, tx1.commitId, ctx.address);
+        const tx2 = await bridge.contract.write.repayExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
       } catch (e) {
@@ -415,7 +439,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setCrStep("decrypting");
 
         // TX2: Execute
-        const tx2 = await bridge.contract.write.withdrawExecute(market.assetAddress, tx1.commitId, ctx.address);
+        const tx2 = await bridge.contract.write.withdrawExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
       } catch (e) {
