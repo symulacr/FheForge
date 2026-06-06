@@ -1087,7 +1087,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                   });
                   const workflowHash = bwKeccak(bwToHex(graphPayload));
 
-                  const COMPOSER_ADDRESS = "0xBcaEF72afA1f207F44C5aa11E48a7bea4b71632C";
+                  const COMPOSER_ADDRESS = "0x6c051217CA014371D839739D62cBE06948B87372";
 
                   const subgraphs = groupSubgraphs(nodes, edges);
                   let strategyId = 0n;
@@ -1164,7 +1164,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     } else if (node.type === "borrow" && amount > 0n) {
                       const borrowToken = tokenMap[cfg.asset] || Object.values(tokenMap)[0];
                       setDeployStep("committing");
-                      const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, amount, BigInt(cfg.ltv || 50), 100n, account, borrowToken);
+                      const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, borrowToken, amount, BigInt(cfg.ltv || 50), 100n, account);
                       if (tx1.status === "reverted") { setDeployResult({ ok: false, error: "Borrow commit reverted" }); setDeploying(false); setDeployStep(null); return; }
                       setDeployStep("decrypting");
                       const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, account);
