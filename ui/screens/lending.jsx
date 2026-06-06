@@ -317,6 +317,10 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
 
   async function handleSupply() {
     if (submitting) return;
+    if (Number(amount) <= 0) { setCrStep("failed"); setCrError("Amount must be greater than 0"); return; }
+    if (walletNumeric != null && Number(amount) > walletNumeric) {
+      setCrStep("failed"); setCrError(`Insufficient ${market.asset} balance. Available: ${walletNumeric}`); return;
+    }
     setSubmitting(true);
     try {
       if (!market.assetAddress) { setCrStep("failed"); setCrError("missing token address"); return; }
@@ -356,6 +360,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
 
   async function handleBorrow() {
     if (submitting) return;
+    if (Number(amount) <= 0) { setCrStep("failed"); setCrError("Amount must be greater than 0"); return; }
     setSubmitting(true);
     try {
       if (!market.assetAddress) { setCrStep("failed"); setCrError("missing token address"); return; }
@@ -391,6 +396,10 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
 
   async function handleRepay() {
     if (submitting) return;
+    if (Number(amount) <= 0) { setCrStep("failed"); setCrError("Amount must be greater than 0"); return; }
+    if (walletNumeric != null && Number(amount) > walletNumeric) {
+      setCrStep("failed"); setCrError(`Insufficient ${market.asset} balance. Available: ${walletNumeric}`); return;
+    }
     setSubmitting(true);
     try {
       if (!market.assetAddress) { setCrStep("failed"); setCrError("missing token address"); return; }
@@ -422,6 +431,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
 
   async function handleWithdraw() {
     if (submitting) return;
+    if (Number(amount) <= 0) { setCrStep("failed"); setCrError("Amount must be greater than 0"); return; }
     setSubmitting(true);
     try {
       if (!market.assetAddress) { setCrStep("failed"); setCrError("missing token address"); return; }
