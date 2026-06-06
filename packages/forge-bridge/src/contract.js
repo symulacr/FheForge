@@ -431,7 +431,8 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
-      const ctHash = encAmount?.ctHash ?? undefined;
+      const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
+      if (!ctHash) console.warn('[bridge] encrypt() returned no ctHash/handle:', encAmount);
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -445,14 +446,8 @@ export function createContractAdapter(config, options = {}) {
       let commitId = '';
       if (result.receipt?.logs) {
         for (const log of result.receipt.logs) {
-          if (
-            log.topics?.[0] &&
-            log.data &&
-            log.data !== '0x' &&
-            log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
-          ) {
-            commitId = log.topics[3] ?? log.data.slice(0, 66);
-            break;
+          if (log.topics?.[3]) {
+            commitId = log.topics[3];
           }
         }
       }
@@ -472,7 +467,7 @@ export function createContractAdapter(config, options = {}) {
         CONTRACT_ADDRESSES.LendingPool,
         CONTRACT_ABIS.LendingPool,
         'executeShield',
-        [token, commitId, plaintext, signature],
+        [token, commitId, BigInt(plaintext), signature],
         account,
       );
     },
@@ -491,7 +486,8 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), borrowToken)
           : undefined;
-      const ctHash = encAmount?.ctHash ?? undefined;
+      const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
+      if (!ctHash) console.warn('[bridge] encrypt() returned no ctHash/handle:', encAmount);
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -505,14 +501,8 @@ export function createContractAdapter(config, options = {}) {
       let commitId = '';
       if (result.receipt?.logs) {
         for (const log of result.receipt.logs) {
-          if (
-            log.topics?.[0] &&
-            log.data &&
-            log.data !== '0x' &&
-            log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
-          ) {
-            commitId = log.topics[3] ?? log.data.slice(0, 66);
-            break;
+          if (log.topics?.[3]) {
+            commitId = log.topics[3];
           }
         }
       }
@@ -532,7 +522,7 @@ export function createContractAdapter(config, options = {}) {
         CONTRACT_ADDRESSES.LendingPool,
         CONTRACT_ABIS.LendingPool,
         'executeBorrow',
-        [commitId, plaintext, signature],
+        [commitId, BigInt(plaintext), signature],
         account,
       );
     },
@@ -551,7 +541,8 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
-      const ctHash = encAmount?.ctHash ?? undefined;
+      const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
+      if (!ctHash) console.warn('[bridge] encrypt() returned no ctHash/handle:', encAmount);
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -565,14 +556,8 @@ export function createContractAdapter(config, options = {}) {
       let commitId = '';
       if (result.receipt?.logs) {
         for (const log of result.receipt.logs) {
-          if (
-            log.topics?.[0] &&
-            log.data &&
-            log.data !== '0x' &&
-            log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
-          ) {
-            commitId = log.topics[3] ?? log.data.slice(0, 66);
-            break;
+          if (log.topics?.[3]) {
+            commitId = log.topics[3];
           }
         }
       }
@@ -592,7 +577,7 @@ export function createContractAdapter(config, options = {}) {
         CONTRACT_ADDRESSES.LendingPool,
         CONTRACT_ABIS.LendingPool,
         'executeRepay',
-        [token, commitId, plaintext, signature],
+        [token, commitId, BigInt(plaintext), signature],
         account,
       );
     },
@@ -611,7 +596,8 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
-      const ctHash = encAmount?.ctHash ?? undefined;
+      const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
+      if (!ctHash) console.warn('[bridge] encrypt() returned no ctHash/handle:', encAmount);
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -625,14 +611,8 @@ export function createContractAdapter(config, options = {}) {
       let commitId = '';
       if (result.receipt?.logs) {
         for (const log of result.receipt.logs) {
-          if (
-            log.topics?.[0] &&
-            log.data &&
-            log.data !== '0x' &&
-            log.address?.toLowerCase() === CONTRACT_ADDRESSES.LendingPool.toLowerCase()
-          ) {
-            commitId = log.topics[3] ?? log.data.slice(0, 66);
-            break;
+          if (log.topics?.[3]) {
+            commitId = log.topics[3];
           }
         }
       }
@@ -652,7 +632,7 @@ export function createContractAdapter(config, options = {}) {
         CONTRACT_ADDRESSES.LendingPool,
         CONTRACT_ABIS.LendingPool,
         'executeWithdraw',
-        [token, commitId, plaintext, signature],
+        [token, commitId, BigInt(plaintext), signature],
         account,
       );
     },
