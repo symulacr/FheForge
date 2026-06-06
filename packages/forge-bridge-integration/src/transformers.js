@@ -31,40 +31,70 @@
   };
 
   /* ──────────────────────────────────────────────
+     Shared helpers
+     ────────────────────────────────────────────── */
+
+  function _pick(raw) {
+    for (var i = 1; i < arguments.length; i++) {
+      if (raw[arguments[i]] != null && raw[arguments[i]] !== '') return raw[arguments[i]];
+    }
+    return undefined;
+  }
+
+  function _mapPosition(item, side, prefix, markets) {
+    return {
+      id: item.id || `${prefix}-${item.asset || Math.random().toString(36).slice(2, 8)}`,
+      venue: 'Lending Pool',
+      asset: item.asset || 'UNKNOWN',
+      tokenAddress: item.tokenAddress || item.token || item.assetAddress || null,
+      side: side,
+      amount: item.amountUsd || item.amount || '0',
+      amountWei: item.amountWei || item.rawAmount || item.balanceWei || null,
+      decimals: item.decimals || item.tokenDecimals || null,
+      apy: lookupApy(markets, item.asset, side),
+      liq: item.liquidationThreshold || '0',
+    };
+  }
+
+  function _totals(positions) {
+    var supply = 0;
+    var borrow = 0;
+    for (var i = 0; i < positions.length; i++) {
+      var amt = parseUsd(positions[i].amount);
+      if (positions[i].side === 'borrow') {
+        borrow += amt;
+      } else {
+        supply += amt;
+      }
+    }
+    return { supply: supply, borrow: borrow };
+  }
+
+  /* ──────────────────────────────────────────────
      transformMarkets
      API /markets → forge L_MARKETS format
      ────────────────────────────────────────────── */
   function transformMarkets(apiMarkets) {
     if (!Array.isArray(apiMarkets)) return [];
-    return apiMarkets.map((m) => {
-      var utilization = m.util ?? m.utilization;
-      var liq = m.liq ?? m.liquidationThreshold;
-      return {
-        asset: m.asset || m.symbol || 'UNKNOWN',
-        assetAddress: m.assetAddress || null,
-        supplyApy: formatApy(
-          m.supplyAPY != null ? m.supplyAPY : m.supplyRate != null ? m.supplyRate : m.supplyApy,
-        ),
-        borrowApy: formatApy(
-          m.borrowAPY != null ? m.borrowAPY : m.borrowRate != null ? m.borrowRate : m.borrowApy,
-        ),
-        util: formatPercentValue(utilization),
-        tvl: formatUsdDisplay(
-          m.tvl != null ? m.tvl : m.totalSupplyUsd != null ? m.totalSupplyUsd : m.totalSupply,
-        ),
-        liq: formatPercentValue(liq),
-        oracle: m.oracle || m.oracleSource || (m.oraclePrice != null ? 'on-chain' : 'unavailable'),
-        price: m.price || formatUsdDisplay(m.oraclePrice),
-        totalBorrowed: formatUsdDisplay(m.totalBorrowed) || m.totalBorrowed || null,
-        totalSupplied: formatUsdDisplay(m.totalSupplied) || m.totalSupplied || null,
-        healthAfterSupply: m.healthAfterSupply,
-        healthAfterBorrow: m.healthAfterBorrow,
-        healthFactor: m.healthFactor ?? null,
-        liqPrice: m.liqPrice ?? m.liquidationPrice ?? null,
-        estimatedGas: m.estimatedGas,
-        updatedAt: m.updatedAt || m.oracleUpdatedAt,
-      };
-    });
+    return apiMarkets.map((m) => ({
+      asset: _pick(m, 'asset', 'symbol', 'UNKNOWN'),
+      assetAddress: m.assetAddress || null,
+      supplyApy: formatApy(_pick(m, 'supplyAPY', 'supplyRate', 'supplyApy')),
+      borrowApy: formatApy(_pick(m, 'borrowAPY', 'borrowRate', 'borrowApy')),
+      util: formatPercentValue(_pick(m, 'util', 'utilization')),
+      tvl: formatUsdDisplay(_pick(m, 'tvl', 'totalSupplyUsd', 'totalSupply')),
+      liq: formatPercentValue(_pick(m, 'liq', 'liquidationThreshold')),
+      oracle: m.oracle || m.oracleSource || (m.oraclePrice != null ? 'on-chain' : 'unavailable'),
+      price: m.price || formatUsdDisplay(m.oraclePrice),
+      totalBorrowed: formatUsdDisplay(m.totalBorrowed) || m.totalBorrowed || null,
+      totalSupplied: formatUsdDisplay(m.totalSupplied) || m.totalSupplied || null,
+      healthAfterSupply: m.healthAfterSupply,
+      healthAfterBorrow: m.healthAfterBorrow,
+      healthFactor: m.healthFactor ?? null,
+      liqPrice: _pick(m, 'liqPrice', 'liquidationPrice') ?? null,
+      estimatedGas: m.estimatedGas,
+      updatedAt: _pick(m, 'updatedAt', 'oracleUpdatedAt'),
+    }));
   }
 
   /* ──────────────────────────────────────────────
@@ -74,36 +104,10 @@
   function transformPositions(supplies, borrows, markets) {
     var positions = [];
     if (Array.isArray(supplies)) {
-      supplies.forEach((s) => {
-        positions.push({
-          id: s.id || `sup-${s.asset || Math.random().toString(36).slice(2, 8)}`,
-          venue: 'Lending Pool',
-          asset: s.asset || 'UNKNOWN',
-          tokenAddress: s.tokenAddress || s.token || s.assetAddress || null,
-          side: 'supply',
-          amount: s.amountUsd || s.amount || '0',
-          amountWei: s.amountWei || s.rawAmount || s.balanceWei || null,
-          decimals: s.decimals || s.tokenDecimals || null,
-          apy: lookupApy(markets, s.asset, 'supply'),
-          liq: s.liquidationThreshold || '0',
-        });
-      });
+      supplies.forEach((s) => positions.push(_mapPosition(s, 'supply', 'sup', markets)));
     }
     if (Array.isArray(borrows)) {
-      borrows.forEach((b) => {
-        positions.push({
-          id: b.id || `bor-${b.asset || Math.random().toString(36).slice(2, 8)}`,
-          venue: 'Lending Pool',
-          asset: b.asset || 'UNKNOWN',
-          tokenAddress: b.tokenAddress || b.token || b.assetAddress || null,
-          side: 'borrow',
-          amount: b.amountUsd || b.amount || '0',
-          amountWei: b.amountWei || b.rawAmount || b.balanceWei || null,
-          decimals: b.decimals || b.tokenDecimals || null,
-          apy: lookupApy(markets, b.asset, 'borrow'),
-          liq: b.liquidationThreshold || '0',
-        });
-      });
+      borrows.forEach((b) => positions.push(_mapPosition(b, 'borrow', 'bor', markets)));
     }
     return positions;
   }
@@ -116,14 +120,14 @@
     if (!Array.isArray(apiVaultPositions)) return [];
     return apiVaultPositions.map((v) => ({
       id: v.id || v.vaultId || `vault-${Math.random().toString(36).slice(2, 8)}`,
-      vaultAddress: v.vaultAddress || v.address || null,
-      name: v.name || v.vaultName || 'Vault',
-      asset: v.asset || v.depositAsset || 'UNKNOWN',
-      depositedAmount: v.depositedAmount || v.amount || '0',
-      depositedUsd: v.depositedUsd || v.amountUsd || '0',
-      shares: v.shares || v.shareBalance || '0',
+      vaultAddress: _pick(v, 'vaultAddress', 'address', null),
+      name: _pick(v, 'name', 'vaultName', 'Vault'),
+      asset: _pick(v, 'asset', 'depositAsset', 'UNKNOWN'),
+      depositedAmount: _pick(v, 'depositedAmount', 'amount', '0'),
+      depositedUsd: _pick(v, 'depositedUsd', 'amountUsd', '0'),
+      shares: _pick(v, 'shares', 'shareBalance', '0'),
       apy: v.apy || 0,
-      strategy: v.strategy || v.strategyName || '',
+      strategy: _pick(v, 'strategy', 'strategyName', ''),
       pendingRewards: v.pendingRewards || '0',
     }));
   }
@@ -137,10 +141,10 @@
     return apiActivities.map((a) => ({
       id: a.id || a.txHash || `act-${Math.random().toString(36).slice(2, 8)}`,
       block: a.blockNumber != null ? String(a.blockNumber) : '',
-      age: relativeTime(a.timestamp || a.createdAt),
-      what: a.description || a.type || 'Transaction',
-      kind: a.kind || a.action || 'swapped',
-      asset: a.asset || a.token || '',
+      age: relativeTime(_pick(a, 'timestamp', 'createdAt')),
+      what: _pick(a, 'description', 'type', 'Transaction'),
+      kind: _pick(a, 'kind', 'action', 'swapped'),
+      asset: _pick(a, 'asset', 'token', ''),
       delta: formatDelta(a.amount, a.side),
     }));
   }
@@ -152,17 +156,18 @@
   function formatTicker(stats) {
     var s = stats || {};
     var poolTvls = s.poolTvls || {};
-    return [
-      `TVL: ${formatUsdDisplay(s.tvlUsd)}`,
-      `MARKETS: ${s.activeMarkets != null ? s.activeMarkets : '—'}`,
-      `STRATS: ${s.activeStrategies != null ? s.activeStrategies : '—'}`,
-      `DEPLOYS: ${s.totalDeployments != null ? s.totalDeployments : '—'}`,
-      `ENCRYPTED: ${s.encryptedOps != null ? s.encryptedOps : '—'}`,
-      `PERMITS: ${s.permitDecryptsDay != null ? s.permitDecryptsDay : '—'}`,
-      `USDC TVL: ${formatUsdDisplay(poolTvls.USDC)}`,
-      `ETH TVL: ${formatUsdDisplay(poolTvls.ETH)}`,
-      `STATUS: ${s.status || 'unavailable'}`,
+    var entries = [
+      ['TVL', function () { return formatUsdDisplay(s.tvlUsd); }],
+      ['MARKETS', function () { return s.activeMarkets != null ? s.activeMarkets : '—'; }],
+      ['STRATS', function () { return s.activeStrategies != null ? s.activeStrategies : '—'; }],
+      ['DEPLOYS', function () { return s.totalDeployments != null ? s.totalDeployments : '—'; }],
+      ['ENCRYPTED', function () { return s.encryptedOps != null ? s.encryptedOps : '—'; }],
+      ['PERMITS', function () { return s.permitDecryptsDay != null ? s.permitDecryptsDay : '—'; }],
+      ['USDC TVL', function () { return formatUsdDisplay(poolTvls.USDC); }],
+      ['ETH TVL', function () { return formatUsdDisplay(poolTvls.ETH); }],
+      ['STATUS', function () { return s.status || 'unavailable'; }],
     ];
+    return entries.map(function (e) { return e[0] + ': ' + e[1](); });
   }
 
   /* ──────────────────────────────────────────────
@@ -174,10 +179,10 @@
     return apiStrategies.map((s) => ({
       id: s.id || s.strategyId || `strat-${Math.random().toString(36).slice(2, 8)}`,
       name: s.name || 'Strategy',
-      apy: formatApy(s.apy || s.estimatedApy),
-      staked: s.totalStakedUsd || s.staked || '0',
-      loops: s.loopCount || s.loops || 0,
-      last: relativeTime(s.lastUpdated || s.updatedAt || s.createdAt),
+      apy: formatApy(_pick(s, 'apy', 'estimatedApy')),
+      staked: _pick(s, 'totalStakedUsd', 'staked', '0'),
+      loops: _pick(s, 'loopCount', 'loops', 0),
+      last: relativeTime(_pick(s, 'lastUpdated', 'updatedAt', 'createdAt')),
     }));
   }
 
@@ -191,19 +196,15 @@
       id: p.id || p.proposalId || `prop-${Math.random().toString(36).slice(2, 8)}`,
       title: p.title || 'Proposal',
       status: (p.status || 'pending').toLowerCase(),
-      body: p.description || p.body || '',
-      forVotes:
-        p.forVotes != null ? String(p.forVotes) : p.votesFor != null ? String(p.votesFor) : '0',
-      againstVotes:
-        p.againstVotes != null
-          ? String(p.againstVotes)
-          : p.votesAgainst != null
-            ? String(p.votesAgainst)
-            : '0',
+      body: _pick(p, 'description', 'body', ''),
+      forVotes: String(_pick(p, 'forVotes', 'votesFor', 0)),
+      againstVotes: String(_pick(p, 'againstVotes', 'votesAgainst', 0)),
       abstain: p.abstainVotes != null ? String(p.abstainVotes) : '0',
       quorum: p.quorum ? String(p.quorum) : '0',
-      timeLeft: p.deadline ? relativeTime(p.deadline) : p.endsAt ? relativeTime(p.endsAt) : '—',
-      proposer: p.proposer || p.creator || '0x0000',
+      timeLeft: _pick(p, 'deadline', 'endsAt') != null
+        ? relativeTime(_pick(p, 'deadline', 'endsAt'))
+        : '—',
+      proposer: _pick(p, 'proposer', 'creator', '0x0000'),
     }));
   }
 
@@ -215,14 +216,14 @@
     if (!Array.isArray(apiCommunity)) return [];
     return apiCommunity.map((item) => ({
       id: item.id || item.strategyId || `comm-${Math.random().toString(36).slice(2, 8)}`,
-      name: item.name || item.strategistName || 'Strategy',
-      author: item.author || item.strategistHandle || item.strategistName || 'anonymous',
+      name: _pick(item, 'name', 'strategistName', 'Strategy'),
+      author: _pick(item, 'author', 'strategistHandle', 'strategistName', 'anonymous'),
       risk: (item.risk || 'medium').toLowerCase(),
-      apy: item.apy || item.estimatedApy || 0,
-      tvl: item.tvl || item.totalStakedUsd || '0',
-      asset: item.asset || item.token || 'UNKNOWN',
-      deployers: item.deployers || item.deployerCount || 0,
-      template: item.template || item.templateId || '',
+      apy: _pick(item, 'apy', 'estimatedApy', 0),
+      tvl: _pick(item, 'tvl', 'totalStakedUsd', '0'),
+      asset: _pick(item, 'asset', 'token', 'UNKNOWN'),
+      deployers: _pick(item, 'deployers', 'deployerCount', 0),
+      template: _pick(item, 'template', 'templateId', ''),
     }));
   }
 
@@ -236,12 +237,11 @@
     }
     var nodeTypes = {};
     modules.forEach((m) => {
-      var action = (m.action || m.type || '').toLowerCase();
+      var action = (_pick(m, 'action', 'type') || '').toLowerCase();
       if (ACTION_MAP[action]) {
-        // Use object spread to avoid Object.assign intermediate allocation
         nodeTypes[m.id || action] = {
           ...ACTION_MAP[action],
-          protocol: m.protocol || m.name || '',
+          protocol: _pick(m, 'protocol', 'name', ''),
         };
       }
     });
@@ -263,33 +263,17 @@
      ────────────────────────────────────────────── */
   function calculateNetValue(positions) {
     if (!Array.isArray(positions) || positions.length === 0) return '0.00';
-    var total = 0;
-    for (let i = 0; i < positions.length; i++) {
-      const amt = parseUsd(positions[i].amount);
-      if (positions[i].side === 'borrow') {
-        total -= amt;
-      } else {
-        total += amt;
-      }
-    }
-    return total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var t = _totals(positions);
+    var net = t.supply - t.borrow;
+    return net.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   function calculateLTV(positions) {
     if (!Array.isArray(positions) || positions.length === 0)
       return { ratio: '0.00', gaugeValue: 0 };
-    var totalSupply = 0;
-    var totalBorrow = 0;
-    for (let i = 0; i < positions.length; i++) {
-      const amt = parseUsd(positions[i].amount);
-      if (positions[i].side === 'borrow') {
-        totalBorrow += amt;
-      } else {
-        totalSupply += amt;
-      }
-    }
-    if (totalSupply === 0) return { ratio: '0.00', gaugeValue: 0 };
-    var ratio = (totalBorrow / totalSupply) * 100;
+    var t = _totals(positions);
+    if (t.supply === 0) return { ratio: '0.00', gaugeValue: 0 };
+    var ratio = (t.borrow / t.supply) * 100;
     return {
       ratio: ratio.toFixed(2),
       gaugeValue: Math.min(Math.round(ratio), 100),
@@ -383,43 +367,9 @@
   }
 
   function defaultNodeTypes() {
-    return {
-      supply: {
-        label: 'Supply',
-        kicker: 'SUP',
-        swatch: '#22c55e',
-        desc: 'Supply assets to lending pool',
-        protocol: '',
-      },
-      borrow: {
-        label: 'Borrow',
-        kicker: 'BRW',
-        swatch: '#eab308',
-        desc: 'Borrow assets from lending pool',
-        protocol: '',
-      },
-      swap: {
-        label: 'Swap',
-        kicker: 'SWP',
-        swatch: '#3b82f6',
-        desc: 'Swap tokens via DEX',
-        protocol: '',
-      },
-      repeat: {
-        label: 'Repeat',
-        kicker: 'RPT',
-        swatch: '#888888',
-        desc: 'Repeat previous action',
-        protocol: '',
-      },
-      settle: {
-        label: 'Settle',
-        kicker: 'STL',
-        swatch: '#ef4444',
-        desc: 'Settle/repay position',
-        protocol: '',
-      },
-    };
+    return Object.fromEntries(
+      Object.entries(ACTION_MAP).map(([k, v]) => [k, { ...v, protocol: '' }]),
+    );
   }
 
   /* ──────────────────────────────────────────────
