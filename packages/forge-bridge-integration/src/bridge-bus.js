@@ -297,15 +297,15 @@ export class BridgeBus {
       if (mapping) {
         const { domain, key } = mapping;
 
+        // If writing to authed domain but auth not yet enabled, skip both mutation and emit
+        if (domain === 'authed' && !this._authEnabled && this._started) {
+          continue;
+        }
+
         if (key === null) {
           next[domain] = { ...next[domain], ...data };
         } else {
           next[domain] = { ...next[domain], [key]: data };
-        }
-
-        // If writing to authed domain but auth not yet enabled, update state but skip emit
-        if (domain === 'authed' && !this._authEnabled && this._started) {
-          continue;
         }
 
         // Track for emission deduplication
@@ -382,6 +382,7 @@ export class BridgeBus {
     this._authEnabled = false;
     this._state.authed = JSON.parse(JSON.stringify(DEFAULT_STATE.authed));
     this._emit('authenticated', false);
+    this._emit('_change', this._state);
   }
 
   /**
