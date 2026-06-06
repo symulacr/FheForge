@@ -229,6 +229,18 @@ function ForgeProvider({ children }) {
       }
     }
 
+    // When permit is granted (wallet fully connected), start authenticated
+    // polling on ForgeProvider's fetcher instance so post-tx refresh works.
+    unsubFns.push(
+      bridgeBus.on('permit:granted', () => {
+        const fetcher =
+          typeof window !== 'undefined' && window.__dataFetcherV2;
+        if (fetcher && typeof fetcher.startAuthenticatedPolling === 'function') {
+          fetcher.startAuthenticatedPolling();
+        }
+      }),
+    );
+
     return function cleanup() {
       unsubFns.forEach((fn) => {
         fn();

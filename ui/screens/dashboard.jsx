@@ -10,10 +10,6 @@ function useOptionalBridgeD() {
   return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_D);
 }
 
-function hasBridgeListD(value) {
-  return Array.isArray(value);
-}
-
 function bridgeItemsD(value) {
   if (Array.isArray(value)) return value;
   if (value && Array.isArray(value.items)) return value.items;
@@ -256,7 +252,7 @@ function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
       }
       detailBody={
         selected ? <DetailFor selected={selected} locked={locked} setRoute={setRoute} grantPermit={grantPermit} bridge={bridge} ctx={ctx} />
-                 : <Overview locked={locked} grantPermit={grantPermit} setRoute={setRoute} bridgeData={bridgeData} positions={positions} strategies={strategies} activities={activities} />
+                 : <Overview locked={locked} grantPermit={grantPermit} setRoute={setRoute} bridgeData={bridgeData} positions={positions} strategies={strategies} activities={activities} ctx={ctx} />
       }
     />
     </div>
@@ -272,15 +268,17 @@ function EmptyListMessageD({ children }) {
 }
 
 /* ─── Overview (default detail) ─── */
-function Overview({ locked, grantPermit, setRoute, bridgeData, positions, strategies, activities }) {
+function Overview({ locked, grantPermit, setRoute, bridgeData, positions, strategies, activities, ctx }) {
   const walletBalance = bridgeData.walletBalance || {};
   const netValue = walletBalance.netValue || firstD(bridgeData, ["portfolioNetValue", "netValue", "totalValue"], null);
-  const portfolioLTV = firstD(bridgeData, ["portfolioLTV", "ltv"], null);
+  const portfolioLTV = walletBalance.portfolioLTV || firstD(bridgeData, ["portfolioLTV", "ltv"], null);
   const ltvValue = typeof portfolioLTV === "object" && portfolioLTV ? firstD(portfolioLTV, ["value", "ltv"], null) : portfolioLTV;
   const liqAt = typeof portfolioLTV === "object" && portfolioLTV ? firstD(portfolioLTV, ["liqAt", "liquidationThreshold"], null) : null;
   const ltvNumber = typeof ltvValue === "number" ? ltvValue : Number.parseFloat(ltvValue);
-  const hasLtv = Number.isFinite(ltvNumber);
-  const permitLabel = locked ? "locked" : `${Math.floor((bridgeData.permitSeconds || 0) / 60) || "live"}`;
+  const hasLtv = Number.isFinite(ltvNumber) && ltvNumber > 0;
+  const healthFactor = hasLtv ? (100 / ltvNumber).toFixed(2) : null;
+  const permitSeconds = (ctx && ctx.permitSeconds != null) ? ctx.permitSeconds : 0;
+  const permitLabel = locked ? "locked" : `${Math.floor(permitSeconds / 60) || "live"}`;
 
   return (
     <div className="fade-enter" style={{ display: "flex", flexDirection: "column", gap: 28 }}>
@@ -289,6 +287,7 @@ function Overview({ locked, grantPermit, setRoute, bridgeData, positions, strate
         {[
           { k: "Net value · usd", v: textD(netValue, positions ? "–" : "loading"), sub: positions ? `${positions.length} positions` : "waiting for bridge positions", cipher: netValue !== null, color: "var(--positive)" },
           { k: "LTV", v: hasLtv ? `${cleanNumberD(ltvNumber)}%` : positions ? "–" : "loading", sub: hasLtv && liqAt ? `liq ${liqAt}` : "bridge LTV unavailable", cipher: false },
+          { k: "Health", v: healthFactor || (positions ? "–" : "loading"), sub: healthFactor ? (Number(healthFactor) >= 1.5 ? "healthy" : Number(healthFactor) >= 1.1 ? "caution" : "at risk") : "derived from LTV", cipher: false, color: healthFactor ? (Number(healthFactor) >= 1.5 ? "var(--positive)" : Number(healthFactor) >= 1.1 ? "var(--warning)" : "var(--danger)") : "var(--ink)" },
           { k: "Permit", v: permitLabel, sub: locked ? "grant to decrypt" : "live · auto-blur on expire", cipher: false, color: locked ? "var(--danger)" : "var(--ink)" },
           { k: "Activity", v: activities ? String(activities.length) : "loading", sub: activities ? "bridge events" : "waiting for bridge activity", cipher: false },
         ].map((t, i) => (
