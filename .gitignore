@@ -339,6 +339,14 @@ fheforge-demo/
 # === AGENT-GENERATED INTEGRATION ARTIFACTS ===
 /forge-integration/
 
+# === STALE / GENERATED (untracked, kept locally) ===
+/monitoring/
+/scripts/
+/Dockerfile
+packages/forge-bridge/dist/
+contracts/.gas-baseline.json
+contracts/.gas-snapshot
+
 # === TEST DIRECTORIES (removed from tracking, kept locally) ===
 packages/**/test/
 contracts/test/
