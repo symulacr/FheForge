@@ -179,8 +179,9 @@ export class BridgeBus {
       const trimmed = errors.length > this._maxErrors ? errors.slice(-this._maxErrors) : errors;
       // Mutate errors in-place WITHOUT creating new state reference
       this._state.meta.errors = trimmed;
-      // Emit the error event for targeted listeners, but NOT _change
+      // Emit the error event for targeted listeners and _change so React re-renders
       this._emit(event, data);
+      this._emit('_change', this._state);
       return;
     }
 
@@ -327,7 +328,7 @@ export class BridgeBus {
       this._state = next;
     }
 
-    // Emit error events for targeted listeners (no _change)
+    // Emit error events for targeted listeners
     for (const event of errorEventsToEmit) {
       this._emit(event, null); // data already stored
     }
@@ -341,7 +342,9 @@ export class BridgeBus {
       }
     }
 
-    if (hasDataUpdates) {
+    // Emit _change for data updates or errors so React re-renders
+    const hasErrors = errorEventsToEmit.length > 0;
+    if (hasDataUpdates || hasErrors) {
       this._emit('_change', this._state);
     }
   }
