@@ -229,6 +229,64 @@ async function estimateSendAndWait(
 }
 
 // ---------------------------------------------------------------------------
+// Shared commit/execute helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate amount & token, encrypt via FHE adapter, and extract the ciphertext hash.
+ *
+ * @param {import('./fhe.js').FheAdapter | undefined} fheAdapter
+ * @param {bigint} amount - Plaintext amount to encrypt
+ * @param {`0x${string}`} token - Token address used as encryption context
+ * @returns {Promise<{encAmount: any, ctHash: any}>}
+ */
+async function _encryptAndExtract(fheAdapter, amount, token) {
+  if (!amount || amount <= 0n)
+    throw new ContractError('INVALID_AMOUNT', 'Amount must be greater than zero');
+  if (!token || token === '0x0000000000000000000000000000000000000000')
+    throw new ContractError('INVALID_TOKEN', 'Invalid token address');
+  const encAmount =
+    fheAdapter && typeof fheAdapter.encrypt === 'function'
+      ? await fheAdapter.encrypt(String(amount), token)
+      : undefined;
+  const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
+  if (!ctHash)
+    throw new ContractError(
+      'ENCRYPTION_FAILED',
+      'FHE encryption failed — no ciphertext handle returned',
+    );
+  return { encAmount, ctHash };
+}
+
+/**
+ * Extract the commit ID from a transaction receipt's logs.
+ *
+ * @param {import('viem').TransactionReceipt | undefined} receipt
+ * @returns {string}
+ */
+function _extractCommitId(receipt) {
+  let commitId = '';
+  if (receipt?.logs) {
+    for (const log of receipt.logs) {
+      if (log.topics?.[3]) commitId = log.topics[3];
+    }
+  }
+  return commitId;
+}
+
+/**
+ * Decrypt a ciphertext handle for an execute-phase call.
+ *
+ * @param {import('./fhe.js').FheAdapter} fheAdapter
+ * @param {string} ctHash - Ciphertext hash to decrypt
+ * @returns {Promise<{plaintext: bigint, signature: string}>}
+ */
+async function _decryptProof(fheAdapter, ctHash) {
+  const { plaintext, signature } = await fheAdapter.decryptForExecute(ctHash);
+  return { plaintext: BigInt(plaintext), signature };
+}
+
+// ---------------------------------------------------------------------------
 // Default RPC URL
 // ---------------------------------------------------------------------------
 
@@ -423,35 +481,13 @@ export function createContractAdapter(config, options = {}) {
      * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
      */
     shieldCommit: async (token, amount, account) => {
-      if (!amount || amount <= 0n)
-        throw new ContractError('INVALID_AMOUNT', 'Amount must be greater than zero');
-      if (!token || token === '0x0000000000000000000000000000000000000000')
-        throw new ContractError('INVALID_TOKEN', 'Invalid token address');
-      const encAmount =
-        _fheAdapter && typeof _fheAdapter.encrypt === 'function'
-          ? await _fheAdapter.encrypt(String(amount), token)
-          : undefined;
-      const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
-      if (!ctHash) throw new ContractError('ENCRYPTION_FAILED', 'FHE encryption failed — no ciphertext handle returned');
+      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, token);
       const wc = getWc();
       const result = await estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.LendingPool,
-        CONTRACT_ABIS.LendingPool,
-        'shield',
-        [token, encAmount],
-        account,
+        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
+        'shield', [token, encAmount], account,
       );
-      let commitId = '';
-      if (result.receipt?.logs) {
-        for (const log of result.receipt.logs) {
-          if (log.topics?.[3]) {
-            commitId = log.topics[3];
-          }
-        }
-      }
-      return { ...result, commitId, ctHash };
+      return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
     },
 
     /**
@@ -459,16 +495,11 @@ export function createContractAdapter(config, options = {}) {
      * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
     shieldExecute: async (token, commitId, ctHash, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash);
+      const { plaintext, signature } = await _decryptProof(_fheAdapter, ctHash);
       const wc = getWc();
       return estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.LendingPool,
-        CONTRACT_ABIS.LendingPool,
-        'executeShield',
-        [token, commitId, BigInt(plaintext), signature],
-        account,
+        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
+        'executeShield', [token, commitId, plaintext, signature], account,
       );
     },
 
@@ -478,35 +509,13 @@ export function createContractAdapter(config, options = {}) {
      * @type {(collateralToken: `0x${string}`, borrowToken: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
      */
     borrowCommit: async (collateralToken, borrowToken, amount, ltvNum, ltvDen, account) => {
-      if (!amount || amount <= 0n)
-        throw new ContractError('INVALID_AMOUNT', 'Amount must be greater than zero');
-      if (!collateralToken || collateralToken === '0x0000000000000000000000000000000000000000')
-        throw new ContractError('INVALID_TOKEN', 'Invalid token address');
-      const encAmount =
-        _fheAdapter && typeof _fheAdapter.encrypt === 'function'
-          ? await _fheAdapter.encrypt(String(amount), borrowToken)
-          : undefined;
-      const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
-      if (!ctHash) throw new ContractError('ENCRYPTION_FAILED', 'FHE encryption failed — no ciphertext handle returned');
+      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, borrowToken);
       const wc = getWc();
       const result = await estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.LendingPool,
-        CONTRACT_ABIS.LendingPool,
-        'commitBorrow',
-        [collateralToken, borrowToken, encAmount, ltvNum, ltvDen],
-        account,
+        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
+        'commitBorrow', [collateralToken, borrowToken, encAmount, ltvNum, ltvDen], account,
       );
-      let commitId = '';
-      if (result.receipt?.logs) {
-        for (const log of result.receipt.logs) {
-          if (log.topics?.[3]) {
-            commitId = log.topics[3];
-          }
-        }
-      }
-      return { ...result, commitId, ctHash };
+      return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
     },
 
     /**
@@ -514,16 +523,11 @@ export function createContractAdapter(config, options = {}) {
      * @type {(commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
     borrowExecute: async (commitId, ctHash, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash);
+      const { plaintext, signature } = await _decryptProof(_fheAdapter, ctHash);
       const wc = getWc();
       return estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.LendingPool,
-        CONTRACT_ABIS.LendingPool,
-        'executeBorrow',
-        [commitId, BigInt(plaintext), signature],
-        account,
+        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
+        'executeBorrow', [commitId, plaintext, signature], account,
       );
     },
 
@@ -533,35 +537,13 @@ export function createContractAdapter(config, options = {}) {
      * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
      */
     repayCommit: async (token, amount, account) => {
-      if (!amount || amount <= 0n)
-        throw new ContractError('INVALID_AMOUNT', 'Amount must be greater than zero');
-      if (!token || token === '0x0000000000000000000000000000000000000000')
-        throw new ContractError('INVALID_TOKEN', 'Invalid token address');
-      const encAmount =
-        _fheAdapter && typeof _fheAdapter.encrypt === 'function'
-          ? await _fheAdapter.encrypt(String(amount), token)
-          : undefined;
-      const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
-      if (!ctHash) throw new ContractError('ENCRYPTION_FAILED', 'FHE encryption failed — no ciphertext handle returned');
+      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, token);
       const wc = getWc();
       const result = await estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.LendingPool,
-        CONTRACT_ABIS.LendingPool,
-        'repay',
-        [token, encAmount],
-        account,
+        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
+        'repay', [token, encAmount], account,
       );
-      let commitId = '';
-      if (result.receipt?.logs) {
-        for (const log of result.receipt.logs) {
-          if (log.topics?.[3]) {
-            commitId = log.topics[3];
-          }
-        }
-      }
-      return { ...result, commitId, ctHash };
+      return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
     },
 
     /**
@@ -569,16 +551,11 @@ export function createContractAdapter(config, options = {}) {
      * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
     repayExecute: async (token, commitId, ctHash, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash);
+      const { plaintext, signature } = await _decryptProof(_fheAdapter, ctHash);
       const wc = getWc();
       return estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.LendingPool,
-        CONTRACT_ABIS.LendingPool,
-        'executeRepay',
-        [token, commitId, BigInt(plaintext), signature],
-        account,
+        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
+        'executeRepay', [token, commitId, plaintext, signature], account,
       );
     },
 
@@ -588,35 +565,13 @@ export function createContractAdapter(config, options = {}) {
      * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
      */
     withdrawCommit: async (token, amount, account) => {
-      if (!amount || amount <= 0n)
-        throw new ContractError('INVALID_AMOUNT', 'Amount must be greater than zero');
-      if (!token || token === '0x0000000000000000000000000000000000000000')
-        throw new ContractError('INVALID_TOKEN', 'Invalid token address');
-      const encAmount =
-        _fheAdapter && typeof _fheAdapter.encrypt === 'function'
-          ? await _fheAdapter.encrypt(String(amount), token)
-          : undefined;
-      const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
-      if (!ctHash) throw new ContractError('ENCRYPTION_FAILED', 'FHE encryption failed — no ciphertext handle returned');
+      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, token);
       const wc = getWc();
       const result = await estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.LendingPool,
-        CONTRACT_ABIS.LendingPool,
-        'withdraw',
-        [token, encAmount],
-        account,
+        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
+        'withdraw', [token, encAmount], account,
       );
-      let commitId = '';
-      if (result.receipt?.logs) {
-        for (const log of result.receipt.logs) {
-          if (log.topics?.[3]) {
-            commitId = log.topics[3];
-          }
-        }
-      }
-      return { ...result, commitId, ctHash };
+      return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
     },
 
     /**
@@ -624,16 +579,11 @@ export function createContractAdapter(config, options = {}) {
      * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
     withdrawExecute: async (token, commitId, ctHash, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash);
+      const { plaintext, signature } = await _decryptProof(_fheAdapter, ctHash);
       const wc = getWc();
       return estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.LendingPool,
-        CONTRACT_ABIS.LendingPool,
-        'executeWithdraw',
-        [token, commitId, BigInt(plaintext), signature],
-        account,
+        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
+        'executeWithdraw', [token, commitId, plaintext, signature], account,
       );
     },
 
