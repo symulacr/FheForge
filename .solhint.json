@@ -1,6 +1,0 @@
-{
-  "extends": "solhint:recommended",
-  "rules": {
-    "import-path-check": ["warn", ["contracts/node_modules"]]
-  }
-}
