@@ -275,6 +275,7 @@ const ERC20_READ_ABI = [
  * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} withdrawCommit
  * @property {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>} withdrawExecute
  * @property {(account: `0x${string}`) => Promise<{txHash: null, status: 'no-op'}>} settlePosition
+ * @property {(borrower: `0x${string}`, collateralToken: `0x${string}`, debtToken: `0x${string}`, debtToCover: bigint, debtHandle: string, supplyHandle: string, account: `0x${string}`) => Promise<TransactionResult>} liquidateWithProof
  */
 
 /**
@@ -799,6 +800,64 @@ export function createContractAdapter(config, options = {}) {
     settlePosition: async (_account) => {
       console.log('[bridge] settlePosition (no-op for FHE)');
       return { txHash: null, status: 'no-op' };
+    },
+
+    /**
+     * Liquidate an undercollateralized position.
+     * Decrypts both the borrower's debt and supply balance handles via CoFHE,
+     * then calls LendingPool.liquidateWithProof with the signed proofs.
+     *
+     * @type {(borrower: `0x${string}`, collateralToken: `0x${string}`, debtToken: `0x${string}`, debtToCover: bigint, debtHandle: string, supplyHandle: string, account: `0x${string}`) => Promise<TransactionResult>}
+     */
+    liquidateWithProof: async (
+      borrower,
+      collateralToken,
+      debtToken,
+      debtToCover,
+      debtHandle,
+      supplyHandle,
+      account,
+    ) => {
+      if (!borrower || borrower === '0x0000000000000000000000000000000000000000')
+        throw new ContractError('INVALID_ADDRESS', 'Invalid borrower address');
+      if (!collateralToken || collateralToken === '0x0000000000000000000000000000000000000000')
+        throw new ContractError('INVALID_TOKEN', 'Invalid collateral token address');
+      if (!debtToken || debtToken === '0x0000000000000000000000000000000000000000')
+        throw new ContractError('INVALID_TOKEN', 'Invalid debt token address');
+      if (!debtToCover || debtToCover <= 0n)
+        throw new ContractError('INVALID_AMOUNT', 'Debt to cover must be greater than zero');
+      if (!_fheAdapter || typeof _fheAdapter.decryptForExecute !== 'function')
+        throw new ContractError('FHE_ADAPTER_REQUIRED', 'FHE adapter required for liquidation');
+
+      // Decrypt borrower's debt balance to get proof
+      const debtProof = await _fheAdapter.decryptForExecute(debtHandle);
+      const debtBalanceProof = BigInt(debtProof.plaintext);
+      const debtSig = debtProof.signature;
+
+      // Decrypt borrower's supply/collateral balance to get proof
+      const supplyProof = await _fheAdapter.decryptForExecute(supplyHandle);
+      const supplyBalanceProof = BigInt(supplyProof.plaintext);
+      const supplySig = supplyProof.signature;
+
+      const wc = getWc();
+      return estimateSendAndWait(
+        publicClient,
+        wc,
+        CONTRACT_ADDRESSES.LendingPool,
+        CONTRACT_ABIS.LendingPool,
+        'liquidateWithProof',
+        [
+          borrower,
+          collateralToken,
+          debtToken,
+          debtToCover,
+          debtBalanceProof,
+          debtSig,
+          supplyBalanceProof,
+          supplySig,
+        ],
+        account,
+      );
     },
   };
 

@@ -111,6 +111,74 @@ function getPositionSummaryL(bridgeData) {
 
 function Lending({ setRoute, ctx, grantPermit, openConnect }) {
   const [faucetResult, setFaucetResult] = useStateL(null);
+  const [liqTargets, setLiqTargets] = useStateL(null);
+  const [liqTargetsStatus, setLiqTargetsStatus] = useStateL("loading");
+  const [liqResult, setLiqResult] = useStateL(null);
+  const [liqSubmitting, setLiqSubmitting] = useStateL(false);
+
+  // Fetch liquidation targets on mount
+  useEffectL(() => {
+    let cancelled = false;
+    async function fetchLiqTargets() {
+      try {
+        const base = (typeof window !== "undefined" && window.__API_BASE) || "http://localhost:3001";
+        const res = await fetch(`${base}/lending/positions/liquidation-targets`, { method: "POST", headers: { "Content-Type": "application/json" } });
+        if (!res.ok) throw new Error(`${res.status}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setLiqTargets(Array.isArray(data) ? data : (data.targets || data.positions || []));
+          setLiqTargetsStatus("ready");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setLiqTargets([]);
+          setLiqTargetsStatus("unavailable");
+        }
+      }
+    }
+    fetchLiqTargets();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleLiquidate(target) {
+    if (liqSubmitting) return;
+    if (!ctx.connected) { openConnect(); return; }
+    setLiqSubmitting(true);
+    setLiqResult(null);
+    try {
+      const bridge = typeof window !== "undefined" ? window.bridge : null;
+      if (!bridge?.contract) { setLiqResult({ type: "error", message: "bridge unavailable" }); return; }
+
+      const { borrower, collateralToken, debtToken, debtToCover, debtHandle, supplyHandle } = target;
+      if (!borrower || !collateralToken || !debtToken) {
+        setLiqResult({ type: "error", message: "missing target data" });
+        return;
+      }
+
+      // Default to max liquidation if no amount specified
+      const amount = debtToCover ? BigInt(debtToCover) : 0n;
+      if (amount <= 0n && !debtHandle) {
+        setLiqResult({ type: "error", message: "no repay amount or encrypted handles available" });
+        return;
+      }
+
+      setLiqResult({ type: "info", message: "decrypting balances…" });
+      const tx = await bridge.contract.write.liquidateWithProof(
+        borrower, collateralToken, debtToken, amount,
+        debtHandle || "0x", supplyHandle || "0x", ctx.address
+      );
+      if (tx.status === "reverted") {
+        setLiqResult({ type: "error", message: "liquidation reverted" });
+      } else {
+        setLiqResult({ type: "success", message: `liquidated · tx ${tx.hash}` });
+      }
+    } catch (err) {
+      setLiqResult({ type: "error", message: err?.message || "liquidation failed" });
+    } finally {
+      setLiqSubmitting(false);
+    }
+    setTimeout(() => setLiqResult(null), 10000);
+  }
 
   async function handleFaucetDrip(tokenAddress, e) {
     if (e) e.stopPropagation();
@@ -239,6 +307,75 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
               onClick={() => setAssetId(m.asset)}
             />
           ))}
+
+          {/* ── Liquidation targets ── */}
+          {ctx.connected && (
+            <>
+              <MDGroup>Liquidation targets</MDGroup>
+              {liqResult && (
+                <div
+                  role={liqResult.type === "error" ? "alert" : "status"}
+                  aria-live="polite"
+                  style={{
+                    margin: "0 20px",
+                    padding: "10px 12px",
+                    background: liqResult.type === "error" ? "var(--danger-soft, #2a0a0a)" : liqResult.type === "success" ? "var(--success-soft, #0a2a1a)" : "var(--accent-soft, #0a1a2a)",
+                    border: "1px solid " + (liqResult.type === "error" ? "var(--destructive)" : liqResult.type === "success" ? "var(--success)" : "var(--accent)"),
+                    color: liqResult.type === "error" ? "var(--destructive)" : liqResult.type === "success" ? "var(--success)" : "var(--accent)",
+                    fontFamily: "var(--mono)", fontSize: 11.5, lineHeight: 1.55,
+                    wordBreak: "break-all",
+                  }}
+                >
+                  <strong style={{ letterSpacing: 0.06, textTransform: "uppercase", fontSize: 10 }}>
+                    {liqResult.type === "error" ? "Liquidation failed" : liqResult.type === "success" ? "Liquidated" : "Liquidating"}
+                  </strong> · {liqResult.message}
+                </div>
+              )}
+              {liqTargetsStatus === "loading" ? (
+                <div className="mono" style={{ padding: "14px 20px", color: "var(--muted)", fontSize: 11 }}>
+                  scanning positions…
+                </div>
+              ) : liqTargetsStatus === "unavailable" ? (
+                <div className="mono" style={{ padding: "14px 20px", color: "var(--muted)", fontSize: 11 }}>
+                  liquidation scanner unavailable
+                </div>
+              ) : !liqTargets || liqTargets.length === 0 ? (
+                <div className="mono" style={{ padding: "14px 20px", color: "var(--muted)", fontSize: 11 }}>
+                  no positions near liquidation
+                </div>
+              ) : liqTargets.map((t, idx) => {
+                const borrower = t.borrower || t.user || t.address;
+                const healthFactor = t.healthFactor ?? t.health_factor ?? t.hf;
+                const collateral = t.collateralToken || t.collateralTokenAddress;
+                const debt = t.debtToken || t.debtTokenAddress || t.borrowToken;
+                const collSym = t.collateralSymbol || t.collateral || "–";
+                const debtSym = t.debtSymbol || t.debt || "–";
+                return (
+                  <MDItem
+                    key={borrower + "-" + idx}
+                    idx={
+                      <span className="mono" style={{ fontSize: 10, color: "var(--destructive)", letterSpacing: 0.06 }}>LIQ</span>
+                    }
+                    title={borrower ? borrower.slice(0, 6) + "…" + borrower.slice(-4) : "unknown"}
+                    sub={`hf ${healthFactor != null ? Number(healthFactor).toFixed(2) : "–"} · ${collSym} → ${debtSym}`}
+                    right={
+                      <button
+                        className="btn sm"
+                        style={{ padding: "3px 8px", fontSize: 9, letterSpacing: 0.06, textTransform: "uppercase", background: "var(--destructive)", color: "#fff", border: 0 }}
+                        onClick={(e) => { e.stopPropagation(); handleLiquidate(t); }}
+                        disabled={liqSubmitting}
+                        data-testid="liquidate-button"
+                      >
+                        {liqSubmitting ? "…" : "Liquidate"}
+                      </button>
+                    }
+                    selected={false}
+                    onClick={() => {}}
+                  />
+                );
+              })}
+            </>
+          )}
         </>
       }
       detailHeader={
