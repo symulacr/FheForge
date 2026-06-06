@@ -1623,8 +1623,8 @@
                 : String(raw),
             nativeBalanceWei: String(raw),
             asset: 'ETH',
-            netValue: previousWalletBalance.netValue || null,
-            portfolioLTV: previousWalletBalance.portfolioLTV || null,
+            netValue: previousWalletBalance?.netValue || null,
+            portfolioLTV: previousWalletBalance?.portfolioLTV || null,
             ltvGaugeValue: previousWalletBalance?.ltvGaugeValue,
           };
         },
