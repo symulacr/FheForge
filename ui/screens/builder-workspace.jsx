@@ -27,6 +27,13 @@ function parseAmountBW(display, decimals = 18) {
   return BigInt(Math.round(num * 10 ** decimals));
 }
 
+function getDecimalForAssetBW(asset) {
+  const sym = String(asset || "").toUpperCase();
+  if (sym.includes("USDC") || sym.includes("USDT")) return 6;
+  if (sym.includes("WBTC") || sym.includes("PPGS")) return 8;
+  return 18;
+}
+
 const NODE_W = 124;
 const NODE_H = 56;
 
@@ -1107,7 +1114,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     const borrowAmount = parseAmountBW(borrowCfg.amount || "0");
                     const ltv = borrowCfg.ltv || 50;
                     const swapTokenOut = tokenMap[swapCfg.to] || "0x0000000000000000000000000000000000000000";
-                    const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
+                    const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount, getDecimalForAssetBW(swapCfg.to)) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
                     const loopCount = repeatNode?.config?.loops || 1;
 
                     // ERC20 approval: ensure Composer can pull collateral tokens
@@ -1159,7 +1166,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                       const tx1 = await bridge.contract.write.shieldCommit(tokenAddr, amount, account);
                       if (tx1.status === "reverted") { setDeployResult({ ok: false, error: "Supply commit reverted" }); setDeploying(false); setDeployStep(null); return; }
                       setDeployStep("decrypting");
-                      const tx2 = await bridge.contract.write.shieldExecute(tokenAddr, tx1.commitId, account);
+                      const tx2 = await bridge.contract.write.shieldExecute(tokenAddr, tx1.commitId, tx1.ctHash, account);
                       if (tx2.status === "reverted") { setDeployResult({ ok: false, error: "Supply execute reverted" }); setDeploying(false); setDeployStep(null); return; }
                       setDeployStep(null);
                     } else if (node.type === "borrow" && amount > 0n) {
@@ -1168,13 +1175,13 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                       const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, borrowToken, amount, BigInt(cfg.ltv || 50), 100n, account);
                       if (tx1.status === "reverted") { setDeployResult({ ok: false, error: "Borrow commit reverted" }); setDeploying(false); setDeployStep(null); return; }
                       setDeployStep("decrypting");
-                      const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, account);
+                      const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, tx1.ctHash, account);
                       if (tx2.status === "reverted") { setDeployResult({ ok: false, error: "Borrow execute reverted" }); setDeploying(false); setDeployStep(null); return; }
                       setDeployStep(null);
                     } else if (node.type === "swap" && amount > 0n) {
                       const tokenOut = tokenMap[cfg.to] || Object.values(tokenMap)[0];
                       const slipBps = Math.round((cfg.slip || 0.5) * 100);
-                      const minOut = amount * BigInt(10000 - slipBps) / 10000n;
+                      const minOut = parseAmountBW(cfg.amount || "0", getDecimalForAssetBW(cfg.to)) * BigInt(10000 - slipBps) / 10000n;
                       await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, amount, minOut, 300n, account);
                     } else if (node.type === "settle") {
                       setDeployStep("committing");
