@@ -78,6 +78,10 @@
       this._demoStarted = false;
       this._isFetchingReadiness = false;
 
+      // Concurrency semaphore — caps simultaneous RPC calls to avoid rate limiting
+      this._activeFetches = 0;
+      this._maxConcurrent = 3;
+
       // beforeunload leak guard — stops all intervals on page unload
       // to prevent ghost polling processes when user refreshes or navigates away
       this._beforeUnloadHandler = function () {
@@ -948,20 +952,30 @@
         return Promise.resolve();
       }
 
+      // Concurrency guard — drop the fetch if too many are in flight
+      if (this._activeFetches >= this._maxConcurrent) {
+        return Promise.resolve();
+      }
+      this._activeFetches++;
+
+      var self = this;
       return spec
         .fetch()
         .then((raw) => {
-          var payload = this._unwrapApiResult(raw, spec.name);
+          var payload = self._unwrapApiResult(raw, spec.name);
           var transformed = spec.transform ? spec.transform(payload) : payload;
-          if (this._bus) {
-            this._bus.set(spec.event, transformed);
+          if (self._bus) {
+            self._bus.set(spec.event, transformed);
           }
           // Live fetches write only to BridgeBus. __MOCK__ remains a demo-mode
           // compatibility surface and must not be mutated by real data polling.
           return transformed;
         })
         .catch((err) => {
-          this._onError(spec.name, err);
+          self._onError(spec.name, err);
+        })
+        .finally(function () {
+          self._activeFetches--;
         });
     };
 
