@@ -432,7 +432,7 @@ export function createContractAdapter(config, options = {}) {
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
       const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
-      if (!ctHash) console.warn('[bridge] encrypt() returned no ctHash/handle:', encAmount);
+      if (!ctHash) throw new ContractError('ENCRYPTION_FAILED', 'FHE encryption failed — no ciphertext handle returned');
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -487,7 +487,7 @@ export function createContractAdapter(config, options = {}) {
           ? await _fheAdapter.encrypt(String(amount), borrowToken)
           : undefined;
       const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
-      if (!ctHash) console.warn('[bridge] encrypt() returned no ctHash/handle:', encAmount);
+      if (!ctHash) throw new ContractError('ENCRYPTION_FAILED', 'FHE encryption failed — no ciphertext handle returned');
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -542,7 +542,7 @@ export function createContractAdapter(config, options = {}) {
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
       const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
-      if (!ctHash) console.warn('[bridge] encrypt() returned no ctHash/handle:', encAmount);
+      if (!ctHash) throw new ContractError('ENCRYPTION_FAILED', 'FHE encryption failed — no ciphertext handle returned');
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -597,7 +597,7 @@ export function createContractAdapter(config, options = {}) {
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
       const ctHash = encAmount?.ctHash ?? encAmount?.handle ?? undefined;
-      if (!ctHash) console.warn('[bridge] encrypt() returned no ctHash/handle:', encAmount);
+      if (!ctHash) throw new ContractError('ENCRYPTION_FAILED', 'FHE encryption failed — no ciphertext handle returned');
       const wc = getWc();
       const result = await estimateSendAndWait(
         publicClient,
@@ -757,6 +757,7 @@ export function createContractAdapter(config, options = {}) {
         _fheAdapter && typeof _fheAdapter.encrypt === 'function'
           ? await _fheAdapter.encrypt(String(amount), token)
           : undefined;
+      const encHandle = encAmount?.ctHash ?? encAmount?.handle ?? 0n;
       const wc = getWc();
       return estimateSendAndWait(
         publicClient,
@@ -764,7 +765,7 @@ export function createContractAdapter(config, options = {}) {
         CONTRACT_ADDRESSES.StrategyVault,
         CONTRACT_ABIS.StrategyVault,
         'openPosition',
-        [token, amount, encAmount, strategyId, account],
+        [token, amount, encHandle, strategyId, account],
         account,
       );
     },
