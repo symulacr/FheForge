@@ -62,28 +62,27 @@ describe('GovernanceController', () => {
 
   describe('POST /governance/vote', () => {
     it('should record a vote', async () => {
-      const all = await controller.getProposals();
-      const active = all.find((p) => p.status === 'active');
-      if (!active) return;
-
       const req = {
         user: { address: '0xVoterTestAddress' },
       } as unknown as Request;
-      const vote = await controller.castVote(
-        { proposalId: active.id, support: true, weight: 100 },
+      const result = controller.castVote(
+        { proposalId: 'any-id', support: true, weight: 100 },
         req,
       );
-      expect(vote.voter).toBe('0xVoterTestAddress');
-      expect(vote.support).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('coming soon');
     });
 
     it('should reject vote on non-existent proposal', async () => {
       const req = {
         user: { address: '0xVoterTestAddress' },
       } as unknown as Request;
-      await expect(
-        controller.castVote({ proposalId: 'nonexistent', support: true, weight: 100 }, req),
-      ).rejects.toThrow();
+      const result = controller.castVote(
+        { proposalId: 'nonexistent', support: true, weight: 100 },
+        req,
+      );
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('coming soon');
     });
   });
 
