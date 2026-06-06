@@ -114,6 +114,8 @@
   <!-- BRIDGE: Bridge init (loads @fheforge/bridge ESM, creates window.bridge with production defaults) -->
   <script type="module" src="../packages/forge-bridge/scripts/bridge-init.js?v=v31"></script>
 
+  <!-- BRIDGE: Shared utilities — must load before data-fetcher-v2.js -->
+  <script src="../packages/forge-bridge-integration/src/shared-utils.js?v=v31"></script>
   <!-- BRIDGE: DataFetcherV2 — public/authenticated split polling (replaces Phase 5 integration-adapter.js) -->
   <script src="../packages/forge-bridge-integration/src/data-fetcher-v2.js?v=v31"></script>
 

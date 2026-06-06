@@ -18,6 +18,22 @@
      DataFetcherV2
      ────────────────────────────────────────────── */
 
+  // Shared utilities — loaded via script tag (shared-utils.js)
+  var _u = (typeof window !== 'undefined' && window.__sharedUtils) || {};
+
+  /**
+   * Shorthand for the shared catchDecrypt helper.
+   * Captures the bus from the calling instance via closure.
+   * @param {Object|null} bus   - BridgeBus instance
+   * @param {string}      token - Token address or position ID
+   * @returns {(err: Error) => null}
+   */
+  var _catchDecrypt = function (bus, token) {
+    return _u.catchDecrypt
+      ? _u.catchDecrypt(bus, token, null)
+      : function () { return null; };
+  };
+
   /**
    * Add ±10% jitter to a polling interval to prevent thundering herd.
    * @param {number} interval - Base interval in ms
@@ -440,20 +456,8 @@
      * @param {string}          spec.name       - Human-readable source name (for error logging)
      * @returns {Promise<*>} Resolves with the transformed data for chaining
      */
-    DataFetcherV2.prototype._unwrapApiResult = (result, source) => {
-      if (
-        result &&
-        typeof result === 'object' &&
-        result.status === 'success' &&
-        Object.hasOwn(result, 'data')
-      ) {
-        return result.data;
-      }
-      if (result && typeof result === 'object' && result.status === 'error') {
-        throw result.error || new Error(`${source} request failed`);
-      }
-      return result;
-    };
+    DataFetcherV2.prototype._unwrapApiResult = (result, source) =>
+      _u.unwrapResult ? _u.unwrapResult(result, source) : result;
 
     DataFetcherV2.prototype._fetchAndTransform = function (spec) {
       // Skip real API calls when demo mode is active to prevent
@@ -591,24 +595,16 @@
     /* ── Individual Fetch Functions ─────────────────── */
 
     DataFetcherV2.prototype._normalizeReadinessResult = (result, source) => {
-      if (
-        result &&
-        typeof result === 'object' &&
-        result.status === 'success' &&
-        Object.hasOwn(result, 'data')
-      ) {
-        return { status: 'success', data: result.data, error: null };
-      }
+      var raw = _u.unwrapResult ? _u.unwrapResult(result, source) : result;
       if (result && typeof result === 'object' && result.status === 'error') {
+        var errObj = result.error;
         return {
           status: 'error',
           data: null,
-          error: result.error?.message
-            ? result.error.message
-            : String(result.error || `${source} request failed`),
+          error: errObj?.message ? errObj.message : String(errObj || (source + ' request failed')),
         };
       }
-      return { status: 'success', data: result, error: null };
+      return { status: 'success', data: raw, error: null };
     };
 
     DataFetcherV2.prototype._fetchReadiness = function () {
@@ -674,11 +670,11 @@
       return this._fetchAndTransform({
         fetch: () =>
           this._getBridge().then((b) => {
-            var addr =
-              b.wallet && typeof b.wallet.getAccount === 'function' ? b.wallet.getAccount() : null;
-            if (!addr) {
-              return this._emptyPositionsPayload('locked', 'No wallet connected', []);
-            }
+            var getAccount = b.wallet && typeof b.wallet.getAccount === 'function'
+              ? b.wallet.getAccount.bind(b.wallet) : () => null;
+            var addr;
+            try { addr = _u.requireConnected ? _u.requireConnected(getAccount) : getAccount(); }
+            catch (_) { return this._emptyPositionsPayload('locked', 'No wallet connected', []); }
 
             // Check if getLendableTokens is available — needed to enumerate positions
             var getLendableTokens = this._getContractReadHelper(b, 'getLendableTokens');
@@ -782,18 +778,7 @@
                       b.fhe
                         .decrypt(supplyHandle)
                         .then((plaintext) => ({ token: tkn, plaintext: plaintext }))
-                        .catch((err) => {
-                          console.warn(
-                            `[DataFetcherV2] Decrypt failed for ${tkn}:`,
-                            err?.message || err,
-                          );
-                          if (this._bus)
-                            this._bus.set('error:decrypt', {
-                              token: tkn,
-                              message: err?.message || 'Decrypt failed',
-                            });
-                          return { token: tkn, plaintext: null };
-                        }),
+                        .catch(_catchDecrypt(this._bus, tkn)),
                     );
                   } else if (supplyHandle) {
                     supplies.push(Promise.resolve({ token: tkn, encrypted: supplyHandle }));
@@ -804,18 +789,7 @@
                       b.fhe
                         .decrypt(borrowHandle)
                         .then((plaintext) => ({ token: tkn, plaintext: plaintext }))
-                        .catch((err) => {
-                          console.warn(
-                            `[DataFetcherV2] Decrypt failed for ${tkn}:`,
-                            err?.message || err,
-                          );
-                          if (this._bus)
-                            this._bus.set('error:decrypt', {
-                              token: tkn,
-                              message: err?.message || 'Decrypt failed',
-                            });
-                          return { token: tkn, plaintext: null };
-                        }),
+                        .catch(_catchDecrypt(this._bus, tkn)),
                     );
                   } else if (borrowHandle) {
                     borrows.push(Promise.resolve({ token: tkn, encrypted: borrowHandle }));
@@ -862,20 +836,7 @@
                                 rawVault.push(
                                   b.fhe
                                     .decrypt(collateral)
-                                    .catch((err) => {
-                                      console.warn(
-                                        '[DataFetcherV2] Decrypt failed for vault collateral ' +
-                                          pid +
-                                          ':',
-                                        err?.message || err,
-                                      );
-                                      if (this._bus)
-                                        this._bus.set('error:decrypt', {
-                                          token: `vault:${pid}`,
-                                          message: err?.message || 'Decrypt failed',
-                                        });
-                                      return null;
-                                    })
+                                    .catch(_catchDecrypt(this._bus, 'vault:' + pid))
                                     .then((plain) => ({
                                       id: pid,
                                       strategyId: meta?.strategyId || 0,
@@ -921,20 +882,7 @@
                                     if (permitUnlocked && collateral) {
                                       return b.fhe
                                         .decrypt(collateral)
-                                        .catch((err) => {
-                                          console.warn(
-                                            '[DataFetcherV2] Decrypt failed for vault collateral ' +
-                                              pid +
-                                              ':',
-                                            err?.message || err,
-                                          );
-                                          if (this._bus)
-                                            this._bus.set('error:decrypt', {
-                                              token: `vault:${pid}`,
-                                              message: err?.message || 'Decrypt failed',
-                                            });
-                                          return null;
-                                        })
+                                        .catch(_catchDecrypt(this._bus, 'vault:' + pid))
                                         .then((plain) => ({
                                           id: pid,
                                           strategyId: meta?.strategyId || 0,
@@ -1128,9 +1076,11 @@
       return this._fetchAndTransform({
         fetch: () =>
           this._getBridge().then((b) => {
-            var addr =
-              b.wallet && typeof b.wallet.getAccount === 'function' ? b.wallet.getAccount() : null;
-            if (!addr) throw new Error('No wallet connected');
+            var getAccount = b.wallet && typeof b.wallet.getAccount === 'function'
+              ? b.wallet.getAccount.bind(b.wallet) : () => null;
+            var addr = _u.requireConnected
+              ? _u.requireConnected(getAccount)
+              : (function () { var a = getAccount(); if (!a) throw new Error('No wallet connected'); return a; })();
             if (typeof b.wallet.getBalance !== 'function') {
               throw new Error('Wallet balance helper not available');
             }
