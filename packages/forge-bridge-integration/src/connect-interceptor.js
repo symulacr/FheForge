@@ -63,10 +63,11 @@ function getSessionStorage() {
  * @returns {Object|null}
  */
 function getDataFetcherV2() {
-  if (_dataFetcherV2Instance) return _dataFetcherV2Instance;
-
   const g = getGlobal();
-  if (g.DataFetcherV2 && g.__bridgeBus) {
+  // Prefer ForgeProvider's instance (avoids duplicate polling)
+  if (g.__dataFetcherV2) return g.__dataFetcherV2;
+  // Fallback: create own instance only if ForgeProvider hasn't started yet
+  if (!_dataFetcherV2Instance && g.DataFetcherV2 && g.__bridgeBus) {
     try {
       _dataFetcherV2Instance = new g.DataFetcherV2({ bus: g.__bridgeBus });
     } catch (err) {
