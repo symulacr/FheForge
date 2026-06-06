@@ -218,7 +218,7 @@ All FHE operations benchmarked on Arbitrum Sepolia. Gas is constant-time per ope
 > **`allowPublic` is permanent (CoFHE limitation)**
 > Once `FHE.allowPublic` is called on a ciphertext handle, the data is publicly decryptable forever. CoFHE does not support key rotation or permit revocation. We mitigate by adding access controls + cooldowns on reveal functions. This is a CoFHE-level constraint.
 
-See [CHANGELOG.md](./CHANGELOG.md) for resolved issues and version history.
+See [CHANGELOG.md](./docs/CHANGELOG.md) for resolved issues and version history.
 
 ---
 
@@ -249,10 +249,10 @@ python3 tests/test-e2e.py            # 26/26 pass
 
 | Document | Description |
 |----------|-------------|
-| [DESIGN.md](./DESIGN.md) | Product register, users, purpose, brand personality, visual system, color tokens, typography, components, motion |
+| [DESIGN.md](./docs/DESIGN.md) | Product register, users, purpose, brand personality, visual system, color tokens, typography, components, motion |
 | [CONTRIBUTING.md](./docs/CONTRIBUTING.md) | Contribution guidelines |
 | [SECURITY.md](./docs/SECURITY.md) | Security policy and vulnerability reporting |
-| [CHANGELOG.md](./CHANGELOG.md) | Version history and resolved issues |
+| [CHANGELOG.md](./docs/CHANGELOG.md) | Version history and resolved issues |
 
 ---
 

@@ -4,8 +4,8 @@
 
 FheForge UI uses a committed design system. Before building or modifying any frontend surface, read:
 
-- **DESIGN.md** (root) — Product register, users, purpose, brand personality, anti-references, 5 design principles. Visual system: dark terminal (#0a0a0a bg), JetBrains Mono globally, `border-radius: 0 !important` (hard constraint), single blue accent (#3b82f6) restrained strategy, semantic state colors (success #22c55e / warning #eab308 / destructive #ef4444).
-- **DESIGN.md** (root) — Visual system: dark terminal (#0a0a0a bg), JetBrains Mono globally, `border-radius: 0 !important` (hard constraint), single blue accent (#3b82f6) restrained strategy, semantic state colors (success #22c55e / warning #eab308 / destructive #ef4444).
+- **docs/DESIGN.md** — Product register, users, purpose, brand personality, anti-references, 5 design principles. Visual system: dark terminal (#0a0a0a bg), JetBrains Mono globally, `border-radius: 0 !important` (hard constraint), single blue accent (#3b82f6) restrained strategy, semantic state colors (success #22c55e / warning #eab308 / destructive #ef4444).
+- **docs/DESIGN.md** — Visual system: dark terminal (#0a0a0a bg), JetBrains Mono globally, `border-radius: 0 !important` (hard constraint), single blue accent (#3b82f6) restrained strategy, semantic state colors (success #22c55e / warning #eab308 / destructive #ef4444).
 
 ### Key constraints for agents
 
@@ -15,7 +15,7 @@ FheForge UI uses a committed design system. Before building or modifying any fro
 - No gradient text, no glassmorphism, no ghost-card (border + large box-shadow together).
 - Motion: Framer Motion at 150–250ms ease-out. Every animation has a `prefers-reduced-motion` fallback.
 - Copy: no marketing buzzwords, no em dashes, no aphoristic cadence. Verb + object button labels.
-- Run `/impeccable` commands for any design work. Context is pre-loaded from PRODUCT.md + DESIGN.md.
+- Run `/impeccable` commands for any design work. Context is pre-loaded from PRODUCT.md + docs/DESIGN.md.
 
 ## Project Context
 
