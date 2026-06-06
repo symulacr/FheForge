@@ -376,10 +376,10 @@ function PositionDetail({ p, locked, setRoute, bridge, ctx }) {
     setCrStep("committing");
     try {
       const tx1 = await bridge.contract.write.withdrawCommit(token, amountWei, ctx.address);
-      if (tx1.status === "reverted") { setCrStep("failed"); return; }
+      if (tx1.status === "reverted") { setCrStep("failed"); setCrError("commit reverted"); return; }
       setCrStep("decrypting");
       const tx2 = await bridge.contract.write.withdrawExecute(token, tx1.commitId, tx1.ctHash, ctx.address);
-      if (tx2.status === "reverted") { setCrStep("failed"); return; }
+      if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
       setCrStep("done");
     } catch (e) {
       setCrStep("failed");
