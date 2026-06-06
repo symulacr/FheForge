@@ -642,7 +642,7 @@ export function createContractAdapter(config, options = {}) {
     /**
      * Open a multi-step leveraged strategy via the Composer contract.
      * Orchestrates vault + pool + swap in a single atomic transaction.
-     * @param {{strategyName: string, workflowHash: string, collateralAmount: bigint, poolSupplyAmount: bigint, poolBorrowAmount: bigint, swapDeadlineOffset: bigint, strategyId: bigint, swapAmountIn: bigint, swapMinOut: bigint, collateralToken: `0x${string}`, borrowToken: `0x${string}`, swapTokenOut: `0x${string}`, ltvNum: bigint, ltvDen: bigint, useOracleBorrow: boolean, apyTarget: number, loopCount: number}} params
+     * @param {{strategyName: string, workflowHash: string, collateralAmount: bigint, poolSupplyAmount: bigint, poolBorrowAmount: bigint, swapDeadlineOffset: bigint, strategyId: bigint, swapAmountIn: bigint, swapMinOut: bigint, collateralToken: `0x${string}`, borrowToken: `0x${string}`, swapTokenOut: `0x${string}`, apyTarget: number, loopCount: number}} params
      * @param {`0x${string}`} account
      * @returns {Promise<TransactionResult>}
      */

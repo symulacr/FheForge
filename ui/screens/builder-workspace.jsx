@@ -1107,7 +1107,6 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     const collateralAmount = parseAmountBW(supplyCfg.amount || "0");
                     const borrowToken = tokenMap[borrowCfg.asset] || collateralToken;
                     const borrowAmount = parseAmountBW(borrowCfg.amount || "0");
-                    const ltv = borrowCfg.ltv || 50;
                     const swapTokenOut = tokenMap[swapCfg.to] || "0x0000000000000000000000000000000000000000";
                     const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount, getDecimalForAssetBW(swapCfg.to)) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
                     const loopCount = repeatNode?.config?.loops || 1;
@@ -1123,11 +1122,13 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     }
 
                     setDeployStep("committing");
+                    // NOTE: loopCount is strategy metadata registered on-chain; the Composer
+                    // does not iterate — actual loop execution depends on off-chain replay.
                     const result = await bridge.contract.write.composerOpenPosition({
                       strategyName: workflow.name || "Untitled",
                       workflowHash,
                       collateralAmount,
-                      poolSupplyAmount: 0n,
+                      poolSupplyAmount: collateralAmount,
                       poolBorrowAmount: borrowAmount,
                       swapDeadlineOffset: 300n,
                       strategyId: strategyId,
@@ -1136,9 +1137,6 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                       collateralToken,
                       borrowToken,
                       swapTokenOut,
-                      ltvNum: BigInt(ltv),
-                      ltvDen: 100n,
-                      useOracleBorrow: false,
                       apyTarget: 0,
                       loopCount: loopCount,
                     }, ctx.address);
@@ -1166,8 +1164,12 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                       setDeployStep(null);
                     } else if (node.type === "borrow" && amount > 0n) {
                       const borrowToken = tokenMap[cfg.asset] || Object.values(tokenMap)[0];
+                      // Resolve collateral from the preceding supply node via edges
+                      const borrowEdge = edges.find(e => e.to === node.id);
+                      const borrowSrc = borrowEdge ? nodes.find(n => n.id === borrowEdge.from) : null;
+                      const collateralToken = (borrowSrc?.type === "supply" ? tokenMap[borrowSrc.config?.asset] : null) || tokenAddr;
                       setDeployStep("committing");
-                      const tx1 = await bridge.contract.write.borrowCommit(tokenAddr, borrowToken, amount, BigInt(cfg.ltv || 50), 100n, account);
+                      const tx1 = await bridge.contract.write.borrowCommit(collateralToken, borrowToken, amount, BigInt(cfg.ltv || 50), 100n, account);
                       if (tx1.status === "reverted") { setDeployResult({ ok: false, error: "Borrow commit reverted" }); setDeploying(false); setDeployStep(null); return; }
                       setDeployStep("decrypting");
                       const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, tx1.ctHash, account);
@@ -1176,8 +1178,13 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     } else if (node.type === "swap" && amount > 0n) {
                       const tokenOut = tokenMap[cfg.to] || Object.values(tokenMap)[0];
                       const slipBps = Math.round((cfg.slip || 0.5) * 100);
+                      // cfg.amount is the estimated OUTPUT; submitSwapIntent needs amountIn (INPUT)
+                      // Trace incoming edge to find the source node's amount as swap input
+                      const swapEdge = edges.find(e => e.to === node.id);
+                      const swapSrc = swapEdge ? nodes.find(n => n.id === swapEdge.from) : null;
+                      const swapAmountIn = (swapSrc?.config?.amount ? parseAmountBW(swapSrc.config.amount) : 0n) || amount;
                       const minOut = parseAmountBW(cfg.amount || "0", getDecimalForAssetBW(cfg.to)) * BigInt(10000 - slipBps) / 10000n;
-                      await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, amount, minOut, 300n, account);
+                      await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, swapAmountIn, minOut, 300n, account);
                     } else if (node.type === "settle") {
                       setDeployStep("committing");
                       // Settle: grant ACL decryption rights for the user's positions
