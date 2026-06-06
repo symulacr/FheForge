@@ -431,6 +431,7 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
 function getDecimalsForAssetL(asset) {
   const sym = String(asset || "").toUpperCase();
   if (sym === "USDC" || sym === "USDT") return 6;
+  if (sym === "WBTC" || sym === "PPGS") return 8;
   return 18;
 }
 
