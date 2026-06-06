@@ -54,6 +54,7 @@ function App() {
   const [ctx, setCtx] = useStateA({
     connected: t.startConnected,
     address: null,
+    chainId: null,
     permitUnlocked: t.startConnected && t.startUnlocked,
     permitSeconds: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
     revealing: false,
@@ -131,7 +132,9 @@ function App() {
       }
     };
     const onChain = (chainId) => {
-      window.__bridgeBus?.set("wallet:networkChanged", { chainId: typeof chainId === "string" ? parseInt(chainId, 16) : chainId });
+      const id = typeof chainId === "string" ? parseInt(chainId, 16) : chainId;
+      window.__bridgeBus?.set("wallet:networkChanged", { chainId: id });
+      setCtx(prev => ({ ...prev, chainId: id }));
     };
     window.ethereum.on("accountsChanged", onAccounts);
     window.ethereum.on("chainChanged", onChain);
@@ -141,11 +144,43 @@ function App() {
   useEffectA(() => {
     if (!window.__bridgeBus) return;
     const onDisconnect = () => {
-      setCtx(prev => ({ ...prev, connected: false, address: null, permitUnlocked: false, permitSeconds: 0 }));
+      setCtx(prev => ({ ...prev, connected: false, address: null, chainId: null, permitUnlocked: false, permitSeconds: 0 }));
     };
     window.__bridgeBus.on('wallet:disconnected', onDisconnect);
     return () => window.__bridgeBus.off('wallet:disconnected', onDisconnect);
   }, []);
+
+  // Read current chainId when wallet connects
+  useEffectA(() => {
+    if (!ctx.connected || !window.ethereum?.request) return;
+    window.ethereum.request({ method: "eth_chainId" }).then((id) => {
+      const num = typeof id === "string" ? parseInt(id, 16) : id;
+      setCtx(prev => ({ ...prev, chainId: num }));
+    }).catch(() => {});
+  }, [ctx.connected]);
+
+  // Auto-switch to Arbitrum Sepolia (421614) when on wrong chain
+  const ARB_SEPOLIA_CHAIN_ID = 421614;
+  const wrongChain = ctx.connected && ctx.chainId != null && ctx.chainId !== ARB_SEPOLIA_CHAIN_ID;
+
+  useEffectA(() => {
+    if (!wrongChain || !window.ethereum?.request) return;
+    window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x66EEA" }],
+    }).catch(() => {
+      window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [{
+          chainId: "0x66EEA",
+          chainName: "Arbitrum Sepolia",
+          nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+          rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
+          blockExplorerUrls: ["https://sepolia.arbiscan.io"],
+        }],
+      }).catch(() => {});
+    });
+  }, [wrongChain]);
 
   // Wallet chip clicked
   const onWalletClick = useCallbackA(() => {
@@ -172,6 +207,19 @@ function App() {
         onWalletClick={onWalletClick}
         theme={theme} setTheme={setTheme}
       />
+      {wrongChain && (
+        <div role="alert" aria-live="assertive" style={{
+          padding: "8px 16px",
+          background: "var(--danger-soft, #2a0a0a)",
+          borderBottom: "1px solid var(--destructive, #ef4444)",
+          color: "var(--destructive, #ef4444)",
+          fontFamily: "var(--mono)",
+          fontSize: 12,
+          textAlign: "center",
+        }}>
+          Wrong network — switch to Arbitrum Sepolia in your wallet
+        </div>
+      )}
       <main key={route} id="main" className="fade-enter" style={{ minHeight: "calc(100vh - 56px)" }}>
         {Screen}
       </main>
