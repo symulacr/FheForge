@@ -98,13 +98,6 @@ function App() {
     return () => clearInterval(id);
   }, [ctx.permitUnlocked]);
 
-  // Auto-renew permit at 2 minutes remaining (silent, no wallet popup)
-  useEffectA(() => {
-    if (ctx.permitUnlocked && ctx.permitSeconds === 120) {
-      try { grantPermit(); } catch { /* silent — countdown continues to 0 */ }
-    }
-  }, [ctx.permitSeconds, grantPermit]);
-
   // Grant permit: call real bridge FHE permit
   const grantPermit = useCallbackA(async () => {
     if (!ctx.connected) return;
@@ -116,6 +109,13 @@ function App() {
     }
   }, [ctx.connected]);
 
+  // Auto-renew permit at 2 minutes remaining (silent, no wallet popup)
+  useEffectA(() => {
+    if (ctx.permitUnlocked && ctx.permitSeconds === 120) {
+      try { grantPermit(); } catch { /* silent — countdown continues to 0 */ }
+    }
+  }, [ctx.permitSeconds, grantPermit]);
+
   // Wallet account/chain change detection
   useEffectA(() => {
     if (!window.ethereum?.on) return;
@@ -126,9 +126,9 @@ function App() {
         if (window.__ConnectInterceptor) {
           window.__ConnectInterceptor.handleDisconnect();
         }
-      } else if (ctx.connected && accts[0] !== ctx.address) {
+      } else if (accts[0] && accts[0] !== ctx.address) {
         window.__bridgeBus?.set("wallet:connected", { connected: true, address: accts[0] });
-        setCtx(prev => ({ ...prev, address: accts[0] }));
+        setCtx(prev => ({ ...prev, connected: true, address: accts[0] }));
       }
     };
     const onChain = (chainId) => {
@@ -141,13 +141,20 @@ function App() {
     return () => { window.ethereum.removeListener("accountsChanged", onAccounts); window.ethereum.removeListener("chainChanged", onChain); };
   }, [ctx.connected, ctx.address]);
 
+  // Sync BridgeBus wallet:connected → ctx (fixes M2: dual state sync)
   useEffectA(() => {
     if (!window.__bridgeBus) return;
+    const onConnected = (data) => {
+      if (data?.address) {
+        setCtx(prev => ({ ...prev, connected: true, address: data.address, chainId: data.chainId ?? prev.chainId }));
+      }
+    };
     const onDisconnect = () => {
       setCtx(prev => ({ ...prev, connected: false, address: null, chainId: null, permitUnlocked: false, permitSeconds: 0 }));
     };
-    window.__bridgeBus.on('wallet:disconnected', onDisconnect);
-    return () => window.__bridgeBus.off('wallet:disconnected', onDisconnect);
+    const unsub1 = window.__bridgeBus.on('wallet:connected', onConnected);
+    const unsub2 = window.__bridgeBus.on('wallet:disconnected', onDisconnect);
+    return () => { unsub1(); unsub2(); };
   }, []);
 
   // Read current chainId when wallet connects
@@ -164,22 +171,30 @@ function App() {
   const wrongChain = ctx.connected && ctx.chainId != null && ctx.chainId !== ARB_SEPOLIA_CHAIN_ID;
 
   useEffectA(() => {
-    if (!wrongChain || !window.ethereum?.request) return;
-    window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x66EEA" }],
-    }).catch(() => {
+    if (!wrongChain) return;
+    // Use bridge switchNetwork if available, else fall back to window.ethereum
+    if (window.bridge?.wallet?.switchNetwork) {
+      window.bridge.wallet.switchNetwork(ARB_SEPOLIA_CHAIN_ID).catch((e) => {
+        console.error('[chain-switch] bridge.switchNetwork failed:', e);
+      });
+    } else if (window.ethereum?.request) {
       window.ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [{
-          chainId: "0x66EEA",
-          chainName: "Arbitrum Sepolia",
-          nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
-          rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
-          blockExplorerUrls: ["https://sepolia.arbiscan.io"],
-        }],
-      }).catch(() => {});
-    });
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x66EEE" }],
+      }).catch((e) => {
+        console.error('[chain-switch] wallet_switchEthereumChain failed:', e);
+        window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: "0x66EEE",
+            chainName: "Arbitrum Sepolia",
+            nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
+            blockExplorerUrls: ["https://sepolia.arbiscan.io"],
+          }],
+        }).catch((e2) => { console.error('[chain-switch] wallet_addEthereumChain failed:', e2); });
+      });
+    }
   }, [wrongChain]);
 
   // Wallet chip clicked

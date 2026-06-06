@@ -13,7 +13,7 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
     if (open && ctx?.connected && ctx?.permitUnlocked) onClose();
   }, [open, ctx?.connected, ctx?.permitUnlocked]);
 
-  // Auto-detect single wallet provider
+  // Auto-detect single wallet provider (use EIP-6963 rdns ID)
   useEffectCM(() => {
     if (!open || phase !== "idle" || ctx?.connected) return;
     const provs = typeof window !== "undefined" && window.ethereum
@@ -21,8 +21,8 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
       : [];
     const mm = provs.some(p => p.isMetaMask && !p.isRabby);
     const rb = provs.some(p => p.isRabby);
-    if (mm && !rb) startFlow("injected");
-    else if (rb && !mm) startFlow("injected");
+    if (mm && !rb) startFlow("io.metamask");
+    else if (rb && !mm) startFlow("io.rabby");
   }, [open]); // eslint-disable-line
 
   // Reset on close
@@ -53,9 +53,10 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
         else if (d.phase === "permitting") setPhase("permitting");
         else if (d.phase === "done") {
           setPhase("done");
-          const w = bus?.get("wallet:connected") || {};
-          const p = bus?.get("permit:granted") || {};
-          if (setCtx) setCtx(prev => ({ ...prev, connected: true, address: w.address || prev.address, permitUnlocked: true, permitSeconds: p.secondsLeft || 900 }));
+          const snap = bus?.getSnapshot?.() || {};
+          const w = snap.wallet || {};
+          const p = snap.permit || {};
+          if (setCtx) setCtx(prev => ({ ...prev, connected: true, address: w.address || prev.address, chainId: w.chainId ?? prev.chainId, permitUnlocked: p.unlocked !== false, permitSeconds: p.secondsLeft || 900 }));
           setTimeout(onClose, 300);
         }
       };
@@ -107,8 +108,8 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
 
 function WalletPicker({ onSelect }) {
   const wallets = [
-    { id: "injected",       name: "MetaMask",       sub: "Browser extension",   key: "mm" },
-    { id: "injected",       name: "Rabby",          sub: "Recommended for DeFi", key: "rb" },
+    { id: "io.metamask",    name: "MetaMask",       sub: "Browser extension",   key: "mm" },
+    { id: "io.rabby",       name: "Rabby",          sub: "Recommended for DeFi", key: "rb" },
     { id: "walletConnect",  name: "WalletConnect",  sub: "Mobile pairing",       key: "wc" },
   ];
   return (
