@@ -21,93 +21,54 @@ import { ApiError } from './types.js';
 // ---------------------------------------------------------------------------
 
 /**
- * Simple in-memory LRU cache with TTL support.
- * Evicts least-recently-used entries when max size is exceeded.
- *
- * @template T
+ * LRU get — returns { hit, value?, expired? }.
+ * Moves accessed key to end for LRU ordering.
+ * @param {Map<string, {value: any, expiry: number}>} cache
+ * @param {string} key
+ */
+function lruGet(cache, key) {
+  const entry = cache.get(key);
+  if (!entry) return { hit: false };
+  cache.delete(key);
+  cache.set(key, entry);
+  return { hit: true, value: entry.value, expired: Date.now() >= entry.expiry };
+}
+
+/**
+ * LRU set — evicts oldest entry when full.
+ * @param {Map<string, {value: any, expiry: number}>} cache
+ * @param {string} key
+ * @param {any} value
+ * @param {number} ttlMs
+ * @param {number} max
+ */
+function lruSet(cache, key, value, ttlMs, max = 200) {
+  if (cache.size >= max && !cache.has(key)) {
+    cache.delete(cache.keys().next().value);
+  }
+  cache.set(key, { value, expiry: Date.now() + ttlMs });
+}
+
+/**
+ * Thin LRU cache class — delegates to module-level helpers.
+ * Exported for test compatibility; adapter internals use lruGet/lruSet directly.
  */
 export class LRUCache {
-  /** @type {number} */
-  maxSize;
-
-  /** @type {Map<string, { value: T, expiry: number }>} */
+  /** @type {Map<string, {value: any, expiry: number}>} */
   #cache;
+  /** @type {number} */
+  #max;
 
-  /**
-   * @param {number} maxSize - Maximum cache entries (default 200)
-   */
   constructor(maxSize = 200) {
-    this.maxSize = maxSize;
     this.#cache = new Map();
+    this.#max = maxSize;
   }
 
-  /**
-   * Retrieve a cached value.
-   * Returns `{ hit: false }` if the key is absent.
-   * Returns `{ hit: true, value, expired: boolean }` if the key exists.
-   *
-   * @param {string} key - Cache key
-   * @returns {{ hit: boolean; value?: T; expired?: boolean }}
-   */
-  get(key) {
-    const entry = this.#cache.get(key);
-    if (!entry) return { hit: false };
-
-    // Move to end (most recently used)
-    this.#cache.delete(key);
-    this.#cache.set(key, entry);
-
-    if (Date.now() < entry.expiry) {
-      return { hit: true, value: entry.value, expired: false };
-    }
-    return { hit: true, value: entry.value, expired: true };
-  }
-
-  /**
-   * Store a value with a TTL.
-   *
-   * @param {string} key - Cache key
-   * @param {T} value - Value to cache
-   * @param {number} ttlMs - Time-to-live in milliseconds
-   */
-  set(key, value, ttlMs) {
-    if (this.#cache.has(key)) {
-      this.#cache.delete(key);
-    } else if (this.#cache.size >= this.maxSize) {
-      // Evict least recently used (first entry)
-      const firstKey = this.#cache.keys().next().value;
-      if (firstKey !== undefined) this.#cache.delete(firstKey);
-    }
-
-    this.#cache.set(key, {
-      value,
-      expiry: Date.now() + ttlMs,
-    });
-  }
-
-  /**
-   * Check if a key exists (regardless of expiry).
-   * @param {string} key
-   * @returns {boolean}
-   */
-  has(key) {
-    return this.#cache.has(key);
-  }
-
-  /**
-   * Delete a specific key.
-   * @param {string} key
-   */
-  delete(key) {
-    this.#cache.delete(key);
-  }
-
-  /**
-   * Clear all cached entries.
-   */
-  clear() {
-    this.#cache.clear();
-  }
+  get(key) { return lruGet(this.#cache, key); }
+  set(key, value, ttlMs) { lruSet(this.#cache, key, value, ttlMs, this.#max); }
+  has(key) { return this.#cache.has(key); }
+  delete(key) { this.#cache.delete(key); }
+  clear() { this.#cache.clear(); }
 }
 
 // ---------------------------------------------------------------------------
@@ -142,8 +103,8 @@ const DEFAULT_TTL_SECONDS = 60;
  */
 export function createApiAdapter(config, walletAdapter) {
   const baseURL = config.apiBaseUrl;
-  const cache = new LRUCache(200);
-
+  /** @type {Map<string, {value: any, expiry: number}>} */
+  const cache = new Map();
   // -----------------------------------------------------------------------
   // Axios client
   // -----------------------------------------------------------------------
@@ -296,7 +257,7 @@ export function createApiAdapter(config, walletAdapter) {
    * @param {Record<string, unknown>} [params]
    */
   async function cachedGet(cacheKey, url, params = {}) {
-    const cached = cache.get(cacheKey);
+    const cached = lruGet(cache, cacheKey);
 
     // Fresh cache hit
     if (cached.hit && !cached.expired) {
@@ -305,7 +266,6 @@ export function createApiAdapter(config, walletAdapter) {
 
     // Stale data — serve it and refresh in background
     if (cached.hit && cached.expired) {
-      // Fire-and-forget refresh
       fetchAndCache(cacheKey, url, params).catch(() => {});
       return { status: 'success', data: cached.value, error: null };
     }
@@ -323,23 +283,7 @@ export function createApiAdapter(config, walletAdapter) {
   async function fetchAndCache(cacheKey, url, params = {}) {
     try {
       const response = await client.get(url, { params });
-      const data = response.data;
-      const ttl = resolveTtl(url);
-      cache.set(cacheKey, data, ttl);
-      return { status: 'success', data, error: null };
-    } catch (error) {
-      return normalizeError(error);
-    }
-  }
-
-  /**
-   * Non-cached GET.
-   * @param {string} url
-   * @param {Record<string, unknown>} [params]
-   */
-  async function get(url, params = {}) {
-    try {
-      const response = await client.get(url, { params });
+      lruSet(cache, cacheKey, response.data, resolveTtl(url));
       return { status: 'success', data: response.data, error: null };
     } catch (error) {
       return normalizeError(error);
@@ -347,13 +291,17 @@ export function createApiAdapter(config, walletAdapter) {
   }
 
   /**
-   * POST request.
+   * Unified HTTP request helper.
+   * @param {'get'|'post'} method
    * @param {string} url
-   * @param {unknown} [body]
+   * @param {Record<string, unknown> | unknown} [bodyOrParams]
    */
-  async function post(url, body) {
+  async function request(method, url, bodyOrParams) {
     try {
-      const response = await client.post(url, body);
+      const response =
+        method === 'get'
+          ? await client.get(url, { params: bodyOrParams })
+          : await client.post(url, bodyOrParams);
       return { status: 'success', data: response.data, error: null };
     } catch (error) {
       return normalizeError(error);
@@ -368,7 +316,7 @@ export function createApiAdapter(config, walletAdapter) {
     /** System — public backend readiness probes */
     system: {
       /** GET /ready */
-      getReady: () => get('/ready'),
+      getReady: () => request('get', '/ready'),
     },
 
     /** Markets — public lending market data */
@@ -378,7 +326,7 @@ export function createApiAdapter(config, walletAdapter) {
       /** GET /markets/prices (cached 30s) */
       getPrices: () => cachedGet('markets-prices', '/markets/prices'),
       /** GET /markets/status */
-      getStatus: () => get('/markets/status'),
+      getStatus: () => request('get', '/markets/status'),
     },
 
     /** Stats — protocol-wide statistics */
@@ -398,7 +346,7 @@ export function createApiAdapter(config, walletAdapter) {
       /** GET /governance/proposals (cached 60s) */
       listProposals: (params) => cachedGet('governance-proposals', '/governance/proposals', params),
       /** POST /governance/vote */
-      castVote: (data) => post('/governance/vote', data),
+      castVote: (data) => request('post', '/governance/vote', data),
     },
 
     /** Activities — on-chain transaction history */
@@ -418,15 +366,15 @@ export function createApiAdapter(config, walletAdapter) {
       /** GET /defi-strategies (cached 60s) */
       getDefiStrategies: (params) => cachedGet('defi-strategies', '/defi-strategies', params),
       /** POST /defi-strategies */
-      createDefiStrategy: (data) => post('/defi-strategies', data),
+      createDefiStrategy: (data) => request('post', '/defi-strategies', data),
       /** POST /defi-strategies/simulate */
-      simulateDefiStrategy: (data) => post('/defi-strategies/simulate', data),
+      simulateDefiStrategy: (data) => request('post', '/defi-strategies/simulate', data),
     },
 
     /** AI Builder — AI-powered strategy building */
     aiBuilder: {
       /** POST /ai-strategy-builder/build */
-      buildStrategy: (data) => post('/ai-strategy-builder/build', data),
+      buildStrategy: (data) => request('post', '/ai-strategy-builder/build', data),
     },
   };
 }

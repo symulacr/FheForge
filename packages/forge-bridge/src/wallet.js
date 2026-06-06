@@ -99,18 +99,13 @@ function getPublicClient(config) {
 
 /**
  * @typedef {Object} WalletAdapter
- * @property {(connectorId?: string) => Promise<{accounts: ConnectReturnType | undefined}>} connect
- * @property {() => Promise<void>} disconnect
- * @property {() => Promise<any | null>} getProvider
- * @property {(chainId: number) => Promise<void>} switchNetwork
- * @property {() => string | null} getAccount
- * @property {() => number} getChainId
- * @property {(address?: string) => Promise<bigint>} getBalance
- * @property {() => boolean} isConnected
- * @property {() => string | null} getJwt
+ * @property {(id?: string) => Promise<{accounts: ConnectReturnType | undefined}>} connect
+ * @property {() => Promise<void>} disconnect @property {() => Promise<any>} getProvider
+ * @property {(chainId: number) => Promise<void>} switchNetwork @property {() => string | null} getAccount
+ * @property {() => number} getChainId @property {(a?: string) => Promise<bigint>} getBalance
+ * @property {() => boolean} isConnected @property {() => string | null} getJwt
  * @property {() => Promise<{accessToken: string, userId: string, walletAddress: string}>} login
- * @property {() => Promise<void>} logout
- * @property {(cb: (data: {chainId?: number, account?: string}) => void) => (() => void)} onChainChange
+ * @property {() => Promise<void>} logout @property {(cb: Function) => (() => void)} onChainChange
  * @property {() => Promise<{accessToken: string, userId: string, walletAddress: string}>} refreshJwt
  */
 
@@ -135,10 +130,33 @@ export function createWalletAdapter(config) {
   /** @type {(() => void) | null} */
   let unwatchChainFn = null;
 
+  /**
+   * Re-throw WalletError as-is, wrap other errors.
+   * @param {string} code
+   * @param {unknown} error
+   * @param {string} [fallbackMsg]
+   */
+  function wrapError(code, error, fallbackMsg) {
+    if (error instanceof WalletError) throw error;
+    throw new WalletError(code, /** @type {Error} */ (error).message || fallbackMsg || code);
+  }
+
+  /**
+   * Connect via a resolved connector.
+   * @param {import('@wagmi/core').Connector} connector
+   */
+  async function doConnect(connector) {
+    try {
+      const result = await wagmiConnect(wagmiConfig, { connector });
+      return { accounts: result };
+    } catch (error) {
+      wrapError('CONNECT_FAILED', error, 'Failed to connect wallet');
+    }
+  }
+
   return {
     /**
      * Connect a wallet. If no connectorId is given, tries the first available connector.
-     * EIP-6963 wallets are auto-discovered; their IDs are set by the wallet (e.g. "io.metamask", "io.rabby").
      * @param {string} [connectorId] - Optional connector id
      * @returns {Promise<{accounts: ConnectReturnType | undefined}>}
      */
@@ -153,29 +171,10 @@ export function createWalletAdapter(config) {
             `Connector "${connectorId}" not found. Available: ${connectors.map((c) => c.id).join(', ')}`,
           );
         }
-        try {
-          const result = await wagmiConnect(wagmiConfig, { connector });
-          return { accounts: result };
-        } catch (error) {
-          throw new WalletError(
-            'CONNECT_FAILED',
-            /** @type {Error} */ (error).message || 'Failed to connect wallet',
-          );
-        }
+        return doConnect(connector);
       }
 
-      // Default: try the first available connector (EIP-6963 discovered or generic injected)
-      try {
-        const result = await wagmiConnect(wagmiConfig, {
-          connector: connectors[0],
-        });
-        return { accounts: result };
-      } catch (error) {
-        throw new WalletError(
-          'CONNECT_FAILED',
-          /** @type {Error} */ (error).message || 'Failed to connect wallet.',
-        );
-      }
+      return doConnect(connectors[0]);
     },
 
     /**
@@ -213,40 +212,38 @@ export function createWalletAdapter(config) {
         await wagmiSwitchChain(wagmiConfig, { chainId });
       } catch (error) {
         const err = /** @type {Error & {code?: number}} */ (error);
-
-        // Chain not configured in wallet — try wallet_addEthereumChain
-        if (
+        const needsAdd =
           err.message?.includes('addEthereumChain') ||
           err.code === 4902 ||
-          err.name === 'ChainNotConfiguredError'
-        ) {
-          try {
-            const connections = getConnections(wagmiConfig);
-            const activeConnection = connections?.[0];
-            /** @type {{request: (args: {method: string, params: unknown[]}) => Promise<unknown>} | null} */
-            let provider = null;
-            if (activeConnection?.connector?.getProvider) {
-              provider = /** @type {any} */ (await activeConnection.connector.getProvider());
-            }
-            if (provider?.request) {
-              await provider.request({
-                method: 'wallet_addEthereumChain',
-                params: [ARB_SEPOLIA_CHAIN_PARAMS],
-              });
-            } else {
-              throw new WalletError(
-                'SWITCH_NETWORK_FAILED',
-                'Network mismatch. Please switch to Arbitrum Sepolia in your wallet.',
-              );
-            }
-          } catch (_addError) {
-            throw new WalletError(
-              'SWITCH_NETWORK_FAILED',
-              'Network mismatch. Please switch to Arbitrum Sepolia in your wallet.',
-            );
-          }
-        } else {
+          err.name === 'ChainNotConfiguredError';
+
+        if (!needsAdd) {
           throw new WalletError('SWITCH_NETWORK_FAILED', err.message || 'Failed to switch network');
+        }
+
+        // Chain not configured — try wallet_addEthereumChain fallback
+        const conn = getConnections(wagmiConfig)?.[0];
+        const provider = conn?.connector?.getProvider
+          ? /** @type {any} */ (await conn.connector.getProvider())
+          : null;
+
+        if (!provider?.request) {
+          throw new WalletError(
+            'SWITCH_NETWORK_FAILED',
+            'Network mismatch. Please switch to Arbitrum Sepolia in your wallet.',
+          );
+        }
+
+        try {
+          await provider.request({
+            method: 'wallet_addEthereumChain',
+            params: [ARB_SEPOLIA_CHAIN_PARAMS],
+          });
+        } catch {
+          throw new WalletError(
+            'SWITCH_NETWORK_FAILED',
+            'Network mismatch. Please switch to Arbitrum Sepolia in your wallet.',
+          );
         }
       }
     },
@@ -283,10 +280,7 @@ export function createWalletAdapter(config) {
           address: /** @type {`0x${string}`} */ (targetAddress),
         });
       } catch (error) {
-        throw new WalletError(
-          'BALANCE_FAILED',
-          /** @type {Error} */ (error).message || 'Failed to get wallet balance',
-        );
+        wrapError('BALANCE_FAILED', error, 'Failed to get wallet balance');
       }
     },
 
@@ -365,11 +359,7 @@ export function createWalletAdapter(config) {
           walletAddress: account,
         };
       } catch (error) {
-        if (error instanceof WalletError) throw error;
-        throw new WalletError(
-          'LOGIN_FAILED',
-          /** @type {Error} */ (error).message || 'Login failed',
-        );
+        wrapError('LOGIN_FAILED', error, 'Login failed');
       }
     },
 
