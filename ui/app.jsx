@@ -50,12 +50,14 @@ function App() {
   // Route
   const [route, setRoute] = useStateA(initialRoute());
 
-  // Wallet context (permit extracted to stop 1/sec re-render of entire tree)
-  const [ctx, setCtx] = useStateA({
+  // Wallet context — revealing only; wallet fields derived from BridgeBus below
+  const [ctx, setCtx] = useStateA({ revealing: false });
+
+  // Wallet state derived from BridgeBus (single source of truth)
+  const [wallet, setWallet] = useStateA({
     connected: t.startConnected,
     address: null,
     chainId: null,
-    revealing: false,
   });
 
   // Permit state — isolated so countdown doesn't re-render every screen
@@ -69,6 +71,25 @@ function App() {
   const openConnect = useCallbackA(() => setShowConnect(true), []);
   const closeConnect = useCallbackA(() => setShowConnect(false), []);
 
+  // Subscribe to BridgeBus wallet events (after permit state so setPermit is available)
+  useEffectA(() => {
+    if (!window.__bridgeBus) return;
+    const snap = window.__bridgeBus.getSnapshot();
+    if (snap?.wallet) setWallet(snap.wallet);
+
+    const unsub1 = window.__bridgeBus.on('wallet:connected', (data) => {
+      setWallet(prev => ({ ...prev, connected: true, address: data.address, chainId: data.chainId ?? prev.chainId }));
+    });
+    const unsub2 = window.__bridgeBus.on('wallet:disconnected', () => {
+      setWallet({ connected: false, address: null, chainId: null });
+      setPermit({ unlocked: false, secondsLeft: 0 });
+    });
+    const unsub3 = window.__bridgeBus.on('wallet:networkChanged', (data) => {
+      setWallet(prev => ({ ...prev, chainId: data.chainId }));
+    });
+    return () => { unsub1(); unsub2(); unsub3(); };
+  }, []);
+
   useEffectA(() => { window.location.hash = route; }, [route]);
   useEffectA(() => {
     const onHash = () => {
@@ -79,12 +100,12 @@ function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  // Re-sync when tweaks change
+  // Re-sync when tweaks change (dev-mode override)
   useEffectA(() => {
-    setCtx(c => ({
-      ...c,
+    setWallet(w => ({
+      ...w,
       connected: t.startConnected,
-      address: t.startConnected ? c.address : null,
+      address: t.startConnected ? w.address : null,
     }));
     setPermit({
       unlocked: t.startConnected && t.startUnlocked,
@@ -111,14 +132,14 @@ function App() {
 
   // Grant permit: call real bridge FHE permit
   const grantPermit = useCallbackA(async () => {
-    if (!ctx.connected) return;
+    if (!wallet.connected) return;
     try {
       await window.bridge?.fhe?.permitGrant();
       setPermit({ unlocked: true, secondsLeft: 15 * 60 });
     } catch (e) {
       console.error("Permit grant failed:", e);
     }
-  }, [ctx.connected]);
+  }, [wallet.connected]);
 
   // Auto-renew permit at 2 minutes remaining (silent, no wallet popup)
   useEffectA(() => {
@@ -127,61 +148,9 @@ function App() {
     }
   }, [permit.secondsLeft, grantPermit]);
 
-  // Wallet account/chain change detection
-  useEffectA(() => {
-    if (!window.ethereum?.on) return;
-    const onAccounts = (accts) => {
-      if (!accts.length) {
-        window.__bridgeBus?.set("wallet:disconnected", { connected: false, address: null });
-        setCtx(prev => ({ ...prev, connected: false, address: null }));
-        setPermit({ unlocked: false, secondsLeft: 0 });
-        if (window.__ConnectInterceptor) {
-          window.__ConnectInterceptor.handleDisconnect();
-        }
-      } else if (accts[0] && accts[0] !== ctx.address) {
-        window.__bridgeBus?.set("wallet:connected", { connected: true, address: accts[0] });
-        setCtx(prev => ({ ...prev, connected: true, address: accts[0] }));
-      }
-    };
-    const onChain = (chainId) => {
-      const id = typeof chainId === "string" ? parseInt(chainId, 16) : chainId;
-      window.__bridgeBus?.set("wallet:networkChanged", { chainId: id });
-      setCtx(prev => ({ ...prev, chainId: id }));
-    };
-    window.ethereum.on("accountsChanged", onAccounts);
-    window.ethereum.on("chainChanged", onChain);
-    return () => { window.ethereum.removeListener("accountsChanged", onAccounts); window.ethereum.removeListener("chainChanged", onChain); };
-  }, [ctx.connected, ctx.address]);
-
-  // Sync BridgeBus wallet:connected → ctx (fixes M2: dual state sync)
-  useEffectA(() => {
-    if (!window.__bridgeBus) return;
-    const onConnected = (data) => {
-      if (data?.address) {
-        setCtx(prev => ({ ...prev, connected: true, address: data.address, chainId: data.chainId ?? prev.chainId }));
-      }
-    };
-    const onDisconnect = () => {
-      setCtx(prev => ({ ...prev, connected: false, address: null, chainId: null }));
-      setPermit({ unlocked: false, secondsLeft: 0 });
-    };
-    const unsub1 = window.__bridgeBus.on('wallet:connected', onConnected);
-    const unsub2 = window.__bridgeBus.on('wallet:disconnected', onDisconnect);
-    return () => { unsub1(); unsub2(); };
-  }, []);
-
-  // Read current chainId when wallet connects
-  useEffectA(() => {
-    if (!ctx.connected || !window.ethereum?.request) return;
-    window.ethereum.request({ method: "eth_chainId" }).then((id) => {
-      const num = typeof id === "string" ? parseInt(id, 16) : id;
-      setCtx(prev => ({ ...prev, chainId: num }));
-    }).catch(() => {});
-  }, [ctx.connected]);
-
   // Auto-switch to Arbitrum Sepolia (421614) when on wrong chain
   const ARB_SEPOLIA_CHAIN_ID = 421614;
-  const wrongChain = ctx.connected && ctx.chainId != null && ctx.chainId !== ARB_SEPOLIA_CHAIN_ID;
+  const wrongChain = wallet.connected && wallet.chainId != null && wallet.chainId !== ARB_SEPOLIA_CHAIN_ID;
 
   useEffectA(() => {
     if (!wrongChain) return;
@@ -215,9 +184,10 @@ function App() {
     openConnect();
   }, [openConnect]);
 
-  // Routes
+  // Routes — fullCtx merges wallet state (from BridgeBus) with ctx (revealing only)
+  const fullCtx = { ...ctx, ...wallet };
   let Screen = null;
-  const baseProps = { setRoute, ctx, grantPermit, openConnect };
+  const baseProps = { setRoute, ctx: fullCtx, grantPermit, openConnect };
   if (route === "home")            Screen = safe('Landing', baseProps);
   else if (route === "portfolio")  Screen = safe('Dashboard', baseProps);
   else if (route === "lend")       Screen = safe('Lending', baseProps);
@@ -230,7 +200,7 @@ function App() {
       <a href="#main" style={{ position: "absolute", left: "-9999px" }} onFocus={(e) => { e.target.style.position = "static"; e.target.style.left = "auto"; }} onBlur={(e) => { e.target.style.position = "absolute"; e.target.style.left = "-9999px"; }}>Skip to content</a>
       <TopBar
         route={route} setRoute={setRoute}
-        ctx={ctx}
+        ctx={fullCtx}
         permit={permit}
         onPermitClick={permit.unlocked ? grantPermit : openConnect}
         onWalletClick={onWalletClick}
@@ -256,7 +226,7 @@ function App() {
       <ConnectModal
         open={showConnect}
         onClose={closeConnect}
-        ctx={ctx} setCtx={setCtx}
+        ctx={fullCtx}
         grantPermit={grantPermit}
       />
 

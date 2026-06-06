@@ -3,7 +3,7 @@
 
 const { useState: useStateCM, useEffect: useEffectCM } = React;
 
-function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
+function ConnectModal({ open, onClose, ctx, grantPermit }) {
   const [phase, setPhase]       = useStateCM("idle");
   const [error, setError]       = useStateCM(null);
   const [selected, setSelected] = useStateCM(null);
@@ -53,10 +53,7 @@ function ConnectModal({ open, onClose, ctx, setCtx, grantPermit }) {
         else if (d.phase === "permitting") setPhase("permitting");
         else if (d.phase === "done") {
           setPhase("done");
-          const snap = bus?.getSnapshot?.() || {};
-          const w = snap.wallet || {};
-          const p = snap.permit || {};
-          if (setCtx) setCtx(prev => ({ ...prev, connected: true, address: w.address || prev.address, chainId: w.chainId ?? prev.chainId, permitUnlocked: p.unlocked !== false, permitSeconds: p.secondsLeft || 900 }));
+          // Wallet state now flows via BridgeBus → wallet subscription in app.jsx
           setTimeout(onClose, 300);
         }
       };
