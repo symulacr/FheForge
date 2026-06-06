@@ -1483,14 +1483,27 @@
             };
           }
           if (!this._xf) return raw;
+          // Build address→decimals map for wei→decimal conversion
+          var TOKEN_DECIMALS = { ETH: 18, WETH: 18, USDC: 6, USDT: 6, WBTC: 8, PPGS: 8 };
+          var _decByAddr = {};
+          (Array.isArray(raw.markets) ? raw.markets : []).forEach(function (m) {
+            var sym = m.asset || m.symbol;
+            var addr = (m.assetAddress || m.address || '').toLowerCase();
+            if (sym && addr) _decByAddr[addr] = TOKEN_DECIMALS[sym] || 18;
+          });
+          function _toDecimal(plaintext, tokenAddr) {
+            if (plaintext == null) return null;
+            var dec = _decByAddr[String(tokenAddr || '').toLowerCase()] || 18;
+            return Number(plaintext) / Math.pow(10, dec);
+          }
           var shapedSupplies = (raw.supplies || []).map((s) => ({
             asset: s.token,
-            amount: s.plaintext,
+            amount: _toDecimal(s.plaintext, s.token),
             tokenAddress: s.token,
           }));
           var shapedBorrows = (raw.borrows || []).map((b) => ({
             asset: b.token,
-            amount: b.plaintext,
+            amount: _toDecimal(b.plaintext, b.token),
             tokenAddress: b.token,
           }));
           var result = this._xf.transformPositions(shapedSupplies, shapedBorrows, raw.markets);
