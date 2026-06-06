@@ -487,6 +487,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         const tx2 = await bridge.contract.write.shieldExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
+        window.__bridgeBus?.set("transaction:confirmed", {});
       } catch (e) {
         setCrStep("failed");
         setCrError(e.message || "transaction failed");
@@ -524,6 +525,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
+        window.__bridgeBus?.set("transaction:confirmed", {});
       } catch (e) {
         setCrStep("failed");
         setCrError(e.message || "transaction failed");
@@ -537,7 +539,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
     if (submitting) return;
     if (Number(amount) <= 0) { setCrStep("failed"); setCrError("Amount must be greater than 0"); return; }
     if (walletNumeric != null && Number(amount) > walletNumeric) {
-      setCrStep("failed"); setCrError(`Insufficient ${market.asset} balance. Available: ${walletNumeric}`); return;
+      setCrStep("failed"); setCrError(`Amount exceeds your wallet balance. Available: ${walletNumeric} ${market.asset}`); return;
     }
     setSubmitting(true);
     try {
@@ -546,6 +548,14 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
       if (!wei) { setCrStep("failed"); setCrError("invalid amount"); return; }
       const bridge = typeof window !== "undefined" ? window.bridge : null;
       if (!bridge?.contract) { setCrStep("failed"); setCrError("bridge unavailable"); return; }
+
+      // Approval check (repay needs transferFrom)
+      const LENDING_POOL = "0x4ed64f1708139E31C4c48A19f285AD50dC68EB35";
+      const allowance = await bridge.contract.read.erc20Allowance(market.assetAddress, ctx.address, LENDING_POOL);
+      if (BigInt(allowance) < wei) {
+        const approvalRes = await bridge.contract.write.erc20Approve(market.assetAddress, LENDING_POOL, ctx.address);
+        if (approvalRes.status === "reverted") { setCrStep("failed"); setCrError("approval failed"); return; }
+      }
 
       // TX1: Commit
       setCrStep("committing");
@@ -560,6 +570,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         const tx2 = await bridge.contract.write.repayExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
+        window.__bridgeBus?.set("transaction:confirmed", {});
       } catch (e) {
         setCrStep("failed");
         setCrError(e.message || "transaction failed");
@@ -591,8 +602,9 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         // TX2: Execute
         setCrStep("executing");
         const tx2 = await bridge.contract.write.withdrawExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
-        if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
+        if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted · amount may exceed your supply"); return; }
         setCrStep("done");
+        window.__bridgeBus?.set("transaction:confirmed", {});
       } catch (e) {
         setCrStep("failed");
         setCrError(e.message || "transaction failed");
