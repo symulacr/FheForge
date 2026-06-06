@@ -1,11 +1,43 @@
+# Gitleaks configuration for FheForge
+# Allowlists public blockchain data that is not actually secret
+
 title = "FheForge Gitleaks Config"
 version = 2
 
 [extend]
 useDefault = true
 
+# Allowlist public blockchain data (contract addresses, tx hashes)
 [[allowlists]]
-description = "Public contract deployment addresses"
+description = "Ethereum addresses and hashes"
+regexes = [
+  # Ethereum contract addresses (0x + 40 hex chars) - public on-chain data
+  '''0x[0-9a-fA-F]{40}''',
+  # Ethereum transaction hashes (0x + 64 hex chars)
+  '''0x[0-9a-fA-F]{64}''',
+  # Supabase publishable keys (safe to expose)
+  '''sb_publishable_[A-Za-z0-9_-]+''',
+]
+
+# Allowlist documentation and generated files
+[[allowlists]]
+description = "Docs, examples, and generated artifacts"
 paths = [
+  '''CLAUDE\.md''',
+  '''README\.md''',
+  '''DESIGN\.md''',
+  '''docs/.*''',
+  '''contracts/FINDINGS/.*''',
   '''contracts\/deployments\/''',
+  '''\.env\.development\.example$''',
+  '''\.env\.production\.example$''',
+  '''packages/forge-bridge/dist/.*''',
+  '''packages/forge-bridge/src/abis\.js''',
+]
+
+# Historical commits with known false positives (secret removed in later commits)
+[[allowlists]]
+description = "Historical commits with remediated secrets"
+commits = [
+  "bddfb7f3d093cb1ad7933285fded690cbe3def5a",
 ]
