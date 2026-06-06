@@ -249,8 +249,7 @@ python3 test-e2e.py                 # 26/26 pass
 
 | Document | Description |
 |----------|-------------|
-| [DESIGN.md](./DESIGN.md) | Visual system, color tokens, typography, components, motion |
-| [PRODUCT.md](./PRODUCT.md) | Register, users, product purpose, brand personality |
+| [DESIGN.md](./DESIGN.md) | Product register, users, purpose, brand personality, visual system, color tokens, typography, components, motion |
 | [CONTRIBUTING.md](./docs/CONTRIBUTING.md) | Contribution guidelines |
 | [SECURITY.md](./docs/SECURITY.md) | Security policy and vulnerability reporting |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history and resolved issues |

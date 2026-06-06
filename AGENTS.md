@@ -4,7 +4,7 @@
 
 FheForge UI uses a committed design system. Before building or modifying any frontend surface, read:
 
-- **PRODUCT.md** (root) — Register: `product`. Users: crypto-native DeFi power users on Arbitrum Sepolia. 5 principles: show the ciphertext, terminal-native density, earned precision, no false warmth, trust through exposure.
+- **DESIGN.md** (root) — Product register, users, purpose, brand personality, anti-references, 5 design principles. Visual system: dark terminal (#0a0a0a bg), JetBrains Mono globally, `border-radius: 0 !important` (hard constraint), single blue accent (#3b82f6) restrained strategy, semantic state colors (success #22c55e / warning #eab308 / destructive #ef4444).
 - **DESIGN.md** (root) — Visual system: dark terminal (#0a0a0a bg), JetBrains Mono globally, `border-radius: 0 !important` (hard constraint), single blue accent (#3b82f6) restrained strategy, semantic state colors (success #22c55e / warning #eab308 / destructive #ef4444).
 
 ### Key constraints for agents

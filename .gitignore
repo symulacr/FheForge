@@ -288,7 +288,7 @@ archives/
 # .gitattributes (expected at root)
 
 # === IMPECCABLE / AGENT-GENERATED TOOL ARTIFACTS ===
-# AGENTS.md is an agent artifact; DESIGN.md and PRODUCT.md are real project docs (tracked)
+# AGENTS.md is an agent artifact; DESIGN.md is a real project doc (tracked)
 AGENTS.md
 **/.impeccable/
 ui/.impeccable/
