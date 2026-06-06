@@ -50,14 +50,18 @@ function App() {
   // Route
   const [route, setRoute] = useStateA(initialRoute());
 
-  // Wallet / permit context
+  // Wallet context (permit extracted to stop 1/sec re-render of entire tree)
   const [ctx, setCtx] = useStateA({
     connected: t.startConnected,
     address: null,
     chainId: null,
-    permitUnlocked: t.startConnected && t.startUnlocked,
-    permitSeconds: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
     revealing: false,
+  });
+
+  // Permit state — isolated so countdown doesn't re-render every screen
+  const [permit, setPermit] = useStateA({
+    unlocked: t.startConnected && t.startUnlocked,
+    secondsLeft: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
   });
 
   // Connect modal
@@ -81,29 +85,36 @@ function App() {
       ...c,
       connected: t.startConnected,
       address: t.startConnected ? c.address : null,
-      permitUnlocked: t.startConnected && t.startUnlocked,
-      permitSeconds: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
     }));
+    setPermit({
+      unlocked: t.startConnected && t.startUnlocked,
+      secondsLeft: t.startConnected && t.startUnlocked ? 14 * 60 : 0,
+    });
   }, [t.startConnected, t.startUnlocked]);
 
   // Permit countdown
   useEffectA(() => {
-    if (!ctx.permitUnlocked || ctx.permitSeconds <= 0) return;
+    if (!permit.unlocked || permit.secondsLeft <= 0) return;
     const id = setInterval(() => {
-      setCtx(c => {
-        if (c.permitSeconds <= 1) return { ...c, permitUnlocked: false, permitSeconds: 0 };
-        return { ...c, permitSeconds: c.permitSeconds - 1 };
+      setPermit(p => {
+        if (p.secondsLeft <= 1) return { unlocked: false, secondsLeft: 0 };
+        return { ...p, secondsLeft: p.secondsLeft - 1 };
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [ctx.permitUnlocked]);
+  }, [permit.unlocked]);
+
+  // Sync permit state to BridgeBus for ForgeProvider consumers
+  useEffectA(() => {
+    window.__bridgeBus?.set('permit:tick', { unlocked: permit.unlocked, secondsLeft: permit.secondsLeft });
+  }, [permit.unlocked, permit.secondsLeft]);
 
   // Grant permit: call real bridge FHE permit
   const grantPermit = useCallbackA(async () => {
     if (!ctx.connected) return;
     try {
       await window.bridge?.fhe?.permitGrant();
-      setCtx(c => ({ ...c, permitUnlocked: true, permitSeconds: 15 * 60 }));
+      setPermit({ unlocked: true, secondsLeft: 15 * 60 });
     } catch (e) {
       console.error("Permit grant failed:", e);
     }
@@ -111,10 +122,10 @@ function App() {
 
   // Auto-renew permit at 2 minutes remaining (silent, no wallet popup)
   useEffectA(() => {
-    if (ctx.permitUnlocked && ctx.permitSeconds === 120) {
+    if (permit.unlocked && permit.secondsLeft === 120) {
       try { grantPermit(); } catch { /* silent — countdown continues to 0 */ }
     }
-  }, [ctx.permitSeconds, grantPermit]);
+  }, [permit.secondsLeft, grantPermit]);
 
   // Wallet account/chain change detection
   useEffectA(() => {
@@ -122,7 +133,8 @@ function App() {
     const onAccounts = (accts) => {
       if (!accts.length) {
         window.__bridgeBus?.set("wallet:disconnected", { connected: false, address: null });
-        setCtx(prev => ({ ...prev, connected: false, address: null, permitUnlocked: false, permitSeconds: 0 }));
+        setCtx(prev => ({ ...prev, connected: false, address: null }));
+        setPermit({ unlocked: false, secondsLeft: 0 });
         if (window.__ConnectInterceptor) {
           window.__ConnectInterceptor.handleDisconnect();
         }
@@ -150,7 +162,8 @@ function App() {
       }
     };
     const onDisconnect = () => {
-      setCtx(prev => ({ ...prev, connected: false, address: null, chainId: null, permitUnlocked: false, permitSeconds: 0 }));
+      setCtx(prev => ({ ...prev, connected: false, address: null, chainId: null }));
+      setPermit({ unlocked: false, secondsLeft: 0 });
     };
     const unsub1 = window.__bridgeBus.on('wallet:connected', onConnected);
     const unsub2 = window.__bridgeBus.on('wallet:disconnected', onDisconnect);
@@ -218,7 +231,8 @@ function App() {
       <TopBar
         route={route} setRoute={setRoute}
         ctx={ctx}
-        onPermitClick={ctx.permitUnlocked ? grantPermit : openConnect}
+        permit={permit}
+        onPermitClick={permit.unlocked ? grantPermit : openConnect}
         onWalletClick={onWalletClick}
         theme={theme} setTheme={setTheme}
       />
