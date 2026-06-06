@@ -24,6 +24,7 @@ regexes = [
 description = "Docs, examples, and generated artifacts"
 paths = [
   '''CLAUDE\.md''',
+  '''AGENTS\.md''',
   '''README\.md''',
   '''DESIGN\.md''',
   '''docs/.*''',
