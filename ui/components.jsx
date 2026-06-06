@@ -2,7 +2,7 @@
 // Cipher, PermitChip, MasterDetail shell, Modal, TopBar, ThemeToggle.
 // Exported to window for cross-file use.
 
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
+const { useState, useEffect, useRef } = React;
 
 /* ─────────────────────────────────────────────────────────────────────
    Cipher · the encrypted-value primitive.

@@ -483,6 +483,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setCrStep("decrypting");
 
         // TX2: Execute (bridge internally calls decryptForExecute)
+        setCrStep("executing");
         const tx2 = await bridge.contract.write.shieldExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
@@ -519,6 +520,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setCrStep("decrypting");
 
         // TX2: Execute
+        setCrStep("executing");
         const tx2 = await bridge.contract.write.borrowExecute(tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
@@ -554,6 +556,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setCrStep("decrypting");
 
         // TX2: Execute
+        setCrStep("executing");
         const tx2 = await bridge.contract.write.repayExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");
@@ -586,6 +589,7 @@ function LendAction({ market, side, amount, setAmount, ltv, setLtv, locked, gran
         setCrStep("decrypting");
 
         // TX2: Execute
+        setCrStep("executing");
         const tx2 = await bridge.contract.write.withdrawExecute(market.assetAddress, tx1.commitId, tx1.ctHash, ctx.address);
         if (tx2.status === "reverted") { setCrStep("failed"); setCrError("execute reverted"); return; }
         setCrStep("done");

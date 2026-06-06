@@ -1183,6 +1183,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                       // Settle: grant ACL decryption rights for the user's positions
                       if (bridge.contract.write.settlePosition) {
                         const settleTx = await bridge.contract.write.settlePosition(account);
+                        // Guard: settlePosition currently always returns status 'no-op'; keep check for future contract changes
                         if (settleTx.status === "reverted") { setDeployResult({ ok: false, error: "Settle reverted" }); setDeploying(false); setDeployStep(null); return; }
                         result = { txHash: settleTx.txHash, block: settleTx.block };
                       } else {
