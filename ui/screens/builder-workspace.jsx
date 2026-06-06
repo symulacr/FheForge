@@ -3,12 +3,6 @@
 
 const { useState: useStateB, useRef: useRefB, useEffect: useEffectB, useCallback: useCallbackB, useMemo: useMemoB } = React;
 
-const EMPTY_BRIDGE_CONTEXT_BW = React.createContext({ data: {} });
-function useOptionalBridgeBW() {
-  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
-  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_BW);
-}
-
 const TOKEN_MAP_BW = {
   ETH:  "0xdAA285526FE417925e5Bb712190aB6643Fb2d17D",
   WETH: "0x6d2EE53DA0f1be1302ddD503eF1E5fAC865bE534",
@@ -330,7 +324,7 @@ function aiStepsToCanvas(aiResponse) {
 
 /* ─── BuilderWorkspace · canvas + inspector ─── */
 function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, openConnect, nodeTypes }) {
-  const bridge = useOptionalBridgeBW();
+  const bridge = useOptionalBridge();
   const tokenMap = React.useMemo(() => {
     const markets = bridge?.data?.markets;
     if (!Array.isArray(markets) || markets.length === 0) return TOKEN_MAP_BW;

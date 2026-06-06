@@ -3,12 +3,6 @@
 // Right pane: detail of the selected item, or an Overview when nothing selected.
 
 const { useState: useStateD, useEffect: useEffectD } = React;
-const EMPTY_BRIDGE_CONTEXT_D = React.createContext({ data: {}, meta: { errors: [] } });
-
-function useOptionalBridgeD() {
-  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
-  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_D);
-}
 
 function bridgeItemsD(value) {
   if (Array.isArray(value)) return value;
@@ -16,20 +10,12 @@ function bridgeItemsD(value) {
   return null;
 }
 
-function classifyBridgeStatusD(message, fallback) {
-  const lower = String(message || "").toLowerCase();
-  if (lower.includes("registry")) return "registry unavailable";
-  if (lower.includes("rpc") || lower.includes("viem") || lower.includes("contract") || lower.includes("on-chain")) return "RPC unavailable";
-  if (lower.includes("backend") || lower.includes("api") || lower.includes("fetch") || lower.includes("network") || lower.includes("request")) return "backend unavailable";
-  return fallback || "bridge unavailable";
-}
-
 function bridgeStatusD(bridge, key, value, emptyLabel) {
   if (Array.isArray(value)) return value.length === 0 ? emptyLabel : null;
   if (value && Array.isArray(value.items)) {
     if (value.items.length > 0) return null;
     if (value.status === "empty") return emptyLabel;
-    return classifyBridgeStatusD(value.reason || value.status, emptyLabel);
+    return classifyBridgeStatus(value.reason || value.status, emptyLabel);
   }
   const meta = (bridge && bridge.meta) || {};
   const data = (bridge && bridge.data) || {};
@@ -38,7 +24,7 @@ function bridgeStatusD(bridge, key, value, emptyLabel) {
   if (entry) {
     const status = String(entry.status || entry.state || "").toLowerCase();
     if (status === "ready" || status === "ok" || status === "available") return null;
-    return classifyBridgeStatusD(entry.reason || entry.message || status, `loading ${key}`);
+    return classifyBridgeStatus(entry.reason || entry.message || status, `loading ${key}`);
   }
   const errors = Array.isArray(meta.errors) ? meta.errors : [];
   const error = errors.slice().reverse().find((err) => {
@@ -46,7 +32,7 @@ function bridgeStatusD(bridge, key, value, emptyLabel) {
     const message = String(err && (err.message || (err.error && err.error.message)) || "").toLowerCase();
     return source.includes(key) || message.includes(key) || message.includes("registry") || message.includes("rpc");
   });
-  return error ? classifyBridgeStatusD(String(error.message || (error.error && error.error.message) || error), `loading ${key}`) : `loading ${key}`;
+  return error ? classifyBridgeStatus(String(error.message || (error.error && error.error.message) || error), `loading ${key}`) : `loading ${key}`;
 }
 
 function textD(value, fallback = "–") {
@@ -128,7 +114,7 @@ function listStatusD(label, value, bridge) {
 }
 
 function Dashboard({ setRoute, ctx, grantPermit, openConnect }) {
-  const bridge = useOptionalBridgeD();
+  const bridge = useOptionalBridge();
   const bridgeData = bridge.data || {};
   const positionItems = bridgeItemsD(bridgeData.positions);
   const vaultItems = bridgeItemsD(bridgeData.vaultPositions) || bridgeItemsD(bridgeData.positions?.vaultPositions) || (Array.isArray(bridgeData.positions) ? bridgeData.positions.filter(p => p.venue === "Strategy Vault" || p.venue === "Vault") : null);

@@ -3,12 +3,6 @@
 // Right: selected proposal detail with vote panel.
 
 const { useState: useStateG, useEffect: useEffectG } = React;
-const EMPTY_BRIDGE_CONTEXT_G = React.createContext({ data: {}, meta: { errors: [] } });
-
-function useOptionalBridgeG() {
-  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
-  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_G);
-}
 
 function asVoteNumberG(value) {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -41,7 +35,7 @@ const GROUPS = [
 ];
 
 function Governance({ setRoute, ctx, grantPermit, openConnect }) {
-  const bridge = useOptionalBridgeG();
+  const bridge = useOptionalBridge();
   const bridgeData = bridge.data || {};
   const bridgeErrors = (bridge.meta && Array.isArray(bridge.meta.errors)) ? bridge.meta.errors : [];
   const proposalError = bridgeErrors.find(err => err && err.source === "proposals");

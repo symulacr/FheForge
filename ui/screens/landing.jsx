@@ -3,42 +3,9 @@
 // Connect button opens the Connect modal; CTAs route into the app.
 
 const { useState: useStateH, useEffect: useEffectH, useRef: useRefH } = React;
-const EMPTY_BRIDGE_CONTEXT_H = React.createContext({ data: {}, meta: { errors: [] } });
-
-function useOptionalBridgeH() {
-  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
-  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_H);
-}
-
-function classifyBridgeStatusH(message, fallback) {
-  const lower = String(message || "").toLowerCase();
-  if (lower.includes("registry")) return "registry unavailable";
-  if (lower.includes("rpc") || lower.includes("viem") || lower.includes("contract") || lower.includes("on-chain")) return "RPC unavailable";
-  if (lower.includes("backend") || lower.includes("api") || lower.includes("fetch") || lower.includes("network") || lower.includes("request")) return "backend unavailable";
-  return fallback || "bridge unavailable";
-}
-
-function bridgeStatusH(bridge, key, fallback) {
-  const meta = (bridge && bridge.meta) || {};
-  const data = (bridge && bridge.data) || {};
-  const readiness = meta.readiness || bridge.readiness || data.readiness || {};
-  const entry = readiness[key] || readiness[String(key).replace(/s$/, "")] || null;
-  if (entry) {
-    const status = String(entry.status || entry.state || "").toLowerCase();
-    if (status === "ready" || status === "ok" || status === "available") return null;
-    return classifyBridgeStatusH(entry.reason || entry.message || status, fallback);
-  }
-  const errors = Array.isArray(meta.errors) ? meta.errors : [];
-  const error = errors.slice().reverse().find((err) => {
-    const source = String(err && err.source || "").toLowerCase();
-    const message = String(err && (err.message || (err.error && err.error.message)) || "").toLowerCase();
-    return source.includes(key) || message.includes(key) || message.includes("registry") || message.includes("rpc");
-  });
-  return error ? classifyBridgeStatusH(String(error.message || (error.error && error.error.message) || error), fallback) : fallback;
-}
 
 function Landing({ setRoute, ctx, grantPermit, openConnect }) {
-  const bridge = useOptionalBridgeH();
+  const bridge = useOptionalBridge();
   const bridgeData = bridge.data || {};
   // Auto-play cipher cycle · only when wallet not connected (used as marketing demo)
   const [demoLocked, setDemoLocked] = useStateH(true);
@@ -184,17 +151,17 @@ function DemoCard({ locked, isReal, bridge, bridgeData, onToggle }) {
   const borrowed = sumPositionAmountsH(items, (item) => item.side === "borrow");
   const inStrategies = sumPositionAmountsH(items, (item) => item.side === "vault" || item.kind === "strategy");
   const positionStatus = bridgeData && bridgeData.positions && bridgeData.positions.status;
-  const fallback = !isReal ? "wallet required" : positionStatus === "empty" ? "no position" : bridgeStatusH(bridge, "positions", positionStatus || "loading");
+  const fallback = !isReal ? "wallet required" : positionStatus === "empty" ? "no position" : getBridgeStatus(bridge, "positions", positionStatus || "loading");
   const rows = [
     ["Supplied", supplied > 0 ? formatValueH(supplied, fallback) : fallback, ""],
     ["Borrowed", borrowed > 0 ? formatValueH(borrowed, fallback) : fallback, ""],
     ["In strategies", inStrategies > 0 ? formatValueH(inStrategies, fallback) : fallback, ""],
   ];
   const netValue = walletBalance.netValue || walletBalance.balance || fallback;
-  const changeLabel = walletBalance.change24h || (isReal ? bridgeStatusH(bridge, "walletBalance", "wallet status unavailable") : "wallet required");
+  const changeLabel = walletBalance.change24h || (isReal ? getBridgeStatus(bridge, "walletBalance", "wallet status unavailable") : "wallet required");
   const strategyLabel = Array.isArray(bridgeData && bridgeData.strategies)
     ? `${bridgeData.strategies.length} strategies`
-    : (isReal ? bridgeStatusH(bridge, "strategies", "strategies unavailable") : "wallet required");
+    : (isReal ? getBridgeStatus(bridge, "strategies", "strategies unavailable") : "wallet required");
   return (
     <div className="permit-stage" data-permit={locked ? "locked" : "unlocked"}
          style={{

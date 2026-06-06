@@ -3,12 +3,6 @@
 // Right: BuilderWorkspace for the selected strategy.
 
 const { useState: useStateM, useEffect: useEffectM } = React;
-const EMPTY_BRIDGE_CONTEXT_M = React.createContext({ data: {} });
-
-function useOptionalBridgeDataM() {
-  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
-  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_M).data || {};
-}
 
 function normalizeCommunityM(item) {
   const apyRaw = item.apy ?? item.estimatedApy ?? item.supplyApy ?? 0;
@@ -44,7 +38,7 @@ function loadDrafts() {
 }
 
 function Market({ setRoute, ctx, grantPermit, openConnect }) {
-  const bridgeData = useOptionalBridgeDataM();
+  const bridgeData = useOptionalBridge().data || {};
   const templates = getTemplateSetM(bridgeData.templates) || (typeof window !== "undefined" && window.TEMPLATES) || null;
   const nodeTypes = bridgeData.nodeTypes && typeof bridgeData.nodeTypes === "object" ? bridgeData.nodeTypes : null;
   const community = Array.isArray(bridgeData.community) ? bridgeData.community.map(normalizeCommunityM) : null;
