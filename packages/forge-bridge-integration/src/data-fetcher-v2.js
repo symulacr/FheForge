@@ -1667,9 +1667,15 @@
        * callback does not break the interval or subsequent polling ticks.
        * @returns {Promise|undefined}
        */
+      var _inFlight = null;
       function safeFetch() {
+        if (_inFlight) return _inFlight;  // skip if previous tick still running
         try {
-          return fn();
+          var p = fn();
+          if (p && typeof p.then === 'function') {
+            _inFlight = p.finally(function() { _inFlight = null; });
+          }
+          return p;
         } catch (err) {
           self._onError(name, err);
           return undefined;
