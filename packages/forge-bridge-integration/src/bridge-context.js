@@ -322,10 +322,6 @@ function useBridgeData() {
 if (typeof window !== 'undefined') {
   window.ForgeProvider = ForgeProvider;
   window.BridgeContext = BridgeContext;
-  window.useBridge = useBridge;
-  window.useWallet = useWallet;
-  window.usePermit = usePermit;
-  window.useBridgeData = useBridgeData;
 }
 
 // ─── Exports ─────────────────────────────────────────────────────────────────
