@@ -286,11 +286,80 @@ async function _decryptProof(fheAdapter, ctHash) {
   return { plaintext: BigInt(plaintext), signature };
 }
 
+/**
+ * Generic read helper — delegates to publicClient.readContract.
+ * @param {import('viem').PublicClient} pc
+ * @param {string} methodName - Key in _READ_CONTRACTS
+ * @param {unknown[]} args
+ * @returns {Promise<any>}
+ */
+function _read(pc, methodName, args) {
+  const def = _READ_CONTRACTS[methodName];
+  return pc.readContract({
+    address: CONTRACT_ADDRESSES[def.key],
+    abi: CONTRACT_ABIS[def.key],
+    functionName: def.fn,
+    args,
+  });
+}
+
+/**
+ * Generic commit-phase helper — validate, encrypt, send, extract commitId.
+ * @param {object} ctx - { publicClient, fheAdapter, getWc }
+ * @param {string} contractKey - Key in CONTRACT_ADDRESSES/ABIS
+ * @param {string} fnName - Contract function name
+ * @param {`0x${string}`} encryptToken - Token for FHE encryption context
+ * @param {bigint} amount - Plaintext amount to encrypt
+ * @param {(encAmount: any) => unknown[]} buildArgs - Builds fn args from encrypted amount
+ * @param {`0x${string}`} account - Sender
+ * @returns {Promise<TransactionResult & {commitId: string, ctHash: any}>}
+ */
+async function _genericCommit(ctx, contractKey, fnName, encryptToken, amount, buildArgs, account) {
+  const { encAmount, ctHash } = await _encryptAndExtract(ctx.fheAdapter, amount, encryptToken);
+  const wc = ctx.getWc();
+  const result = await estimateSendAndWait(
+    ctx.publicClient, wc,
+    CONTRACT_ADDRESSES[contractKey], CONTRACT_ABIS[contractKey],
+    fnName, buildArgs(encAmount), account,
+  );
+  return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
+}
+
+/**
+ * Generic execute-phase helper — decrypt, send, return result.
+ * @param {object} ctx - { publicClient, fheAdapter, getWc }
+ * @param {string} contractKey - Key in CONTRACT_ADDRESSES/ABIS
+ * @param {string} fnName - Contract function name
+ * @param {(plaintext: bigint, signature: string) => unknown[]} buildArgs - Builds fn args from decrypted proof
+ * @param {string} ctHash - Ciphertext hash to decrypt
+ * @param {`0x${string}`} account - Sender
+ * @returns {Promise<TransactionResult>}
+ */
+async function _genericExecute(ctx, contractKey, fnName, buildArgs, ctHash, account) {
+  const { plaintext, signature } = await _decryptProof(ctx.fheAdapter, ctHash);
+  const wc = ctx.getWc();
+  return estimateSendAndWait(
+    ctx.publicClient, wc,
+    CONTRACT_ADDRESSES[contractKey], CONTRACT_ABIS[contractKey],
+    fnName, buildArgs(plaintext, signature), account,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Default RPC URL
 // ---------------------------------------------------------------------------
 
 const DEFAULT_RPC_URL = 'https://sepolia-arbitrum-rpc.publicnode.com';
+
+/** Read-only contract definitions for generic _read helper. */
+const _READ_CONTRACTS = {
+  getSupplyBalance:   { key: 'LendingPool',     fn: 'getSupplyBalance' },
+  getBorrowBalance:   { key: 'LendingPool',     fn: 'getBorrowBalance' },
+  getCollateral:      { key: 'StrategyVault',   fn: 'getCollateral' },
+  getPositionMeta:    { key: 'StrategyVault',   fn: 'getPositionMeta' },
+  getUserPositions:   { key: 'StrategyVault',   fn: 'getUserPositions' },
+  getLendableTokens:  { key: 'TokenRegistry',   fn: 'getLendableTokens' },
+};
 
 /** Minimal ERC20 ABI for token reads used by DataFetcher. */
 const ERC20_READ_ABI = [
@@ -376,82 +445,29 @@ export function createContractAdapter(config, options = {}) {
   const read = {
     // ── LendingPool ──
 
-    /**
-     * @param {`0x${string}`} token
-     * @returns {Promise<any>}
-     */
-    getSupplyBalance: (token) =>
-      publicClient.readContract({
-        address: CONTRACT_ADDRESSES.LendingPool,
-        abi: CONTRACT_ABIS.LendingPool,
-        functionName: 'getSupplyBalance',
-        args: [token],
-      }),
+    /** @param {`0x${string}`} token */
+    getSupplyBalance: (token) => _read(publicClient, 'getSupplyBalance', [token]),
 
-    /**
-     * @param {`0x${string}`} token
-     * @returns {Promise<any>}
-     */
-    getBorrowBalance: (token) =>
-      publicClient.readContract({
-        address: CONTRACT_ADDRESSES.LendingPool,
-        abi: CONTRACT_ABIS.LendingPool,
-        functionName: 'getBorrowBalance',
-        args: [token],
-      }),
+    /** @param {`0x${string}`} token */
+    getBorrowBalance: (token) => _read(publicClient, 'getBorrowBalance', [token]),
 
     // ── StrategyVault ──
 
-    /**
-     * @param {`0x${string}`} positionId
-     * @returns {Promise<any>}
-     */
-    getCollateral: (positionId) =>
-      publicClient.readContract({
-        address: CONTRACT_ADDRESSES.StrategyVault,
-        abi: CONTRACT_ABIS.StrategyVault,
-        functionName: 'getCollateral',
-        args: [positionId],
-      }),
+    /** @param {`0x${string}`} positionId */
+    getCollateral: (positionId) => _read(publicClient, 'getCollateral', [positionId]),
 
-    /**
-     * @param {`0x${string}`} positionId
-     * @returns {Promise<any>}
-     */
-    getPositionMeta: (positionId) =>
-      publicClient.readContract({
-        address: CONTRACT_ADDRESSES.StrategyVault,
-        abi: CONTRACT_ABIS.StrategyVault,
-        functionName: 'getPositionMeta',
-        args: [positionId],
-      }),
+    /** @param {`0x${string}`} positionId */
+    getPositionMeta: (positionId) => _read(publicClient, 'getPositionMeta', [positionId]),
 
-    /**
-     * @param {`0x${string}`} user
-     * @returns {Promise<any>}
-     */
-    getUserPositions: (user) =>
-      publicClient.readContract({
-        address: CONTRACT_ADDRESSES.StrategyVault,
-        abi: CONTRACT_ABIS.StrategyVault,
-        functionName: 'getUserPositions',
-        args: [user],
-      }),
+    /** @param {`0x${string}`} user */
+    getUserPositions: (user) => _read(publicClient, 'getUserPositions', [user]),
 
     // ── SwapRouter ──
 
     // ── TokenRegistry ──
 
-    /**
-     * @returns {Promise<any>}
-     */
-    getLendableTokens: () =>
-      publicClient.readContract({
-        address: CONTRACT_ADDRESSES.TokenRegistry,
-        abi: CONTRACT_ABIS.TokenRegistry,
-        functionName: 'getLendableTokens',
-        args: [],
-      }),
+    /** Fetch all lendable tokens from the registry. */
+    getLendableTokens: () => _read(publicClient, 'getLendableTokens', []),
 
     // ── ERC20 ──
 
@@ -472,130 +488,46 @@ export function createContractAdapter(config, options = {}) {
 
   // ── Write methods ─────────────────────────────────────────────────────
 
+  const _ctx = { publicClient, fheAdapter: _fheAdapter, getWc };
+
   const write = {
     // ── LendingPool commit-reveal pairs ──────────────────────────────
 
-    /**
-     * Commit phase: encrypt amount and call shield(token, encAmount).
-     * Returns { ...result, commitId } extracted from receipt logs.
-     * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
-     */
-    shieldCommit: async (token, amount, account) => {
-      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, token);
-      const wc = getWc();
-      const result = await estimateSendAndWait(
-        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
-        'shield', [token, encAmount], account,
-      );
-      return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
-    },
+    /** Commit: encrypt and call shield(token, encAmount). */
+    shieldCommit: async (token, amount, account) =>
+      _genericCommit(_ctx, 'LendingPool', 'shield', token, amount, (enc) => [token, enc], account),
 
-    /**
-     * Execute phase: decrypt handle, then call executeShield(token, commitId, plaintext, signature).
-     * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
-     */
-    shieldExecute: async (token, commitId, ctHash, account) => {
-      const { plaintext, signature } = await _decryptProof(_fheAdapter, ctHash);
-      const wc = getWc();
-      return estimateSendAndWait(
-        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
-        'executeShield', [token, commitId, plaintext, signature], account,
-      );
-    },
+    /** Execute: decrypt and call executeShield(token, commitId, pt, sig). */
+    shieldExecute: async (token, commitId, ctHash, account) =>
+      _genericExecute(_ctx, 'LendingPool', 'executeShield', (pt, sig) => [token, commitId, pt, sig], ctHash, account),
 
-    /**
-     * Commit phase: encrypt amount and call commitBorrow(collateralToken, borrowToken, encAmount, ltvNum, ltvDen).
-     * Returns { ...result, commitId } extracted from receipt logs.
-     * @type {(collateralToken: `0x${string}`, borrowToken: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
-     */
-    borrowCommit: async (collateralToken, borrowToken, amount, ltvNum, ltvDen, account) => {
-      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, borrowToken);
-      const wc = getWc();
-      const result = await estimateSendAndWait(
-        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
-        'commitBorrow', [collateralToken, borrowToken, encAmount, ltvNum, ltvDen], account,
-      );
-      return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
-    },
+    /** Commit: encrypt and call commitBorrow(...). */
+    borrowCommit: async (collateralToken, borrowToken, amount, ltvNum, ltvDen, account) =>
+      _genericCommit(_ctx, 'LendingPool', 'commitBorrow', borrowToken, amount, (enc) => [collateralToken, borrowToken, enc, ltvNum, ltvDen], account),
 
-    /**
-     * Execute phase: decrypt handle, then call executeBorrow(commitId, plaintext, signature).
-     * @type {(commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
-     */
-    borrowExecute: async (commitId, ctHash, account) => {
-      const { plaintext, signature } = await _decryptProof(_fheAdapter, ctHash);
-      const wc = getWc();
-      return estimateSendAndWait(
-        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
-        'executeBorrow', [commitId, plaintext, signature], account,
-      );
-    },
+    /** Execute: decrypt and call executeBorrow(commitId, pt, sig). */
+    borrowExecute: async (commitId, ctHash, account) =>
+      _genericExecute(_ctx, 'LendingPool', 'executeBorrow', (pt, sig) => [commitId, pt, sig], ctHash, account),
 
-    /**
-     * Commit phase: encrypt amount and call repay(token, encAmount).
-     * Returns { ...result, commitId } extracted from receipt logs.
-     * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
-     */
-    repayCommit: async (token, amount, account) => {
-      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, token);
-      const wc = getWc();
-      const result = await estimateSendAndWait(
-        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
-        'repay', [token, encAmount], account,
-      );
-      return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
-    },
+    /** Commit: encrypt and call repay(token, encAmount). */
+    repayCommit: async (token, amount, account) =>
+      _genericCommit(_ctx, 'LendingPool', 'repay', token, amount, (enc) => [token, enc], account),
 
-    /**
-     * Execute phase: decrypt handle, then call executeRepay(token, commitId, plaintext, signature).
-     * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
-     */
-    repayExecute: async (token, commitId, ctHash, account) => {
-      const { plaintext, signature } = await _decryptProof(_fheAdapter, ctHash);
-      const wc = getWc();
-      return estimateSendAndWait(
-        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
-        'executeRepay', [token, commitId, plaintext, signature], account,
-      );
-    },
+    /** Execute: decrypt and call executeRepay(token, commitId, pt, sig). */
+    repayExecute: async (token, commitId, ctHash, account) =>
+      _genericExecute(_ctx, 'LendingPool', 'executeRepay', (pt, sig) => [token, commitId, pt, sig], ctHash, account),
 
-    /**
-     * Commit phase: encrypt amount and call withdraw(token, encAmount).
-     * Returns { ...result, commitId } extracted from receipt logs.
-     * @type {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string}>}
-     */
-    withdrawCommit: async (token, amount, account) => {
-      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, token);
-      const wc = getWc();
-      const result = await estimateSendAndWait(
-        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
-        'withdraw', [token, encAmount], account,
-      );
-      return { ...result, commitId: _extractCommitId(result.receipt), ctHash };
-    },
+    /** Commit: encrypt and call withdraw(token, encAmount). */
+    withdrawCommit: async (token, amount, account) =>
+      _genericCommit(_ctx, 'LendingPool', 'withdraw', token, amount, (enc) => [token, enc], account),
 
-    /**
-     * Execute phase: decrypt handle, then call executeWithdraw(token, commitId, plaintext, signature).
-     * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
-     */
-    withdrawExecute: async (token, commitId, ctHash, account) => {
-      const { plaintext, signature } = await _decryptProof(_fheAdapter, ctHash);
-      const wc = getWc();
-      return estimateSendAndWait(
-        publicClient, wc, CONTRACT_ADDRESSES.LendingPool, CONTRACT_ABIS.LendingPool,
-        'executeWithdraw', [token, commitId, plaintext, signature], account,
-      );
-    },
+    /** Execute: decrypt and call executeWithdraw(token, commitId, pt, sig). */
+    withdrawExecute: async (token, commitId, ctHash, account) =>
+      _genericExecute(_ctx, 'LendingPool', 'executeWithdraw', (pt, sig) => [token, commitId, pt, sig], ctHash, account),
 
     // ── Composer ──
 
-    /**
-     * Open a multi-step leveraged strategy via the Composer contract.
-     * Orchestrates vault + pool + swap in a single atomic transaction.
-     * @param {{strategyName: string, workflowHash: string, collateralAmount: bigint, poolSupplyAmount: bigint, poolBorrowAmount: bigint, swapDeadlineOffset: bigint, strategyId: bigint, swapAmountIn: bigint, swapMinOut: bigint, collateralToken: `0x${string}`, borrowToken: `0x${string}`, swapTokenOut: `0x${string}`, apyTarget: number, loopCount: number}} params
-     * @param {`0x${string}`} account
-     * @returns {Promise<TransactionResult>}
-     */
+    /** Open a multi-step leveraged strategy via the Composer contract. */
     composerOpenPosition: async (params, account) => {
       const EMPTY_ENC = { ctHash: 0n, securityZone: 0, utype: 0, signature: '0x' };
       let collateralEnc = EMPTY_ENC;
@@ -646,10 +578,7 @@ export function createContractAdapter(config, options = {}) {
 
     // ── SwapRouter ──
 
-    /**
-     * Submit a swap intent (no FHE encryption needed).
-     * @type {(tokenIn: `0x${string}`, tokenOut: `0x${string}`, amountIn: bigint, minAmountOut: bigint, deadlineOffset: bigint, account: `0x${string}`) => Promise<TransactionResult>}
-     */
+    /** Submit a swap intent (no FHE encryption needed). */
     submitSwapIntent: async (
       tokenIn,
       tokenOut,
@@ -672,10 +601,7 @@ export function createContractAdapter(config, options = {}) {
 
     // ── ERC20 ──
 
-    /**
-     * Approve a spender for max uint256 on an ERC20 token.
-     * @type {(token: `0x${string}`, spender: `0x${string}`, account: `0x${string}`) => Promise<TransactionResult>}
-     */
+    /** Approve a spender for max uint256 on an ERC20 token. */
     erc20Approve: async (token, spender, account) => {
       const wc = getWc();
       return estimateSendAndWait(
@@ -691,55 +617,26 @@ export function createContractAdapter(config, options = {}) {
 
     // ── StrategyVault ──
 
-    /**
-     * Deposit into a strategy vault.
-     * Encrypts the amount via FHE then calls
-     * StrategyVault.openPosition(token, amount, encAmount, strategyId, user).
-     *
-     * @type {(token: `0x${string}`, amount: bigint, strategyId: bigint, account: `0x${string}`) => Promise<TransactionResult>}
-     */
+    /** Deposit into a strategy vault. Encrypts amount via FHE then calls openPosition. */
     depositVault: async (token, amount, strategyId, account) => {
-      if (!amount || amount <= 0n)
-        throw new ContractError('INVALID_AMOUNT', 'Amount must be greater than zero');
-      if (!token || token === '0x0000000000000000000000000000000000000000')
-        throw new ContractError('INVALID_TOKEN', 'Invalid token address');
-      const encAmount =
-        _fheAdapter && typeof _fheAdapter.encrypt === 'function'
-          ? await _fheAdapter.encrypt(String(amount), token)
-          : undefined;
-      const encHandle = encAmount?.ctHash ?? encAmount?.handle ?? 0n;
+      const { encAmount, ctHash } = await _encryptAndExtract(_fheAdapter, amount, token);
       const wc = getWc();
       return estimateSendAndWait(
-        publicClient,
-        wc,
-        CONTRACT_ADDRESSES.StrategyVault,
-        CONTRACT_ABIS.StrategyVault,
-        'openPosition',
-        [token, amount, encHandle, strategyId, account],
-        account,
+        publicClient, wc,
+        CONTRACT_ADDRESSES.StrategyVault, CONTRACT_ABIS.StrategyVault,
+        'openPosition', [token, amount, ctHash, strategyId, account], account,
       );
     },
 
     // ── Settle (no-op for FHE) ──
 
-    /**
-     * No-op settle for FHE. Present so builder-workspace can call
-     * bridge.contract.write.settlePosition() without checking existence.
-     * @param {`0x${string}`} _account
-     * @returns {Promise<{txHash: null, status: 'no-op'}>}
-     */
+    /** No-op settle for FHE — keeps builder-workspace compat. */
     settlePosition: async (_account) => {
       console.log('[bridge] settlePosition (no-op for FHE)');
       return { txHash: null, status: 'no-op' };
     },
 
-    /**
-     * Liquidate an undercollateralized position.
-     * Decrypts both the borrower's debt and supply balance handles via CoFHE,
-     * then calls LendingPool.liquidateWithProof with the signed proofs.
-     *
-     * @type {(borrower: `0x${string}`, collateralToken: `0x${string}`, debtToken: `0x${string}`, debtToCover: bigint, debtHandle: string, supplyHandle: string, account: `0x${string}`) => Promise<TransactionResult>}
-     */
+    /** Liquidate an undercollateralized position with FHE proofs. */
     liquidateWithProof: async (
       borrower,
       collateralToken,
@@ -760,13 +657,13 @@ export function createContractAdapter(config, options = {}) {
       if (!_fheAdapter || typeof _fheAdapter.decryptForExecute !== 'function')
         throw new ContractError('FHE_ADAPTER_REQUIRED', 'FHE adapter required for liquidation');
 
-      // Decrypt borrower's debt balance to get proof
-      const debtProof = await _fheAdapter.decryptForExecute(debtHandle);
+      // Decrypt both handles in parallel
+      const [debtProof, supplyProof] = await Promise.all([
+        _fheAdapter.decryptForExecute(debtHandle),
+        _fheAdapter.decryptForExecute(supplyHandle),
+      ]);
       const debtBalanceProof = BigInt(debtProof.plaintext);
       const debtSig = debtProof.signature;
-
-      // Decrypt borrower's supply/collateral balance to get proof
-      const supplyProof = await _fheAdapter.decryptForExecute(supplyHandle);
       const supplyBalanceProof = BigInt(supplyProof.plaintext);
       const supplySig = supplyProof.signature;
 
