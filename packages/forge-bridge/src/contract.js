@@ -267,13 +267,13 @@ const ERC20_READ_ABI = [
  * @property {(params: object, account: `0x${string}`) => Promise<TransactionResult>} composerOpenPosition
  * @property {(tokenIn: `0x${string}`, tokenOut: `0x${string}`, amountIn: bigint, minAmountOut: bigint, deadlineOffset: bigint, account: `0x${string}`) => Promise<TransactionResult>} submitSwapIntent
  * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} shieldCommit
- * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} shieldExecute
+ * @property {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>} shieldExecute
  * @property {(collateralToken: `0x${string}`, borrowToken: `0x${string}`, amount: bigint, ltvNum: bigint, ltvDen: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} borrowCommit
- * @property {(commitId: string, account: `0x${string}`) => Promise<TransactionResult>} borrowExecute
+ * @property {(commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>} borrowExecute
  * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} repayCommit
- * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} repayExecute
+ * @property {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>} repayExecute
  * @property {(token: `0x${string}`, amount: bigint, account: `0x${string}`) => Promise<TransactionResult & {commitId: string, ctHash: bigint | undefined}>} withdrawCommit
- * @property {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>} withdrawExecute
+ * @property {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>} withdrawExecute
  */
 
 /**
@@ -462,10 +462,10 @@ export function createContractAdapter(config, options = {}) {
 
     /**
      * Execute phase: decrypt handle, then call executeShield(token, commitId, plaintext, signature).
-     * @type {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>}
+     * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
-    shieldExecute: async (token, commitId, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+    shieldExecute: async (token, commitId, ctHash, account) => {
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash);
       const wc = getWc();
       return estimateSendAndWait(
         publicClient,
@@ -522,10 +522,10 @@ export function createContractAdapter(config, options = {}) {
 
     /**
      * Execute phase: decrypt handle, then call executeBorrow(commitId, plaintext, signature).
-     * @type {(commitId: string, account: `0x${string}`) => Promise<TransactionResult>}
+     * @type {(commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
-    borrowExecute: async (commitId, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+    borrowExecute: async (commitId, ctHash, account) => {
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash);
       const wc = getWc();
       return estimateSendAndWait(
         publicClient,
@@ -582,10 +582,10 @@ export function createContractAdapter(config, options = {}) {
 
     /**
      * Execute phase: decrypt handle, then call executeRepay(token, commitId, plaintext, signature).
-     * @type {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>}
+     * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
-    repayExecute: async (token, commitId, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+    repayExecute: async (token, commitId, ctHash, account) => {
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash || commitId);
       const wc = getWc();
       return estimateSendAndWait(
         publicClient,
@@ -642,10 +642,10 @@ export function createContractAdapter(config, options = {}) {
 
     /**
      * Execute phase: decrypt handle, then call executeWithdraw(token, commitId, plaintext, signature).
-     * @type {(token: `0x${string}`, commitId: string, account: `0x${string}`) => Promise<TransactionResult>}
+     * @type {(token: `0x${string}`, commitId: string, ctHash: string, account: `0x${string}`) => Promise<TransactionResult>}
      */
-    withdrawExecute: async (token, commitId, account) => {
-      const { plaintext, signature } = await _fheAdapter.decryptForExecute(commitId);
+    withdrawExecute: async (token, commitId, ctHash, account) => {
+      const { plaintext, signature } = await _fheAdapter.decryptForExecute(ctHash);
       const wc = getWc();
       return estimateSendAndWait(
         publicClient,
@@ -758,6 +758,49 @@ export function createContractAdapter(config, options = {}) {
         [spender, 2n ** 256n - 1n],
         account,
       );
+    },
+
+    // ── StrategyVault ──
+
+    /**
+     * Deposit into a strategy vault.
+     * Encrypts the amount via FHE then calls
+     * StrategyVault.openPosition(token, amount, encAmount, strategyId, user).
+     *
+     * @type {(token: `0x${string}`, amount: bigint, strategyId: bigint, account: `0x${string}`) => Promise<TransactionResult>}
+     */
+    depositVault: async (token, amount, strategyId, account) => {
+      if (!amount || amount <= 0n)
+        throw new ContractError('INVALID_AMOUNT', 'Amount must be greater than zero');
+      if (!token || token === '0x0000000000000000000000000000000000000000')
+        throw new ContractError('INVALID_TOKEN', 'Invalid token address');
+      const encAmount =
+        _fheAdapter && typeof _fheAdapter.encrypt === 'function'
+          ? await _fheAdapter.encrypt(String(amount), token)
+          : undefined;
+      const wc = getWc();
+      return estimateSendAndWait(
+        publicClient,
+        wc,
+        CONTRACT_ADDRESSES.StrategyVault,
+        CONTRACT_ABIS.StrategyVault,
+        'openPosition',
+        [token, amount, encAmount, strategyId, account],
+        account,
+      );
+    },
+
+    // ── Settle (no-op for FHE) ──
+
+    /**
+     * No-op settle for FHE. Present so builder-workspace can call
+     * bridge.contract.write.settlePosition() without checking existence.
+     * @param {`0x${string}`} _account
+     * @returns {Promise<{txHash: null, status: 'no-op'}>}
+     */
+    settlePosition: async (_account) => {
+      console.log('[bridge] settlePosition (no-op for FHE)');
+      return { txHash: null, status: 'no-op' };
     },
   };
 
