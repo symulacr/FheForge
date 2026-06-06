@@ -1,67 +1,23 @@
-/**
- * @file FHE adapter — @cofhe/sdk wrapper for permit lifecycle,
- * encryption, decryption, and staggered reveal stubs.
- *
- * Encapsulates the full permit lifecycle: grant → countdown → expiry → re-grant.
- * Staggered reveal is stubbed (deferred to forge integration phase).
- *
- * @typedef {import('./config.js').BridgeConfig} BridgeConfig
- * @typedef {import('./types.js').FheError} _FheErrorForJSDoc
- */
+/** @file FHE adapter — @cofhe/sdk wrapper for permits, encrypt & decrypt. */
 
 import { FheError } from './types.js';
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/** Permit validity duration in milliseconds (15 minutes / 900 seconds). */
 const PERMIT_DURATION_MS = 900_000;
 
-// ---------------------------------------------------------------------------
-// Factory
-// ---------------------------------------------------------------------------
-
-/**
- * Create an FHE adapter wrapping @cofhe/sdk.
- *
- * Manages a local permit lifecycle state machine:
- *   grant → countdown (900s) → expiry → re-grant
- *
- * The actual @cofhe/sdk grantPermit/isPermitValid calls are made when the
- * SDK is available (browser with wallet). In non-browser environments the
- * adapter simulates the lifecycle for testing.
- *
- * @param {BridgeConfig} config - Bridge configuration
- * @returns {FheAdapter} FHE adapter
- */
+/** Create an FHE adapter wrapping @cofhe/sdk. */
 export function createFheAdapter(_config) {
-  // -----------------------------------------------------------------------
-  // Internal state
-  // -----------------------------------------------------------------------
-
-  /** @type {number} Timestamp (ms) when permit was last granted. 0 = no grant. */
   let _grantedAt = 0;
-
-  /** @type {boolean} Whether a permit is currently unlocked. */
   let _unlocked = false;
-
-  /** @type {object|null} Cached CoFHE client instance. */
   let _cofheClient = null;
-
-  /** @type {Set<(state: PermitState) => void>} */
   const _listeners = new Set();
 
-  // -----------------------------------------------------------------------
-  // Permit lifecycle helpers
-  // -----------------------------------------------------------------------
+  /** @returns {object} _cofheClient or throws */
+  function requireClient() {
+    if (!_cofheClient) throw new FheError('NO_PERMIT', 'Grant an FHE permit first');
+    return _cofheClient;
+  }
 
-  /**
-   * Compute the current permit state from the local timer.
-   * Automatically marks the permit as expired when duration has elapsed.
-   *
-   * @returns {PermitState}
-   */
+  /** @returns {PermitState} */
   function computePermitState() {
     if (!_unlocked) {
       return { unlocked: false, secondsLeft: 0 };
@@ -81,10 +37,7 @@ export function createFheAdapter(_config) {
     };
   }
 
-  /**
-   * Notify all registered listeners of a permit state change.
-   * Swallows individual listener errors.
-   */
+  /** Notify listeners of a permit state change. */
   function notifyListeners() {
     const state = computePermitState();
     for (const fn of _listeners) {
@@ -96,14 +49,7 @@ export function createFheAdapter(_config) {
     }
   }
 
-  // -----------------------------------------------------------------------
-  // Method implementations
-  // -----------------------------------------------------------------------
-
-  /**
-   * Grant an FHE permit by calling @cofhe/sdk's permit creation flow.
-   * @returns {Promise<PermitState>}
-   */
+  /** Grant an FHE permit via @cofhe/sdk. */
   async function permitGrant() {
     try {
       const { createCofheConfig, createCofheClient } = await import('@cofhe/sdk/web');
@@ -146,27 +92,17 @@ export function createFheAdapter(_config) {
     }
   }
 
-  /**
-   * Check whether a permit is currently active.
-   * @returns {PermitState}
-   */
+  /** @returns {PermitState} */
   function permitCheck() {
     return computePermitState();
   }
 
-  /**
-   * Encrypt a plaintext value for use in FHE write transactions.
-   * @param {string} plaintext - The value to encrypt
-   * @param {string} [tokenAddress] - Optional token address for context
-   * @returns {Promise<InEuint128>}
-   */
+  /** Encrypt a plaintext value for FHE write transactions. */
   async function encrypt(plaintext, _tokenAddress) {
     try {
-      if (!_cofheClient) {
-        throw new FheError('NO_PERMIT', 'Grant an FHE permit before encrypting');
-      }
+      const client = requireClient();
       const { Encryptable } = await import('@cofhe/sdk');
-      const [encryptedHandle] = await _cofheClient
+      const [encryptedHandle] = await client
         .encryptInputs([Encryptable.uint128(BigInt(plaintext))])
         .execute();
       return encryptedHandle;
@@ -175,69 +111,24 @@ export function createFheAdapter(_config) {
     }
   }
 
-  /**
-   * Decrypt an encrypted handle back to its plaintext value.
-   * @param {string} handle - The encrypted handle (hex string) to decrypt
-   * @returns {Promise<string>}
-   */
+  /** Decrypt an encrypted handle back to plaintext. */
   async function decrypt(handle) {
-    if (!_cofheClient) {
-      throw new FheError('NO_PERMIT', 'Grant an FHE permit before decrypting');
-    }
+    const client = requireClient();
     try {
-      const plaintext = await _cofheClient.decrypt(handle);
+      const plaintext = await client.decrypt(handle);
       return String(plaintext);
     } catch (error) {
       throw new FheError('DECRYPT_FAILED', error.message || 'Failed to decrypt value');
     }
   }
 
-  /**
-   * Decrypt an encrypted handle for use in a transaction (e.g. liquidation).
-   * Uses @cofhe/sdk 0.5.2 `decryptForTx()` which produces a signature
-   * that can be passed directly to a contract function.
-   *
-   * @param {string} ctHash - The ciphertext handle (hex string) to decrypt
-   * @param {object} [opts] - Options
-   * @param {number} [opts.timeout=60_000] - Timeout in ms (default 60s)
-   * @param {number} [opts.pollInterval=2_000] - Poll interval in ms (default 2s)
-   * @returns {Promise<{ plaintext: string, signature: string }>}
-   */
-  async function decryptForExecute(ctHash, opts = {}) {
-    if (!_cofheClient) {
-      throw new FheError('NO_PERMIT', 'Grant an FHE permit before decrypting for tx');
-    }
-
-    const timeout = opts.timeout ?? 60_000;
-    const _pollInterval = opts.pollInterval ?? 2_000;
-    const start = Date.now();
-
+  /** Decrypt a handle for use in a transaction, returning a signature. */
+  async function decryptForExecute(ctHash) {
+    const client = requireClient();
     try {
-      // decryptForTx returns a builder: .withoutPermit().execute()
-      // The SDK may internally poll until the decryption is ready.
-      const result = await _cofheClient.decryptForTx(ctHash).withoutPermit().execute();
-
-      return {
-        plaintext: String(result.decryptedValue),
-        signature: result.signature,
-      };
+      const result = await client.decryptForTx(ctHash).withoutPermit().execute();
+      return { plaintext: String(result.decryptedValue), signature: result.signature };
     } catch (error) {
-      const elapsed = Date.now() - start;
-
-      if (elapsed >= timeout) {
-        throw new FheError(
-          'DECRYPT_TIMEOUT',
-          `Decryption for tx timed out after ${Math.round(elapsed / 1000)}s for handle ${ctHash}`,
-        );
-      }
-
-      if (error.message?.includes('not ready')) {
-        throw new FheError(
-          'DECRYPT_NOT_READY',
-          `Ciphertext ${ctHash} is not yet ready for decryption: ${error.message}`,
-        );
-      }
-
       throw new FheError(
         'DECRYPT_FOR_TX_FAILED',
         error.message || `Failed to decrypt ${ctHash} for transaction`,
@@ -245,12 +136,7 @@ export function createFheAdapter(_config) {
     }
   }
 
-  /**
-   * Register a callback for permit state changes.
-   * The callback is invoked immediately with the current state.
-   * @param {(state: PermitState) => void} cb - Listener callback
-   * @returns {() => void} Unsubscribe function
-   */
+  /** Register a callback for permit state changes. */
   function onPermitChange(cb) {
     _listeners.add(cb);
     try {
@@ -280,29 +166,6 @@ export function createFheAdapter(_config) {
   return adapter;
 }
 
-// ---------------------------------------------------------------------------
-// Type definitions
-// ---------------------------------------------------------------------------
-
-/**
- * @typedef {Object} PermitState
- * @property {boolean} unlocked - Whether a valid permit is currently active
- * @property {number} secondsLeft - Seconds remaining before permit expiry
- */
-
-/**
- * @typedef {string} InEuint128 - Encrypted handle (hex string) for an euint128 value
- */
-
-/**
- * @typedef {Object} FheAdapter
- * @property {() => Promise<PermitState>} permitGrant - Grant an FHE permit
- * @property {() => PermitState} permitCheck - Check current permit state
-
- * @property {(plaintext: string, tokenAddress?: string) => Promise<InEuint128>} encrypt - Encrypt a plaintext value
- * @property {(handle: string) => Promise<string>} decrypt - Decrypt an encrypted handle
- * @property {(ctHash: string, opts?: { timeout?: number, pollInterval?: number }) => Promise<{ plaintext: string, signature: string }>} decryptForExecute - Decrypt for tx with signature
- * @property {(cb: (state: PermitState) => void) => () => void} onPermitChange - Register permit state listener
- * @property {() => Promise<PermitState>} grantPermit - Alias for permitGrant
-
- */
+/** @typedef {{ unlocked: boolean, secondsLeft: number }} PermitState */
+/** @typedef {string} InEuint128 - Encrypted handle for an euint128 value */
+/** @typedef {{ permitGrant: () => Promise<PermitState>, permitCheck: () => PermitState, encrypt: (plaintext: string, tokenAddress?: string) => Promise<InEuint128>, decrypt: (handle: string) => Promise<string>, decryptForExecute: (ctHash: string) => Promise<{plaintext: string, signature: string}>, onPermitChange: (cb: (state: PermitState) => void) => () => void, grantPermit: () => Promise<PermitState> }} FheAdapter */
