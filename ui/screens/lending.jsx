@@ -3,41 +3,6 @@
 // Right: action panel for the selected market.
 
 const { useState: useStateL, useEffect: useEffectL } = React;
-const EMPTY_BRIDGE_CONTEXT_L = React.createContext({ data: {}, meta: { errors: [] } });
-
-function useOptionalBridgeL() {
-  const bridgeContext = typeof window !== "undefined" ? window.BridgeContext : null;
-  return React.useContext(bridgeContext || EMPTY_BRIDGE_CONTEXT_L);
-}
-
-function getBridgeStatusL(bridge, key, fallback) {
-  const meta = (bridge && bridge.meta) || {};
-  const data = (bridge && bridge.data) || {};
-  const readiness = meta.readiness || bridge.readiness || data.readiness || {};
-  const entry = readiness[key] || readiness[String(key).replace(/s$/, "")] || null;
-  if (entry) {
-    const status = String(entry.status || entry.state || "").toLowerCase();
-    const reason = String(entry.reason || entry.message || "");
-    if (status === "ready" || status === "ok" || status === "available") return null;
-    if (reason) return classifyBridgeStatusL(reason, fallback);
-    if (status) return classifyBridgeStatusL(status, fallback);
-  }
-  const errors = Array.isArray(meta.errors) ? meta.errors : [];
-  const error = errors.slice().reverse().find((err) => {
-    const source = String(err && err.source || "").toLowerCase();
-    const message = String(err && (err.message || (err.error && err.error.message)) || "").toLowerCase();
-    return source.includes(key) || message.includes(key) || message.includes("registry") || message.includes("rpc");
-  });
-  return error ? classifyBridgeStatusL(String(error.message || (error.error && error.error.message) || error), fallback) : fallback;
-}
-
-function classifyBridgeStatusL(message, fallback) {
-  const lower = String(message || "").toLowerCase();
-  if (lower.includes("registry")) return "registry unavailable";
-  if (lower.includes("rpc") || lower.includes("viem") || lower.includes("contract") || lower.includes("on-chain")) return "RPC unavailable";
-  if (lower.includes("backend") || lower.includes("api") || lower.includes("fetch") || lower.includes("network") || lower.includes("request")) return "backend unavailable";
-  return fallback || "bridge unavailable";
-}
 
 function getMarketAssetL(market) {
   return market && (market.asset || market.symbol || market.token || market.name);
@@ -201,10 +166,10 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
     }
     setTimeout(() => setFaucetResult(null), 8000);
   }
-  const bridge = useOptionalBridgeL();
+  const bridge = useOptionalBridge();
   const bridgeData = bridge.data || {};
   const markets = Array.isArray(bridgeData.markets) ? bridgeData.markets.map(normalizeMarketL) : null;
-  const marketStatus = getBridgeStatusL(bridge, "markets", "loading bridge markets");
+  const marketStatus = getBridgeStatus(bridge, "markets", "loading bridge markets");
   const locked = !ctx.permitUnlocked;
   const [assetId, setAssetId] = useStateL("USDC");
   const [side, setSide] = useStateL("supply");
@@ -428,17 +393,10 @@ function Lending({ setRoute, ctx, grantPermit, openConnect }) {
   );
 }
 
-function getDecimalsForAssetL(asset) {
-  const sym = String(asset || "").toUpperCase();
-  if (sym === "USDC" || sym === "USDT") return 6;
-  if (sym === "WBTC" || sym === "PPGS") return 8;
-  return 18;
-}
-
 function toWeiL(amountStr, asset) {
   const n = Number(String(amountStr || "").replace(/,/g, ""));
   if (!Number.isFinite(n) || n <= 0) return null;
-  const decimals = getDecimalsForAssetL(asset);
+  const decimals = getDecimalForAsset(asset);
   return BigInt(Math.round(n * 10 ** decimals));
 }
 

@@ -27,12 +27,7 @@ function parseAmountBW(display, decimals = 18) {
   return BigInt(Math.round(num * 10 ** decimals));
 }
 
-function getDecimalForAssetBW(asset) {
-  const sym = String(asset || "").toUpperCase();
-  if (sym.includes("USDC") || sym.includes("USDT")) return 6;
-  if (sym.includes("WBTC") || sym.includes("PPGS")) return 8;
-  return 18;
-}
+// getDecimalForAsset is provided by utils/token-utils.js (loaded before screen scripts)
 
 const NODE_W = 124;
 const NODE_H = 56;
@@ -1108,7 +1103,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                     const borrowToken = tokenMap[borrowCfg.asset] || collateralToken;
                     const borrowAmount = parseAmountBW(borrowCfg.amount || "0");
                     const swapTokenOut = tokenMap[swapCfg.to] || "0x0000000000000000000000000000000000000000";
-                    const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount, getDecimalForAssetBW(swapCfg.to)) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
+                    const swapMinOut = swapCfg.amount ? parseAmountBW(swapCfg.amount, getDecimalForAsset(swapCfg.to)) * BigInt(10000 - Math.round((swapCfg.slip || 0.5) * 100)) / 10000n : 0n;
                     const loopCount = repeatNode?.config?.loops || 1;
 
                     // ERC20 approval: ensure Composer can pull collateral tokens
@@ -1183,7 +1178,7 @@ function BuilderWorkspace({ workflow, setWorkflow, locked, grantPermit, ctx, ope
                       const swapEdge = edges.find(e => e.to === node.id);
                       const swapSrc = swapEdge ? nodes.find(n => n.id === swapEdge.from) : null;
                       const swapAmountIn = (swapSrc?.config?.amount ? parseAmountBW(swapSrc.config.amount) : 0n) || amount;
-                      const minOut = parseAmountBW(cfg.amount || "0", getDecimalForAssetBW(cfg.to)) * BigInt(10000 - slipBps) / 10000n;
+                      const minOut = parseAmountBW(cfg.amount || "0", getDecimalForAsset(cfg.to)) * BigInt(10000 - slipBps) / 10000n;
                       await bridge.contract.write.submitSwapIntent(tokenAddr, tokenOut, swapAmountIn, minOut, 300n, account);
                     } else if (node.type === "settle") {
                       setDeployStep("committing");

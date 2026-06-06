@@ -126,6 +126,12 @@
   <!-- BRIDGE: Babel.transform monkey-patch (must load before text/babel scripts) -->
   <script src="../packages/forge-bridge-integration/src/babel-transform-plugin.js?v=v31"></script>
 
+  <!-- Shared token utilities — must load before screen scripts (text/babel) -->
+  <script src="utils/token-utils.js?v=v31"></script>
+
+  <!-- Shared bridge context helpers — must load before screen scripts (text/babel) -->
+  <script src="utils/bridge-helpers.js?v=v31"></script>
+
   <!-- BRIDGE: Screen wrappers REMOVED in Phase 6 — ForgeProvider React Context replaces key={dataVersion} wrappers -->
 
   <!-- Tweaks shell -->

@@ -1484,7 +1484,8 @@
           }
           if (!this._xf) return raw;
           // Build address→decimals map for wei→decimal conversion
-          var TOKEN_DECIMALS = { ETH: 18, WETH: 18, USDC: 6, USDT: 6, WBTC: 8, PPGS: 8 };
+          // Uses shared TOKEN_DECIMAL_MAP from ui/utils/token-utils.js when available.
+          var TOKEN_DECIMALS = (typeof window !== 'undefined' && window.TOKEN_DECIMAL_MAP) || { ETH: 18, WETH: 18, USDC: 6, USDT: 6, WBTC: 8, PPGS: 8 };
           var _decByAddr = {};
           (Array.isArray(raw.markets) ? raw.markets : []).forEach(function (m) {
             var sym = m.asset || m.symbol;
