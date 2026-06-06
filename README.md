@@ -232,7 +232,7 @@ forge test -vvv --no-cache          # 8/8 pass
 npx jest                            # 33/33 pass
 
 # E2E integration tests
-python3 test-e2e.py                 # 26/26 pass
+python3 tests/test-e2e.py            # 26/26 pass
 ```
 
 ---
